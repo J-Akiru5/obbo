@@ -59,7 +59,7 @@ export default function NewOrderPage() {
             let checkImageUrl: string | null = null;
             if (paymentMethod === "check" && checkFile) {
                 const ext = checkFile.name.split(".").pop();
-                const path = `${user.id}/check-${Date.now()}.${ext}`;
+                const path = `${user.id}/check-${checkFile.lastModified}.${ext}`;
                 const { error } = await supabase.storage.from("order-attachments").upload(path, checkFile);
                 if (error) throw error;
                 checkImageUrl = path;
