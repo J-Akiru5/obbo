@@ -50,7 +50,6 @@ export default function RegisterPage() {
 
     function updateField(field: string, value: string) {
         setForm((prev) => ({ ...prev, [field]: value }));
-        // If email changes, reset OTP state
         if (field === "email") {
             setOtpSent(false);
             setOtpVerified(false);
@@ -194,152 +193,154 @@ export default function RegisterPage() {
         } catch {
             toast.error("An unexpected error occurred. Please try again.");
         } finally {
-            <AuthShell
-                backHref="/"
-                backLabel="Back to Home"
-                eyebrow="Verified onboarding"
-                title="Create your account"
-                description="Register once, complete verification, and get approved for portal access."
-                highlights={[
-                    {
-                        label: "Verification",
-                        value: "Email + KYC",
-                        description: "Keep the onboarding path clear and secure for every new client.",
-                    },
-                    {
-                        label: "Approval flow",
-                        value: "Admin review",
-                        description: "New accounts wait in a consistent pending state before activation.",
-                    },
-                ]}
-            >
-                <div className="space-y-8">
-                    <div className="space-y-3">
-                        <div className="inline-flex items-center rounded-full border border-[var(--color-industrial-yellow)]/25 bg-[var(--color-industrial-yellow)]/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.28em] text-[var(--color-industrial-blue)]">
-                            Sign up
-                        </div>
-                        <div className="space-y-2">
-                            <h2 className="text-3xl font-semibold tracking-tight text-balance text-foreground">
-                                Start your client profile
-                            </h2>
-                            <p className="text-sm leading-6 text-muted-foreground">
-                                Complete the details below to request access to the portal.
-                            </p>
-                        </div>
-                    </div>
+            setLoading(false);
+        }
+    }
 
-                    <form onSubmit={handleRegister} className="flex flex-col">
-                        <div className="grid grid-cols-1 gap-8 md:gap-10 lg:grid-cols-2">
+    return (
+        <AuthShell
+            backHref="/"
+            backLabel="Back to Home"
+            eyebrow="Verified onboarding"
+            title="Create your account"
+            description="Register once, complete verification, and get approved for portal access."
+            highlights={[
+                {
+                    label: "Verification",
+                    value: "Email + KYC",
+                    description: "Keep the onboarding path clear and secure for every new client.",
+                },
+                {
+                    label: "Approval flow",
+                    value: "Admin review",
+                    description: "New accounts wait in a consistent pending state before activation.",
+                },
+            ]}
+        >
+            <div className="space-y-8">
+                <div className="space-y-3">
+                    <div className="inline-flex items-center rounded-full border border-[var(--color-industrial-yellow)]/25 bg-[var(--color-industrial-yellow)]/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.28em] text-[var(--color-industrial-blue)]">
+                        Sign up
                     </div>
-                            {/* LEFT COLUMN */}
-                            <div className="space-y-8">
-                                <div>
-                                    <h3 className="font-semibold text-lg mb-4 text-foreground">Account credentials</h3>
-                                    <div className="space-y-4">
-                                        <div className="space-y-1.5">
-                                            <Label className="text-sm font-medium">Account type</Label>
-                                            <Select value={accountType} onValueChange={(val) => {
-                                                if (val === "individual" || val === "company") setAccountType(val);
-                                            }}>
-                                                <SelectTrigger className="h-11 w-full">
-                                                    <SelectValue placeholder="Select account type" />
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                    <SelectItem value="individual">Individual</SelectItem>
-                                                    <SelectItem value="company">Company</SelectItem>
-                                                </SelectContent>
-                                            </Select>
-                                        </div>
+                    <div className="space-y-2">
+                        <h2 className="text-3xl font-semibold tracking-tight text-balance text-foreground">
+                            Start your client profile
+                        </h2>
+                        <p className="text-sm leading-6 text-muted-foreground">
+                            Complete the details below to request access to the portal.
+                        </p>
+                    </div>
+                </div>
 
-                                        <div className="space-y-1.5">
-                                            <Label className="text-sm font-medium">Email</Label>
-                                            <div className="flex flex-col gap-2 sm:flex-row">
-                                                <Input
-                                                    type="email"
-                                                    placeholder="you@company.com"
-                                                    value={form.email}
-                                                    onChange={(e) => updateField("email", e.target.value)}
-                                                    required
-                                                    disabled={otpVerified}
-                                                    className="h-11 flex-1"
-                                                />
-                                                {!otpVerified && (
-                                                    <Button
-                                                        type="button"
-                                                        variant="outline"
-                                                        className="h-11 border-[var(--color-industrial-yellow)]/50 bg-[var(--color-industrial-yellow)] text-[var(--color-industrial-blue)] font-semibold hover:bg-[var(--color-industrial-yellow)]/90 whitespace-nowrap"
-                                                        onClick={handleSendOtp}
-                                                        disabled={sendingOtp || !form.email}
-                                                    >
-                                                        {sendingOtp ? <Loader2 className="w-4 h-4 animate-spin" /> : otpSent ? "Resend code" : "Send code"}
-                                                    </Button>
-                                                )}
-                                                {otpVerified && (
-                                                    <div className="h-11 flex items-center justify-center px-3 rounded-lg border border-emerald-200 bg-emerald-50 text-sm font-semibold text-emerald-700">
-                                                        <CheckCircle2 className="mr-1.5 w-4 h-4" /> Verified
-                                                    </div>
-                                                )}
-                                            </div>
-                                        </div>
-                                                            <CheckCircle2 className="w-4 h-4" /> Verified
-                                        {otpSent && !otpVerified && (
-                                            <div className="space-y-1.5">
-                                                <Label className="text-sm font-medium">Verification code</Label>
-                                                <div className="flex flex-col gap-2 sm:flex-row">
-                                                    <Input
-                                                        type="text"
-                                                        placeholder="6-digit code"
-                                                        value={otpCode}
-                                                        onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
-                                                        maxLength={6}
-                                                        className="h-11 tracking-[0.35em] text-center font-mono text-base"
-                                                    />
-                                                    <Button
-                                                        type="button"
-                                                        className="h-11 bg-[var(--color-industrial-blue)] font-semibold hover:bg-[var(--color-industrial-blue)]/90"
-                                                        onClick={handleVerifyOtp}
-                                                        disabled={verifyingOtp || otpCode.length !== 6}
-                                                    >
-                                                        {verifyingOtp ? <Loader2 className="w-4 h-4 animate-spin" /> : "Verify"}
-                                                    </Button>
-                                                </div>
-                                                <p className="text-xs text-muted-foreground flex items-center gap-1">
-                                                    <Mail className="w-3 h-3" /> Check your inbox and spam folder.
-                                                </p>
-                                            </div>
-                                        )}
-                                                    <p className="text-xs text-muted-foreground flex items-center gap-1">
-                                        <div className="space-y-1.5">
-                                            <Label className="text-sm font-medium">Password</Label>
-                                            <div className="relative">
-                                                <Input
-                                                    type={showPassword ? "text" : "password"}
-                                                    placeholder="••••••••"
-                                                    value={form.password}
-                                                    onChange={(e) => updateField("password", e.target.value)}
-                                                    required
-                                                    className="h-11 pr-10"
-                                                />
-                                                <button type="button" className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground transition-colors hover:text-foreground"
-                                                    onClick={() => setShowPassword(!showPassword)}>
-                                                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                                                </button>
-                                            </div>
+                <form onSubmit={handleRegister} className="flex flex-col">
+                    <div className="grid grid-cols-1 gap-8 md:gap-10 lg:grid-cols-2">
+
+                        {/* LEFT COLUMN */}
+                        <div className="space-y-6">
+                            {/* Account Type */}
+                            <div>
+                                <h3 className="font-semibold text-lg mb-4 text-foreground">Account type</h3>
+                                <Select value={accountType} onValueChange={(v) => setAccountType(v as "individual" | "company")}>
+                                    <SelectTrigger className="h-11">
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="individual">Individual</SelectItem>
+                                        <SelectItem value="company">Company</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
+                            {/* Email + OTP */}
+                            <div>
+                                <h3 className="font-semibold text-lg mb-4 text-foreground">Email verification</h3>
+                                <div className="space-y-3">
+                                    <div className="space-y-1.5">
+                                        <Label className="text-sm font-medium">Email address</Label>
+                                        <div className="flex flex-col gap-2 sm:flex-row">
+                                            <Input
+                                                type="email"
+                                                placeholder="you@example.com"
+                                                value={form.email}
+                                                onChange={(e) => updateField("email", e.target.value)}
+                                                required
+                                                disabled={otpVerified}
+                                                className="h-11 flex-1"
+                                            />
+                                            <Button
+                                                type="button"
+                                                variant="outline"
+                                                className="h-11 flex-shrink-0"
+                                                onClick={handleSendOtp}
+                                                disabled={sendingOtp || otpVerified || !form.email}
+                                            >
+                                                {sendingOtp ? <Loader2 className="w-4 h-4 animate-spin" /> :
+                                                    otpVerified ? <><CheckCircle2 className="w-4 h-4 mr-1 text-emerald-500" /> Verified</> :
+                                                        otpSent ? "Resend" : "Send code"}
+                                            </Button>
                                         </div>
                                     </div>
-                                </div>
-                                                    </button>
-                                <div>
-                                    <h3 className="font-semibold text-lg mb-4 text-foreground">Address</h3>
-                                    <div className="grid grid-cols-1 gap-3">
-                                        <div><Label className="mb-1.5 block text-sm font-medium">Street</Label><Input value={form.street} onChange={(e) => updateField("street", e.target.value)} className="h-11" required /></div>
-                                        <div><Label className="mb-1.5 block text-sm font-medium">City</Label><Input value={form.city} onChange={(e) => updateField("city", e.target.value)} className="h-11" required /></div>
-                                        <div><Label className="mb-1.5 block text-sm font-medium">Province</Label><Input value={form.province} onChange={(e) => updateField("province", e.target.value)} className="h-11" required /></div>
-                                        <div><Label className="mb-1.5 block text-sm font-medium">Postal code</Label><Input value={form.postal_code} onChange={(e) => updateField("postal_code", e.target.value)} className="h-11" required /></div>
+
+                                    {otpSent && !otpVerified && (
+                                        <div className="space-y-1.5">
+                                            <Label className="text-sm font-medium">Verification code</Label>
+                                            <div className="flex flex-col gap-2 sm:flex-row">
+                                                <Input
+                                                    type="text"
+                                                    placeholder="6-digit code"
+                                                    value={otpCode}
+                                                    onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                                                    maxLength={6}
+                                                    className="h-11 tracking-[0.35em] text-center font-mono text-base"
+                                                />
+                                                <Button
+                                                    type="button"
+                                                    className="h-11 bg-[var(--color-industrial-blue)] font-semibold hover:bg-[var(--color-industrial-blue)]/90"
+                                                    onClick={handleVerifyOtp}
+                                                    disabled={verifyingOtp || otpCode.length !== 6}
+                                                >
+                                                    {verifyingOtp ? <Loader2 className="w-4 h-4 animate-spin" /> : "Verify"}
+                                                </Button>
+                                            </div>
+                                            <p className="text-xs text-muted-foreground flex items-center gap-1">
+                                                <Mail className="w-3 h-3" /> Check your inbox and spam folder.
+                                            </p>
+                                        </div>
+                                    )}
+
+                                    {/* Password */}
+                                    <div className="space-y-1.5">
+                                        <Label className="text-sm font-medium">Password</Label>
+                                        <div className="relative">
+                                            <Input
+                                                type={showPassword ? "text" : "password"}
+                                                placeholder="••••••••"
+                                                value={form.password}
+                                                onChange={(e) => updateField("password", e.target.value)}
+                                                required
+                                                className="h-11 pr-10"
+                                            />
+                                            <button type="button" className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground transition-colors hover:text-foreground"
+                                                onClick={() => setShowPassword(!showPassword)}>
+                                                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
-                                            <div><Label className="text-sm font-semibold mb-1.5 block">Province:</Label><Input value={form.province} onChange={(e) => updateField("province", e.target.value)} className="h-11 border-gray-300" required /></div>
+
+                            {/* Address */}
+                            <div>
+                                <h3 className="font-semibold text-lg mb-4 text-foreground">Address</h3>
+                                <div className="grid grid-cols-1 gap-3">
+                                    <div><Label className="mb-1.5 block text-sm font-medium">Street</Label><Input value={form.street} onChange={(e) => updateField("street", e.target.value)} className="h-11" required /></div>
+                                    <div><Label className="mb-1.5 block text-sm font-medium">City</Label><Input value={form.city} onChange={(e) => updateField("city", e.target.value)} className="h-11" required /></div>
+                                    <div><Label className="mb-1.5 block text-sm font-medium">Province</Label><Input value={form.province} onChange={(e) => updateField("province", e.target.value)} className="h-11" required /></div>
+                                    <div><Label className="mb-1.5 block text-sm font-medium">Postal code</Label><Input value={form.postal_code} onChange={(e) => updateField("postal_code", e.target.value)} className="h-11" required /></div>
+                                </div>
+                            </div>
+                        </div>
+
                         {/* RIGHT COLUMN */}
                         <div className="space-y-6 lg:border-l lg:border-border lg:pl-10">
                             {accountType === "individual" ? (
@@ -418,17 +419,8 @@ export default function RegisterPage() {
                             </Link>
                         </p>
                     </div>
-                </div>
-            </AuthShell>
-                                    {loading ? (
-                                        <span className="flex items-center gap-2"><Loader2 className="w-5 h-5 animate-spin" /> Creating account...</span>
-                                    ) : "Sign Up"}
-                                </Button>
-                            </div>
-                        </form>
-                    </CardContent>
-                </Card>
+                </form>
             </div>
-        </div>
+        </AuthShell>
     );
 }
