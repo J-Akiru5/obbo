@@ -17,30 +17,16 @@ import {
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import {
-    mockOrders,
-    mockShipments,
-    mockCustomerBalances,
-    mockProfiles,
-    mockActivityLog,
-    computeStockByType,
-} from "@/lib/mock-data";
+import { mockShipments, mockCustomerBalances, mockActivityLog, mockProfiles } from "@/lib/mock-data";
 import { ActivityLog } from "@/lib/types/database";
 import { createClient } from "@/lib/supabase/client";
 
-// ── KPI helpers (computed from mock data as baseline) ──────────────
-const stock = computeStockByType();
+// ── Static KPI defaults (overridden by live fetch) ─────────────────
 const baselineKpis = {
-    sbNet: stock.sb.net,
-    sbGood: stock.sb.good,
-    sbBalance: stock.sb.balance,
-    jbNet: stock.jb.net,
-    jbGood: stock.jb.good,
-    jbBalance: stock.jb.balance,
-    pendingOrders: mockOrders.filter((o) => o.status === "pending").length,
-    dispatched: mockOrders.filter((o) => o.status === "dispatched").length,
-    activeClients: mockProfiles.filter((p) => p.role === "client" && p.kyc_status === "verified").length,
-    pendingKyc: mockProfiles.filter((p) => p.kyc_status === "pending_verification").length,
+    sbNet: 0, sbGood: 0, sbBalance: 0,
+    jbNet: 0, jbGood: 0, jbBalance: 0,
+    pendingOrders: 0, dispatched: 0,
+    activeClients: 0, pendingKyc: 0,
 };
 
 // ── Activity helpers ───────────────────────────────────────────────
@@ -84,6 +70,12 @@ export default function AdminDashboard() {
 
     useEffect(() => {
         const supabase = createClient();
+
+        // ── Fetch live KPI counts ─────────────────────────────────
+        supabase.from("orders").select("id", { count: "exact", head: true }).eq("status", "pending")
+            .then(({ count }) => { if (count != null) setPendingCount(count); });
+        supabase.from("activity_log").select("*").order("created_at", { ascending: false }).limit(20)
+            .then(({ data }) => { if (data && data.length > 0) setActivityFeed(data as ActivityLog[]); });
 
         // ── Subscribe to orders table changes ──────────────────────────
         const ordersChannel = supabase

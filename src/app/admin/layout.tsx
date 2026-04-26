@@ -1,8 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
+import { useState, useEffect } from "react";
+import { createClient } from "@/lib/supabase/client";
+import { toast } from "sonner";
 import {
     Package,
     LayoutDashboard,
@@ -34,7 +36,7 @@ const navItems = [
     { href: "/admin/clients", label: "Clients", icon: Users },
 ];
 
-function SidebarContent({ pathname, onNavigate }: { pathname: string; onNavigate?: () => void }) {
+function SidebarContent({ pathname, onNavigate, adminName, adminInitials }: { pathname: string; onNavigate?: () => void; adminName?: string; adminInitials?: string }) {
     return (
         <div className="flex flex-col h-full">
             {/* Logo */}
@@ -82,10 +84,10 @@ function SidebarContent({ pathname, onNavigate }: { pathname: string; onNavigate
             <div className="px-3 py-4 border-t border-sidebar-border">
                 <div className="flex items-center gap-3 px-3 py-2">
                     <div className="w-8 h-8 rounded-full bg-sidebar-accent flex items-center justify-center">
-                        <span className="text-xs font-bold text-sidebar-accent-foreground">JD</span>
+                        <span className="text-xs font-bold text-sidebar-accent-foreground">{adminInitials ?? "AD"}</span>
                     </div>
                     <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-sidebar-foreground truncate">Juan Dela Cruz</p>
+                        <p className="text-sm font-medium text-sidebar-foreground truncate">{adminName ?? "Administrator"}</p>
                         <p className="text-xs text-sidebar-foreground/50 truncate">Administrator</p>
                     </div>
                 </div>
@@ -96,13 +98,44 @@ function SidebarContent({ pathname, onNavigate }: { pathname: string; onNavigate
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
     const pathname = usePathname();
+    const router = useRouter();
     const [mobileOpen, setMobileOpen] = useState(false);
+    const [adminName, setAdminName] = useState("Administrator");
+    const [adminInitials, setAdminInitials] = useState("AD");
+
+    useEffect(() => {
+        const supabase = createClient();
+        supabase.auth.getUser().then(({ data }) => {
+            if (data.user) {
+                supabase
+                    .from("profiles")
+                    .select("full_name")
+                    .eq("id", data.user.id)
+                    .single()
+                    .then(({ data: profile }) => {
+                        const name = profile?.full_name || data.user?.email?.split("@")[0] || "Admin";
+                        setAdminName(name);
+                        setAdminInitials(
+                            name.split(" ").map((n: string) => n[0]).join("").toUpperCase().slice(0, 2)
+                        );
+                    });
+            }
+        });
+    }, []);
+
+    async function handleSignOut() {
+        const supabase = createClient();
+        await supabase.auth.signOut();
+        toast.success("Signed out.");
+        router.push("/login");
+        router.refresh();
+    }
 
     return (
         <div className="min-h-screen flex bg-muted/30">
             {/* Desktop Sidebar */}
             <aside className="hidden lg:flex lg:w-64 flex-col bg-sidebar border-r border-sidebar-border fixed inset-y-0 left-0 z-40">
-                <SidebarContent pathname={pathname} />
+                <SidebarContent pathname={pathname} adminName={adminName} adminInitials={adminInitials} />
             </aside>
 
             {/* Main Content */}
@@ -142,16 +175,16 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                                 className="inline-flex items-center gap-2 px-2 rounded-md hover:bg-accent hover:text-accent-foreground transition-colors"
                             >
                                 <Avatar className="w-8 h-8">
-                                    <AvatarFallback className="bg-[var(--color-industrial-blue)] text-white text-xs font-bold">JD</AvatarFallback>
+                                    <AvatarFallback className="bg-[var(--color-industrial-blue)] text-white text-xs font-bold">{adminInitials}</AvatarFallback>
                                 </Avatar>
-                                <span className="hidden sm:block text-sm font-medium">Admin</span>
+                                <span className="hidden sm:block text-sm font-medium">{adminName.split(" ")[0]}</span>
                                 <ChevronDown className="w-4 h-4 text-muted-foreground" />
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end" className="w-48">
                                 <DropdownMenuItem>Profile</DropdownMenuItem>
                                 <DropdownMenuItem>Settings</DropdownMenuItem>
                                 <DropdownMenuSeparator />
-                                <DropdownMenuItem className="text-destructive">
+                                <DropdownMenuItem className="text-destructive" onClick={handleSignOut}>
                                     <LogOut className="w-4 h-4 mr-2" /> Sign Out
                                 </DropdownMenuItem>
                             </DropdownMenuContent>
