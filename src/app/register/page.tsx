@@ -145,7 +145,7 @@ export default function RegisterPage() {
                                         <div className="space-y-4">
                                             <div className="space-y-1.5">
                                                 <Label className="text-sm font-semibold">Account Type:</Label>
-                                                <Select value={accountType} onValueChange={(val: "individual" | "company") => setAccountType(val)}>
+                                                <Select value={accountType} onValueChange={(val) => { if (val === "individual" || val === "company") setAccountType(val); }}>
                                                     <SelectTrigger className="bg-white border-gray-300 h-11">
                                                         <SelectValue placeholder="Select Account Type" />
                                                     </SelectTrigger>
