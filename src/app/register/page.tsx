@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { Package, Eye, EyeOff } from "lucide-react";
+import { Package, Eye, EyeOff, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -69,8 +69,17 @@ export default function RegisterPage() {
     }
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-100 via-slate-50 to-white px-4 py-12">
+        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-100 via-slate-50 to-white px-4 py-12 relative">
             <div className="absolute inset-0 -z-10 opacity-5" style={{ backgroundImage: 'radial-gradient(circle at 1px 1px, var(--color-industrial-blue) 1px, transparent 0)', backgroundSize: '32px 32px' }} />
+
+            <div className="absolute top-8 left-8">
+                <Link href="/">
+                    <Button variant="ghost" className="gap-2 text-muted-foreground hover:text-foreground">
+                        <ArrowLeft className="w-4 h-4" /> Back to Home
+                    </Button>
+                </Link>
+            </div>
+
             <Card className="w-full max-w-lg shadow-2xl shadow-[var(--color-industrial-blue)]/10 border-border">
                 <CardHeader className="text-center pb-2">
                     <Link href="/" className="inline-flex items-center justify-center gap-2 mb-4">
