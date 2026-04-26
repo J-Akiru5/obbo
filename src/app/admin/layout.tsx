@@ -57,8 +57,8 @@ function SidebarContent({ pathname, onNavigate }: { pathname: string; onNavigate
                             href={item.href}
                             onClick={onNavigate}
                             className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${isActive
-                                    ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                                    : "text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent/50"
+                                ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                                : "text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent/50"
                                 }`}
                         >
                             <item.icon className="w-5 h-5 flex-shrink-0" />
@@ -112,10 +112,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                     <div className="flex items-center gap-3">
                         {/* Mobile menu */}
                         <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
-                            <SheetTrigger asChild>
-                                <Button variant="ghost" size="icon" className="lg:hidden">
-                                    <Menu className="w-5 h-5" />
-                                </Button>
+                            <SheetTrigger
+                                className="inline-flex items-center justify-center rounded-md w-9 h-9 hover:bg-accent hover:text-accent-foreground transition-colors lg:hidden"
+                            >
+                                <Menu className="w-5 h-5" />
                             </SheetTrigger>
                             <SheetContent side="left" className="w-64 p-0 bg-sidebar">
                                 <SidebarContent pathname={pathname} onNavigate={() => setMobileOpen(false)} />
@@ -138,14 +138,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                         </Button>
 
                         <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" className="gap-2 px-2">
-                                    <Avatar className="w-8 h-8">
-                                        <AvatarFallback className="bg-[var(--color-industrial-blue)] text-white text-xs font-bold">JD</AvatarFallback>
-                                    </Avatar>
-                                    <span className="hidden sm:block text-sm font-medium">Admin</span>
-                                    <ChevronDown className="w-4 h-4 text-muted-foreground" />
-                                </Button>
+                            <DropdownMenuTrigger
+                                className="inline-flex items-center gap-2 px-2 rounded-md hover:bg-accent hover:text-accent-foreground transition-colors"
+                            >
+                                <Avatar className="w-8 h-8">
+                                    <AvatarFallback className="bg-[var(--color-industrial-blue)] text-white text-xs font-bold">JD</AvatarFallback>
+                                </Avatar>
+                                <span className="hidden sm:block text-sm font-medium">Admin</span>
+                                <ChevronDown className="w-4 h-4 text-muted-foreground" />
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end" className="w-48">
                                 <DropdownMenuItem>Profile</DropdownMenuItem>

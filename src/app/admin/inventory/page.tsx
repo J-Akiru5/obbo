@@ -41,7 +41,7 @@ function AddShipmentDialog({ open, onClose }: { open: boolean; onClose: () => vo
                     </div>
                     <div className="space-y-1.5">
                         <Label>Product *</Label>
-                        <Select onValueChange={v => setForm({ ...form, product_id: v })}>
+                        <Select onValueChange={(v) => setForm({ ...form, product_id: String(v) })}>
                             <SelectTrigger><SelectValue placeholder="Select product" /></SelectTrigger>
                             <SelectContent>
                                 {mockProducts.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
@@ -51,7 +51,7 @@ function AddShipmentDialog({ open, onClose }: { open: boolean; onClose: () => vo
                     <div className="grid grid-cols-2 gap-3">
                         <div className="space-y-1.5">
                             <Label>Bag Type *</Label>
-                            <Select onValueChange={v => setForm({ ...form, bag_type: v })}>
+                            <Select onValueChange={(v) => setForm({ ...form, bag_type: String(v) })}>
                                 <SelectTrigger><SelectValue placeholder="Type" /></SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value="SB">Sling Bags (SB)</SelectItem>

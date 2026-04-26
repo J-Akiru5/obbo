@@ -1,18 +1,19 @@
 "use client";
 
+import { useEffect, useState, useRef } from "react";
 import {
     Package,
-    TrendingUp,
     ShoppingCart,
     Truck,
     Users,
     ArrowUpRight,
-    ArrowDownRight,
     Clock,
     CheckCircle2,
     AlertCircle,
     UserPlus,
     PackagePlus,
+    Wifi,
+    WifiOff,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -24,52 +25,25 @@ import {
     mockActivityLog,
     computeStockByType,
 } from "@/lib/mock-data";
+import { ActivityLog } from "@/lib/types/database";
+import { createClient } from "@/lib/supabase/client";
 
+// ── KPI helpers (computed from mock data as baseline) ──────────────
 const stock = computeStockByType();
-const pendingOrders = mockOrders.filter((o) => o.status === "pending").length;
-const dispatchedToday = mockOrders.filter((o) => o.status === "dispatched").length;
-const activeClients = mockProfiles.filter((p) => p.role === "client" && p.kyc_status === "verified").length;
-const pendingKyc = mockProfiles.filter((p) => p.kyc_status === "pending_verification").length;
+const baselineKpis = {
+    sbNet: stock.sb.net,
+    sbGood: stock.sb.good,
+    sbBalance: stock.sb.balance,
+    jbNet: stock.jb.net,
+    jbGood: stock.jb.good,
+    jbBalance: stock.jb.balance,
+    pendingOrders: mockOrders.filter((o) => o.status === "pending").length,
+    dispatched: mockOrders.filter((o) => o.status === "dispatched").length,
+    activeClients: mockProfiles.filter((p) => p.role === "client" && p.kyc_status === "verified").length,
+    pendingKyc: mockProfiles.filter((p) => p.kyc_status === "pending_verification").length,
+};
 
-const kpis = [
-    {
-        title: "Net Available (SB)",
-        value: stock.sb.net.toLocaleString(),
-        subtitle: `${stock.sb.good.toLocaleString()} good · ${stock.sb.balance.toLocaleString()} obligated`,
-        icon: Package,
-        trend: "+12%",
-        trendUp: true,
-        color: "text-blue-600 bg-blue-500/10",
-    },
-    {
-        title: "Net Available (JB)",
-        value: stock.jb.net.toLocaleString(),
-        subtitle: `${stock.jb.good.toLocaleString()} good · ${stock.jb.balance.toLocaleString()} obligated`,
-        icon: Package,
-        trend: "+5%",
-        trendUp: true,
-        color: "text-emerald-600 bg-emerald-500/10",
-    },
-    {
-        title: "Pending Orders",
-        value: pendingOrders.toString(),
-        subtitle: `${dispatchedToday} dispatched today`,
-        icon: ShoppingCart,
-        trend: "2 new",
-        trendUp: false,
-        color: "text-amber-600 bg-amber-500/10",
-    },
-    {
-        title: "Active Clients",
-        value: activeClients.toString(),
-        subtitle: `${pendingKyc} pending verification`,
-        icon: Users,
-        trend: `+${pendingKyc}`,
-        trendUp: true,
-        color: "text-purple-600 bg-purple-500/10",
-    },
-];
-
+// ── Activity helpers ───────────────────────────────────────────────
 function getActivityIcon(action: string) {
     switch (action) {
         case "order_placed": return <ShoppingCart className="w-4 h-4 text-blue-500" />;
@@ -80,7 +54,6 @@ function getActivityIcon(action: string) {
         default: return <Clock className="w-4 h-4 text-muted-foreground" />;
     }
 }
-
 function getActivityLabel(action: string) {
     switch (action) {
         case "order_placed": return "New Order Placed";
@@ -91,24 +64,166 @@ function getActivityLabel(action: string) {
         default: return action;
     }
 }
-
 function formatTimeAgo(dateStr: string) {
-    const seconds = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000);
-    const days = Math.floor(seconds / 86400);
-    if (days > 30) return `${Math.floor(days / 30)}mo ago`;
-    if (days > 0) return `${days}d ago`;
-    const hours = Math.floor(seconds / 3600);
-    if (hours > 0) return `${hours}h ago`;
+    const s = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000);
+    const d = Math.floor(s / 86400);
+    if (d > 30) return `${Math.floor(d / 30)}mo ago`;
+    if (d > 0) return `${d}d ago`;
+    const h = Math.floor(s / 3600);
+    if (h > 0) return `${h}h ago`;
+    const m = Math.floor(s / 60);
+    if (m > 0) return `${m}m ago`;
     return "Just now";
 }
 
 export default function AdminDashboard() {
+    const [activityFeed, setActivityFeed] = useState<ActivityLog[]>(mockActivityLog);
+    const [pendingCount, setPendingCount] = useState(baselineKpis.pendingOrders);
+    const [realtimeConnected, setRealtimeConnected] = useState(false);
+    const channelRef = useRef<ReturnType<ReturnType<typeof createClient>["channel"]> | null>(null);
+
+    useEffect(() => {
+        const supabase = createClient();
+
+        // ── Subscribe to orders table changes ──────────────────────────
+        const ordersChannel = supabase
+            .channel("admin-dashboard")
+            .on(
+                "postgres_changes",
+                { event: "INSERT", schema: "public", table: "orders" },
+                (payload) => {
+                    // New order placed — increment pending count and add to feed
+                    setPendingCount((prev) => prev + 1);
+                    const newActivity: ActivityLog = {
+                        id: crypto.randomUUID(),
+                        actor_id: payload.new.client_id ?? "unknown",
+                        action: "order_placed",
+                        entity_type: "order",
+                        entity_id: payload.new.id,
+                        metadata: { total: payload.new.total_amount },
+                        created_at: payload.new.created_at ?? new Date().toISOString(),
+                    };
+                    setActivityFeed((prev) => [newActivity, ...prev].slice(0, 20));
+                }
+            )
+            .on(
+                "postgres_changes",
+                { event: "UPDATE", schema: "public", table: "orders" },
+                (payload) => {
+                    const action =
+                        payload.new.status === "dispatched" ? "order_dispatched" :
+                            payload.new.status === "approved" ? "order_approved" :
+                                payload.new.status === "rejected" ? "order_rejected" : null;
+                    if (!action) return;
+                    if (payload.old.status === "pending" && payload.new.status !== "pending") {
+                        setPendingCount((prev) => Math.max(0, prev - 1));
+                    }
+                    const newActivity: ActivityLog = {
+                        id: crypto.randomUUID(),
+                        actor_id: "admin",
+                        action,
+                        entity_type: "order",
+                        entity_id: payload.new.id,
+                        metadata: {},
+                        created_at: new Date().toISOString(),
+                    };
+                    setActivityFeed((prev) => [newActivity, ...prev].slice(0, 20));
+                }
+            )
+            // ── Subscribe to activity_log table inserts ──────────────────
+            .on(
+                "postgres_changes",
+                { event: "INSERT", schema: "public", table: "activity_log" },
+                (payload) => {
+                    const entry = payload.new as ActivityLog;
+                    setActivityFeed((prev) => [entry, ...prev].slice(0, 20));
+                }
+            )
+            // ── Subscribe to profiles changes (KYC updates) ──────────────
+            .on(
+                "postgres_changes",
+                { event: "INSERT", schema: "public", table: "profiles" },
+                (payload) => {
+                    const newActivity: ActivityLog = {
+                        id: crypto.randomUUID(),
+                        actor_id: payload.new.id,
+                        action: "kyc_submitted",
+                        entity_type: "profile",
+                        entity_id: payload.new.id,
+                        metadata: {},
+                        created_at: payload.new.created_at ?? new Date().toISOString(),
+                    };
+                    setActivityFeed((prev) => [newActivity, ...prev].slice(0, 20));
+                }
+            )
+            .subscribe((status) => {
+                setRealtimeConnected(status === "SUBSCRIBED");
+            });
+
+        channelRef.current = ordersChannel;
+
+        return () => {
+            supabase.removeChannel(ordersChannel);
+        };
+    }, []);
+
+    const kpis = [
+        {
+            title: "Net Available (SB)",
+            value: baselineKpis.sbNet.toLocaleString(),
+            subtitle: `${baselineKpis.sbGood.toLocaleString()} good · ${baselineKpis.sbBalance.toLocaleString()} obligated`,
+            icon: Package,
+            trend: "+12%",
+            trendUp: true,
+            color: "text-blue-600 bg-blue-500/10",
+        },
+        {
+            title: "Net Available (JB)",
+            value: baselineKpis.jbNet.toLocaleString(),
+            subtitle: `${baselineKpis.jbGood.toLocaleString()} good · ${baselineKpis.jbBalance.toLocaleString()} obligated`,
+            icon: Package,
+            trend: "+5%",
+            trendUp: true,
+            color: "text-emerald-600 bg-emerald-500/10",
+        },
+        {
+            title: "Pending Orders",
+            value: pendingCount.toString(),
+            subtitle: `${baselineKpis.dispatched} dispatched today`,
+            icon: ShoppingCart,
+            trend: `${pendingCount} open`,
+            trendUp: pendingCount === 0,
+            color: "text-amber-600 bg-amber-500/10",
+        },
+        {
+            title: "Active Clients",
+            value: baselineKpis.activeClients.toString(),
+            subtitle: `${baselineKpis.pendingKyc} pending verification`,
+            icon: Users,
+            trend: `+${baselineKpis.pendingKyc} pending`,
+            trendUp: true,
+            color: "text-purple-600 bg-purple-500/10",
+        },
+    ];
+
     return (
         <div className="space-y-6">
             {/* Header */}
-            <div>
-                <h2 className="text-2xl font-bold tracking-tight">Dashboard</h2>
-                <p className="text-muted-foreground mt-1">Overview of your cement distribution operations.</p>
+            <div className="flex items-center justify-between">
+                <div>
+                    <h2 className="text-2xl font-bold tracking-tight">Dashboard</h2>
+                    <p className="text-muted-foreground mt-1">Overview of your cement distribution operations.</p>
+                </div>
+                {/* Realtime indicator */}
+                <div className={`flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full border ${realtimeConnected
+                        ? "bg-emerald-50 border-emerald-200 text-emerald-700"
+                        : "bg-muted border-border text-muted-foreground"
+                    }`}>
+                    {realtimeConnected
+                        ? <><Wifi className="w-3 h-3" /> Live</>
+                        : <><WifiOff className="w-3 h-3" /> Offline</>
+                    }
+                </div>
             </div>
 
             {/* KPI Cards */}
@@ -127,11 +242,9 @@ export default function AdminDashboard() {
                                 </div>
                             </div>
                             <div className="mt-3 flex items-center gap-1.5">
-                                {kpi.trendUp ? (
-                                    <ArrowUpRight className="w-3.5 h-3.5 text-emerald-500" />
-                                ) : (
-                                    <AlertCircle className="w-3.5 h-3.5 text-amber-500" />
-                                )}
+                                {kpi.trendUp
+                                    ? <ArrowUpRight className="w-3.5 h-3.5 text-emerald-500" />
+                                    : <AlertCircle className="w-3.5 h-3.5 text-amber-500" />}
                                 <span className={`text-xs font-medium ${kpi.trendUp ? "text-emerald-600" : "text-amber-600"}`}>
                                     {kpi.trend}
                                 </span>
@@ -148,12 +261,20 @@ export default function AdminDashboard() {
                     <CardHeader className="pb-3">
                         <div className="flex items-center justify-between">
                             <CardTitle className="text-lg">Recent Activity</CardTitle>
-                            <Badge variant="secondary" className="text-xs">{mockActivityLog.length} events</Badge>
+                            <div className="flex items-center gap-2">
+                                {realtimeConnected && (
+                                    <span className="flex items-center gap-1 text-xs text-emerald-600">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                                        Live updates
+                                    </span>
+                                )}
+                                <Badge variant="secondary" className="text-xs">{activityFeed.length} events</Badge>
+                            </div>
                         </div>
                     </CardHeader>
                     <CardContent>
                         <div className="space-y-1">
-                            {mockActivityLog.map((activity) => (
+                            {activityFeed.map((activity) => (
                                 <div key={activity.id} className="flex items-start gap-3 p-3 rounded-lg hover:bg-muted/50 transition-colors">
                                     <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center flex-shrink-0 mt-0.5">
                                         {getActivityIcon(activity.action)}
@@ -161,7 +282,10 @@ export default function AdminDashboard() {
                                     <div className="flex-1 min-w-0">
                                         <p className="text-sm font-medium">{getActivityLabel(activity.action)}</p>
                                         <p className="text-xs text-muted-foreground truncate">
-                                            by {activity.actor?.full_name || "System"} · {activity.entity_type} #{activity.entity_id.split("-").pop()}
+                                            {activity.actor?.full_name
+                                                ? `by ${activity.actor.full_name} · `
+                                                : ""}
+                                            {activity.entity_type} #{String(activity.entity_id).split("-").pop()}
                                         </p>
                                     </div>
                                     <span className="text-xs text-muted-foreground whitespace-nowrap flex-shrink-0">
@@ -173,7 +297,7 @@ export default function AdminDashboard() {
                     </CardContent>
                 </Card>
 
-                {/* Quick Stats / Obligations */}
+                {/* Side panels */}
                 <div className="space-y-4">
                     <Card>
                         <CardHeader className="pb-3">
