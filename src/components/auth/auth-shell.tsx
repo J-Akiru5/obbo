@@ -26,14 +26,9 @@ export function AuthShell({
   children,
 }: AuthShellProps) {
   return (
-    <div className="relative min-h-screen overflow-hidden bg-[linear-gradient(135deg,#f6f3ec_0%,#eef2f7_55%,#faf7f1_100%)] text-foreground">
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-0 opacity-[0.45] bg-[radial-gradient(circle_at_1px_1px,_rgba(30,58,95,0.10)_1px,_transparent_0)] [background-size:28px_28px]"
-      />
-
-      <div className="relative mx-auto grid min-h-screen w-full max-w-7xl lg:grid-cols-[1.05fr_0.95fr]">
-        <section className="relative flex min-h-[18rem] flex-col justify-between overflow-hidden bg-[linear-gradient(160deg,#203c63_0%,#17263d_55%,#0d1420_100%)] px-6 py-8 text-white shadow-[0_28px_80px_rgba(13,20,32,0.28)] sm:px-8 lg:min-h-screen lg:px-12 lg:py-10">
+    <div className="relative min-h-screen w-full overflow-hidden bg-white text-foreground">
+      <div className="relative grid min-h-screen w-full lg:grid-cols-2">
+        <section className="relative flex min-h-[18rem] flex-col justify-between overflow-hidden bg-[linear-gradient(160deg,#0f1b29_0%,#17263d_55%,#0d1420_100%)] px-6 py-8 text-white sm:px-8 lg:min-h-screen lg:px-16 lg:py-12">
           <div
             aria-hidden="true"
             className="absolute inset-0 opacity-90 bg-[linear-gradient(rgba(245,158,11,0.16)_1px,transparent_1px),linear-gradient(90deg,rgba(245,158,11,0.10)_1px,transparent_1px)] [background-size:100%_100%,120px_120px] [background-position:0_0,0_0]"
@@ -99,18 +94,18 @@ export function AuthShell({
           </div>
         </section>
 
-        <section className="relative flex items-center justify-center px-4 py-6 sm:px-6 lg:px-10 lg:py-10">
-          <div className="absolute left-4 top-4 z-20 lg:left-6 lg:top-6">
+        <section className="relative flex flex-col justify-center px-6 py-12 sm:px-8 lg:px-20">
+          <div className="absolute left-6 top-6 z-20 lg:left-8 lg:top-8">
             <Link
               href={backHref}
-              className="inline-flex items-center gap-2 rounded-full border border-border/70 bg-white/85 px-4 py-2 text-sm font-medium text-foreground shadow-sm backdrop-blur transition-colors hover:border-[var(--color-industrial-blue)]/30 hover:text-[var(--color-industrial-blue)]"
+              className="inline-flex items-center gap-2 rounded-full border border-border/70 bg-white px-4 py-2 text-sm font-medium text-foreground shadow-sm hover:border-[var(--color-industrial-blue)]/30 hover:bg-slate-50 hover:text-[var(--color-industrial-blue)] transition-colors"
             >
               <ArrowLeft className="size-4" />
               {backLabel}
             </Link>
           </div>
 
-          <div className="w-full max-w-2xl rounded-[2rem] border border-border/70 bg-white/90 p-6 shadow-[0_24px_80px_rgba(15,23,42,0.08)] backdrop-blur-sm sm:p-8 lg:p-10">
+          <div className="mx-auto w-full max-w-md">
             {children}
           </div>
         </section>
