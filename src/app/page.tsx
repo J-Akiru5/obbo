@@ -80,7 +80,7 @@ function Hero() {
         <div className="max-w-3xl">
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 backdrop-blur-sm border border-white/20 mb-6">
             <div className="w-2 h-2 rounded-full bg-[var(--color-industrial-yellow)] animate-pulse" />
-            <span className="text-sm font-medium text-white/90">Cloud-Based Distribution Platform</span>
+            <span className="text-sm font-medium text-white">Cloud-Based Distribution Platform</span>
           </div>
           <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-white leading-tight tracking-tight">
             Digitizing{" "}
@@ -89,7 +89,7 @@ function Hero() {
             </span>{" "}
             Distribution
           </h1>
-          <p className="mt-6 text-lg sm:text-xl text-white/70 max-w-2xl leading-relaxed">
+          <p className="mt-6 text-lg sm:text-xl text-white/90 max-w-2xl leading-relaxed">
             Streamline your ordering, inventory management, and delivery tracking with OBBO iManage.
             Built for cement distributors who demand precision and speed.
           </p>
@@ -100,12 +100,12 @@ function Hero() {
               </Button>
             </Link>
             <Link href="/login">
-              <Button size="lg" variant="outline" className="w-full sm:w-auto border-white/30 text-white hover:bg-white/10 font-semibold text-base px-8">
+              <Button size="lg" variant="outline" className="w-full sm:w-auto border-white/60 text-white hover:bg-white/20 font-semibold text-base px-8">
                 Sign In
               </Button>
             </Link>
           </div>
-          <div className="mt-10 flex items-center gap-8 text-white/50 text-sm">
+          <div className="mt-10 flex items-center gap-8 text-white/80 text-sm">
             <div className="flex items-center gap-2"><ShieldCheck className="w-4 h-4" /><span>Secure Platform</span></div>
             <div className="flex items-center gap-2"><Clock className="w-4 h-4" /><span>Real-Time Data</span></div>
           </div>
@@ -219,7 +219,7 @@ function CTA() {
         <h2 className="text-3xl sm:text-4xl font-bold text-white mb-6">
           Ready to Modernize Your Distribution?
         </h2>
-        <p className="text-lg text-white/70 max-w-2xl mx-auto mb-10">
+        <p className="text-lg text-white/90 max-w-2xl mx-auto mb-10">
           Join the growing number of cement distributors who trust OBBO iManage for their daily operations.
         </p>
         <div className="flex flex-col sm:flex-row justify-center gap-4">
@@ -229,7 +229,7 @@ function CTA() {
             </Button>
           </Link>
           <Link href="/login">
-            <Button size="lg" variant="outline" className="w-full sm:w-auto border-white/30 text-white hover:bg-white/10 font-semibold text-base px-10">
+            <Button size="lg" variant="outline" className="w-full sm:w-auto border-white/60 text-white hover:bg-white/20 font-semibold text-base px-10">
               Sign In
             </Button>
           </Link>
