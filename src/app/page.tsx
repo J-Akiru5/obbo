@@ -100,7 +100,7 @@ function Hero() {
               </Button>
             </Link>
             <Link href="/login">
-              <Button size="lg" variant="outline" className="w-full sm:w-auto border-white/60 text-white hover:bg-white/20 font-semibold text-base px-8">
+              <Button size="lg" variant="outline" className="w-full sm:w-auto bg-transparent border-white/60 text-white hover:bg-white/20 font-semibold text-base px-8">
                 Sign In
               </Button>
             </Link>
@@ -229,7 +229,7 @@ function CTA() {
             </Button>
           </Link>
           <Link href="/login">
-            <Button size="lg" variant="outline" className="w-full sm:w-auto border-white/60 text-white hover:bg-white/20 font-semibold text-base px-10">
+            <Button size="lg" variant="outline" className="w-full sm:w-auto bg-transparent border-white/60 text-white hover:bg-white/20 font-semibold text-base px-10">
               Sign In
             </Button>
           </Link>
