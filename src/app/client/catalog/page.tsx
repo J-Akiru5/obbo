@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import Image from "next/image";
 import { CircleAlert, PackageCheck, UploadCloud } from "lucide-react";
@@ -25,7 +25,7 @@ import {
 
 const defaultProductId = clientProducts[0]?.id ?? "";
 
-export default function ClientCatalogPage() {
+function CatalogForm() {
   const searchParams = useSearchParams();
   const searchProductId = searchParams.get("product");
   const initialProductId =
@@ -114,14 +114,7 @@ export default function ClientCatalogPage() {
   }
 
   return (
-    <div className="mx-auto max-w-6xl space-y-6">
-      <div>
-        <h2 className="text-2xl font-semibold tracking-tight">Product Catalog</h2>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Browse available cement products and submit a new order for approval.
-        </p>
-      </div>
-
+    <>
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {clientProducts.map((product) => {
           const selected = selectedProductId === product.id;
@@ -429,6 +422,22 @@ export default function ClientCatalogPage() {
           </div>
         </CardContent>
       </Card>
+    </>
+  );
+}
+
+export default function ClientCatalogPage() {
+  return (
+    <div className="mx-auto max-w-6xl space-y-6">
+      <div>
+        <h2 className="text-2xl font-semibold tracking-tight">Product Catalog</h2>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Browse available cement products and submit a new order for approval.
+        </p>
+      </div>
+      <Suspense fallback={<div className="flex h-32 items-center justify-center text-muted-foreground">Loading catalog...</div>}>
+        <CatalogForm />
+      </Suspense>
     </div>
   );
 }
