@@ -1,38 +1,89 @@
 -- ============================================================
--- OBBO iManage — Supabase Schema + RLS Policies
--- Run this in your Supabase SQL Editor (Dashboard → SQL Editor)
+-- OBBO iManage — Complete Supabase Schema
+-- Run this ONCE in your Supabase SQL Editor (Dashboard → SQL Editor)
+-- This script is fully idempotent (safe to run on a fresh database)
 -- ============================================================
 
--- ── Enable pgcrypto extension (UUID generation) ──────────────
+-- ── Extensions ────────────────────────────────────────────────
 create extension if not exists "pgcrypto";
 
 -- ── PROFILES ─────────────────────────────────────────────────
 create table if not exists public.profiles (
-  id               uuid primary key references auth.users(id) on delete cascade,
-  email            text not null,
-  full_name        text not null,
-  company_name     text,
-  phone            text,
-  role             text not null default 'client' check (role in ('admin', 'client')),
-  kyc_status       text not null default 'pending_verification'
-                     check (kyc_status in ('pending_verification', 'verified', 'rejected')),
-  kyc_documents    text[],
-  avatar_url       text,
-  created_at       timestamptz not null default now(),
-  updated_at       timestamptz not null default now()
+  id                          uuid primary key references auth.users(id) on delete cascade,
+  email                       text not null,
+  -- Name fields
+  full_name                   text not null default '',
+  first_name                  text,
+  surname                     text,
+  -- Account type
+  account_type                text check (account_type in ('individual', 'company')),
+  -- Company / contact person fields (used when account_type = 'company')
+  company_name                text,
+  contact_person_first_name   text,
+  contact_person_surname      text,
+  -- Contact
+  phone                       text,
+  -- Address
+  address_street              text,
+  address_city                text,
+  address_province            text,
+  address_postal_code         text,
+  -- Business verification fields
+  business_permit_no          text,
+  tin_no                      text,
+  -- KYC
+  kyc_documents               text[],
+  kyc_status                  text not null default 'pending_verification'
+                                check (kyc_status in ('pending_verification', 'verified', 'rejected')),
+  -- Auth
+  role                        text not null default 'client' check (role in ('admin', 'client')),
+  avatar_url                  text,
+  -- Timestamps
+  created_at                  timestamptz not null default now(),
+  updated_at                  timestamptz not null default now()
 );
 
--- Auto-create profile on signup
+-- ── Auto-create profile on signup ─────────────────────────────
 create or replace function public.handle_new_user()
 returns trigger language plpgsql security definer as $$
 begin
-  insert into public.profiles (id, email, full_name, company_name, phone, role, kyc_status)
+  insert into public.profiles (
+    id,
+    email,
+    full_name,
+    first_name,
+    surname,
+    account_type,
+    company_name,
+    contact_person_first_name,
+    contact_person_surname,
+    phone,
+    address_street,
+    address_city,
+    address_province,
+    address_postal_code,
+    business_permit_no,
+    tin_no,
+    role,
+    kyc_status
+  )
   values (
     new.id,
     new.email,
     coalesce(new.raw_user_meta_data->>'full_name', ''),
+    new.raw_user_meta_data->>'first_name',
+    new.raw_user_meta_data->>'surname',
+    new.raw_user_meta_data->>'account_type',
     new.raw_user_meta_data->>'company_name',
+    new.raw_user_meta_data->>'contact_person_first_name',
+    new.raw_user_meta_data->>'contact_person_surname',
     new.raw_user_meta_data->>'phone',
+    new.raw_user_meta_data->>'address_street',
+    new.raw_user_meta_data->>'address_city',
+    new.raw_user_meta_data->>'address_province',
+    new.raw_user_meta_data->>'address_postal_code',
+    new.raw_user_meta_data->>'business_permit_no',
+    new.raw_user_meta_data->>'tin_no',
     coalesce(new.raw_user_meta_data->>'role', 'client'),
     coalesce(new.raw_user_meta_data->>'kyc_status', 'pending_verification')
   );
@@ -164,40 +215,46 @@ returns boolean language sql security definer as $$
 $$;
 
 -- ── RLS POLICIES: profiles ───────────────────────────────────
--- Own profile: read/update
+drop policy if exists "profiles: own read"   on public.profiles;
+drop policy if exists "profiles: own update" on public.profiles;
+drop policy if exists "profiles: admin all"  on public.profiles;
 create policy "profiles: own read"   on public.profiles for select using (id = auth.uid());
 create policy "profiles: own update" on public.profiles for update using (id = auth.uid());
--- Admin: full access to all profiles
 create policy "profiles: admin all"  on public.profiles for all using (public.is_admin());
 
 -- ── RLS POLICIES: products ───────────────────────────────────
--- Verified clients can view active products
+drop policy if exists "products: verified clients read" on public.products;
+drop policy if exists "products: admin all"             on public.products;
 create policy "products: verified clients read"
   on public.products for select using (is_active = true and public.is_verified_client());
--- Admins get full access
 create policy "products: admin all"
   on public.products for all using (public.is_admin());
 
 -- ── RLS POLICIES: shipments ──────────────────────────────────
--- Only admins can manage shipments
+drop policy if exists "shipments: admin all" on public.shipments;
 create policy "shipments: admin all"
   on public.shipments for all using (public.is_admin());
 
 -- ── RLS POLICIES: delivery_receipts ─────────────────────────
+drop policy if exists "delivery_receipts: admin all" on public.delivery_receipts;
 create policy "delivery_receipts: admin all"
   on public.delivery_receipts for all using (public.is_admin());
 
 -- ── RLS POLICIES: orders ─────────────────────────────────────
--- Clients can insert own orders; read own orders
+drop policy if exists "orders: client insert"   on public.orders;
+drop policy if exists "orders: client read own" on public.orders;
+drop policy if exists "orders: admin all"       on public.orders;
 create policy "orders: client insert"
   on public.orders for insert with check (client_id = auth.uid() and public.is_verified_client());
 create policy "orders: client read own"
   on public.orders for select using (client_id = auth.uid());
--- Admins: full access
 create policy "orders: admin all"
   on public.orders for all using (public.is_admin());
 
 -- ── RLS POLICIES: order_items ────────────────────────────────
+drop policy if exists "order_items: client read own"   on public.order_items;
+drop policy if exists "order_items: client insert own" on public.order_items;
+drop policy if exists "order_items: admin all"         on public.order_items;
 create policy "order_items: client read own"
   on public.order_items for select
   using (exists (select 1 from public.orders o where o.id = order_id and o.client_id = auth.uid()));
@@ -208,23 +265,36 @@ create policy "order_items: admin all"
   on public.order_items for all using (public.is_admin());
 
 -- ── RLS POLICIES: customer_balances ─────────────────────────
+drop policy if exists "balances: client read own" on public.customer_balances;
+drop policy if exists "balances: admin all"       on public.customer_balances;
 create policy "balances: client read own"
   on public.customer_balances for select using (client_id = auth.uid());
 create policy "balances: admin all"
   on public.customer_balances for all using (public.is_admin());
 
 -- ── RLS POLICIES: activity_log ───────────────────────────────
--- Only admins read activity log; inserts done via server/trigger
+drop policy if exists "activity_log: admin all" on public.activity_log;
 create policy "activity_log: admin all"
   on public.activity_log for all using (public.is_admin());
 
--- ── REALTIME: enable publications ───────────────────────────
--- Run these separately if needed:
+-- ── SEED: initial products ───────────────────────────────────
+insert into public.products (name, description, bag_type, price_per_bag, is_active) values
+  ('Portland Cement Type I',         'General-purpose cement suitable for most construction applications. 40kg per bag.', 'SB', 250,  true),
+  ('Portland Cement Type I (Jumbo)', 'General-purpose cement in jumbo bags for large-scale projects. 1 ton per bag.',      'JB', 5800, true),
+  ('Portland Cement Type II',        'Moderate sulfate-resistant cement for structures exposed to soil/water. 40kg per bag.', 'SB', 275, true),
+  ('Blended Cement Premium',         'High-performance blended cement for specialized structural work. 40kg per bag.',     'SB', 290,  true)
+on conflict do nothing;
+
+-- ── PROMOTE ADMIN ─────────────────────────────────────────────
+-- After signing up via the /register page, run the line below
+-- (replace the email with yours) to grant yourself admin access:
+--
+-- update public.profiles
+-- set role = 'admin', kyc_status = 'verified'
+-- where email = 'your-email@example.com';
+
+-- ── REALTIME PUBLICATIONS (optional) ────────────────────────
+-- Uncomment and run separately if you want live updates on the dashboard:
 -- alter publication supabase_realtime add table public.orders;
 -- alter publication supabase_realtime add table public.activity_log;
 -- alter publication supabase_realtime add table public.profiles;
-
--- ── SEED: initial admin user ─────────────────────────────────
--- After signing up via the app, run this to promote to admin:
--- update public.profiles set role = 'admin', kyc_status = 'verified'
--- where email = 'your-admin@email.com';

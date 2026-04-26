@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import {
   Package,
   ShieldCheck,
@@ -13,9 +14,14 @@ import {
   ClipboardCheck,
   Clock,
   ChevronRight,
+  Users,
+  TrendingUp,
+  Boxes,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
+import { ScrollReveal } from "@/components/scroll-reveal";
+import { CountUp } from "@/components/count-up";
 
 // ─── Navbar ──────────────────────────────────────────────
 function Navbar() {
@@ -23,8 +29,8 @@ function Navbar() {
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-lg border-b border-border">
       <div className="max-w-7xl mx-auto flex items-center justify-between px-4 sm:px-6 lg:px-8 h-16">
-        <Link href="/" className="flex items-center gap-2">
-          <div className="w-9 h-9 rounded-lg bg-[var(--color-industrial-blue)] flex items-center justify-center">
+        <Link href="/" className="flex items-center gap-2 group">
+          <div className="w-9 h-9 rounded-lg bg-[var(--color-industrial-blue)] flex items-center justify-center transition-transform duration-300 group-hover:scale-110 group-hover:rotate-3">
             <Package className="w-5 h-5 text-white" />
           </div>
           <span className="text-xl font-bold tracking-tight text-[var(--color-industrial-blue)]">
@@ -32,13 +38,13 @@ function Navbar() {
           </span>
         </Link>
         <div className="hidden md:flex items-center gap-6">
-          <a href="#features" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">Features</a>
-          <a href="#how-it-works" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">How It Works</a>
+          <a href="#features" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors relative after:absolute after:bottom-0 after:left-0 after:w-0 after:h-0.5 after:bg-[var(--color-industrial-yellow)] after:transition-all after:duration-300 hover:after:w-full">Features</a>
+          <a href="#how-it-works" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors relative after:absolute after:bottom-0 after:left-0 after:w-0 after:h-0.5 after:bg-[var(--color-industrial-yellow)] after:transition-all after:duration-300 hover:after:w-full">How It Works</a>
           <Link href="/login">
             <Button variant="ghost" className="font-semibold">Sign In</Button>
           </Link>
           <Link href="/register">
-            <Button className="bg-[var(--color-industrial-blue)] hover:bg-[var(--color-industrial-blue)]/90 font-semibold">
+            <Button className="bg-[var(--color-industrial-blue)] hover:bg-[var(--color-industrial-blue)]/90 font-semibold transition-transform duration-200 hover:scale-105">
               Get Started
             </Button>
           </Link>
@@ -73,43 +79,100 @@ function Hero() {
       <div className="absolute inset-0 -z-10">
         <div className="absolute inset-0 bg-gradient-to-br from-[var(--color-industrial-blue)] via-[#1a3352] to-[#0f1f33]" />
         <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'radial-gradient(circle at 1px 1px, rgba(255,255,255,0.3) 1px, transparent 0)', backgroundSize: '40px 40px' }} />
-        <div className="absolute top-20 right-10 w-72 h-72 bg-[var(--color-industrial-yellow)]/10 rounded-full blur-3xl" />
-        <div className="absolute bottom-10 left-10 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl" />
+        <div className="absolute top-20 right-10 w-72 h-72 bg-[var(--color-industrial-yellow)]/10 rounded-full blur-3xl animate-glow-pulse" />
+        <div className="absolute bottom-10 left-10 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl animate-glow-pulse delay-500" />
       </div>
+
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="max-w-3xl">
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 backdrop-blur-sm border border-white/20 mb-6">
-            <div className="w-2 h-2 rounded-full bg-[var(--color-industrial-yellow)] animate-pulse" />
-            <span className="text-sm font-medium text-white">Cloud-Based Distribution Platform</span>
+        <div className="grid lg:grid-cols-2 gap-12 items-center">
+          {/* Left text content */}
+          <div>
+            <div className="animate-fade-in-up inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 backdrop-blur-sm border border-white/20 mb-6">
+              <div className="w-2 h-2 rounded-full bg-[var(--color-industrial-yellow)] animate-pulse" />
+              <span className="text-sm font-medium text-white">Cloud-Based Distribution Platform</span>
+            </div>
+            <h1 className="animate-fade-in-up delay-100 text-4xl sm:text-5xl lg:text-6xl font-extrabold text-white leading-tight tracking-tight">
+              Digitizing{" "}
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-[var(--color-industrial-yellow)] to-[var(--color-industrial-yellow-light)]">
+                Cement
+              </span>{" "}
+              Distribution
+            </h1>
+            <p className="animate-fade-in-up delay-200 mt-6 text-lg sm:text-xl text-white/90 max-w-2xl leading-relaxed">
+              Streamline your ordering, inventory management, and delivery tracking with OBBO iManage.
+              Built for cement distributors who demand precision and speed.
+            </p>
+            <div className="animate-fade-in-up delay-300 mt-8 flex flex-col sm:flex-row gap-4">
+              <Link href="/register">
+                <Button size="lg" className="w-full sm:w-auto bg-[var(--color-industrial-yellow)] hover:bg-[var(--color-industrial-yellow)]/90 text-[var(--color-industrial-blue)] font-bold text-base px-8 gap-2 transition-all duration-300 hover:scale-105 hover:shadow-lg hover:shadow-[var(--color-industrial-yellow)]/25">
+                  Start Free <ArrowRight className="w-4 h-4" />
+                </Button>
+              </Link>
+              <Link href="/login">
+                <Button size="lg" variant="outline" className="w-full sm:w-auto border-white/60 text-white hover:bg-white/20 font-semibold text-base px-8 transition-all duration-300 hover:scale-105">
+                  Sign In
+                </Button>
+              </Link>
+            </div>
+            <div className="animate-fade-in-up delay-400 mt-10 flex items-center gap-8 text-white/80 text-sm">
+              <div className="flex items-center gap-2"><ShieldCheck className="w-4 h-4" /><span>Secure Platform</span></div>
+              <div className="flex items-center gap-2"><Clock className="w-4 h-4" /><span>Real-Time Data</span></div>
+            </div>
           </div>
-          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-white leading-tight tracking-tight">
-            Digitizing{" "}
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-[var(--color-industrial-yellow)] to-[var(--color-industrial-yellow-light)]">
-              Cement
-            </span>{" "}
-            Distribution
-          </h1>
-          <p className="mt-6 text-lg sm:text-xl text-white/90 max-w-2xl leading-relaxed">
-            Streamline your ordering, inventory management, and delivery tracking with OBBO iManage.
-            Built for cement distributors who demand precision and speed.
-          </p>
-          <div className="mt-8 flex flex-col sm:flex-row gap-4">
-            <Link href="/register">
-              <Button size="lg" className="w-full sm:w-auto bg-[var(--color-industrial-yellow)] hover:bg-[var(--color-industrial-yellow)]/90 text-[var(--color-industrial-blue)] font-bold text-base px-8 gap-2">
-                Start Free <ArrowRight className="w-4 h-4" />
-              </Button>
-            </Link>
-            <Link href="/login">
-              <Button size="lg" variant="outline" className="w-full sm:w-auto border-white/60 text-white hover:bg-white/20 font-semibold text-base px-8">
-                Sign In
-              </Button>
-            </Link>
-          </div>
-          <div className="mt-10 flex items-center gap-8 text-white/80 text-sm">
-            <div className="flex items-center gap-2"><ShieldCheck className="w-4 h-4" /><span>Secure Platform</span></div>
-            <div className="flex items-center gap-2"><Clock className="w-4 h-4" /><span>Real-Time Data</span></div>
+
+          {/* Right hero image */}
+          <div className="animate-fade-in delay-300 hidden lg:block">
+            <div className="relative animate-float">
+              <div className="absolute -inset-4 bg-gradient-to-r from-[var(--color-industrial-yellow)]/20 to-blue-500/20 rounded-2xl blur-2xl" />
+              <div className="relative rounded-2xl overflow-hidden border border-white/10 shadow-2xl shadow-black/30">
+                <Image
+                  src="/hero-cement.png"
+                  alt="Modern cement distribution warehouse with organized bags and delivery trucks"
+                  width={640}
+                  height={400}
+                  className="w-full h-auto object-cover"
+                  priority
+                />
+                {/* Overlay gradient */}
+                <div className="absolute inset-0 bg-gradient-to-t from-[var(--color-industrial-blue)]/40 to-transparent" />
+              </div>
+            </div>
           </div>
         </div>
+      </div>
+    </section>
+  );
+}
+
+// ─── Stats ──────────────────────────────────────────────
+const stats = [
+  { icon: Users, value: 150, suffix: "+", label: "Active Distributors" },
+  { icon: Boxes, value: 50000, suffix: "+", label: "Bags Tracked Monthly" },
+  { icon: Truck, value: 1200, suffix: "+", label: "Deliveries Completed" },
+  { icon: TrendingUp, value: 99, suffix: "%", label: "Order Accuracy" },
+];
+
+function Stats() {
+  return (
+    <section className="relative -mt-10 z-10 pb-10">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+        <ScrollReveal>
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+            {stats.map((s, i) => (
+              <div
+                key={s.label}
+                className="group bg-white rounded-xl border border-border p-6 text-center shadow-lg shadow-black/5 hover:shadow-xl transition-all duration-300 hover:-translate-y-1"
+                style={{ animationDelay: `${i * 100}ms` }}
+              >
+                <s.icon className="w-6 h-6 mx-auto mb-3 text-[var(--color-industrial-blue)] group-hover:scale-110 transition-transform duration-300" />
+                <div className="text-2xl sm:text-3xl font-bold text-[var(--color-industrial-blue)]">
+                  <CountUp end={s.value} suffix={s.suffix} />
+                </div>
+                <p className="text-xs sm:text-sm text-muted-foreground mt-1">{s.label}</p>
+              </div>
+            ))}
+          </div>
+        </ScrollReveal>
       </div>
     </section>
   );
@@ -141,7 +204,7 @@ function Features() {
   return (
     <section id="features" className="py-20 sm:py-28 bg-white">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center max-w-2xl mx-auto mb-16">
+        <ScrollReveal className="text-center max-w-2xl mx-auto mb-16">
           <span className="text-sm font-bold uppercase tracking-widest text-[var(--color-industrial-yellow)]">Why Choose OBBO</span>
           <h2 className="mt-3 text-3xl sm:text-4xl font-bold text-foreground">
             Everything You Need to Manage Cement Distribution
@@ -149,16 +212,20 @@ function Features() {
           <p className="mt-4 text-muted-foreground text-lg">
             Purpose-built tools for the construction supply chain.
           </p>
-        </div>
+        </ScrollReveal>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          {features.map((f) => (
-            <div key={f.title} className="group relative p-8 rounded-2xl border border-border bg-card hover:shadow-xl hover:shadow-[var(--color-industrial-blue)]/5 transition-all duration-300 hover:-translate-y-1">
-              <div className={`w-14 h-14 rounded-xl ${f.color} flex items-center justify-center mb-6`}>
-                <f.icon className="w-7 h-7" />
+          {features.map((f, i) => (
+            <ScrollReveal key={f.title} delay={i * 150}>
+              <div className="group relative p-8 rounded-2xl border border-border bg-card hover:shadow-xl hover:shadow-[var(--color-industrial-blue)]/5 transition-all duration-300 hover:-translate-y-2">
+                <div className={`w-14 h-14 rounded-xl ${f.color} flex items-center justify-center mb-6 transition-transform duration-300 group-hover:scale-110 group-hover:rotate-3`}>
+                  <f.icon className="w-7 h-7" />
+                </div>
+                <h3 className="text-xl font-bold mb-3">{f.title}</h3>
+                <p className="text-muted-foreground leading-relaxed">{f.description}</p>
+                {/* Hover accent bar */}
+                <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-[var(--color-industrial-yellow)] to-[var(--color-industrial-blue)] rounded-b-2xl scale-x-0 group-hover:scale-x-100 transition-transform duration-500 origin-left" />
               </div>
-              <h3 className="text-xl font-bold mb-3">{f.title}</h3>
-              <p className="text-muted-foreground leading-relaxed">{f.description}</p>
-            </div>
+            </ScrollReveal>
           ))}
         </div>
       </div>
@@ -178,30 +245,32 @@ function HowItWorks() {
   return (
     <section id="how-it-works" className="py-20 sm:py-28 bg-muted/30">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center max-w-2xl mx-auto mb-16">
+        <ScrollReveal className="text-center max-w-2xl mx-auto mb-16">
           <span className="text-sm font-bold uppercase tracking-widest text-[var(--color-industrial-yellow)]">Process</span>
           <h2 className="mt-3 text-3xl sm:text-4xl font-bold text-foreground">How It Works</h2>
           <p className="mt-4 text-muted-foreground text-lg">
             From registration to delivery in four simple steps.
           </p>
-        </div>
+        </ScrollReveal>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           {steps.map((s, i) => (
-            <div key={s.title} className="relative">
-              <div className="flex flex-col items-center text-center p-6 rounded-2xl bg-white border border-border hover:shadow-lg transition-all duration-300">
-                <div className="w-12 h-12 rounded-full bg-[var(--color-industrial-blue)] text-white flex items-center justify-center text-lg font-bold mb-4">
-                  {i + 1}
+            <ScrollReveal key={s.title} delay={i * 120}>
+              <div className="relative">
+                <div className="group flex flex-col items-center text-center p-6 rounded-2xl bg-white border border-border hover:shadow-lg transition-all duration-300 hover:-translate-y-1">
+                  <div className="w-12 h-12 rounded-full bg-[var(--color-industrial-blue)] text-white flex items-center justify-center text-lg font-bold mb-4 transition-transform duration-300 group-hover:scale-110">
+                    {i + 1}
+                  </div>
+                  <s.icon className="w-8 h-8 text-[var(--color-industrial-blue)] mb-3 transition-transform duration-300 group-hover:scale-110" />
+                  <h3 className="text-lg font-bold mb-2">{s.title}</h3>
+                  <p className="text-sm text-muted-foreground">{s.description}</p>
                 </div>
-                <s.icon className="w-8 h-8 text-[var(--color-industrial-blue)] mb-3" />
-                <h3 className="text-lg font-bold mb-2">{s.title}</h3>
-                <p className="text-sm text-muted-foreground">{s.description}</p>
+                {i < steps.length - 1 && (
+                  <div className="hidden lg:flex absolute top-1/2 -right-3 transform -translate-y-1/2 z-10">
+                    <ChevronRight className="w-6 h-6 text-muted-foreground/30" />
+                  </div>
+                )}
               </div>
-              {i < steps.length - 1 && (
-                <div className="hidden lg:flex absolute top-1/2 -right-3 transform -translate-y-1/2 z-10">
-                  <ChevronRight className="w-6 h-6 text-muted-foreground/30" />
-                </div>
-              )}
-            </div>
+            </ScrollReveal>
           ))}
         </div>
       </div>
@@ -215,7 +284,11 @@ function CTA() {
     <section className="py-20 sm:py-28 relative overflow-hidden">
       <div className="absolute inset-0 bg-gradient-to-r from-[var(--color-industrial-blue)] to-[#142d4d]" />
       <div className="absolute inset-0 opacity-5" style={{ backgroundImage: 'radial-gradient(circle at 1px 1px, white 1px, transparent 0)', backgroundSize: '32px 32px' }} />
-      <div className="relative max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+      {/* Animated accent orbs */}
+      <div className="absolute top-10 left-20 w-40 h-40 bg-[var(--color-industrial-yellow)]/10 rounded-full blur-3xl animate-glow-pulse" />
+      <div className="absolute bottom-10 right-20 w-60 h-60 bg-blue-400/10 rounded-full blur-3xl animate-glow-pulse delay-300" />
+
+      <ScrollReveal className="relative max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
         <h2 className="text-3xl sm:text-4xl font-bold text-white mb-6">
           Ready to Modernize Your Distribution?
         </h2>
@@ -224,17 +297,17 @@ function CTA() {
         </p>
         <div className="flex flex-col sm:flex-row justify-center gap-4">
           <Link href="/register">
-            <Button size="lg" className="w-full sm:w-auto bg-[var(--color-industrial-yellow)] hover:bg-[var(--color-industrial-yellow)]/90 text-[var(--color-industrial-blue)] font-bold text-base px-10 gap-2">
+            <Button size="lg" className="w-full sm:w-auto bg-[var(--color-industrial-yellow)] hover:bg-[var(--color-industrial-yellow)]/90 text-[var(--color-industrial-blue)] font-bold text-base px-10 gap-2 transition-all duration-300 hover:scale-105 hover:shadow-lg hover:shadow-[var(--color-industrial-yellow)]/25">
               Create Account <ArrowRight className="w-4 h-4" />
             </Button>
           </Link>
           <Link href="/login">
-            <Button size="lg" variant="outline" className="w-full sm:w-auto border-white/60 text-white hover:bg-white/20 font-semibold text-base px-10">
+            <Button size="lg" variant="outline" className="w-full sm:w-auto border-white/60 text-white hover:bg-white/20 font-semibold text-base px-10 transition-all duration-300 hover:scale-105">
               Sign In
             </Button>
           </Link>
         </div>
-      </div>
+      </ScrollReveal>
     </section>
   );
 }
@@ -245,8 +318,8 @@ function Footer() {
     <footer className="bg-[#0c1a2b] text-white/50 py-12">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex flex-col md:flex-row justify-between items-center gap-6">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-[var(--color-industrial-yellow)]/20 flex items-center justify-center">
+          <div className="flex items-center gap-2 group">
+            <div className="w-8 h-8 rounded-lg bg-[var(--color-industrial-yellow)]/20 flex items-center justify-center transition-transform duration-300 group-hover:scale-110 group-hover:rotate-6">
               <Package className="w-4 h-4 text-[var(--color-industrial-yellow)]" />
             </div>
             <span className="text-lg font-bold text-white/80">OBBO iManage</span>
@@ -264,6 +337,7 @@ export default function LandingPage() {
     <main className="min-h-screen">
       <Navbar />
       <Hero />
+      <Stats />
       <Features />
       <HowItWorks />
       <CTA />
