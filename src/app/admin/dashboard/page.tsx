@@ -1,54 +1,51 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import {
-    Package,
-    ShoppingCart,
-    Truck,
-    Users,
-    ArrowUpRight,
-    Clock,
-    CheckCircle2,
-    AlertCircle,
-    UserPlus,
-    PackagePlus,
-    Wifi,
-    WifiOff,
+    Package, ShoppingCart, Truck, Users, ArrowUpRight,
+    Clock, CheckCircle2, AlertCircle, UserPlus, PackagePlus,
+    Wifi, WifiOff, AlertTriangle, ShieldAlert,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { mockShipments, mockCustomerBalances, mockActivityLog, mockProfiles } from "@/lib/mock-data";
-import { ActivityLog } from "@/lib/types/database";
 import { createClient } from "@/lib/supabase/client";
+import { fetchDashboardKPIs, fetchActivityFeed, fetchCustomerBalances, fetchShipments } from "@/lib/actions/admin-actions";
+import type { ActivityLog } from "@/lib/types/database";
 
-// ── Static KPI defaults (overridden by live fetch) ─────────────────
-const baselineKpis = {
-    sbNet: 0, sbGood: 0, sbBalance: 0,
-    jbNet: 0, jbGood: 0, jbBalance: 0,
-    pendingOrders: 0, dispatched: 0,
-    activeClients: 0, pendingKyc: 0,
-};
-
-// ── Activity helpers ───────────────────────────────────────────────
+// ── Activity helpers ───────────────────────────────────────────
 function getActivityIcon(action: string) {
     switch (action) {
         case "order_placed": return <ShoppingCart className="w-4 h-4 text-blue-500" />;
-        case "order_approved": return <CheckCircle2 className="w-4 h-4 text-emerald-500" />;
+        case "order_approved": case "order_check_confirmed": return <CheckCircle2 className="w-4 h-4 text-emerald-500" />;
         case "order_dispatched": return <Truck className="w-4 h-4 text-indigo-500" />;
-        case "kyc_submitted": return <UserPlus className="w-4 h-4 text-amber-500" />;
-        case "shipment_added": return <PackagePlus className="w-4 h-4 text-purple-500" />;
+        case "order_rejected": return <AlertCircle className="w-4 h-4 text-red-500" />;
+        case "kyc_submitted": case "kyc_approved": return <UserPlus className="w-4 h-4 text-amber-500" />;
+        case "shipment_created": case "shipment_added": return <PackagePlus className="w-4 h-4 text-purple-500" />;
+        case "product_updated": return <Package className="w-4 h-4 text-blue-500" />;
+        case "tracking_updated": return <Truck className="w-4 h-4 text-sky-500" />;
         default: return <Clock className="w-4 h-4 text-muted-foreground" />;
     }
 }
 function getActivityLabel(action: string) {
-    switch (action) {
-        case "order_placed": return "New Order Placed";
-        case "order_approved": return "Order Approved";
-        case "order_dispatched": return "Order Dispatched";
-        case "kyc_submitted": return "KYC Documents Submitted";
-        case "shipment_added": return "Shipment Batch Added";
-        default: return action;
-    }
+    const labels: Record<string, string> = {
+        order_placed: "New Order Placed",
+        order_approved: "Order Approved",
+        order_dispatched: "Order Dispatched",
+        order_rejected: "Order Rejected",
+        order_check_confirmed: "Check Payment Confirmed",
+        kyc_submitted: "KYC Documents Submitted",
+        kyc_approved: "Client Verified",
+        kyc_rejected: "Client KYC Rejected",
+        shipment_created: "Shipment Batch Created",
+        shipment_added: "Shipment Batch Added",
+        product_updated: "Product Updated",
+        tracking_updated: "Tracking Updated",
+        ledger_entry_added: "Ledger Entry Added",
+        po_created: "PO Created",
+        dr_created: "DR Created",
+        setting_updated: "Setting Updated",
+    };
+    return labels[action] ?? action.replace(/_/g, " ").replace(/\b\w/g, l => l.toUpperCase());
 }
 function formatTimeAgo(dateStr: string) {
     const s = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000);
@@ -62,139 +59,83 @@ function formatTimeAgo(dateStr: string) {
     return "Just now";
 }
 
+function StockAlertBadge({ percentage }: { percentage: number }) {
+    if (percentage > 50) return <Badge className="bg-emerald-100 text-emerald-800 hover:bg-emerald-100 text-[10px]">Safe</Badge>;
+    if (percentage > 20) return <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-100 text-[10px]">Warning</Badge>;
+    return <Badge className="bg-red-100 text-red-800 hover:bg-red-100 text-[10px]">Critical</Badge>;
+}
+
 export default function AdminDashboard() {
-    const [activityFeed, setActivityFeed] = useState<ActivityLog[]>(mockActivityLog);
-    const [pendingCount, setPendingCount] = useState(baselineKpis.pendingOrders);
+    const [kpis, setKpis] = useState({
+        jbGood: 0, sbGood: 0, jbBalance: 0, sbBalance: 0,
+        jbNet: 0, sbNet: 0, grandTotal: 0, grandBalance: 0, grandNet: 0,
+        pendingOrders: 0, pendingKyc: 0, activeClients: 0,
+    });
+    const [activityFeed, setActivityFeed] = useState<ActivityLog[]>([]);
+    const [obligations, setObligations] = useState<Array<{ id: string; client?: { full_name: string }; product?: { name: string }; bag_type: string; remaining_qty: number }>>([]);
+    const [shipments, setShipments] = useState<Array<{ batch_name: string; remaining_jb: number; remaining_sb: number; total_jb: number; total_sb: number }>>([]);
     const [realtimeConnected, setRealtimeConnected] = useState(false);
+    const [loading, setLoading] = useState(true);
     const channelRef = useRef<ReturnType<ReturnType<typeof createClient>["channel"]> | null>(null);
 
-    useEffect(() => {
-        const supabase = createClient();
-
-        // ── Fetch live KPI counts ─────────────────────────────────
-        supabase.from("orders").select("id", { count: "exact", head: true }).eq("status", "pending")
-            .then(({ count }) => { if (count != null) setPendingCount(count); });
-        supabase.from("activity_log").select("*").order("created_at", { ascending: false }).limit(20)
-            .then(({ data }) => { if (data && data.length > 0) setActivityFeed(data as ActivityLog[]); });
-
-        // ── Subscribe to orders table changes ──────────────────────────
-        const ordersChannel = supabase
-            .channel("admin-dashboard")
-            .on(
-                "postgres_changes",
-                { event: "INSERT", schema: "public", table: "orders" },
-                (payload) => {
-                    // New order placed — increment pending count and add to feed
-                    setPendingCount((prev) => prev + 1);
-                    const newActivity: ActivityLog = {
-                        id: crypto.randomUUID(),
-                        actor_id: payload.new.client_id ?? "unknown",
-                        action: "order_placed",
-                        entity_type: "order",
-                        entity_id: payload.new.id,
-                        metadata: { total: payload.new.total_amount },
-                        created_at: payload.new.created_at ?? new Date().toISOString(),
-                    };
-                    setActivityFeed((prev) => [newActivity, ...prev].slice(0, 20));
-                }
-            )
-            .on(
-                "postgres_changes",
-                { event: "UPDATE", schema: "public", table: "orders" },
-                (payload) => {
-                    const action =
-                        payload.new.status === "dispatched" ? "order_dispatched" :
-                            payload.new.status === "approved" ? "order_approved" :
-                                payload.new.status === "rejected" ? "order_rejected" : null;
-                    if (!action) return;
-                    if (payload.old.status === "pending" && payload.new.status !== "pending") {
-                        setPendingCount((prev) => Math.max(0, prev - 1));
-                    }
-                    const newActivity: ActivityLog = {
-                        id: crypto.randomUUID(),
-                        actor_id: "admin",
-                        action,
-                        entity_type: "order",
-                        entity_id: payload.new.id,
-                        metadata: {},
-                        created_at: new Date().toISOString(),
-                    };
-                    setActivityFeed((prev) => [newActivity, ...prev].slice(0, 20));
-                }
-            )
-            // ── Subscribe to activity_log table inserts ──────────────────
-            .on(
-                "postgres_changes",
-                { event: "INSERT", schema: "public", table: "activity_log" },
-                (payload) => {
-                    const entry = payload.new as ActivityLog;
-                    setActivityFeed((prev) => [entry, ...prev].slice(0, 20));
-                }
-            )
-            // ── Subscribe to profiles changes (KYC updates) ──────────────
-            .on(
-                "postgres_changes",
-                { event: "INSERT", schema: "public", table: "profiles" },
-                (payload) => {
-                    const newActivity: ActivityLog = {
-                        id: crypto.randomUUID(),
-                        actor_id: payload.new.id,
-                        action: "kyc_submitted",
-                        entity_type: "profile",
-                        entity_id: payload.new.id,
-                        metadata: {},
-                        created_at: payload.new.created_at ?? new Date().toISOString(),
-                    };
-                    setActivityFeed((prev) => [newActivity, ...prev].slice(0, 20));
-                }
-            )
-            .subscribe((status) => {
-                setRealtimeConnected(status === "SUBSCRIBED");
-            });
-
-        channelRef.current = ordersChannel;
-
-        return () => {
-            supabase.removeChannel(ordersChannel);
-        };
+    const loadData = useCallback(async () => {
+        try {
+            const [kpiData, feed, bals, ships] = await Promise.all([
+                fetchDashboardKPIs(),
+                fetchActivityFeed(20),
+                fetchCustomerBalances(),
+                fetchShipments(),
+            ]);
+            setKpis(kpiData);
+            setActivityFeed(feed as ActivityLog[]);
+            setObligations(bals as typeof obligations);
+            setShipments(ships as typeof shipments);
+        } catch (e) {
+            console.error("Dashboard load error:", e);
+        } finally {
+            setLoading(false);
+        }
     }, []);
 
-    const kpis = [
+    useEffect(() => {
+        loadData();
+
+        // Realtime subscriptions
+        const supabase = createClient();
+        const channel = supabase
+            .channel("admin-dashboard-live")
+            .on("postgres_changes", { event: "*", schema: "public", table: "orders" }, () => { loadData(); })
+            .on("postgres_changes", { event: "INSERT", schema: "public", table: "activity_log" }, () => { loadData(); })
+            .on("postgres_changes", { event: "*", schema: "public", table: "profiles" }, () => { loadData(); })
+            .subscribe((status) => { setRealtimeConnected(status === "SUBSCRIBED"); });
+        channelRef.current = channel;
+
+        return () => { supabase.removeChannel(channel); };
+    }, [loadData]);
+
+    const totalInitial = shipments.reduce((s, sh) => s + (sh.total_jb ?? 0) + (sh.total_sb ?? 0), 0);
+    const stockPct = totalInitial > 0 ? ((kpis.grandTotal / totalInitial) * 100) : 100;
+
+    const kpiCards = [
         {
-            title: "Net Available (SB)",
-            value: baselineKpis.sbNet.toLocaleString(),
-            subtitle: `${baselineKpis.sbGood.toLocaleString()} good · ${baselineKpis.sbBalance.toLocaleString()} obligated`,
-            icon: Package,
-            trend: "+12%",
-            trendUp: true,
-            color: "text-blue-600 bg-blue-500/10",
+            title: "Good Stock (SB)", value: kpis.sbGood.toLocaleString(),
+            subtitle: `${kpis.sbBalance.toLocaleString()} obligated · ${kpis.sbNet.toLocaleString()} net`,
+            icon: Package, color: "text-blue-600 bg-blue-500/10",
         },
         {
-            title: "Net Available (JB)",
-            value: baselineKpis.jbNet.toLocaleString(),
-            subtitle: `${baselineKpis.jbGood.toLocaleString()} good · ${baselineKpis.jbBalance.toLocaleString()} obligated`,
-            icon: Package,
-            trend: "+5%",
-            trendUp: true,
-            color: "text-emerald-600 bg-emerald-500/10",
+            title: "Good Stock (JB)", value: kpis.jbGood.toLocaleString(),
+            subtitle: `${kpis.jbBalance.toLocaleString()} obligated · ${kpis.jbNet.toLocaleString()} net`,
+            icon: Package, color: "text-emerald-600 bg-emerald-500/10",
         },
         {
-            title: "Pending Orders",
-            value: pendingCount.toString(),
-            subtitle: `${baselineKpis.dispatched} dispatched today`,
-            icon: ShoppingCart,
-            trend: `${pendingCount} open`,
-            trendUp: pendingCount === 0,
-            color: "text-amber-600 bg-amber-500/10",
+            title: "Net Available", value: kpis.grandNet.toLocaleString(),
+            subtitle: `${kpis.grandTotal.toLocaleString()} total − ${kpis.grandBalance.toLocaleString()} owed`,
+            icon: Truck, color: "text-indigo-600 bg-indigo-500/10",
         },
         {
-            title: "Active Clients",
-            value: baselineKpis.activeClients.toString(),
-            subtitle: `${baselineKpis.pendingKyc} pending verification`,
-            icon: Users,
-            trend: `+${baselineKpis.pendingKyc} pending`,
-            trendUp: true,
-            color: "text-purple-600 bg-purple-500/10",
+            title: "Pending Orders", value: kpis.pendingOrders.toString(),
+            subtitle: `${kpis.activeClients} active clients · ${kpis.pendingKyc} pending KYC`,
+            icon: ShoppingCart, color: "text-amber-600 bg-amber-500/10",
         },
     ];
 
@@ -204,43 +145,36 @@ export default function AdminDashboard() {
             <div className="flex items-center justify-between">
                 <div>
                     <h2 className="text-2xl font-bold tracking-tight">Dashboard</h2>
-                    <p className="text-muted-foreground mt-1">Overview of your cement distribution operations.</p>
+                    <p className="text-muted-foreground mt-1">Real-time overview of your cement distribution operations.</p>
                 </div>
-                {/* Realtime indicator */}
-                <div className={`flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full border ${realtimeConnected
-                        ? "bg-emerald-50 border-emerald-200 text-emerald-700"
-                        : "bg-muted border-border text-muted-foreground"
-                    }`}>
-                    {realtimeConnected
-                        ? <><Wifi className="w-3 h-3" /> Live</>
-                        : <><WifiOff className="w-3 h-3" /> Offline</>
-                    }
+                <div className="flex items-center gap-3">
+                    <StockAlertBadge percentage={stockPct} />
+                    <div className={`flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full border ${realtimeConnected
+                            ? "bg-emerald-50 border-emerald-200 text-emerald-700"
+                            : "bg-muted border-border text-muted-foreground"
+                        }`}>
+                        {realtimeConnected
+                            ? <><Wifi className="w-3 h-3" /> Live</>
+                            : <><WifiOff className="w-3 h-3" /> Offline</>
+                        }
+                    </div>
                 </div>
             </div>
 
             {/* KPI Cards */}
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-                {kpis.map((kpi) => (
+                {kpiCards.map((kpi) => (
                     <Card key={kpi.title} className="hover:shadow-md transition-shadow">
                         <CardContent className="pt-6">
                             <div className="flex items-start justify-between">
                                 <div className="space-y-2">
                                     <p className="text-sm font-medium text-muted-foreground">{kpi.title}</p>
-                                    <p className="text-3xl font-bold tracking-tight">{kpi.value}</p>
+                                    <p className="text-3xl font-bold tracking-tight">{loading ? "—" : kpi.value}</p>
                                     <p className="text-xs text-muted-foreground">{kpi.subtitle}</p>
                                 </div>
                                 <div className={`w-11 h-11 rounded-xl ${kpi.color} flex items-center justify-center`}>
                                     <kpi.icon className="w-5 h-5" />
                                 </div>
-                            </div>
-                            <div className="mt-3 flex items-center gap-1.5">
-                                {kpi.trendUp
-                                    ? <ArrowUpRight className="w-3.5 h-3.5 text-emerald-500" />
-                                    : <AlertCircle className="w-3.5 h-3.5 text-amber-500" />}
-                                <span className={`text-xs font-medium ${kpi.trendUp ? "text-emerald-600" : "text-amber-600"}`}>
-                                    {kpi.trend}
-                                </span>
-                                <span className="text-xs text-muted-foreground">this month</span>
                             </div>
                         </CardContent>
                     </Card>
@@ -265,27 +199,29 @@ export default function AdminDashboard() {
                         </div>
                     </CardHeader>
                     <CardContent>
-                        <div className="space-y-1">
-                            {activityFeed.map((activity) => (
-                                <div key={activity.id} className="flex items-start gap-3 p-3 rounded-lg hover:bg-muted/50 transition-colors">
-                                    <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center flex-shrink-0 mt-0.5">
-                                        {getActivityIcon(activity.action)}
+                        {activityFeed.length === 0 ? (
+                            <p className="text-sm text-muted-foreground text-center py-8">No activity yet.</p>
+                        ) : (
+                            <div className="space-y-1 max-h-[400px] overflow-y-auto">
+                                {activityFeed.map((activity) => (
+                                    <div key={activity.id} className="flex items-start gap-3 p-3 rounded-lg hover:bg-muted/50 transition-colors">
+                                        <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center flex-shrink-0 mt-0.5">
+                                            {getActivityIcon(activity.action)}
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <p className="text-sm font-medium">{getActivityLabel(activity.action)}</p>
+                                            <p className="text-xs text-muted-foreground truncate">
+                                                {activity.actor?.full_name ? `by ${activity.actor.full_name} · ` : ""}
+                                                {activity.entity_type} #{String(activity.entity_id).split("-").pop()}
+                                            </p>
+                                        </div>
+                                        <span className="text-xs text-muted-foreground whitespace-nowrap flex-shrink-0">
+                                            {formatTimeAgo(activity.created_at)}
+                                        </span>
                                     </div>
-                                    <div className="flex-1 min-w-0">
-                                        <p className="text-sm font-medium">{getActivityLabel(activity.action)}</p>
-                                        <p className="text-xs text-muted-foreground truncate">
-                                            {activity.actor?.full_name
-                                                ? `by ${activity.actor.full_name} · `
-                                                : ""}
-                                            {activity.entity_type} #{String(activity.entity_id).split("-").pop()}
-                                        </p>
-                                    </div>
-                                    <span className="text-xs text-muted-foreground whitespace-nowrap flex-shrink-0">
-                                        {formatTimeAgo(activity.created_at)}
-                                    </span>
-                                </div>
-                            ))}
-                        </div>
+                                ))}
+                            </div>
+                        )}
                     </CardContent>
                 </Card>
 
@@ -293,25 +229,24 @@ export default function AdminDashboard() {
                 <div className="space-y-4">
                     <Card>
                         <CardHeader className="pb-3">
-                            <CardTitle className="text-lg">Customer Obligations</CardTitle>
+                            <CardTitle className="text-lg flex items-center gap-2">
+                                <ShieldAlert className="w-4 h-4 text-amber-500" /> Customer Obligations
+                            </CardTitle>
                         </CardHeader>
                         <CardContent>
-                            {mockCustomerBalances.length === 0 ? (
+                            {obligations.length === 0 ? (
                                 <p className="text-sm text-muted-foreground">No outstanding balances.</p>
                             ) : (
                                 <div className="space-y-3">
-                                    {mockCustomerBalances.map((bal) => {
-                                        const client = mockProfiles.find((p) => p.id === bal.client_id);
-                                        return (
-                                            <div key={bal.id} className="flex items-center justify-between p-3 rounded-lg bg-amber-50 border border-amber-200">
-                                                <div>
-                                                    <p className="text-sm font-medium text-amber-900">{client?.full_name}</p>
-                                                    <p className="text-xs text-amber-700">{bal.remaining_qty} {bal.bag_type} remaining</p>
-                                                </div>
-                                                <Badge className="bg-amber-200 text-amber-800 hover:bg-amber-200">{bal.status}</Badge>
+                                    {obligations.map((bal) => (
+                                        <div key={bal.id} className="flex items-center justify-between p-3 rounded-lg bg-amber-50 border border-amber-200">
+                                            <div>
+                                                <p className="text-sm font-medium text-amber-900">{bal.client?.full_name ?? "Client"}</p>
+                                                <p className="text-xs text-amber-700">{bal.remaining_qty} {bal.bag_type} remaining · {bal.product?.name ?? ""}</p>
                                             </div>
-                                        );
-                                    })}
+                                            <Badge className="bg-amber-200 text-amber-800 hover:bg-amber-200">pending</Badge>
+                                        </div>
+                                    ))}
                                 </div>
                             )}
                         </CardContent>
@@ -322,19 +257,38 @@ export default function AdminDashboard() {
                             <CardTitle className="text-lg">Shipment Summary</CardTitle>
                         </CardHeader>
                         <CardContent>
-                            <div className="space-y-3">
-                                {mockShipments.slice(0, 3).map((s) => (
-                                    <div key={s.id} className="flex items-center justify-between">
-                                        <div>
-                                            <p className="text-sm font-medium">{s.batch_name}</p>
-                                            <p className="text-xs text-muted-foreground">{s.bag_type} · {s.good_stock.toLocaleString()} good</p>
-                                        </div>
-                                        <span className="text-sm font-semibold text-[var(--color-industrial-blue)]">{s.good_stock.toLocaleString()}</span>
-                                    </div>
-                                ))}
-                            </div>
+                            {shipments.length === 0 ? (
+                                <p className="text-sm text-muted-foreground">No shipment batches.</p>
+                            ) : (
+                                <div className="space-y-3">
+                                    {shipments.slice(0, 5).map((s) => {
+                                        const total = (s.remaining_jb ?? 0) + (s.remaining_sb ?? 0);
+                                        return (
+                                            <div key={s.batch_name} className="flex items-center justify-between">
+                                                <div>
+                                                    <p className="text-sm font-medium">{s.batch_name}</p>
+                                                    <p className="text-xs text-muted-foreground">JB: {s.remaining_jb ?? 0} · SB: {s.remaining_sb ?? 0}</p>
+                                                </div>
+                                                <span className="text-sm font-semibold text-[var(--color-industrial-blue)]">{total.toLocaleString()}</span>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            )}
                         </CardContent>
                     </Card>
+
+                    {/* Low stock alerts */}
+                    {kpis.pendingKyc > 0 && (
+                        <Card className="border-amber-200">
+                            <CardContent className="pt-4 pb-4">
+                                <div className="flex items-center gap-2 text-amber-700">
+                                    <AlertTriangle className="w-4 h-4" />
+                                    <p className="text-sm font-medium">{kpis.pendingKyc} pending KYC verification{kpis.pendingKyc > 1 ? "s" : ""}</p>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    )}
                 </div>
             </div>
         </div>
