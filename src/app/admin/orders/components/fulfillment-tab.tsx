@@ -193,7 +193,7 @@ export function FulfillmentTab({ orders, shipments, onDispatch, onConfirmCheck, 
 
                             <div className="space-y-2">
                                 <Label>Select Shipment Batch (Source of Truth) <span className="text-red-500">*</span></Label>
-                                <Select value={shipmentId} onValueChange={setShipmentId}>
+                                <Select value={shipmentId} onValueChange={(v) => setShipmentId(v || "")}>
                                     <SelectTrigger>
                                         <SelectValue placeholder="Select a shipment batch" />
                                     </SelectTrigger>

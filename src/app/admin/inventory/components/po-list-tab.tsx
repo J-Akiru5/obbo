@@ -157,7 +157,7 @@ export function PoListTab({ purchaseOrders, loading, onReload }: { purchaseOrder
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
                                 <Label>Source</Label>
-                                <Select value={source} onValueChange={setSource}>
+                                <Select value={source} onValueChange={(v) => setSource(v || "")}>
                                     <SelectTrigger><SelectValue /></SelectTrigger>
                                     <SelectContent>
                                         <SelectItem value="warehouse">Warehouse</SelectItem>
@@ -167,7 +167,7 @@ export function PoListTab({ purchaseOrders, loading, onReload }: { purchaseOrder
                             </div>
                             <div className="space-y-2">
                                 <Label>Service Type</Label>
-                                <Select value={serviceType} onValueChange={setServiceType}>
+                                <Select value={serviceType} onValueChange={(v) => setServiceType(v || "")}>
                                     <SelectTrigger><SelectValue /></SelectTrigger>
                                     <SelectContent>
                                         <SelectItem value="pickup">Pick-up</SelectItem>

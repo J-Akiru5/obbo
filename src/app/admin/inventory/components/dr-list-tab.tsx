@@ -159,7 +159,7 @@ export function DrListTab({ deliveryReceipts, shipments, loading, onReload }: { 
                         </div>
                         <div className="space-y-2">
                             <Label>Source Shipment Batch <span className="text-red-500">*</span></Label>
-                            <Select value={shipmentId} onValueChange={setShipmentId} disabled={!!editingDr}>
+                            <Select value={shipmentId} onValueChange={(v) => setShipmentId(v || "")} disabled={!!editingDr}>
                                 <SelectTrigger><SelectValue placeholder="Select batch" /></SelectTrigger>
                                 <SelectContent>
                                     {shipments.map(s => (

@@ -17,6 +17,8 @@ import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
 import type { Profile } from "@/lib/types/database";
+import { updateCustomerBalance } from "@/lib/actions/admin-actions";
+import { Input } from "@/components/ui/input";
 
 function KycBadge({ status }: { status: string }) {
     if (status === "verified") return <Badge className="bg-emerald-100 text-emerald-800 border-emerald-200 hover:bg-emerald-100">Verified</Badge>;
@@ -93,14 +95,34 @@ function KycDialog({
 
 function ClientDetailDialog({ profile, open, onClose }: { profile: Profile | null; open: boolean; onClose: () => void }) {
     const [orders, setOrders] = useState<Array<{ id: string; total_amount: number; status: string; created_at: string }>>([]);
-    const [balances, setBalances] = useState<Array<{ id: string; remaining_qty: number; bag_type: string; product?: { name: string } }>>([]);
+    const [balances, setBalances] = useState<Array<{ id: string; remaining_qty: number; bag_type: string; status: string; product?: { name: string } }>>([]);
+    const [editingBalanceId, setEditingBalanceId] = useState<string | null>(null);
+    const [editQty, setEditQty] = useState<number>(0);
+    const [isSaving, setIsSaving] = useState(false);
 
     useEffect(() => {
         if (!profile || !open) return;
         const supabase = createClient();
         supabase.from("orders").select("id,total_amount,status,created_at").eq("client_id", profile.id).order("created_at", { ascending: false }).then(({ data }) => setOrders(data ?? []));
-        supabase.from("customer_balances").select("id,remaining_qty,bag_type,product:products(name)").eq("client_id", profile.id).eq("status", "pending").then(({ data }) => setBalances((data as unknown as typeof balances) ?? []));
+        supabase.from("customer_balances").select("id,remaining_qty,bag_type,status,product:products(name)").eq("client_id", profile.id).eq("status", "pending").then(({ data }) => setBalances((data as unknown as typeof balances) ?? []));
     }, [profile, open]);
+
+    const handleSaveBalance = async (id: string) => {
+        setIsSaving(true);
+        try {
+            // If qty is 0, we can mark it completed
+            const newStatus = editQty <= 0 ? "completed" : "pending";
+            const finalQty = Math.max(0, editQty);
+            await updateCustomerBalance(id, finalQty, newStatus);
+            toast.success("Balance updated");
+            setBalances(prev => prev.map(b => b.id === id ? { ...b, remaining_qty: finalQty, status: newStatus } : b).filter(b => b.status === "pending"));
+            setEditingBalanceId(null);
+        } catch (e: any) {
+            toast.error("Failed to update balance");
+        } finally {
+            setIsSaving(false);
+        }
+    };
 
     if (!profile) return null;
     const initials = getInitials(profile.full_name);
@@ -117,9 +139,28 @@ function ClientDetailDialog({ profile, open, onClose }: { profile: Profile | nul
                         <div>
                             <p className="text-sm font-semibold mb-2 flex items-center gap-2"><ShieldAlert className="w-4 h-4 text-amber-500" />Outstanding Balances</p>
                             {balances.map((b) => (
-                                <div key={b.id} className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-900 mb-2">
-                                    <p className="font-medium">{b.product?.name ?? "Product"}</p>
-                                    <p className="text-xs text-amber-700">{b.remaining_qty} {b.bag_type} remaining</p>
+                                <div key={b.id} className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-900 mb-2 flex items-center justify-between">
+                                    <div>
+                                        <p className="font-medium">{b.product?.name ?? "Product"}</p>
+                                        {editingBalanceId === b.id ? (
+                                            <div className="flex items-center gap-2 mt-1">
+                                                <Input type="number" min="0" value={editQty} onChange={(e) => setEditQty(parseInt(e.target.value) || 0)} className="h-7 w-20 text-xs bg-white" />
+                                                <span className="text-xs">{b.bag_type}</span>
+                                            </div>
+                                        ) : (
+                                            <p className="text-xs text-amber-700">{b.remaining_qty} {b.bag_type} remaining</p>
+                                        )}
+                                    </div>
+                                    <div>
+                                        {editingBalanceId === b.id ? (
+                                            <div className="flex gap-1">
+                                                <Button size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={() => setEditingBalanceId(null)} disabled={isSaving}>Cancel</Button>
+                                                <Button size="sm" className="h-7 px-2 text-xs bg-amber-600 hover:bg-amber-700 text-white" onClick={() => handleSaveBalance(b.id)} disabled={isSaving}>Save</Button>
+                                            </div>
+                                        ) : (
+                                            <Button size="sm" variant="outline" className="h-7 px-2 text-xs border-amber-300 text-amber-800 hover:bg-amber-100" onClick={() => { setEditingBalanceId(b.id); setEditQty(b.remaining_qty); }}>Edit</Button>
+                                        )}
+                                    </div>
                                 </div>
                             ))}
                         </div>

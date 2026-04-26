@@ -88,8 +88,8 @@ export function ShipmentsTab({ shipments, loading, onReload }: { shipments: Ship
                     <p className="text-sm text-muted-foreground">Batches act as folders holding JB and SB inventory.</p>
                 </div>
                 <Dialog>
-                    <DialogTrigger asChild>
-                        <Button className="bg-[var(--color-industrial-blue)]"><PackagePlus className="w-4 h-4 mr-2" /> New Batch</Button>
+                    <DialogTrigger render={<Button className="bg-[var(--color-industrial-blue)]" />}>
+                        <PackagePlus className="w-4 h-4 mr-2" /> New Batch
                     </DialogTrigger>
                     <DialogContent>
                         <DialogHeader>

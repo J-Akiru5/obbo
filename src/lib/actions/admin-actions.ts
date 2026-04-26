@@ -450,6 +450,16 @@ export async function fetchCustomerBalances() {
     return data ?? [];
 }
 
+export async function updateCustomerBalance(id: string, remaining_qty: number, status: string) {
+    const { supabase, userId } = await requireAdmin();
+    const { error } = await supabase.from("customer_balances")
+        .update({ remaining_qty, status, updated_at: new Date().toISOString() })
+        .eq("id", id);
+    if (error) throw new Error(error.message);
+    await logActivity(supabase, userId, "balance_updated", "customer_balances", id, { remaining_qty, status });
+    return { success: true };
+}
+
 // ═══════════════════════════════════════════════════════════════
 // SETTINGS
 // ═══════════════════════════════════════════════════════════════

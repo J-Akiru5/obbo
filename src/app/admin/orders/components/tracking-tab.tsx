@@ -128,7 +128,7 @@ export function TrackingTab({ orders, onUpdateTracking, loading }: {
                     <div className="space-y-4 py-4">
                         <div className="space-y-2">
                             <Label>Tracking Status</Label>
-                            <Select value={status} onValueChange={setStatus}>
+                            <Select value={status} onValueChange={(v) => setStatus(v || "")}>
                                 <SelectTrigger>
                                     <SelectValue placeholder="Select status" />
                                 </SelectTrigger>
