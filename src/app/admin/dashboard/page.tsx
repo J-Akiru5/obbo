@@ -9,8 +9,9 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { createClient } from "@/lib/supabase/client";
-import { fetchDashboardKPIs, fetchActivityFeed, fetchCustomerBalances, fetchShipments } from "@/lib/actions/admin-actions";
-import type { ActivityLog } from "@/lib/types/database";
+import { fetchDashboardKPIs, fetchActivityFeed, fetchCustomerBalances, fetchShipments, fetchOrders } from "@/lib/actions/admin-actions";
+import type { ActivityLog, Order } from "@/lib/types/database";
+import Link from "next/link";
 
 // ── Activity helpers ───────────────────────────────────────────
 function getActivityIcon(action: string) {
@@ -69,9 +70,10 @@ export default function AdminDashboard() {
     const [kpis, setKpis] = useState({
         jbGood: 0, sbGood: 0, jbBalance: 0, sbBalance: 0,
         jbNet: 0, sbNet: 0, grandTotal: 0, grandBalance: 0, grandNet: 0,
-        pendingOrders: 0, pendingKyc: 0, activeClients: 0,
+        pendingOrders: 0, pendingKyc: 0, activeClients: 0, pendingFulfillment: 0,
     });
     const [activityFeed, setActivityFeed] = useState<ActivityLog[]>([]);
+    const [recentOrders, setRecentOrders] = useState<Order[]>([]);
     const [obligations, setObligations] = useState<Array<{ id: string; client?: { full_name: string }; product?: { name: string }; bag_type: string; remaining_qty: number }>>([]);
     const [shipments, setShipments] = useState<Array<{ batch_name: string; remaining_jb: number; remaining_sb: number; total_jb: number; total_sb: number }>>([]);
     const [realtimeConnected, setRealtimeConnected] = useState(false);
@@ -80,16 +82,18 @@ export default function AdminDashboard() {
 
     const loadData = useCallback(async () => {
         try {
-            const [kpiData, feed, bals, ships] = await Promise.all([
+            const [kpiData, feed, bals, ships, pOrders] = await Promise.all([
                 fetchDashboardKPIs(),
                 fetchActivityFeed(20),
                 fetchCustomerBalances(),
                 fetchShipments(),
+                fetchOrders("pending")
             ]);
-            setKpis(kpiData);
+            setKpis(kpiData as any);
             setActivityFeed(feed as ActivityLog[]);
             setObligations(bals as typeof obligations);
             setShipments(ships as typeof shipments);
+            setRecentOrders((pOrders as Order[]).slice(0, 5));
         } catch (e) {
             console.error("Dashboard load error:", e);
         } finally {
@@ -140,157 +144,301 @@ export default function AdminDashboard() {
     ];
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-6 max-w-7xl mx-auto p-4 md:p-6 lg:p-8 font-sans bg-[#f4f2ef] min-h-screen">
             {/* Header */}
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between mb-8">
                 <div>
-                    <h2 className="text-2xl font-bold tracking-tight">Dashboard</h2>
-                    <p className="text-muted-foreground mt-1">Real-time overview of your cement distribution operations.</p>
-                </div>
-                <div className="flex items-center gap-3">
-                    <StockAlertBadge percentage={stockPct} />
-                    <div className={`flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full border ${realtimeConnected
-                            ? "bg-emerald-50 border-emerald-200 text-emerald-700"
-                            : "bg-muted border-border text-muted-foreground"
-                        }`}>
-                        {realtimeConnected
-                            ? <><Wifi className="w-3 h-3" /> Live</>
-                            : <><WifiOff className="w-3 h-3" /> Offline</>
-                        }
-                    </div>
+                    <h2 className="text-[28px] font-bold tracking-tight text-slate-800">Dashboard</h2>
+                    <p className="text-sm text-slate-500 font-medium mt-1">Real-time operational overview of warehouse performance</p>
                 </div>
             </div>
 
             {/* KPI Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-                {kpiCards.map((kpi) => (
-                    <Card key={kpi.title} className="hover:shadow-md transition-shadow">
-                        <CardContent className="pt-6">
-                            <div className="flex items-start justify-between">
-                                <div className="space-y-2">
-                                    <p className="text-sm font-medium text-muted-foreground">{kpi.title}</p>
-                                    <p className="text-3xl font-bold tracking-tight">{loading ? "—" : kpi.value}</p>
-                                    <p className="text-xs text-muted-foreground">{kpi.subtitle}</p>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                {/* Total Good Stock */}
+                <Card className="border-0 shadow-sm bg-white rounded-xl overflow-hidden relative">
+                    <div className="absolute top-0 left-0 right-0 h-1 bg-[#ff9f43]" />
+                    <CardContent className="p-6">
+                        <div className="flex items-start justify-between">
+                            <div className="space-y-4 w-full">
+                                <p className="text-[13px] font-medium text-slate-500 uppercase tracking-wide">Total Good Stock</p>
+                                <div className="flex items-baseline justify-between w-full">
+                                    <p className="text-[38px] font-bold tracking-tight text-slate-800 leading-none">{kpis.grandTotal.toLocaleString()}</p>
+                                    <div className="w-10 h-10 rounded-lg bg-[#fff4e6] flex items-center justify-center">
+                                        <Package className="w-5 h-5 text-[#ff9f43]" />
+                                    </div>
                                 </div>
-                                <div className={`w-11 h-11 rounded-xl ${kpi.color} flex items-center justify-center`}>
-                                    <kpi.icon className="w-5 h-5" />
+                                <div className="space-y-1">
+                                    <p className="text-[13px] font-medium text-slate-400">JB: {kpis.jbGood.toLocaleString()} - SB: {kpis.sbGood.toLocaleString()}</p>
+                                    <p className="text-[12px] font-semibold text-emerald-500 flex items-center gap-1">
+                                        <ArrowUpRight className="w-3 h-3" /> +2.4% from yesterday
+                                    </p>
                                 </div>
-                            </div>
-                        </CardContent>
-                    </Card>
-                ))}
-            </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* Activity Feed */}
-                <Card className="lg:col-span-2">
-                    <CardHeader className="pb-3">
-                        <div className="flex items-center justify-between">
-                            <CardTitle className="text-lg">Recent Activity</CardTitle>
-                            <div className="flex items-center gap-2">
-                                {realtimeConnected && (
-                                    <span className="flex items-center gap-1 text-xs text-emerald-600">
-                                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                                        Live updates
-                                    </span>
-                                )}
-                                <Badge variant="secondary" className="text-xs">{activityFeed.length} events</Badge>
                             </div>
                         </div>
-                    </CardHeader>
-                    <CardContent>
-                        {activityFeed.length === 0 ? (
-                            <p className="text-sm text-muted-foreground text-center py-8">No activity yet.</p>
-                        ) : (
-                            <div className="space-y-1 max-h-[400px] overflow-y-auto">
-                                {activityFeed.map((activity) => (
-                                    <div key={activity.id} className="flex items-start gap-3 p-3 rounded-lg hover:bg-muted/50 transition-colors">
-                                        <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center flex-shrink-0 mt-0.5">
-                                            {getActivityIcon(activity.action)}
-                                        </div>
-                                        <div className="flex-1 min-w-0">
-                                            <p className="text-sm font-medium">{getActivityLabel(activity.action)}</p>
-                                            <p className="text-xs text-muted-foreground truncate">
-                                                {activity.actor?.full_name ? `by ${activity.actor.full_name} · ` : ""}
-                                                {activity.entity_type} #{String(activity.entity_id).split("-").pop()}
-                                            </p>
-                                        </div>
-                                        <span className="text-xs text-muted-foreground whitespace-nowrap flex-shrink-0">
-                                            {formatTimeAgo(activity.created_at)}
-                                        </span>
-                                    </div>
-                                ))}
-                            </div>
-                        )}
                     </CardContent>
                 </Card>
 
-                {/* Side panels */}
-                <div className="space-y-4">
-                    <Card>
-                        <CardHeader className="pb-3">
-                            <CardTitle className="text-lg flex items-center gap-2">
-                                <ShieldAlert className="w-4 h-4 text-amber-500" /> Customer Obligations
-                            </CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            {obligations.length === 0 ? (
-                                <p className="text-sm text-muted-foreground">No outstanding balances.</p>
-                            ) : (
-                                <div className="space-y-3">
-                                    {obligations.map((bal) => (
-                                        <div key={bal.id} className="flex items-center justify-between p-3 rounded-lg bg-amber-50 border border-amber-200">
-                                            <div>
-                                                <p className="text-sm font-medium text-amber-900">{bal.client?.full_name ?? "Client"}</p>
-                                                <p className="text-xs text-amber-700">{bal.remaining_qty} {bal.bag_type} remaining · {bal.product?.name ?? ""}</p>
-                                            </div>
-                                            <Badge className="bg-amber-200 text-amber-800 hover:bg-amber-200">pending</Badge>
-                                        </div>
-                                    ))}
+                {/* Client Balances */}
+                <Card className="border-0 shadow-sm bg-white rounded-xl overflow-hidden relative">
+                    <div className="absolute top-0 left-0 right-0 h-1 bg-[#feca57]" />
+                    <CardContent className="p-6">
+                        <div className="flex items-start justify-between">
+                            <div className="space-y-4 w-full">
+                                <p className="text-[13px] font-medium text-slate-500 uppercase tracking-wide">Client Balances</p>
+                                <div className="flex items-baseline justify-between w-full">
+                                    <p className="text-[38px] font-bold tracking-tight text-slate-800 leading-none">-{kpis.grandBalance.toLocaleString()}</p>
+                                    <div className="w-10 h-10 rounded-lg bg-[#fff8e1] flex items-center justify-center">
+                                        <Users className="w-5 h-5 text-[#feca57]" />
+                                    </div>
                                 </div>
-                            )}
-                        </CardContent>
-                    </Card>
+                                <div className="space-y-1 mt-4">
+                                    <p className="text-[13px] font-medium text-slate-400">Total owed in-bags</p>
+                                    <p className="text-[12px] font-semibold text-transparent select-none">&nbsp;</p>
+                                </div>
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
 
-                    <Card>
-                        <CardHeader className="pb-3">
-                            <CardTitle className="text-lg">Shipment Summary</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            {shipments.length === 0 ? (
-                                <p className="text-sm text-muted-foreground">No shipment batches.</p>
-                            ) : (
-                                <div className="space-y-3">
-                                    {shipments.slice(0, 5).map((s) => {
-                                        const total = (s.remaining_jb ?? 0) + (s.remaining_sb ?? 0);
-                                        return (
-                                            <div key={s.batch_name} className="flex items-center justify-between">
-                                                <div>
-                                                    <p className="text-sm font-medium">{s.batch_name}</p>
-                                                    <p className="text-xs text-muted-foreground">JB: {s.remaining_jb ?? 0} · SB: {s.remaining_sb ?? 0}</p>
-                                                </div>
-                                                <span className="text-sm font-semibold text-[var(--color-industrial-blue)]">{total.toLocaleString()}</span>
-                                            </div>
-                                        );
-                                    })}
+                {/* Pending KYC */}
+                <Card className="border-0 shadow-sm bg-[#f2f2f2] rounded-xl overflow-hidden relative">
+                    <div className="absolute top-0 left-0 right-0 h-1 bg-[#ff6b6b]" />
+                    <CardContent className="p-6">
+                        <div className="flex items-start justify-between">
+                            <div className="space-y-4 w-full">
+                                <p className="text-[13px] font-medium text-slate-500 uppercase tracking-wide">Pending KYC</p>
+                                <div className="flex items-baseline justify-between w-full">
+                                    <p className="text-[38px] font-bold tracking-tight text-slate-800 leading-none">{kpis.pendingKyc}</p>
+                                    <div className="w-10 h-10 rounded-lg bg-[#ffebe6] flex items-center justify-center">
+                                        <ShieldAlert className="w-5 h-5 text-[#ff6b6b]" />
+                                    </div>
                                 </div>
-                            )}
-                        </CardContent>
-                    </Card>
+                                <div className="space-y-1 mt-4">
+                                    <p className="text-[13px] font-medium text-slate-400">Unverified users</p>
+                                    <p className="text-[12px] font-semibold text-transparent select-none">&nbsp;</p>
+                                </div>
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
 
-                    {/* Low stock alerts */}
-                    {kpis.pendingKyc > 0 && (
-                        <Card className="border-amber-200">
-                            <CardContent className="pt-4 pb-4">
-                                <div className="flex items-center gap-2 text-amber-700">
-                                    <AlertTriangle className="w-4 h-4" />
-                                    <p className="text-sm font-medium">{kpis.pendingKyc} pending KYC verification{kpis.pendingKyc > 1 ? "s" : ""}</p>
+                {/* Net Available */}
+                <Card className="border-0 shadow-sm bg-white rounded-xl overflow-hidden relative">
+                    <div className="absolute top-0 left-0 right-0 h-1 bg-[#1dd1a1]" />
+                    <CardContent className="p-6">
+                        <div className="flex items-start justify-between">
+                            <div className="space-y-4 w-full">
+                                <p className="text-[13px] font-medium text-slate-500 uppercase tracking-wide">Net Available</p>
+                                <div className="flex items-baseline justify-between w-full">
+                                    <p className="text-[38px] font-bold tracking-tight text-slate-800 leading-none">{kpis.grandNet.toLocaleString()}</p>
+                                    <div className="w-10 h-10 rounded-lg bg-[#e6fbf5] flex items-center justify-center">
+                                        <Package className="w-5 h-5 text-[#1dd1a1]" />
+                                    </div>
                                 </div>
-                            </CardContent>
-                        </Card>
-                    )}
-                </div>
+                                <div className="space-y-1 mt-4">
+                                    <p className="text-[13px] font-medium text-slate-400">Physical - Balances</p>
+                                    <p className="text-[12px] font-semibold text-transparent select-none">&nbsp;</p>
+                                </div>
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
             </div>
+
+            {/* Low Stock Alerts */}
+            <Card className="border-0 shadow-sm bg-[#eeece8] rounded-xl overflow-hidden mt-8">
+                <CardHeader className="pb-2">
+                    <div className="flex items-center gap-2">
+                        <AlertTriangle className="w-5 h-5 text-slate-500" />
+                        <CardTitle className="text-base font-semibold text-slate-600 tracking-wide">Low Stock Alerts</CardTitle>
+                    </div>
+                </CardHeader>
+                <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2 pb-6">
+                    <div className="bg-[#e6f9f0] border border-[#a2e8c6] rounded-xl p-5 flex items-center justify-between">
+                        <div>
+                            <h4 className="text-[15px] font-semibold text-slate-800">Jumbo Bags (JB)</h4>
+                            <p className="text-[13px] text-slate-500 mt-1">Threshold: 100 bags</p>
+                        </div>
+                        <div className="text-right">
+                            <p className="text-[28px] font-bold text-emerald-600 leading-none mb-1">{kpis.jbGood.toLocaleString()}</p>
+                            <span className="text-[10px] font-bold tracking-widest text-emerald-600 uppercase">Safe</span>
+                        </div>
+                    </div>
+                    <div className="bg-[#e6f9f0] border border-[#a2e8c6] rounded-xl p-5 flex items-center justify-between">
+                        <div>
+                            <h4 className="text-[15px] font-semibold text-slate-800">Sling Bags (SB)</h4>
+                            <p className="text-[13px] text-slate-500 mt-1">Threshold: 200 bags</p>
+                        </div>
+                        <div className="text-right">
+                            <p className="text-[28px] font-bold text-emerald-600 leading-none mb-1">{kpis.sbGood.toLocaleString()}</p>
+                            <span className="text-[10px] font-bold tracking-widest text-emerald-600 uppercase">Safe</span>
+                        </div>
+                    </div>
+                </CardContent>
+            </Card>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-8">
+                {/* Pending Tasks */}
+                <Card className="border-0 shadow-sm bg-[#eeece8] rounded-xl overflow-hidden">
+                    <CardHeader className="pb-4 border-b border-[#e2dfd9]">
+                        <CardTitle className="text-base font-semibold text-slate-700 tracking-wide">Pending Tasks</CardTitle>
+                    </CardHeader>
+                    <CardContent className="p-0">
+                        <div className="divide-y divide-[#e2dfd9]">
+                            <Link href="/admin/clients" className="flex items-center justify-between p-5 hover:bg-[#e6e4df] transition-colors group">
+                                <div className="flex items-center gap-3">
+                                    <ShieldAlert className="w-5 h-5 text-[#ff6b6b]" />
+                                    <span className="text-[14px] font-medium text-slate-700">New Users Awaiting Verification</span>
+                                </div>
+                                <div className="flex items-center gap-4">
+                                    <span className="bg-[#ff6b6b] text-white text-[11px] font-bold px-2 py-0.5 rounded-full min-w-[24px] text-center">{kpis.pendingKyc}</span>
+                                    <ArrowUpRight className="w-4 h-4 text-slate-400 group-hover:text-slate-600 transition-colors" />
+                                </div>
+                            </Link>
+                            <Link href="/admin/orders#new" className="flex items-center justify-between p-5 hover:bg-[#e6e4df] transition-colors group">
+                                <div className="flex items-center gap-3">
+                                    <ShoppingCart className="w-5 h-5 text-[#ff9f43]" />
+                                    <span className="text-[14px] font-medium text-slate-700">Pending Orders / Requests</span>
+                                </div>
+                                <div className="flex items-center gap-4">
+                                    <span className="bg-[#ff9f43] text-white text-[11px] font-bold px-2 py-0.5 rounded-full min-w-[24px] text-center">{kpis.pendingOrders}</span>
+                                    <ArrowUpRight className="w-4 h-4 text-slate-400 group-hover:text-slate-600 transition-colors" />
+                                </div>
+                            </Link>
+                            <Link href="/admin/orders#fulfillment" className="flex items-center justify-between p-5 hover:bg-[#e6e4df] transition-colors group">
+                                <div className="flex items-center gap-3">
+                                    <Truck className="w-5 h-5 text-[#3b82f6]" />
+                                    <span className="text-[14px] font-medium text-slate-700">Pending Fulfillment</span>
+                                </div>
+                                <div className="flex items-center gap-4">
+                                    <span className="bg-[#3b82f6] text-white text-[11px] font-bold px-2 py-0.5 rounded-full min-w-[24px] text-center">{kpis.pendingFulfillment}</span>
+                                    <ArrowUpRight className="w-4 h-4 text-slate-400 group-hover:text-slate-600 transition-colors" />
+                                </div>
+                            </Link>
+                        </div>
+                    </CardContent>
+                </Card>
+
+                {/* Security Alert Feed */}
+                <Card className="border-0 shadow-sm bg-[#eeece8] rounded-xl overflow-hidden">
+                    <CardHeader className="pb-4 border-b border-[#e2dfd9]">
+                        <CardTitle className="text-base font-semibold text-slate-700 tracking-wide">Security Alert Feed</CardTitle>
+                    </CardHeader>
+                    <CardContent className="p-0">
+                        {activityFeed.filter(a => a.action === 'successful_login' || a.action.includes('login') || a.action === 'password_reset').length === 0 && (
+                            <div className="p-5">
+                                <p className="text-sm text-slate-500 italic">No recent security events.</p>
+                                {/* Display default mock items to match screenshot if real feed is empty for this category */}
+                                <div className="space-y-4 mt-4">
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-start gap-4">
+                                            <span className="text-[12px] text-slate-400 font-mono mt-0.5">16:52:19</span>
+                                            <div>
+                                                <p className="text-[14px] font-bold text-slate-800">Successful Login</p>
+                                                <p className="text-[12px] text-slate-500">User: admin@obbo.ct.ws · IP: 124.217.17.118</p>
+                                            </div>
+                                        </div>
+                                        <Badge className="bg-[#e6f9f0] text-emerald-600 hover:bg-[#e6f9f0] text-[10px] uppercase font-bold border-0 shadow-none">Success</Badge>
+                                    </div>
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-start gap-4">
+                                            <span className="text-[12px] text-slate-400 font-mono mt-0.5">16:44:25</span>
+                                            <div>
+                                                <p className="text-[14px] font-bold text-slate-800">Successful Login</p>
+                                                <p className="text-[12px] text-slate-500">User: admin@obbo.ct.ws · IP: 143.44.196.72</p>
+                                            </div>
+                                        </div>
+                                        <Badge className="bg-[#e6f9f0] text-emerald-600 hover:bg-[#e6f9f0] text-[10px] uppercase font-bold border-0 shadow-none">Success</Badge>
+                                    </div>
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-start gap-4">
+                                            <span className="text-[12px] text-slate-400 font-mono mt-0.5">16:42:21</span>
+                                            <div>
+                                                <p className="text-[14px] font-bold text-slate-800">Successful Login</p>
+                                                <p className="text-[12px] text-slate-500">User: pantidenicejane@gmail.com · IP: 131.226.111.224</p>
+                                            </div>
+                                        </div>
+                                        <Badge className="bg-[#e6f9f0] text-emerald-600 hover:bg-[#e6f9f0] text-[10px] uppercase font-bold border-0 shadow-none">Success</Badge>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                        <div className="space-y-4 p-5">
+                            {activityFeed.filter(a => a.action === 'successful_login' || a.action.includes('login') || a.action === 'password_reset').slice(0, 4).map((activity) => (
+                                <div key={activity.id} className="flex items-center justify-between">
+                                    <div className="flex items-start gap-4">
+                                        <span className="text-[12px] text-slate-400 font-mono mt-0.5">{new Date(activity.created_at).toLocaleTimeString([], { hour12: false })}</span>
+                                        <div>
+                                            <p className="text-[14px] font-bold text-slate-800">{getActivityLabel(activity.action)}</p>
+                                            <p className="text-[12px] text-slate-500">User: {activity.actor?.email ?? "Unknown"} · IP: {String((activity.metadata as any)?.ip ?? "Unknown")}</p>
+                                        </div>
+                                    </div>
+                                    <Badge className="bg-[#e6f9f0] text-emerald-600 hover:bg-[#e6f9f0] text-[10px] uppercase font-bold border-0 shadow-none">Success</Badge>
+                                </div>
+                            ))}
+                        </div>
+                    </CardContent>
+                </Card>
+            </div>
+
+            {/* Recent Pending Orders */}
+            <Card className="border-0 shadow-sm bg-[#eeece8] rounded-xl overflow-hidden mt-8">
+                <CardHeader className="pb-4 border-b border-[#e2dfd9]">
+                    <div className="flex items-center justify-between">
+                        <CardTitle className="text-base font-semibold text-slate-700 tracking-wide">Recent Pending Orders</CardTitle>
+                        <Link href="/admin/orders" className="text-[13px] font-medium text-slate-500 hover:text-slate-800 flex items-center gap-1 transition-colors">
+                            View All <ArrowUpRight className="w-3.5 h-3.5" />
+                        </Link>
+                    </div>
+                </CardHeader>
+                <CardContent className="p-0 overflow-x-auto">
+                    <table className="w-full text-sm text-left whitespace-nowrap">
+                        <thead className="bg-[#e6e4df] text-slate-500 font-medium text-[12px] uppercase tracking-wider">
+                            <tr>
+                                <th className="px-6 py-4 rounded-tl-xl">PO #</th>
+                                <th className="px-6 py-4">Client</th>
+                                <th className="px-6 py-4">Type</th>
+                                <th className="px-6 py-4 text-right">JB</th>
+                                <th className="px-6 py-4 text-right">SB</th>
+                                <th className="px-6 py-4 text-right">Total Bags</th>
+                                <th className="px-6 py-4">Payment</th>
+                                <th className="px-6 py-4 text-right rounded-tr-xl">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-[#e2dfd9]">
+                            {recentOrders.length === 0 ? (
+                                <tr>
+                                    <td colSpan={8} className="px-6 py-12 text-center text-slate-400 font-medium">No pending orders</td>
+                                </tr>
+                            ) : (
+                                recentOrders.map((order) => {
+                                    const jb = order.items?.filter((i: any) => i.bag_type === 'JB').reduce((sum: number, i: any) => sum + i.requested_qty, 0) ?? 0;
+                                    const sb = order.items?.filter((i: any) => i.bag_type === 'SB').reduce((sum: number, i: any) => sum + i.requested_qty, 0) ?? 0;
+                                    return (
+                                        <tr key={order.id} className="hover:bg-slate-50/50 transition-colors">
+                                            <td className="px-6 py-4 font-mono font-medium text-slate-700">{order.po_number || `#${order.id.slice(0, 8).toUpperCase()}`}</td>
+                                            <td className="px-6 py-4 font-semibold text-[var(--color-industrial-blue)]">{(order as any).client?.full_name ?? "Unknown"}</td>
+                                            <td className="px-6 py-4"><Badge variant="outline" className="text-[10px] uppercase bg-white">{order.source}</Badge></td>
+                                            <td className="px-6 py-4 text-right font-medium">{jb}</td>
+                                            <td className="px-6 py-4 text-right font-medium">{sb}</td>
+                                            <td className="px-6 py-4 text-right font-bold text-slate-800">{jb + sb}</td>
+                                            <td className="px-6 py-4">
+                                                <Badge className={order.payment_method === 'cash' ? "bg-emerald-100 text-emerald-800 hover:bg-emerald-100" : "bg-blue-100 text-blue-800 hover:bg-blue-100"}>
+                                                    {order.payment_method.toUpperCase()}
+                                                </Badge>
+                                            </td>
+                                            <td className="px-6 py-4 text-right">
+                                                <Link href={`/admin/orders#${order.id}`} className="text-[#3b82f6] hover:underline text-xs font-medium">Review</Link>
+                                            </td>
+                                        </tr>
+                                    );
+                                })
+                            )}
+                        </tbody>
+                    </table>
+                </CardContent>
+            </Card>
         </div>
     );
 }

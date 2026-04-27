@@ -41,12 +41,13 @@ async function logActivity(
 export async function fetchDashboardKPIs() {
     const { supabase } = await requireAdmin();
 
-    const [shipments, balances, pendingOrders, pendingKyc, activeClients] = await Promise.all([
+    const [shipments, balances, pendingOrders, pendingKyc, activeClients, pendingFulfillment] = await Promise.all([
         supabase.from("shipments").select("remaining_jb, remaining_sb, total_jb, total_sb"),
         supabase.from("customer_balances").select("bag_type, remaining_qty").eq("status", "pending"),
         supabase.from("orders").select("id", { count: "exact", head: true }).eq("status", "pending"),
         supabase.from("profiles").select("id", { count: "exact", head: true }).eq("kyc_status", "pending_verification").eq("role", "client"),
         supabase.from("profiles").select("id", { count: "exact", head: true }).eq("kyc_status", "verified").eq("role", "client"),
+        supabase.from("orders").select("id", { count: "exact", head: true }).in("status", ["approved", "partially_approved", "awaiting_check"]),
     ]);
 
     const totalJB = shipments.data?.reduce((s, r) => s + (r.remaining_jb ?? 0), 0) ?? 0;
@@ -64,6 +65,7 @@ export async function fetchDashboardKPIs() {
         pendingOrders: pendingOrders.count ?? 0,
         pendingKyc: pendingKyc.count ?? 0,
         activeClients: activeClients.count ?? 0,
+        pendingFulfillment: pendingFulfillment.count ?? 0,
     };
 }
 
