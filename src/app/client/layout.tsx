@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import {
@@ -11,7 +12,6 @@ import {
   Gauge,
   LogOut,
   Menu,
-  Package,
   PackageSearch,
   ShieldCheck,
   WalletCards,
@@ -34,7 +34,7 @@ function SidebarContent({ pathname, onNavigate }: { pathname: string; onNavigate
     <div className="flex h-full flex-col">
       <div className="flex h-16 items-center gap-2.5 border-b border-sidebar-border px-5">
         <div className="flex h-9 w-9 items-center justify-center">
-          <img src="/logo.png" alt="OBBO Logo" className="h-full w-full object-contain" />
+          <Image src="/logo.jpg" alt="OBBO Logo" width={36} height={36} className="object-contain" />
         </div>
         <div>
           <p className="text-base font-bold tracking-tight text-sidebar-foreground">OBBO iManage</p>
@@ -102,7 +102,7 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
 
             <Link href="/client/dashboard" className="flex items-center gap-2 lg:hidden">
               <div className="flex h-8 w-8 items-center justify-center">
-                <img src="/logo.png" alt="OBBO Logo" className="h-full w-full object-contain" />
+                <Image src="/logo.jpg" alt="OBBO Logo" width={32} height={32} className="object-contain" />
               </div>
               <span className="text-sm font-bold text-[var(--color-industrial-blue)]">OBBO</span>
             </Link>

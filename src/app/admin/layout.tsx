@@ -1,12 +1,12 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
 import {
-    Package,
     LayoutDashboard,
     ShoppingCart,
     Warehouse,
@@ -89,7 +89,7 @@ function SidebarContent({ pathname, onNavigate, adminName, adminInitials }: { pa
             {/* Logo */}
             <div className="flex items-center gap-2.5 px-5 h-16 border-b border-sidebar-border">
                 <div className="w-8 h-8 flex items-center justify-center">
-                    <img src="/logo.png" alt="OBBO Logo" className="w-full h-full object-contain" />
+                    <Image src="/logo.jpg" alt="OBBO Logo" width={32} height={32} className="object-contain" />
                 </div>
                 <span className="text-lg font-bold text-sidebar-foreground tracking-tight">
                     OBBO <span className="font-light opacity-70">iManage</span>

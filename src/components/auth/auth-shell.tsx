@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
-import { ArrowLeft, Package, ShieldCheck, Sparkles } from "lucide-react";
+import Image from "next/image";
+import { ArrowLeft, ShieldCheck, Sparkles } from "lucide-react";
 
 type AuthShellProps = {
   backHref: string;
@@ -45,7 +46,7 @@ export function AuthShell({
           <div className="relative z-10 space-y-8">
             <div className="flex items-center gap-3">
               <div className="flex size-12 items-center justify-center">
-                <img src="/logo.png" alt="OBBO Logo" className="w-full h-full object-contain" />
+                <Image src="/logo.jpg" alt="OBBO Logo" width={48} height={48} className="object-contain" />
               </div>
               <div>
                 <p className="text-[0.7rem] font-semibold uppercase tracking-[0.35em] text-white/65">
