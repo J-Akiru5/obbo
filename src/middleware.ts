@@ -38,7 +38,7 @@ export async function middleware(request: NextRequest) {
             .select('role')
             .eq('id', user.id)
             .single();
-        if (profile?.role !== 'admin') {
+        if (profile?.role !== 'admin' && profile?.role !== 'warehouse_manager') {
             // Non-admin users get rerouted to client dashboard
             return NextResponse.redirect(new URL('/client/dashboard', request.url));
         }
@@ -56,7 +56,7 @@ export async function middleware(request: NextRequest) {
             .single();
 
         // Redirect admins away from client portal
-        if (profile?.role === 'admin') {
+        if (profile?.role === 'admin' || profile?.role === 'warehouse_manager') {
             return NextResponse.redirect(new URL('/admin/dashboard', request.url));
         }
         // Gate unverified clients to /pending
@@ -73,9 +73,11 @@ export async function middleware(request: NextRequest) {
                 .select('kyc_status, role')
                 .eq('id', user.id)
                 .single();
+            if (profile?.role === 'admin' || profile?.role === 'warehouse_manager') {
+                return NextResponse.redirect(new URL('/admin/dashboard', request.url));
+            }
             if (profile?.kyc_status === 'verified') {
-                const dest = profile.role === 'admin' ? '/admin/dashboard' : '/client/dashboard';
-                return NextResponse.redirect(new URL(dest, request.url));
+                return NextResponse.redirect(new URL('/client/dashboard', request.url));
             }
         }
     }
@@ -87,7 +89,7 @@ export async function middleware(request: NextRequest) {
             .select('role, kyc_status')
             .eq('id', user.id)
             .single();
-        if (profile?.role === 'admin') {
+        if (profile?.role === 'admin' || profile?.role === 'warehouse_manager') {
             return NextResponse.redirect(new URL('/admin/dashboard', request.url));
         }
         if (profile?.kyc_status === 'verified') {

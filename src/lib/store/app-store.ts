@@ -8,7 +8,7 @@ interface AppState {
         id: string;
         email: string;
         full_name: string;
-        role: 'admin' | 'client';
+        role: 'admin' | 'client' | 'warehouse_manager';
         kyc_status: string;
     } | null;
     setCurrentUser: (user: AppState['currentUser']) => void;

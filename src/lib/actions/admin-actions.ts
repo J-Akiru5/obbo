@@ -2,7 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 
-// ─── Helper: ensure caller is admin ──────────────────────────
+// ─── Helper: ensure caller is admin or warehouse manager ─────
 async function requireAdmin() {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
@@ -12,7 +12,9 @@ async function requireAdmin() {
         .select("role")
         .eq("id", user.id)
         .single();
-    if (profile?.role !== "admin") throw new Error("Forbidden");
+    if (profile?.role !== "admin" && profile?.role !== "warehouse_manager") {
+        throw new Error("Forbidden");
+    }
     return { supabase, userId: user.id };
 }
 

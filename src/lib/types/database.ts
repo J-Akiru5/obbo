@@ -1,7 +1,7 @@
 // Database types aligned with Supabase schema
 
 export type BagType = 'JB' | 'SB';
-export type UserRole = 'admin' | 'client';
+export type UserRole = 'admin' | 'client' | 'warehouse_manager';
 export type KycStatus = 'pending_verification' | 'verified' | 'rejected';
 export type PaymentMethod = 'cash' | 'check';
 export type OrderStatus =

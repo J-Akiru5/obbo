@@ -36,12 +36,17 @@ create table if not exists public.profiles (
   kyc_status                  text not null default 'pending_verification'
                                 check (kyc_status in ('pending_verification', 'verified', 'rejected')),
   -- Auth
-  role                        text not null default 'client' check (role in ('admin', 'client')),
+  role                        text not null default 'client' check (role in ('admin', 'client', 'warehouse_manager')),
   avatar_url                  text,
   -- Timestamps
   created_at                  timestamptz not null default now(),
   updated_at                  timestamptz not null default now()
 );
+
+-- Ensure role constraint includes warehouse_manager on existing databases
+alter table public.profiles drop constraint if exists profiles_role_check;
+alter table public.profiles
+  add constraint profiles_role_check check (role in ('admin', 'client', 'warehouse_manager'));
 
 -- ── Auto-create profile on signup ─────────────────────────────
 create or replace function public.handle_new_user()
@@ -201,7 +206,7 @@ create or replace function public.is_admin()
 returns boolean language sql security definer as $$
   select exists (
     select 1 from public.profiles
-    where id = auth.uid() and role = 'admin'
+    where id = auth.uid() and role in ('admin', 'warehouse_manager')
   );
 $$;
 
@@ -290,7 +295,7 @@ on conflict do nothing;
 -- (replace the email with yours) to grant yourself admin access:
 --
 -- update public.profiles
--- set role = 'admin', kyc_status = 'verified'
+-- set role = 'admin' or role = 'warehouse_manager', kyc_status = 'verified'
 -- where email = 'your-email@example.com';
 
 -- ── REALTIME PUBLICATIONS (optional) ────────────────────────
