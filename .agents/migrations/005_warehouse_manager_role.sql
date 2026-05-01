@@ -1,6 +1,6 @@
 -- ============================================================
--- OBBO iManage — Migration 004: Warehouse Manager Role
--- Run this in Supabase SQL Editor AFTER migration 003
+-- OBBO iManage — Migration 005: Warehouse Manager Role
+-- Run this in Supabase SQL Editor AFTER migration 004
 -- ============================================================
 
 -- ── PROFILES: extend role constraint ─────────────────────────

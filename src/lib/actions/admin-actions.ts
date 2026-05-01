@@ -18,6 +18,22 @@ async function requireAdmin() {
     return { supabase, userId: user.id };
 }
 
+// ─── Helper: ensure caller is admin only ────────────────────
+async function requireAdminOnly() {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error("Not authenticated");
+    const { data: profile } = await supabase
+        .from("profiles")
+        .select("role")
+        .eq("id", user.id)
+        .single();
+    if (profile?.role !== "admin") {
+        throw new Error("Forbidden");
+    }
+    return { supabase, userId: user.id };
+}
+
 // ─── Helper: audit log ──────────────────────────────────────
 async function logActivity(
     supabase: Awaited<ReturnType<typeof createClient>>,
@@ -43,12 +59,13 @@ async function logActivity(
 export async function fetchDashboardKPIs() {
     const { supabase } = await requireAdmin();
 
-    const [shipments, balances, pendingOrders, pendingKyc, activeClients] = await Promise.all([
+    const [shipments, balances, pendingOrders, pendingKyc, activeClients, pendingFulfillment] = await Promise.all([
         supabase.from("shipments").select("remaining_jb, remaining_sb, total_jb, total_sb"),
         supabase.from("customer_balances").select("bag_type, remaining_qty").eq("status", "pending"),
         supabase.from("orders").select("id", { count: "exact", head: true }).eq("status", "pending"),
         supabase.from("profiles").select("id", { count: "exact", head: true }).eq("kyc_status", "pending_verification").eq("role", "client"),
         supabase.from("profiles").select("id", { count: "exact", head: true }).eq("kyc_status", "verified").eq("role", "client"),
+        supabase.from("orders").select("id", { count: "exact", head: true }).in("status", ["approved", "partially_approved", "awaiting_check"]),
     ]);
 
     const totalJB = shipments.data?.reduce((s, r) => s + (r.remaining_jb ?? 0), 0) ?? 0;
@@ -66,6 +83,7 @@ export async function fetchDashboardKPIs() {
         pendingOrders: pendingOrders.count ?? 0,
         pendingKyc: pendingKyc.count ?? 0,
         activeClients: activeClients.count ?? 0,
+        pendingFulfillment: pendingFulfillment.count ?? 0,
     };
 }
 
@@ -459,6 +477,33 @@ export async function updateCustomerBalance(id: string, remaining_qty: number, s
         .eq("id", id);
     if (error) throw new Error(error.message);
     await logActivity(supabase, userId, "balance_updated", "customer_balances", id, { remaining_qty, status });
+    return { success: true };
+}
+
+// ═══════════════════════════════════════════════════════════════
+// PROFILES
+// ═══════════════════════════════════════════════════════════════
+
+export async function updateProfileRole(profileId: string, role: "client" | "warehouse_manager" | "admin") {
+    const { supabase, userId } = await requireAdminOnly();
+    const { data: target, error: targetError } = await supabase
+        .from("profiles")
+        .select("role")
+        .eq("id", profileId)
+        .single();
+    if (targetError) throw new Error(targetError.message);
+    if (!target || target.role === role) return { success: true };
+
+    const { error } = await supabase
+        .from("profiles")
+        .update({ role, updated_at: new Date().toISOString() })
+        .eq("id", profileId);
+    if (error) throw new Error(error.message);
+
+    await logActivity(supabase, userId, "profile_role_updated", "profile", profileId, {
+        from: target.role,
+        to: role,
+    });
     return { success: true };
 }
 

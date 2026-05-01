@@ -7,28 +7,64 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Edit, Package } from "lucide-react";
+import { Edit, Package, UploadCloud } from "lucide-react";
+import { createClient } from "@/lib/supabase/client";
+import { toast } from "sonner";
 
 export function ProductCatalogTab({ products, onUpdate, loading }: { products: Product[], onUpdate: (id: string, updates: any) => Promise<void>, loading: boolean }) {
     const [editingProduct, setEditingProduct] = useState<Product | null>(null);
     const [editPrices, setEditPrices] = useState({ port: 0, warehouse: 0 });
+    const [imageFile, setImageFile] = useState<File | null>(null);
     const [isSaving, setIsSaving] = useState(false);
+    const [isUploadingImage, setIsUploadingImage] = useState(false);
 
     const openEdit = (product: Product) => {
         setEditingProduct(product);
         setEditPrices({ port: product.price_port ?? product.price_per_bag, warehouse: product.price_warehouse ?? product.price_per_bag });
+        setImageFile(null);
+    };
+
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files && e.target.files.length > 0) {
+            setImageFile(e.target.files[0]);
+        }
     };
 
     const handleSave = async () => {
         if (!editingProduct) return;
         setIsSaving(true);
-        await onUpdate(editingProduct.id, {
-            price_port: editPrices.port,
-            price_warehouse: editPrices.warehouse,
-            price_per_bag: editPrices.warehouse // Fallback for legacy
-        });
-        setIsSaving(false);
-        setEditingProduct(null);
+        try {
+            let newImageUrl = editingProduct.image_url;
+
+            if (imageFile) {
+                setIsUploadingImage(true);
+                const supabase = createClient();
+                const fileExt = imageFile.name.split('.').pop();
+                const fileName = `product_${editingProduct.id}_${Date.now()}.${fileExt}`;
+                const { error: uploadError } = await supabase.storage
+                    .from('product-images')
+                    .upload(fileName, imageFile);
+
+                if (uploadError) throw new Error("Failed to upload image.");
+                const { data: { publicUrl } } = supabase.storage.from('product-images').getPublicUrl(fileName);
+                newImageUrl = publicUrl;
+                setIsUploadingImage(false);
+            }
+
+            await onUpdate(editingProduct.id, {
+                price_port: editPrices.port,
+                price_warehouse: editPrices.warehouse,
+                price_per_bag: editPrices.warehouse, // Fallback for legacy
+                image_url: newImageUrl
+            });
+            toast.success("Product updated successfully.");
+            setEditingProduct(null);
+        } catch (err: any) {
+            toast.error(err.message || "Failed to update product.");
+        } finally {
+            setIsSaving(false);
+            setIsUploadingImage(false);
+        }
     };
 
     const toggleActive = async (product: Product) => {
@@ -126,6 +162,22 @@ export function ProductCatalogTab({ products, onUpdate, loading }: { products: P
                                 value={editPrices.warehouse} 
                                 onChange={(e) => setEditPrices({ ...editPrices, warehouse: Number(e.target.value) })} 
                             />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="productImage">Product Image</Label>
+                            <div className="rounded-lg border border-dashed border-border p-3">
+                                <label htmlFor="productImage" className="flex cursor-pointer items-center gap-2 text-sm text-muted-foreground">
+                                    <UploadCloud className="h-4 w-4" />
+                                    {imageFile ? imageFile.name : (editingProduct?.image_url ? "Replace existing image" : "Upload new image")}
+                                </label>
+                                <Input
+                                    id="productImage"
+                                    type="file"
+                                    accept="image/*"
+                                    className="mt-2"
+                                    onChange={handleFileChange}
+                                />
+                            </div>
                         </div>
                     </div>
                     <DialogFooter>

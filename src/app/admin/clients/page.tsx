@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import {
     UserCheck, Eye, Building2, Phone, Mail,
-    CheckCircle2, XCircle, Users, Loader2, ShieldAlert, ChevronRight,
+    CheckCircle2, XCircle, Users, Loader2, ShieldAlert, Shield, ChevronRight,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -17,7 +17,7 @@ import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
 import type { Profile } from "@/lib/types/database";
-import { updateCustomerBalance } from "@/lib/actions/admin-actions";
+import { updateCustomerBalance, updateProfileRole } from "@/lib/actions/admin-actions";
 import { Input } from "@/components/ui/input";
 
 function KycBadge({ status }: { status: string }) {
@@ -93,12 +93,25 @@ function KycDialog({
     );
 }
 
-function ClientDetailDialog({ profile, open, onClose }: { profile: Profile | null; open: boolean; onClose: () => void }) {
+function ClientDetailDialog({
+    profile,
+    open,
+    onClose,
+    onRoleUpdated,
+    canManageRoles,
+}: {
+    profile: Profile | null;
+    open: boolean;
+    onClose: () => void;
+    onRoleUpdated?: () => void;
+    canManageRoles: boolean;
+}) {
     const [orders, setOrders] = useState<Array<{ id: string; total_amount: number; status: string; created_at: string }>>([]);
     const [balances, setBalances] = useState<Array<{ id: string; remaining_qty: number; bag_type: string; status: string; product?: { name: string } }>>([]);
     const [editingBalanceId, setEditingBalanceId] = useState<string | null>(null);
     const [editQty, setEditQty] = useState<number>(0);
     const [isSaving, setIsSaving] = useState(false);
+    const [isPromoting, setIsPromoting] = useState(false);
 
     useEffect(() => {
         if (!profile || !open) return;
@@ -124,6 +137,25 @@ function ClientDetailDialog({ profile, open, onClose }: { profile: Profile | nul
         }
     };
 
+    const handlePromoteRole = async () => {
+        if (!profile) return;
+        const confirmPromote = confirm(
+            `Promote ${profile.full_name} to Warehouse Manager? They will gain admin-level access.`
+        );
+        if (!confirmPromote) return;
+        setIsPromoting(true);
+        try {
+            await updateProfileRole(profile.id, "warehouse_manager");
+            toast.success(`${profile.full_name} is now a Warehouse Manager.`);
+            onRoleUpdated?.();
+            onClose();
+        } catch {
+            toast.error("Failed to update role.");
+        } finally {
+            setIsPromoting(false);
+        }
+    };
+
     if (!profile) return null;
     const initials = getInitials(profile.full_name);
     return (
@@ -135,6 +167,29 @@ function ClientDetailDialog({ profile, open, onClose }: { profile: Profile | nul
                         <Avatar className="w-12 h-12"><AvatarFallback className="text-sm font-bold bg-[var(--color-industrial-blue)] text-white">{initials}</AvatarFallback></Avatar>
                         <div><p className="font-bold">{profile.full_name}</p><p className="text-sm text-muted-foreground">{profile.company_name || "Individual"}</p><p className="text-xs text-muted-foreground">{profile.email}</p></div>
                     </div>
+                    {canManageRoles && profile.role === "client" && profile.kyc_status === "verified" && (
+                        <div className="border rounded-lg p-3 bg-muted/30">
+                            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                                <div>
+                                    <p className="text-sm font-semibold flex items-center gap-2">
+                                        <Shield className="w-4 h-4 text-[var(--color-industrial-blue)]" /> Role Assignment
+                                    </p>
+                                    <p className="text-xs text-muted-foreground mt-1">
+                                        Promote verified clients to Warehouse Manager for full operational access.
+                                    </p>
+                                </div>
+                                <Button
+                                    size="sm"
+                                    className="bg-[var(--color-industrial-blue)] hover:bg-[var(--color-industrial-blue)]/90"
+                                    onClick={handlePromoteRole}
+                                    disabled={isPromoting}
+                                >
+                                    {isPromoting ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Shield className="w-4 h-4 mr-1" />}
+                                    Promote
+                                </Button>
+                            </div>
+                        </div>
+                    )}
                     {balances.length > 0 && (
                         <div>
                             <p className="text-sm font-semibold mb-2 flex items-center gap-2"><ShieldAlert className="w-4 h-4 text-amber-500" />Outstanding Balances</p>
@@ -188,6 +243,7 @@ export default function AdminClientsPage() {
     const [kycOpen, setKycOpen] = useState(false);
     const [detailTarget, setDetailTarget] = useState<Profile | null>(null);
     const [detailOpen, setDetailOpen] = useState(false);
+    const [currentUserRole, setCurrentUserRole] = useState<string | null>(null);
 
     const fetchProfiles = useCallback(async () => {
         const supabase = createClient();
@@ -197,6 +253,20 @@ export default function AdminClientsPage() {
     }, []);
 
     useEffect(() => { fetchProfiles(); }, [fetchProfiles]);
+    useEffect(() => {
+        const loadCurrentRole = async () => {
+            const supabase = createClient();
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) return;
+            const { data } = await supabase
+                .from("profiles")
+                .select("role")
+                .eq("id", user.id)
+                .single();
+            setCurrentUserRole(data?.role ?? null);
+        };
+        loadCurrentRole();
+    }, []);
 
     async function handleKycAction(id: string, status: "verified" | "rejected") {
         const supabase = createClient();
@@ -220,6 +290,7 @@ export default function AdminClientsPage() {
 
     const pending = profiles.filter((p) => p.kyc_status === "pending_verification");
     const verified = profiles.filter((p) => p.kyc_status === "verified");
+    const canManageRoles = currentUserRole === "admin";
 
     return (
         <div className="space-y-4">
@@ -310,7 +381,13 @@ export default function AdminClientsPage() {
             )}
 
             <KycDialog profile={kycTarget} open={kycOpen} onClose={() => setKycOpen(false)} onAction={handleKycAction} />
-            <ClientDetailDialog profile={detailTarget} open={detailOpen} onClose={() => setDetailOpen(false)} />
+            <ClientDetailDialog
+                profile={detailTarget}
+                open={detailOpen}
+                onClose={() => setDetailOpen(false)}
+                onRoleUpdated={fetchProfiles}
+                canManageRoles={canManageRoles}
+            />
         </div>
     );
 }
