@@ -88,8 +88,8 @@ function SidebarContent({ pathname, onNavigate, adminName, adminInitials }: { pa
         <div className="flex flex-col h-full">
             {/* Logo */}
             <div className="flex items-center gap-2.5 px-5 h-16 border-b border-sidebar-border">
-                <div className="w-8 h-8 rounded-lg bg-[var(--color-industrial-yellow)] flex items-center justify-center">
-                    <Package className="w-4 h-4 text-[var(--color-industrial-blue)]" />
+                <div className="w-8 h-8 flex items-center justify-center">
+                    <img src="/logo.png" alt="OBBO Logo" className="w-full h-full object-contain" />
                 </div>
                 <span className="text-lg font-bold text-sidebar-foreground tracking-tight">
                     OBBO <span className="font-light opacity-70">iManage</span>

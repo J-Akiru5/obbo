@@ -30,8 +30,8 @@ function Navbar() {
     <nav className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-lg border-b border-border">
       <div className="max-w-7xl mx-auto flex items-center justify-between px-4 sm:px-6 lg:px-8 h-16">
         <Link href="/" className="flex items-center gap-2 group">
-          <div className="w-9 h-9 rounded-lg bg-[var(--color-industrial-blue)] flex items-center justify-center transition-transform duration-300 group-hover:scale-110 group-hover:rotate-3">
-            <Package className="w-5 h-5 text-white" />
+          <div className="w-9 h-9 flex items-center justify-center transition-transform duration-300 group-hover:scale-110 group-hover:rotate-3">
+            <Image src="/logo.png" alt="OBBO iManage Logo" width={36} height={36} className="object-contain" />
           </div>
           <span className="text-xl font-bold tracking-tight text-[var(--color-industrial-blue)]">
             OBBO <span className="font-light">iManage</span>
@@ -319,8 +319,8 @@ function Footer() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex flex-col md:flex-row justify-between items-center gap-6">
           <div className="flex items-center gap-2 group">
-            <div className="w-8 h-8 rounded-lg bg-[var(--color-industrial-yellow)]/20 flex items-center justify-center transition-transform duration-300 group-hover:scale-110 group-hover:rotate-6">
-              <Package className="w-4 h-4 text-[var(--color-industrial-yellow)]" />
+            <div className="w-8 h-8 flex items-center justify-center transition-transform duration-300 group-hover:scale-110 group-hover:rotate-6">
+              <Image src="/logo.png" alt="OBBO iManage Logo" width={32} height={32} className="object-contain" />
             </div>
             <span className="text-lg font-bold text-white/80">OBBO iManage</span>
           </div>

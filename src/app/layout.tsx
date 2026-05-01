@@ -17,6 +17,16 @@ export const metadata: Metadata = {
   title: "OBBO iManage — Digitizing Cement Distribution",
   description:
     "Cloud-based ordering, inventory, and sales solution for cement distribution. Real-time tracking, secure ordering, transparent delivery management.",
+  openGraph: {
+    images: [
+      {
+        url: "/og-image.png",
+        width: 1200,
+        height: 630,
+        alt: "OBBO iManage",
+      },
+    ],
+  },
 };
 
 export default function RootLayout({

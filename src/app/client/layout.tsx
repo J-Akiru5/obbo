@@ -33,8 +33,8 @@ function SidebarContent({ pathname, onNavigate }: { pathname: string; onNavigate
   return (
     <div className="flex h-full flex-col">
       <div className="flex h-16 items-center gap-2.5 border-b border-sidebar-border px-5">
-        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[var(--color-industrial-yellow)]">
-          <Package className="h-5 w-5 text-[var(--color-industrial-blue)]" />
+        <div className="flex h-9 w-9 items-center justify-center">
+          <img src="/logo.png" alt="OBBO Logo" className="h-full w-full object-contain" />
         </div>
         <div>
           <p className="text-base font-bold tracking-tight text-sidebar-foreground">OBBO iManage</p>
@@ -101,8 +101,8 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
             </Sheet>
 
             <Link href="/client/dashboard" className="flex items-center gap-2 lg:hidden">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--color-industrial-blue)]">
-                <Package className="h-4 w-4 text-white" />
+              <div className="flex h-8 w-8 items-center justify-center">
+                <img src="/logo.png" alt="OBBO Logo" className="h-full w-full object-contain" />
               </div>
               <span className="text-sm font-bold text-[var(--color-industrial-blue)]">OBBO</span>
             </Link>
