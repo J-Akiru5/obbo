@@ -31,7 +31,7 @@ function Navbar() {
       <div className="max-w-7xl mx-auto flex items-center justify-between px-4 sm:px-6 lg:px-8 h-16">
         <Link href="/" className="flex items-center gap-2 group">
           <div className="w-9 h-9 flex items-center justify-center transition-transform duration-300 group-hover:scale-110 group-hover:rotate-3">
-            <Image src="/obbo.gif" alt="OBBO iManage Logo" width={36} height={36} className="object-contain" />
+            <Image src="/logo.jpg" alt="OBBO iManage Logo" width={36} height={36} className="object-contain" />
           </div>
           <span className="text-xl font-bold tracking-tight text-[var(--color-industrial-blue)]">
             OBBO <span className="font-light">iManage</span>
@@ -135,6 +135,17 @@ function Hero() {
                 />
                 {/* Overlay gradient */}
                 <div className="absolute inset-0 bg-gradient-to-t from-[var(--color-industrial-blue)]/40 to-transparent" />
+              </div>
+              {/* Mascot Overlay */}
+              <div className="absolute -bottom-16 -right-12 z-30 w-72 h-72 drop-shadow-2xl">
+                <Image
+                  src="/obbo.gif"
+                  alt="OBBO Mascot"
+                  width={288}
+                  height={288}
+                  className="w-full h-full object-contain"
+                  unoptimized
+                />
               </div>
             </div>
           </div>
@@ -320,7 +331,7 @@ function Footer() {
         <div className="flex flex-col md:flex-row justify-between items-center gap-6">
           <div className="flex items-center gap-2 group">
             <div className="w-8 h-8 flex items-center justify-center transition-transform duration-300 group-hover:scale-110 group-hover:rotate-6">
-              <Image src="/obbo.gif" alt="OBBO iManage Logo" width={32} height={32} className="object-contain" />
+              <Image src="/logo.jpg" alt="OBBO iManage Logo" width={32} height={32} className="object-contain" />
             </div>
             <span className="text-lg font-bold text-white/80">OBBO iManage</span>
           </div>
