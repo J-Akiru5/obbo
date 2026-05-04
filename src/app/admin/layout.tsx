@@ -41,8 +41,10 @@ const navItems = [
         label: "Orders", 
         icon: ShoppingCart,
         subItems: [
-            { href: "/admin/orders", label: "Order Pipeline" },
-            { href: "/admin/orders", label: "Product Catalog" }
+            { href: "/admin/orders?tab=new", label: "New Requests" },
+            { href: "/admin/orders?tab=fulfillment", label: "Fulfillment" },
+            { href: "/admin/orders?tab=tracking", label: "Tracking" },
+            { href: "/admin/orders?tab=catalog", label: "Product Catalog" }
         ]
     },
     { 
@@ -50,10 +52,10 @@ const navItems = [
         label: "Inventory", 
         icon: Warehouse,
         subItems: [
-            { href: "/admin/inventory", label: "Shipments" },
-            { href: "/admin/inventory", label: "P.O. List" },
-            { href: "/admin/inventory", label: "D.R. List" },
-            { href: "/admin/inventory", label: "Reports" }
+            { href: "/admin/inventory?tab=shipments", label: "Shipments" },
+            { href: "/admin/inventory?tab=po", label: "P.O. List" },
+            { href: "/admin/inventory?tab=dr", label: "D.R. List" },
+            { href: "/admin/inventory?tab=reports", label: "Reports" }
         ]
     },
     { 
@@ -61,8 +63,8 @@ const navItems = [
         label: "Clients", 
         icon: Users,
         subItems: [
-            { href: "/admin/clients", label: "Directory" },
-            { href: "/admin/clients", label: "KYC Approvals" }
+            { href: "/admin/clients?tab=directory", label: "Directory" },
+            { href: "/admin/clients?tab=kyc", label: "KYC Approvals" }
         ]
     },
 ];

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, Suspense } from "react";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { fetchOrders, fetchProducts, updateProduct, approveOrder, rejectOrder, finalConfirmCheck, dispatchOrder, updateTrackingStatus, fetchShipments } from "@/lib/actions/admin-actions";
 import { ProductCatalogTab } from "./components/product-catalog-tab";
@@ -15,6 +15,8 @@ import { createClient } from "@/lib/supabase/client";
 
 function OrdersContent() {
     const searchParams = useSearchParams();
+    const router = useRouter();
+    const pathname = usePathname();
     const [activeTab, setActiveTab] = useState(searchParams.get("tab") || "new");
     const [orders, setOrders] = useState<Order[]>([]);
     const [products, setProducts] = useState<Product[]>([]);
@@ -40,6 +42,13 @@ function OrdersContent() {
     };
 
     useEffect(() => {
+        const tab = searchParams.get("tab");
+        if (tab && tab !== activeTab) {
+            setActiveTab(tab);
+        }
+    }, [searchParams, activeTab]);
+
+    useEffect(() => {
         loadData();
 
         const supabase = createClient();
@@ -57,6 +66,11 @@ function OrdersContent() {
             supabase.removeChannel(channel);
         };
     }, []);
+
+    const handleTabChange = (val: string) => {
+        setActiveTab(val);
+        router.push(`${pathname}?tab=${val}`);
+    };
 
     const handleProductUpdate = async (id: string, updates: any) => {
         try {
@@ -125,7 +139,7 @@ function OrdersContent() {
                 <p className="text-muted-foreground mt-1">Manage the complete lifecycle of client orders.</p>
             </div>
 
-            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+            <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
                 <TabsList className="grid w-full grid-cols-5 h-auto">
                     <TabsTrigger value="catalog" className="py-2.5">Products</TabsTrigger>
                     <TabsTrigger value="new" className="py-2.5">
