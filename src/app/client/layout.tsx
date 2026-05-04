@@ -20,6 +20,7 @@ import {
   Info,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import type { Notification } from "@/lib/types/database";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -88,7 +89,7 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
-  const [notifications, setNotifications] = useState<any[]>([]);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
   const [notifOpen, setNotifOpen] = useState(false);
 
   const loadNotifications = useCallback(async () => {
@@ -170,14 +171,14 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
           </div>
 
           <div className="flex items-center gap-2">
-            <Popover open={notifOpen} onOpenChange={setNotifOpen}>
-              <PopoverTrigger render={<button type="button" className="relative inline-flex h-8 w-8 items-center justify-center rounded-md hover:bg-muted" />}>
-                  <Bell className="h-4 w-4" />
-                  {unreadCount > 0 && (
-                    <span className="absolute -right-0.5 -top-0.5 h-4 w-4 rounded-full bg-[var(--color-industrial-yellow)] text-[10px] font-bold text-[var(--color-industrial-blue)] flex items-center justify-center">
-                      {unreadCount > 9 ? '9+' : unreadCount}
-                    </span>
-                  )}
+            <Popover open={notifOpen} onOpenChange={(open) => { setNotifOpen(open); if (open && unreadCount > 0) markAllRead(); }}>
+              <PopoverTrigger className="relative inline-flex h-8 w-8 items-center justify-center rounded-md hover:bg-muted">
+                <Bell className="h-4 w-4" />
+                {unreadCount > 0 && (
+                  <span className="absolute -right-0.5 -top-0.5 h-4 w-4 rounded-full bg-[var(--color-industrial-yellow)] text-[10px] font-bold text-[var(--color-industrial-blue)] flex items-center justify-center">
+                    {unreadCount > 9 ? "9+" : unreadCount}
+                  </span>
+                )}
               </PopoverTrigger>
               <PopoverContent align="end" className="w-80 p-0">
                 <div className="flex items-center justify-between p-3 border-b">
