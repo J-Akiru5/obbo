@@ -3,7 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
 import {
@@ -258,13 +258,15 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     return (
         <div className="min-h-screen flex bg-muted/30">
             <aside className="hidden lg:flex lg:w-64 flex-col bg-sidebar border-r border-sidebar-border fixed inset-y-0 left-0 z-40">
-                <SidebarContent
-                    pathname={pathname}
-                    items={role === "warehouse_manager" ? warehouseNavItems : adminNavItems}
-                    adminName={adminName}
-                    adminInitials={adminInitials}
-                    roleLabel={role === "warehouse_manager" ? "Warehouse Manager" : "Administrator"}
-                />
+                <Suspense fallback={<div className="flex-1 bg-sidebar" />}>
+                    <SidebarContent
+                        pathname={pathname}
+                        items={role === "warehouse_manager" ? warehouseNavItems : adminNavItems}
+                        adminName={adminName}
+                        adminInitials={adminInitials}
+                        roleLabel={role === "warehouse_manager" ? "Warehouse Manager" : "Administrator"}
+                    />
+                </Suspense>
             </aside>
 
             <div className="flex-1 lg:ml-64 flex flex-col min-h-screen">
@@ -277,12 +279,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                                 <Menu className="w-5 h-5" />
                             </SheetTrigger>
                             <SheetContent side="left" className="w-64 p-0 bg-sidebar border-r border-sidebar-border">
-                                <SidebarContent
-                                    pathname={pathname}
-                                    items={role === "warehouse_manager" ? warehouseNavItems : adminNavItems}
-                                    onNavigate={() => setMobileOpen(false)}
-                                    roleLabel={role === "warehouse_manager" ? "Warehouse Manager" : "Administrator"}
-                                />
+                                <Suspense fallback={<div className="flex-1 bg-sidebar" />}>
+                                    <SidebarContent
+                                        pathname={pathname}
+                                        items={role === "warehouse_manager" ? warehouseNavItems : adminNavItems}
+                                        onNavigate={() => setMobileOpen(false)}
+                                        roleLabel={role === "warehouse_manager" ? "Warehouse Manager" : "Administrator"}
+                                    />
+                                </Suspense>
                             </SheetContent>
                         </Sheet>
 
