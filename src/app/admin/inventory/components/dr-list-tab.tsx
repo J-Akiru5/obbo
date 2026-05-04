@@ -5,12 +5,13 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Search, Edit2, Trash2 } from "lucide-react";
+import { Plus, Search, Edit2, Trash2, UploadCloud, CheckCircle2, X, FileImage } from "lucide-react";
 import { createDeliveryReceipt, updateDeliveryReceipt, deleteDeliveryReceipt } from "@/lib/actions/admin-actions";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { createClient } from "@/lib/supabase/client";
 
 export function DrListTab({ deliveryReceipts, shipments, loading, onReload }: { deliveryReceipts: DeliveryReceipt[], shipments: Shipment[], loading: boolean, onReload: () => void }) {
     const [searchQuery, setSearchQuery] = useState("");
@@ -28,11 +29,12 @@ export function DrListTab({ deliveryReceipts, shipments, loading, onReload }: { 
     const [driver, setDriver] = useState("");
     const [plateNumber, setPlateNumber] = useState("");
     const [shippingFee, setShippingFee] = useState(0);
+    const [photoFile, setPhotoFile] = useState<File | null>(null);
 
     const openCreate = () => {
         setEditingDr(null);
         setDrNumber(""); setShipmentId(""); setClientName(""); setPoNumber("");
-        setJb(0); setSb(0); setDriver(""); setPlateNumber(""); setShippingFee(0);
+        setJb(0); setSb(0); setDriver(""); setPlateNumber(""); setShippingFee(0); setPhotoFile(null);
         setIsDialogOpen(true);
     };
 
@@ -40,6 +42,7 @@ export function DrListTab({ deliveryReceipts, shipments, loading, onReload }: { 
         setEditingDr(dr);
         setDrNumber(dr.dr_number); setShipmentId(dr.shipment_id); setClientName(dr.client_name || ""); setPoNumber(dr.po_number || "");
         setJb(dr.jb); setSb(dr.sb); setDriver(dr.driver || ""); setPlateNumber(dr.plate_number || ""); setShippingFee(dr.shipping_fee || 0);
+        setPhotoFile(null);
         setIsDialogOpen(true);
     };
 
@@ -47,20 +50,40 @@ export function DrListTab({ deliveryReceipts, shipments, loading, onReload }: { 
         if (!drNumber || !shipmentId) return toast.error("DR Number and Shipment Batch are required");
         setIsSubmitting(true);
         try {
+            // Upload DR photo if provided
+            let drImageUrl: string | undefined = editingDr?.dr_image_url ?? undefined;
+            if (photoFile) {
+                const supabase = createClient();
+                const ext = photoFile.name.split(".").pop();
+                const fileName = `dr_${drNumber.replace(/\//g, "-")}_${Date.now()}.${ext}`;
+                const { error: uploadError } = await supabase.storage
+                    .from("order-attachments")
+                    .upload(fileName, photoFile, { upsert: true });
+                if (!uploadError) {
+                    const { data: { publicUrl } } = supabase.storage
+                        .from("order-attachments")
+                        .getPublicUrl(fileName);
+                    drImageUrl = publicUrl;
+                }
+            }
+
             if (editingDr) {
-                await updateDeliveryReceipt(editingDr.id, { 
-                    dr_number: drNumber, shipment_id: shipmentId, client_name: clientName, 
-                    po_number: poNumber, jb, sb, driver, plate_number: plateNumber, shipping_fee: shippingFee 
+                await updateDeliveryReceipt(editingDr.id, {
+                    dr_number: drNumber, shipment_id: shipmentId, client_name: clientName,
+                    po_number: poNumber, jb, sb, driver, plate_number: plateNumber, shipping_fee: shippingFee,
+                    ...(drImageUrl ? { dr_image_url: drImageUrl } : {}),
                 });
                 toast.success("DR updated");
             } else {
-                await createDeliveryReceipt({ 
-                    dr_number: drNumber, shipment_id: shipmentId, client_name: clientName, 
-                    po_number: poNumber, jb, sb, driver, plate_number: plateNumber, shipping_fee: shippingFee 
+                await createDeliveryReceipt({
+                    dr_number: drNumber, shipment_id: shipmentId, client_name: clientName,
+                    po_number: poNumber, jb, sb, driver, plate_number: plateNumber, shipping_fee: shippingFee,
+                    ...(drImageUrl ? { dr_image_url: drImageUrl } as any : {}),
                 });
                 toast.success("DR created and ledger updated");
             }
             setIsDialogOpen(false);
+            setPhotoFile(null);
             onReload();
         } catch (e: any) {
             toast.error(e.message || "Failed to save DR");
@@ -80,8 +103,8 @@ export function DrListTab({ deliveryReceipts, shipments, loading, onReload }: { 
         }
     };
 
-    const filtered = deliveryReceipts.filter(dr => 
-        dr.dr_number.toLowerCase().includes(searchQuery.toLowerCase()) || 
+    const filtered = deliveryReceipts.filter(dr =>
+        dr.dr_number.toLowerCase().includes(searchQuery.toLowerCase()) ||
         (dr.client_name || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
         (dr.po_number || "").toLowerCase().includes(searchQuery.toLowerCase())
     );
@@ -109,12 +132,13 @@ export function DrListTab({ deliveryReceipts, shipments, loading, onReload }: { 
                                 <TableHead>Client / PO</TableHead>
                                 <TableHead>Driver Info</TableHead>
                                 <TableHead>Quantities</TableHead>
+                                <TableHead>Photo</TableHead>
                                 <TableHead className="text-right">Actions</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
                             {filtered.length === 0 ? (
-                                <TableRow><TableCell colSpan={7} className="text-center py-6 text-muted-foreground">No delivery receipts found.</TableCell></TableRow>
+                                <TableRow><TableCell colSpan={8} className="text-center py-6 text-muted-foreground">No delivery receipts found.</TableCell></TableRow>
                             ) : filtered.map(dr => (
                                 <TableRow key={dr.id}>
                                     <TableCell className="text-sm">{new Date(dr.received_date).toLocaleDateString()}</TableCell>
@@ -136,6 +160,15 @@ export function DrListTab({ deliveryReceipts, shipments, loading, onReload }: { 
                                             <Badge variant="outline" className="text-xs">{dr.sb} SB</Badge>
                                         </div>
                                     </TableCell>
+                                    <TableCell>
+                                        {dr.dr_image_url ? (
+                                            <a href={dr.dr_image_url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs text-blue-600 hover:underline">
+                                                <FileImage className="w-3.5 h-3.5" /> View
+                                            </a>
+                                        ) : (
+                                            <span className="text-xs text-muted-foreground">—</span>
+                                        )}
+                                    </TableCell>
                                     <TableCell className="text-right">
                                         <Button variant="ghost" size="icon" onClick={() => openEdit(dr)} className="h-8 w-8 text-blue-600 hover:text-blue-700 hover:bg-blue-50"><Edit2 className="w-4 h-4" /></Button>
                                         <Button variant="ghost" size="icon" onClick={() => handleDelete(dr.id)} className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"><Trash2 className="w-4 h-4" /></Button>
@@ -147,7 +180,7 @@ export function DrListTab({ deliveryReceipts, shipments, loading, onReload }: { 
                 </div>
             </CardContent>
 
-            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <Dialog open={isDialogOpen} onOpenChange={(open) => { setIsDialogOpen(open); if (!open) setPhotoFile(null); }}>
                 <DialogContent className="max-w-md">
                     <DialogHeader>
                         <DialogTitle>{editingDr ? "Edit Delivery Receipt" : "Add Delivery Receipt"}</DialogTitle>
@@ -198,6 +231,51 @@ export function DrListTab({ deliveryReceipts, shipments, loading, onReload }: { 
                                 <Label>Plate Number</Label>
                                 <Input value={plateNumber} onChange={e => setPlateNumber(e.target.value)} />
                             </div>
+                        </div>
+                        <div className="space-y-2">
+                            <Label>Shipping Fee (₱)</Label>
+                            <Input type="number" min="0" value={shippingFee} onChange={e => setShippingFee(parseFloat(e.target.value) || 0)} />
+                        </div>
+
+                        {/* Photo Upload */}
+                        <div className="space-y-2">
+                            <Label>
+                                DR Photo <span className="text-muted-foreground text-xs">(optional)</span>
+                            </Label>
+                            {editingDr?.dr_image_url && !photoFile && (
+                                <div className="flex items-center gap-2 text-xs text-blue-600">
+                                    <FileImage className="w-3.5 h-3.5" />
+                                    <a href={editingDr.dr_image_url} target="_blank" rel="noreferrer" className="hover:underline">
+                                        View current photo
+                                    </a>
+                                    <span className="text-muted-foreground">— upload a new one to replace</span>
+                                </div>
+                            )}
+                            {photoFile ? (
+                                <div className="flex items-center gap-3 p-3 border border-emerald-200 bg-emerald-50 rounded-lg">
+                                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                                    <span className="text-sm text-emerald-800 flex-1 truncate">{photoFile.name}</span>
+                                    <button type="button" onClick={() => setPhotoFile(null)} className="text-emerald-700 hover:text-red-600">
+                                        <X className="w-4 h-4" />
+                                    </button>
+                                </div>
+                            ) : (
+                                <div
+                                    className="border-2 border-dashed border-border rounded-lg p-4 text-center cursor-pointer hover:border-[var(--color-industrial-blue)]/50 hover:bg-muted/30 transition-colors"
+                                    onClick={() => document.getElementById("dr-photo-upload")?.click()}
+                                >
+                                    <UploadCloud className="w-6 h-6 mx-auto mb-1 text-muted-foreground" />
+                                    <p className="text-xs text-muted-foreground">Click to attach DR photo</p>
+                                    <p className="text-[10px] text-muted-foreground/60 mt-0.5">JPG, PNG, PDF</p>
+                                    <input
+                                        id="dr-photo-upload"
+                                        type="file"
+                                        className="hidden"
+                                        accept="image/*,.pdf"
+                                        onChange={(e) => setPhotoFile(e.target.files?.[0] || null)}
+                                    />
+                                </div>
+                            )}
                         </div>
                     </div>
                     <DialogFooter>

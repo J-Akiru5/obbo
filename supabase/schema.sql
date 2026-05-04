@@ -290,6 +290,51 @@ insert into public.products (name, description, bag_type, price_per_bag, is_acti
   ('Blended Cement Premium',         'High-performance blended cement for specialized structural work. 40kg per bag.',     'SB', 290,  true)
 on conflict do nothing;
 
+-- ── PORT/WAREHOUSE PRICING ──────────────────────────────────
+ALTER TABLE public.products ADD COLUMN IF NOT EXISTS price_port numeric(12,2);
+ALTER TABLE public.products ADD COLUMN IF NOT EXISTS price_warehouse numeric(12,2);
+
+-- Back-fill: default port/warehouse prices from price_per_bag
+UPDATE public.products
+SET price_port = price_per_bag, price_warehouse = price_per_bag
+WHERE price_port IS NULL OR price_warehouse IS NULL;
+
+-- ── SPLIT DELIVERY & ORDER TYPE FIELDS ──────────────────────
+ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS is_split_delivery boolean NOT NULL DEFAULT false;
+ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS deliver_now_qty integer DEFAULT 0;
+ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS supplier_name text;
+ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS preferred_pickup_date date;
+ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS order_type text NOT NULL DEFAULT 'new';
+ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS linked_po_number text;
+
+-- Safe constraint (drop + re-add to be idempotent)
+ALTER TABLE public.orders DROP CONSTRAINT IF EXISTS orders_order_type_check;
+ALTER TABLE public.orders ADD CONSTRAINT orders_order_type_check CHECK (order_type IN ('new', 'redelivery', 'draft'));
+
+-- ── NOTIFICATIONS ───────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS public.notifications (
+  id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id     uuid NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  title       text NOT NULL,
+  message     text NOT NULL,
+  href        text,
+  severity    text NOT NULL DEFAULT 'info' CHECK (severity IN ('info','warning','success')),
+  is_read     boolean NOT NULL DEFAULT false,
+  created_at  timestamptz NOT NULL DEFAULT now()
+);
+
+ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "notifications: own read" ON public.notifications;
+DROP POLICY IF EXISTS "notifications: own update" ON public.notifications;
+DROP POLICY IF EXISTS "notifications: admin insert" ON public.notifications;
+CREATE POLICY "notifications: own read"   ON public.notifications FOR SELECT USING (user_id = auth.uid());
+CREATE POLICY "notifications: own update" ON public.notifications FOR UPDATE USING (user_id = auth.uid());
+CREATE POLICY "notifications: admin insert" ON public.notifications FOR INSERT WITH CHECK (public.is_admin());
+
+-- ── NOTIFICATION PREFERENCES (on profiles) ──────────────────
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS notification_preferences jsonb DEFAULT '{"order_approval": true, "payment_required": true, "dispatch": true, "delivery_status": true}'::jsonb;
+
 -- ── PROMOTE ADMIN ─────────────────────────────────────────────
 -- After signing up via the /register page, run the line below
 -- (replace the email with yours) to grant yourself admin access:
@@ -303,3 +348,4 @@ on conflict do nothing;
 -- alter publication supabase_realtime add table public.orders;
 -- alter publication supabase_realtime add table public.activity_log;
 -- alter publication supabase_realtime add table public.profiles;
+-- alter publication supabase_realtime add table public.notifications;

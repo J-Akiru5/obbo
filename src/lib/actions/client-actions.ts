@@ -27,14 +27,15 @@ async function requireClient() {
 // ═══════════════════════════════════════════════════════════════
 
 export async function fetchClientDashboardKPIs() {
-    const { supabase, user } = await requireClient();
+    const { supabase, user, profile } = await requireClient();
 
     // Pending Orders (pending, partially_approved, awaiting_check)
     const { count: pendingOrders } = await supabase
         .from("orders")
         .select("*", { count: "exact", head: true })
         .eq("client_id", user.id)
-        .in("status", ["pending", "partially_approved", "awaiting_check"]);
+        .in("status", ["pending", "partially_approved", "awaiting_check"])
+        .neq("order_type", "draft");
 
     // Active Shipments (dispatched, in_transit)
     const { count: activeShipments } = await supabase
@@ -53,24 +54,15 @@ export async function fetchClientDashboardKPIs() {
 
     let remainingBags = 0;
     if (balances) {
-        remainingBags = balances.reduce((acc, b) => {
-            // Note: If bag_type is JB, we might multiply by 40, but the requirement said:
-            // "JB x 25 + SB x 50" if the client enters JB/SB.
-            // However, customer balances just stores 'remaining_qty' and 'bag_type'.
-            // Let's just sum up remaining_qty as individual items for now, or apply the formula if we know the bag type.
-            // Let's assume remaining_qty is already in individual bags if that's how it's stored, or it's in Jumbo bags.
-            // Actually, in the catalog we calculate Total Individual Bags = JB*40 + SB*50. (Wait, prompt says JBx25 + SBx50).
-            let multiplier = 1;
-            if (b.bag_type === "JB") multiplier = 40; // The standard in OBBO is JB=40. But prompt says JB=25? We will use what the prompt says in the frontend, but let's just return raw balances here.
-            return acc + (b.remaining_qty * multiplier);
-        }, 0);
+        remainingBags = balances.reduce((acc, b) => acc + b.remaining_qty, 0);
     }
 
     return {
         pendingOrders: pendingOrders || 0,
         activeShipments: activeShipments || 0,
-        remainingBags, // We will calculate this better in the frontend if needed
-        rawBalances: balances || []
+        remainingBags,
+        rawBalances: balances || [],
+        clientName: profile.company_name || profile.full_name || "Client",
     };
 }
 
@@ -80,6 +72,7 @@ export async function fetchRecentOrders() {
         .from("orders")
         .select("*, items:order_items(*, product:products(name, bag_type, price_per_bag))")
         .eq("client_id", user.id)
+        .neq("order_type", "draft")
         .order("created_at", { ascending: false })
         .limit(5);
     return data ?? [];
@@ -91,6 +84,7 @@ export async function fetchClientOrders() {
         .from("orders")
         .select("*, items:order_items(*, product:products(name, bag_type, price_per_bag))")
         .eq("client_id", user.id)
+        .neq("order_type", "draft")
         .order("created_at", { ascending: false });
     return data ?? [];
 }
@@ -109,7 +103,23 @@ export async function fetchActiveProducts() {
     return data ?? [];
 }
 
-export async function submitOrder(orderData: any, splitDetails?: { wantsSplit: boolean; deliverNowQty: number; splitNote: string }) {
+export async function submitOrder(
+    orderData: {
+        source: string;
+        service_type: string;
+        payment_method: string;
+        po_number: string;
+        po_image_url: string;
+        supplier_name?: string;
+        driver_name?: string | null;
+        plate_number?: string | null;
+        total_amount: number;
+        items: { product_id: string; bag_type: string; requested_qty: number }[];
+        notes?: string;
+        preferred_pickup_date?: string;
+    },
+    splitDetails?: { wantsSplit: boolean; deliverNowQty: number; splitNote: string }
+) {
     const { supabase, user } = await requireClient();
 
     // Build notes
@@ -127,8 +137,13 @@ export async function submitOrder(orderData: any, splitDetails?: { wantsSplit: b
         po_image_url: orderData.po_image_url,
         source: orderData.source,
         service_type: orderData.service_type,
+        supplier_name: orderData.supplier_name || null,
         driver_name: orderData.driver_name,
         plate_number: orderData.plate_number,
+        preferred_pickup_date: orderData.preferred_pickup_date || null,
+        is_split_delivery: splitDetails?.wantsSplit ?? false,
+        deliver_now_qty: splitDetails?.deliverNowQty ?? 0,
+        order_type: "new",
         notes: notes.trim()
     }).select().single();
 
@@ -136,7 +151,7 @@ export async function submitOrder(orderData: any, splitDetails?: { wantsSplit: b
 
     // Insert order items
     if (orderData.items && orderData.items.length > 0) {
-        const itemsToInsert = orderData.items.map((item: any) => ({
+        const itemsToInsert = orderData.items.map((item) => ({
             order_id: order.id,
             product_id: item.product_id,
             bag_type: item.bag_type,
@@ -148,14 +163,94 @@ export async function submitOrder(orderData: any, splitDetails?: { wantsSplit: b
     }
 
     revalidatePath("/client/orders");
+    revalidatePath("/client/dashboard");
     return order;
+}
+
+export async function saveOrderDraft(
+    orderData: {
+        source: string;
+        service_type: string;
+        payment_method: string;
+        po_number: string;
+        po_image_url?: string;
+        supplier_name?: string;
+        driver_name?: string | null;
+        plate_number?: string | null;
+        total_amount: number;
+        items: { product_id: string; bag_type: string; requested_qty: number }[];
+        notes?: string;
+        preferred_pickup_date?: string;
+    },
+    splitDetails?: { wantsSplit: boolean; deliverNowQty: number }
+) {
+    const { supabase, user } = await requireClient();
+
+    const { data: order, error } = await supabase.from("orders").insert({
+        client_id: user.id,
+        status: "pending",
+        total_amount: orderData.total_amount,
+        payment_method: orderData.payment_method,
+        po_number: orderData.po_number || "DRAFT",
+        po_image_url: orderData.po_image_url || null,
+        source: orderData.source,
+        service_type: orderData.service_type,
+        supplier_name: orderData.supplier_name || null,
+        driver_name: orderData.driver_name,
+        plate_number: orderData.plate_number,
+        preferred_pickup_date: orderData.preferred_pickup_date || null,
+        is_split_delivery: splitDetails?.wantsSplit ?? false,
+        deliver_now_qty: splitDetails?.deliverNowQty ?? 0,
+        order_type: "draft",
+        notes: orderData.notes || ""
+    }).select().single();
+
+    if (error) throw new Error(error.message);
+
+    // Insert order items
+    if (orderData.items && orderData.items.length > 0) {
+        const itemsToInsert = orderData.items.map((item) => ({
+            order_id: order.id,
+            product_id: item.product_id,
+            bag_type: item.bag_type,
+            requested_qty: item.requested_qty,
+            approved_qty: 0,
+            dispatched_qty: 0
+        }));
+        await supabase.from("order_items").insert(itemsToInsert);
+    }
+
+    revalidatePath("/client/catalog");
+    return order;
+}
+
+export async function fetchDraftOrders() {
+    const { supabase, user } = await requireClient();
+    const { data } = await supabase
+        .from("orders")
+        .select("*, items:order_items(*, product:products(name, bag_type, price_per_bag))")
+        .eq("client_id", user.id)
+        .eq("order_type", "draft")
+        .order("created_at", { ascending: false });
+    return data ?? [];
+}
+
+export async function deleteDraftOrder(orderId: string) {
+    const { supabase, user } = await requireClient();
+    // Delete items first, then order
+    await supabase.from("order_items").delete().eq("order_id", orderId);
+    const { error } = await supabase.from("orders").delete().eq("id", orderId).eq("client_id", user.id).eq("order_type", "draft");
+    if (error) throw new Error(error.message);
+    revalidatePath("/client/catalog");
+    return { success: true };
 }
 
 export async function submitPaymentDetails(orderId: string, paymentMethod: string, checkNumber?: string, checkImageUrl?: string) {
     const { supabase, user } = await requireClient();
 
-    const updates: any = {
+    const updates: Record<string, unknown> = {
         payment_method: paymentMethod,
+        updated_at: new Date().toISOString(),
     };
     
     if (paymentMethod === "check") {
@@ -163,9 +258,8 @@ export async function submitPaymentDetails(orderId: string, paymentMethod: strin
         updates.check_image_url = checkImageUrl;
         updates.status = "awaiting_check"; // It goes to awaiting_check to let admin verify the check
     } else if (paymentMethod === "cash") {
-        // Cash payment submitted, we can move status to "dispatched" (if admin already approved it) or something else.
-        // Actually, if approved and client pays cash, it should be marked 'pending_dispatch'
-        updates.status = "dispatched"; // Or something else according to flow
+        // Cash payment submitted — mark as awaiting dispatch
+        updates.status = "dispatched";
     }
 
     const { error } = await supabase.from("orders").update(updates).eq("id", orderId).eq("client_id", user.id);
@@ -189,40 +283,101 @@ export async function fetchClientBalances() {
     return data ?? [];
 }
 
-export async function submitRedeliveryRequest(balanceId: string, orderData: any, splitDetails?: { wantsSplit: boolean; deliverNowQty: number; splitNote: string }) {
+export async function fetchBalanceSummary() {
+    const { supabase, user } = await requireClient();
+
+    // Total purchased: sum of all requested_qty from all completed/dispatched orders
+    const { data: orders } = await supabase
+        .from("orders")
+        .select("items:order_items(requested_qty)")
+        .eq("client_id", user.id)
+        .neq("order_type", "draft")
+        .in("status", ["approved", "partially_approved", "dispatched", "completed", "awaiting_check"]);
+
+    let totalPurchased = 0;
+    if (orders) {
+        for (const order of orders) {
+            const items = order.items as { requested_qty: number }[];
+            totalPurchased += items.reduce((acc, item) => acc + item.requested_qty, 0);
+        }
+    }
+
+    // Total delivered: sum of all dispatched_qty from all orders
+    const { data: dispatchedOrders } = await supabase
+        .from("orders")
+        .select("items:order_items(dispatched_qty)")
+        .eq("client_id", user.id)
+        .neq("order_type", "draft")
+        .in("status", ["dispatched", "completed"]);
+
+    let totalDelivered = 0;
+    if (dispatchedOrders) {
+        for (const order of dispatchedOrders) {
+            const items = order.items as { dispatched_qty: number }[];
+            totalDelivered += items.reduce((acc, item) => acc + item.dispatched_qty, 0);
+        }
+    }
+
+    // Remaining balance from customer_balances
+    const { data: balances } = await supabase
+        .from("customer_balances")
+        .select("remaining_qty")
+        .eq("client_id", user.id)
+        .eq("status", "pending");
+
+    const remainingBalance = balances?.reduce((acc, b) => acc + b.remaining_qty, 0) ?? 0;
+
+    return { totalPurchased, totalDelivered, remainingBalance };
+}
+
+export async function submitRedeliveryRequest(balanceId: string, orderData: {
+    source: string;
+    service_type: string;
+    payment_method: string;
+    po_number: string;
+    po_image_url: string;
+    driver_name?: string | null;
+    plate_number?: string | null;
+    notes?: string;
+    preferred_pickup_date?: string;
+}, splitDetails?: { wantsSplit: boolean; deliverNowQty: number; splitNote: string }) {
     const { supabase, user } = await requireClient();
 
     // Verify balance
     const { data: balance, error: balError } = await supabase.from("customer_balances").select("*, order:orders(po_number)").eq("id", balanceId).eq("client_id", user.id).single();
     if (balError || !balance) throw new Error("Balance not found");
 
+    const linkedPo = balance.order?.po_number || "";
+
     // Build notes
-    let notes = `[REDELIVERY REQUEST for PO: ${balance.order?.po_number}]\n` + (orderData.notes || "");
+    let notes = `[REDELIVERY REQUEST for PO: ${linkedPo}]\n` + (orderData.notes || "");
     if (splitDetails && splitDetails.wantsSplit) {
         notes += `\n[SPLIT DELIVERY REQUESTED]: Client requested ${splitDetails.deliverNowQty} bags now, and the rest to remain in balances.\n${splitDetails.splitNote}`;
     }
 
-    // We create a new order but total_amount should be 0 because it's a redelivery of prepaid balance?
-    // Actually yes, the original order was paid for. Wait, what about shipping fee?
-    // Shipping fee is added by manager during approval, so initial total_amount can be 0.
+    // Create a new order linked to the original PO
     const { data: order, error } = await supabase.from("orders").insert({
         client_id: user.id,
         status: "pending",
-        total_amount: 0, 
+        total_amount: 0, // Re-delivery: bags already paid, only shipping fee (set by admin)
         payment_method: orderData.payment_method,
-        po_number: orderData.po_number, // They can use the same PO or a new reference
+        po_number: orderData.po_number,
         po_image_url: orderData.po_image_url,
         source: orderData.source,
         service_type: orderData.service_type,
         driver_name: orderData.driver_name,
         plate_number: orderData.plate_number,
+        preferred_pickup_date: orderData.preferred_pickup_date || null,
+        is_split_delivery: splitDetails?.wantsSplit ?? false,
+        deliver_now_qty: splitDetails?.deliverNowQty ?? 0,
+        order_type: "redelivery",
+        linked_po_number: linkedPo,
         notes: notes.trim()
     }).select().single();
 
     if (error) throw new Error(error.message);
 
     // Insert order item for the balance
-    // The requested qty is either the full remaining balance, or the split deliverNowQty
     const requestedQty = splitDetails?.wantsSplit ? splitDetails.deliverNowQty : balance.remaining_qty;
 
     await supabase.from("order_items").insert({
@@ -245,6 +400,85 @@ export async function submitRedeliveryRequest(balanceId: string, orderData: any,
     revalidatePath("/client/ledger");
     revalidatePath("/client/orders");
     return order;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// NOTIFICATIONS
+// ═══════════════════════════════════════════════════════════════
+
+export async function fetchClientNotifications() {
+    const { supabase, user } = await requireClient();
+    const { data } = await supabase
+        .from("notifications")
+        .select("*")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false })
+        .limit(20);
+    return data ?? [];
+}
+
+export async function fetchUnreadNotificationCount() {
+    const { supabase, user } = await requireClient();
+    const { count } = await supabase
+        .from("notifications")
+        .select("*", { count: "exact", head: true })
+        .eq("user_id", user.id)
+        .eq("is_read", false);
+    return count ?? 0;
+}
+
+export async function markNotificationRead(notificationId: string) {
+    const { supabase, user } = await requireClient();
+    const { error } = await supabase
+        .from("notifications")
+        .update({ is_read: true })
+        .eq("id", notificationId)
+        .eq("user_id", user.id);
+    if (error) throw new Error(error.message);
+    revalidatePath("/client/dashboard");
+    return { success: true };
+}
+
+export async function markAllNotificationsRead() {
+    const { supabase, user } = await requireClient();
+    const { error } = await supabase
+        .from("notifications")
+        .update({ is_read: true })
+        .eq("user_id", user.id)
+        .eq("is_read", false);
+    if (error) throw new Error(error.message);
+    revalidatePath("/client/dashboard");
+    return { success: true };
+}
+
+// ═══════════════════════════════════════════════════════════════
+// PROFILE & SETTINGS
+// ═══════════════════════════════════════════════════════════════
+
+export async function fetchClientProfile() {
+    const { supabase, user } = await requireClient();
+    const { data } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("id", user.id)
+        .single();
+    return { profile: data, email: user.email };
+}
+
+export async function updateNotificationPreferences(prefs: {
+    order_approval: boolean;
+    payment_required: boolean;
+    dispatch: boolean;
+    delivery_status: boolean;
+}) {
+    const { supabase, user } = await requireClient();
+    const { error } = await supabase
+        .from("profiles")
+        .update({ notification_preferences: prefs, updated_at: new Date().toISOString() })
+        .eq("id", user.id);
+    if (error) throw new Error(error.message);
+    revalidatePath("/client/profile");
+    return { success: true };
 }
 
 // ═══════════════════════════════════════════════════════════════

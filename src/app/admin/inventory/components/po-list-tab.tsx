@@ -5,12 +5,13 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Search, Edit2, Trash2, MapPin, Truck } from "lucide-react";
+import { Plus, Search, Edit2, Trash2, MapPin, Truck, UploadCloud, CheckCircle2, X, FileImage } from "lucide-react";
 import { createPurchaseOrder, updatePurchaseOrder, deletePurchaseOrder } from "@/lib/actions/admin-actions";
 import { toast } from "sonner";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { createClient } from "@/lib/supabase/client";
 
 export function PoListTab({ purchaseOrders, loading, onReload }: { purchaseOrders: PurchaseOrder[], loading: boolean, onReload: () => void }) {
     const [searchQuery, setSearchQuery] = useState("");
@@ -25,11 +26,12 @@ export function PoListTab({ purchaseOrders, loading, onReload }: { purchaseOrder
     const [sb, setSb] = useState(0);
     const [source, setSource] = useState("warehouse");
     const [serviceType, setServiceType] = useState("pickup");
+    const [photoFile, setPhotoFile] = useState<File | null>(null);
 
     const openCreate = () => {
         setEditingPo(null);
         setPoNumber(""); setClientName(""); setJb(0); setSb(0);
-        setSource("warehouse"); setServiceType("pickup");
+        setSource("warehouse"); setServiceType("pickup"); setPhotoFile(null);
         setIsDialogOpen(true);
     };
 
@@ -41,6 +43,7 @@ export function PoListTab({ purchaseOrders, loading, onReload }: { purchaseOrder
         setSb(po.sb);
         setSource(po.source || "warehouse");
         setServiceType(po.service_type || "pickup");
+        setPhotoFile(null);
         setIsDialogOpen(true);
     };
 
@@ -48,14 +51,40 @@ export function PoListTab({ purchaseOrders, loading, onReload }: { purchaseOrder
         if (!poNumber) return toast.error("PO Number is required");
         setIsSubmitting(true);
         try {
+            // Upload photo if provided
+            let photoUrl: string | undefined;
+            if (photoFile) {
+                const supabase = createClient();
+                const ext = photoFile.name.split(".").pop();
+                const fileName = `po_${poNumber.replace(/\//g, "-")}_${Date.now()}.${ext}`;
+                const { error: uploadError } = await supabase.storage
+                    .from("po-documents")
+                    .upload(fileName, photoFile, { upsert: true });
+                if (!uploadError) {
+                    const { data: { publicUrl } } = supabase.storage
+                        .from("po-documents")
+                        .getPublicUrl(fileName);
+                    photoUrl = publicUrl;
+                }
+            }
+
             if (editingPo) {
-                await updatePurchaseOrder(editingPo.id, { po_number: poNumber, client_name: clientName, jb, sb, source, service_type: serviceType });
+                await updatePurchaseOrder(editingPo.id, {
+                    po_number: poNumber, client_name: clientName, jb, sb,
+                    source, service_type: serviceType,
+                    ...(photoUrl ? { photo_url: photoUrl } : {}),
+                });
                 toast.success("PO updated");
             } else {
-                await createPurchaseOrder({ po_number: poNumber, client_name: clientName, jb, sb, source, service_type: serviceType });
+                await createPurchaseOrder({
+                    po_number: poNumber, client_name: clientName, jb, sb,
+                    source, service_type: serviceType,
+                    ...(photoUrl ? { photo_url: photoUrl } as any : {}),
+                });
                 toast.success("PO created");
             }
             setIsDialogOpen(false);
+            setPhotoFile(null);
             onReload();
         } catch (e: any) {
             toast.error(e.message || "Failed to save PO");
@@ -75,8 +104,8 @@ export function PoListTab({ purchaseOrders, loading, onReload }: { purchaseOrder
         }
     };
 
-    const filtered = purchaseOrders.filter(po => 
-        po.po_number.toLowerCase().includes(searchQuery.toLowerCase()) || 
+    const filtered = purchaseOrders.filter(po =>
+        po.po_number.toLowerCase().includes(searchQuery.toLowerCase()) ||
         (po.client_name || "").toLowerCase().includes(searchQuery.toLowerCase())
     );
 
@@ -103,12 +132,13 @@ export function PoListTab({ purchaseOrders, loading, onReload }: { purchaseOrder
                                 <TableHead>Service</TableHead>
                                 <TableHead>Quantities</TableHead>
                                 <TableHead>Status</TableHead>
+                                <TableHead>Photo</TableHead>
                                 <TableHead className="text-right">Actions</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
                             {filtered.length === 0 ? (
-                                <TableRow><TableCell colSpan={7} className="text-center py-6 text-muted-foreground">No purchase orders found.</TableCell></TableRow>
+                                <TableRow><TableCell colSpan={8} className="text-center py-6 text-muted-foreground">No purchase orders found.</TableCell></TableRow>
                             ) : filtered.map(po => (
                                 <TableRow key={po.id}>
                                     <TableCell className="text-sm">{new Date(po.date).toLocaleDateString()}</TableCell>
@@ -129,6 +159,15 @@ export function PoListTab({ purchaseOrders, loading, onReload }: { purchaseOrder
                                     <TableCell>
                                         <Badge variant="secondary" className="capitalize">{po.status.replace('_', ' ')}</Badge>
                                     </TableCell>
+                                    <TableCell>
+                                        {(po as any).photo_url ? (
+                                            <a href={(po as any).photo_url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs text-blue-600 hover:underline">
+                                                <FileImage className="w-3.5 h-3.5" /> View
+                                            </a>
+                                        ) : (
+                                            <span className="text-xs text-muted-foreground">—</span>
+                                        )}
+                                    </TableCell>
                                     <TableCell className="text-right">
                                         <Button variant="ghost" size="icon" onClick={() => openEdit(po)} className="h-8 w-8 text-blue-600 hover:text-blue-700 hover:bg-blue-50"><Edit2 className="w-4 h-4" /></Button>
                                         <Button variant="ghost" size="icon" onClick={() => handleDelete(po.id)} className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"><Trash2 className="w-4 h-4" /></Button>
@@ -140,7 +179,7 @@ export function PoListTab({ purchaseOrders, loading, onReload }: { purchaseOrder
                 </div>
             </CardContent>
 
-            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <Dialog open={isDialogOpen} onOpenChange={(open) => { setIsDialogOpen(open); if (!open) setPhotoFile(null); }}>
                 <DialogContent>
                     <DialogHeader>
                         <DialogTitle>{editingPo ? "Edit Purchase Order" : "Add Purchase Order"}</DialogTitle>
@@ -185,6 +224,36 @@ export function PoListTab({ purchaseOrders, loading, onReload }: { purchaseOrder
                                 <Label>SB Bags</Label>
                                 <Input type="number" min="0" value={sb} onChange={e => setSb(parseInt(e.target.value) || 0)} />
                             </div>
+                        </div>
+
+                        {/* Photo Upload */}
+                        <div className="space-y-2">
+                            <Label>PO Photo <span className="text-muted-foreground text-xs">(optional)</span></Label>
+                            {photoFile ? (
+                                <div className="flex items-center gap-3 p-3 border border-emerald-200 bg-emerald-50 rounded-lg">
+                                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                                    <span className="text-sm text-emerald-800 flex-1 truncate">{photoFile.name}</span>
+                                    <button type="button" onClick={() => setPhotoFile(null)} className="text-emerald-700 hover:text-red-600">
+                                        <X className="w-4 h-4" />
+                                    </button>
+                                </div>
+                            ) : (
+                                <div
+                                    className="border-2 border-dashed border-border rounded-lg p-4 text-center cursor-pointer hover:border-[var(--color-industrial-blue)]/50 hover:bg-muted/30 transition-colors"
+                                    onClick={() => document.getElementById("po-photo-upload")?.click()}
+                                >
+                                    <UploadCloud className="w-6 h-6 mx-auto mb-1 text-muted-foreground" />
+                                    <p className="text-xs text-muted-foreground">Click to attach PO photo</p>
+                                    <p className="text-[10px] text-muted-foreground/60 mt-0.5">JPG, PNG, PDF</p>
+                                    <input
+                                        id="po-photo-upload"
+                                        type="file"
+                                        className="hidden"
+                                        accept="image/*,.pdf"
+                                        onChange={(e) => setPhotoFile(e.target.files?.[0] || null)}
+                                    />
+                                </div>
+                            )}
                         </div>
                     </div>
                     <DialogFooter>

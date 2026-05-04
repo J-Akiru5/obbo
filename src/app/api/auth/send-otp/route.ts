@@ -16,6 +16,17 @@ export async function POST(req: NextRequest) {
 
         const supabase = createAdminClient();
 
+        const { data: rejectedProfile } = await supabase
+            .from('profiles')
+            .select('id, kyc_status')
+            .eq('email', email.toLowerCase())
+            .eq('kyc_status', 'rejected')
+            .maybeSingle();
+
+        if (rejectedProfile) {
+            return NextResponse.json({ error: 'This email has been permanently blocked from re-registration.' }, { status: 403 });
+        }
+
         // Rate-limit: block if a non-expired code was issued < 60s ago
         const { data: recent } = await supabase
             .from('email_verifications')

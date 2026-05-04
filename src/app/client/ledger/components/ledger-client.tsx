@@ -12,20 +12,26 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
-import { Package, Truck, Info, History } from "lucide-react";
+import { Package, Truck, Info, History, ShoppingBag, TrendingDown, Split } from "lucide-react";
 
-export default function LedgerClient({ balances }: { balances: any[] }) {
+interface BalanceSummary {
+    totalPurchased: number;
+    totalDelivered: number;
+    remainingBalance: number;
+}
+
+export default function LedgerClient({ balances, summary }: { balances: any[]; summary: BalanceSummary }) {
     const [selectedBalance, setSelectedBalance] = useState<any | null>(null);
     const [isRedeliveryOpen, setIsRedeliveryOpen] = useState(false);
     
     // Form state
     const [source, setSource] = useState<string>("warehouse");
-    const [serviceType, setServiceType] = useState<string>("deliver"); // Default to deliver
+    const [serviceType, setServiceType] = useState<string>("deliver");
     const [poNumber, setPoNumber] = useState("");
     const [poFile, setPoFile] = useState<File | null>(null);
     const [paymentMethod, setPaymentMethod] = useState<string>("cash");
     
-    // Split delivery
+    // Split delivery (now available for BOTH pickup and deliver)
     const [wantsSplit, setWantsSplit] = useState(false);
     const [deliverNowQty, setDeliverNowQty] = useState<number>(0);
     
@@ -41,7 +47,7 @@ export default function LedgerClient({ balances }: { balances: any[] }) {
 
     const handleOpenRedelivery = (balance: any) => {
         setSelectedBalance(balance);
-        setPoNumber(balance.order?.po_number || ""); // Default to old PO
+        setPoNumber(balance.order?.po_number || "");
         setDeliverNowQty(balance.remaining_qty);
         setWantsSplit(false);
         setIsRedeliveryOpen(true);
@@ -58,7 +64,7 @@ export default function LedgerClient({ balances }: { balances: any[] }) {
         
         if (!selectedBalance) return;
 
-        if (wantsSplit && serviceType === "deliver") {
+        if (wantsSplit) {
             if (deliverNowQty <= 0 || deliverNowQty > selectedBalance.remaining_qty) {
                 toast.error("Invalid split delivery quantity.");
                 return;
@@ -86,15 +92,16 @@ export default function LedgerClient({ balances }: { balances: any[] }) {
             const orderData = {
                 source,
                 service_type: serviceType,
-                payment_method: paymentMethod, // e.g. for shipping fee if requested
+                payment_method: paymentMethod,
                 po_number: poNumber,
                 po_image_url: publicUrl,
                 driver_name: serviceType === "pickup" ? driverName : null,
                 plate_number: serviceType === "pickup" ? plateNumber : null,
-                notes: serviceType === "pickup" ? `Preferred Pick-up Date: ${pickupDate}` : ""
+                notes: serviceType === "pickup" && pickupDate ? `Preferred Pick-up Date: ${pickupDate}` : "",
+                preferred_pickup_date: serviceType === "pickup" ? pickupDate : undefined,
             };
 
-            const splitDetails = (wantsSplit && serviceType === "deliver") ? {
+            const splitDetails = wantsSplit ? {
                 wantsSplit: true,
                 deliverNowQty,
                 splitNote: `Redelivery split: Client requested ${deliverNowQty} bags now.`
@@ -107,8 +114,9 @@ export default function LedgerClient({ balances }: { balances: any[] }) {
             setIsRedeliveryOpen(false);
             setPoFile(null);
             
-        } catch (error: any) {
-            toast.error(error.message || "An error occurred while submitting.");
+        } catch (error: unknown) {
+            const msg = error instanceof Error ? error.message : "An error occurred while submitting.";
+            toast.error(msg);
         } finally {
             setIsSubmitting(false);
         }
@@ -119,6 +127,52 @@ export default function LedgerClient({ balances }: { balances: any[] }) {
             <div>
                 <h2 className="text-2xl font-bold text-gray-900 tracking-tight">Balance Ledger</h2>
                 <p className="text-sm text-gray-500">Monitor your remaining cement balance and request re-delivery.</p>
+            </div>
+
+            {/* Balance Summary Counters */}
+            <div className="grid gap-4 md:grid-cols-3">
+                <Card className="bg-white border-blue-100 shadow-sm">
+                    <CardContent className="p-5">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Total Purchased</p>
+                                <p className="text-2xl font-bold text-gray-900 mt-1">{summary.totalPurchased.toLocaleString()}</p>
+                                <p className="text-xs text-gray-500">individual bags</p>
+                            </div>
+                            <div className="h-10 w-10 rounded-xl bg-blue-50 flex items-center justify-center">
+                                <ShoppingBag className="w-5 h-5 text-[var(--color-industrial-blue)]" />
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+                <Card className="bg-white border-blue-100 shadow-sm">
+                    <CardContent className="p-5">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Total Delivered</p>
+                                <p className="text-2xl font-bold text-gray-900 mt-1">{summary.totalDelivered.toLocaleString()}</p>
+                                <p className="text-xs text-gray-500">individual bags</p>
+                            </div>
+                            <div className="h-10 w-10 rounded-xl bg-emerald-50 flex items-center justify-center">
+                                <Truck className="w-5 h-5 text-emerald-600" />
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+                <Card className="bg-[var(--color-industrial-blue)] text-white shadow-md">
+                    <CardContent className="p-5">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <p className="text-xs font-semibold uppercase tracking-wide text-blue-200">Remaining Balance</p>
+                                <p className="text-2xl font-bold text-white mt-1">{summary.remainingBalance.toLocaleString()}</p>
+                                <p className="text-xs text-blue-200">available for re-delivery</p>
+                            </div>
+                            <div className="h-10 w-10 rounded-xl bg-white/15 flex items-center justify-center">
+                                <TrendingDown className="w-5 h-5 text-blue-200" />
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
             </div>
 
             <div className="grid gap-6 md:grid-cols-2">
@@ -209,6 +263,9 @@ export default function LedgerClient({ balances }: { balances: any[] }) {
                             <div className="p-4 bg-blue-50 border border-blue-100 rounded-lg">
                                 <div className="text-sm text-blue-800">You are requesting delivery from a balance of:</div>
                                 <div className="text-lg font-bold text-blue-900">{selectedBalance.remaining_qty} individual bags of {selectedBalance.product?.name}</div>
+                                {selectedBalance.order?.po_number && (
+                                    <div className="text-xs text-blue-600 mt-1">Linked to original PO: {selectedBalance.order.po_number}</div>
+                                )}
                             </div>
 
                             {/* Source & Service */}
@@ -225,7 +282,7 @@ export default function LedgerClient({ balances }: { balances: any[] }) {
                                 </div>
                                 <div className="space-y-2">
                                     <Label>Service Type <span className="text-red-500">*</span></Label>
-                                    <Select value={serviceType} onValueChange={(v) => { setServiceType(v || "deliver"); setWantsSplit(false); }}>
+                                    <Select value={serviceType} onValueChange={(v) => { setServiceType(v || "deliver"); }}>
                                         <SelectTrigger><SelectValue /></SelectTrigger>
                                         <SelectContent>
                                             <SelectItem value="pickup">Pick-up</SelectItem>
@@ -258,7 +315,7 @@ export default function LedgerClient({ balances }: { balances: any[] }) {
                                 </div>
                             </div>
 
-                            {/* Conditional Delivery / Pickup fields */}
+                            {/* Conditional Pickup fields */}
                             {serviceType === "pickup" && (
                                 <div className="p-4 border border-amber-200 bg-amber-50 rounded-lg space-y-4">
                                     <h4 className="text-sm font-semibold text-amber-900">Pick-up Details</h4>
@@ -279,32 +336,34 @@ export default function LedgerClient({ balances }: { balances: any[] }) {
                                 </div>
                             )}
 
-                            {serviceType === "deliver" && (
-                                <div className="p-4 border border-blue-200 bg-blue-50 rounded-lg space-y-4">
-                                    <div className="flex items-center justify-between">
+                            {/* Split Redelivery — available for BOTH pickup and deliver */}
+                            <div className="p-4 border border-blue-200 bg-blue-50 rounded-lg space-y-4">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2">
+                                        <Split className="w-4 h-4 text-blue-600" />
                                         <div>
                                             <h4 className="text-sm font-semibold text-blue-900">Split Redelivery Option</h4>
-                                            <p className="text-xs text-blue-700">Don't need all {selectedBalance.remaining_qty} bags right now?</p>
+                                            <p className="text-xs text-blue-700">Don&apos;t need all {selectedBalance.remaining_qty} bags right now?</p>
                                         </div>
-                                        <input type="checkbox" checked={wantsSplit} onChange={e => setWantsSplit(e.target.checked)} className="w-5 h-5 text-[var(--color-industrial-blue)] rounded border-blue-300 focus:ring-[var(--color-industrial-blue)]" />
                                     </div>
-                                    {wantsSplit && (
-                                        <div className="pt-2 space-y-2 border-t border-blue-100">
-                                            <Label className="text-blue-900">How many individual bags do you want to receive now?</Label>
-                                            <Input 
-                                                type="number" 
-                                                min="1" 
-                                                max={selectedBalance.remaining_qty} 
-                                                value={deliverNowQty} 
-                                                onChange={(e) => setDeliverNowQty(parseInt(e.target.value) || 0)} 
-                                            />
-                                            <p className="text-[10px] text-blue-600">
-                                                {selectedBalance.remaining_qty - deliverNowQty} bags will remain in your balance.
-                                            </p>
-                                        </div>
-                                    )}
+                                    <input type="checkbox" checked={wantsSplit} onChange={e => setWantsSplit(e.target.checked)} className="w-5 h-5 text-[var(--color-industrial-blue)] rounded border-blue-300 focus:ring-[var(--color-industrial-blue)]" />
                                 </div>
-                            )}
+                                {wantsSplit && (
+                                    <div className="pt-2 space-y-2 border-t border-blue-100">
+                                        <Label className="text-blue-900">How many individual bags do you want to receive now?</Label>
+                                        <Input 
+                                            type="number" 
+                                            min="1" 
+                                            max={selectedBalance.remaining_qty} 
+                                            value={deliverNowQty} 
+                                            onChange={(e) => setDeliverNowQty(parseInt(e.target.value) || 0)} 
+                                        />
+                                        <p className="text-[10px] text-blue-600">
+                                            {selectedBalance.remaining_qty - deliverNowQty} bags will remain in your balance.
+                                        </p>
+                                    </div>
+                                )}
+                            </div>
 
                             <DialogFooter className="gap-2 sm:gap-0">
                                 <Button type="button" variant="outline" onClick={() => setIsRedeliveryOpen(false)} disabled={isSubmitting}>Cancel</Button>
