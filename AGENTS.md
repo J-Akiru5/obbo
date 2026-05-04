@@ -19,4 +19,10 @@ This version has breaking changes — APIs, conventions, and file structure may 
 - Implementation skill: [.github/skills/obbo-clean-industrial-ui/SKILL.md](.github/skills/obbo-clean-industrial-ui/SKILL.md)
 - Review and audit skill: [.github/skills/obbo-design-system-audit/SKILL.md](.github/skills/obbo-design-system-audit/SKILL.md)
 
+## Performance Optimization Skills
+
+- Page-load optimization: [.github/skills/obbo-page-load-optimization/SKILL.md](.github/skills/obbo-page-load-optimization/SKILL.md)
+- INP optimization: [.github/skills/obbo-inp-optimization/SKILL.md](.github/skills/obbo-inp-optimization/SKILL.md)
+- Use these for tasks that improve loading speed or interaction latency without changing component behavior.
+
 Use links above as source of truth for TSX/CSS edits before introducing new visual patterns.

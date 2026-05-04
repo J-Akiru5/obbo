@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef, useCallback } from "react";
+import { useEffect, useState, useCallback } from "react";
 import {
     Package, ShoppingCart, Truck, Users, ArrowUpRight,
     Clock, CheckCircle2, AlertCircle, UserPlus, PackagePlus,
@@ -9,7 +9,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { createClient } from "@/lib/supabase/client";
-import { fetchDashboardKPIs, fetchActivityFeed, fetchCustomerBalances, fetchShipments, fetchOrders } from "@/lib/actions/admin-actions";
+import { fetchDashboardKPIs, fetchActivityFeed, fetchShipments, fetchOrders } from "@/lib/actions/admin-actions";
 import type { ActivityLog, Order } from "@/lib/types/database";
 import Link from "next/link";
 
@@ -74,30 +74,22 @@ export default function AdminDashboard() {
     });
     const [activityFeed, setActivityFeed] = useState<ActivityLog[]>([]);
     const [recentOrders, setRecentOrders] = useState<Order[]>([]);
-    const [obligations, setObligations] = useState<Array<{ id: string; client?: { full_name: string }; product?: { name: string }; bag_type: string; remaining_qty: number }>>([]);
     const [shipments, setShipments] = useState<Array<{ batch_name: string; remaining_jb: number; remaining_sb: number; total_jb: number; total_sb: number }>>([]);
-    const [realtimeConnected, setRealtimeConnected] = useState(false);
-    const [loading, setLoading] = useState(true);
-    const channelRef = useRef<ReturnType<ReturnType<typeof createClient>["channel"]> | null>(null);
 
     const loadData = useCallback(async () => {
         try {
-            const [kpiData, feed, bals, ships, pOrders] = await Promise.all([
+            const [kpiData, feed, ships, pOrders] = await Promise.all([
                 fetchDashboardKPIs(),
                 fetchActivityFeed(20),
-                fetchCustomerBalances(),
                 fetchShipments(),
                 fetchOrders("pending")
             ]);
             setKpis(kpiData as any);
             setActivityFeed(feed as ActivityLog[]);
-            setObligations(bals as typeof obligations);
             setShipments(ships as typeof shipments);
             setRecentOrders((pOrders as Order[]).slice(0, 5));
         } catch (e) {
             console.error("Dashboard load error:", e);
-        } finally {
-            setLoading(false);
         }
     }, []);
 
@@ -111,14 +103,16 @@ export default function AdminDashboard() {
             .on("postgres_changes", { event: "*", schema: "public", table: "orders" }, () => { loadData(); })
             .on("postgres_changes", { event: "INSERT", schema: "public", table: "activity_log" }, () => { loadData(); })
             .on("postgres_changes", { event: "*", schema: "public", table: "profiles" }, () => { loadData(); })
-            .subscribe((status) => { setRealtimeConnected(status === "SUBSCRIBED"); });
-        channelRef.current = channel;
+            .subscribe();
 
         return () => { supabase.removeChannel(channel); };
     }, [loadData]);
 
     const totalInitial = shipments.reduce((s, sh) => s + (sh.total_jb ?? 0) + (sh.total_sb ?? 0), 0);
     const stockPct = totalInitial > 0 ? ((kpis.grandTotal / totalInitial) * 100) : 100;
+    const securityEvents = activityFeed.filter(
+        (a) => a.action === "successful_login" || a.action.includes("login") || a.action === "password_reset"
+    );
 
     const kpiCards = [
         {
@@ -326,7 +320,7 @@ export default function AdminDashboard() {
                         <CardTitle className="text-base font-semibold text-slate-700 tracking-wide">Security Alert Feed</CardTitle>
                     </CardHeader>
                     <CardContent className="p-0">
-                        {activityFeed.filter(a => a.action === 'successful_login' || a.action.includes('login') || a.action === 'password_reset').length === 0 && (
+                        {securityEvents.length === 0 && (
                             <div className="p-5">
                                 <p className="text-sm text-slate-500 italic">No recent security events.</p>
                                 {/* Display default mock items to match screenshot if real feed is empty for this category */}
@@ -365,7 +359,7 @@ export default function AdminDashboard() {
                             </div>
                         )}
                         <div className="space-y-4 p-5">
-                            {activityFeed.filter(a => a.action === 'successful_login' || a.action.includes('login') || a.action === 'password_reset').slice(0, 4).map((activity) => (
+                            {securityEvents.slice(0, 4).map((activity) => (
                                 <div key={activity.id} className="flex items-center justify-between">
                                     <div className="flex items-start gap-4">
                                         <span className="text-[12px] text-slate-400 font-mono mt-0.5">{new Date(activity.created_at).toLocaleTimeString([], { hour12: false })}</span>
