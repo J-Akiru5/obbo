@@ -34,9 +34,7 @@ const navItems = [
         href: "/admin/dashboard", 
         label: "Dashboard", 
         icon: LayoutDashboard,
-        subItems: [
-            { href: "/admin/dashboard", label: "Overview" }
-        ]
+        // No subItems — direct link, no dropdown
     },
     { 
         href: "/admin/orders", 
@@ -103,44 +101,62 @@ function SidebarContent({ pathname, onNavigate, adminName, adminInitials }: { pa
                     const isExpanded = expanded[item.href];
                     return (
                         <div key={item.href} className="space-y-1">
-                            <button
-                                onClick={() => toggleExpand(item.href)}
-                                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${isActive
-                                    ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                                    : "text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent/50"
-                                    }`}
-                            >
-                                <div className="flex items-center gap-3">
+                            {!item.subItems ? (
+                                // Direct link — no dropdown (e.g. Dashboard)
+                                <Link
+                                    href={item.href}
+                                    onClick={onNavigate}
+                                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${isActive
+                                        ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                                        : "text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent/50"
+                                        }`}
+                                >
                                     <item.icon className="w-5 h-5 flex-shrink-0" />
                                     <span>{item.label}</span>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                    {item.label === "Orders" && (
-                                        <Badge className="bg-[var(--color-industrial-yellow)] text-[var(--color-industrial-blue)] text-xs px-1.5 py-0 hover:bg-[var(--color-industrial-yellow)]">
-                                            2
-                                        </Badge>
+                                </Link>
+                            ) : (
+                                // Expandable dropdown
+                                <>
+                                    <button
+                                        onClick={() => toggleExpand(item.href)}
+                                        className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${isActive
+                                            ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                                            : "text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent/50"
+                                            }`}
+                                    >
+                                        <div className="flex items-center gap-3">
+                                            <item.icon className="w-5 h-5 flex-shrink-0" />
+                                            <span>{item.label}</span>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            {item.label === "Orders" && (
+                                                <Badge className="bg-[var(--color-industrial-yellow)] text-[var(--color-industrial-blue)] text-xs px-1.5 py-0 hover:bg-[var(--color-industrial-yellow)]">
+                                                    2
+                                                </Badge>
+                                            )}
+                                            {item.label === "Clients" && (
+                                                <Badge className="bg-red-500 text-white text-xs px-1.5 py-0 hover:bg-red-500">
+                                                    2
+                                                </Badge>
+                                            )}
+                                            <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`} />
+                                        </div>
+                                    </button>
+                                    {isExpanded && (
+                                        <div className="pl-11 pr-3 py-1 space-y-1">
+                                            {item.subItems.map((subItem, idx) => (
+                                                <Link
+                                                    key={`${subItem.href}-${idx}`}
+                                                    href={subItem.href}
+                                                    onClick={onNavigate}
+                                                    className="block px-3 py-2 rounded-md text-sm text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent/50 transition-colors"
+                                                >
+                                                    {subItem.label}
+                                                </Link>
+                                            ))}
+                                        </div>
                                     )}
-                                    {item.label === "Clients" && (
-                                        <Badge className="bg-red-500 text-white text-xs px-1.5 py-0 hover:bg-red-500">
-                                            2
-                                        </Badge>
-                                    )}
-                                    <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`} />
-                                </div>
-                            </button>
-                            {isExpanded && (
-                                <div className="pl-11 pr-3 py-1 space-y-1">
-                                    {item.subItems.map((subItem, idx) => (
-                                        <Link
-                                            key={`${subItem.href}-${idx}`}
-                                            href={subItem.href}
-                                            onClick={onNavigate}
-                                            className="block px-3 py-2 rounded-md text-sm text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent/50 transition-colors"
-                                        >
-                                            {subItem.label}
-                                        </Link>
-                                    ))}
-                                </div>
+                                </>
                             )}
                         </div>
                     );
