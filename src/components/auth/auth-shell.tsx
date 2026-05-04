@@ -46,7 +46,7 @@ export function AuthShell({
           <div className="relative z-10 space-y-8">
             <div className="flex items-center gap-3">
               <div className="flex size-12 items-center justify-center">
-                <Image src="/logo.jpg" alt="OBBO Logo" width={48} height={48} className="object-contain" />
+                <Image src="/obbo.gif" alt="OBBO Logo" width={48} height={48} className="object-contain" />
               </div>
               <div>
                 <p className="text-[0.7rem] font-semibold uppercase tracking-[0.35em] text-white/65">
