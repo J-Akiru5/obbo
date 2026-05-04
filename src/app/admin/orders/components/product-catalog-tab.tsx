@@ -132,7 +132,7 @@ export function ProductCatalogTab({ products, onUpdate, loading }: { products: P
                             onChange={(e) => setSearchQuery(e.target.value)}
                         />
                     </div>
-                    <Select value={statusFilter} onValueChange={setStatusFilter}>
+                    <Select value={statusFilter} onValueChange={(val) => setStatusFilter(val ?? "all")}>
                         <SelectTrigger className="w-full sm:w-[150px]">
                             <SelectValue placeholder="Status" />
                         </SelectTrigger>
@@ -142,7 +142,7 @@ export function ProductCatalogTab({ products, onUpdate, loading }: { products: P
                             <SelectItem value="inactive">Inactive</SelectItem>
                         </SelectContent>
                     </Select>
-                    <Select value={bagTypeFilter} onValueChange={setBagTypeFilter}>
+                    <Select value={bagTypeFilter} onValueChange={(val) => setBagTypeFilter(val ?? "all")}>
                         <SelectTrigger className="w-full sm:w-[150px]">
                             <SelectValue placeholder="Bag Type" />
                         </SelectTrigger>
