@@ -8,7 +8,8 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Edit, Package, UploadCloud, Loader2 } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Edit, Package, UploadCloud, Loader2, Search } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
 
@@ -19,6 +20,21 @@ export function ProductCatalogTab({ products, onUpdate, loading }: { products: P
     const [imagePreview, setImagePreview] = useState<string | null>(null);
     const [isSaving, setIsSaving] = useState(false);
     const [isUploadingImage, setIsUploadingImage] = useState(false);
+
+    const [searchQuery, setSearchQuery] = useState("");
+    const [statusFilter, setStatusFilter] = useState("all");
+    const [bagTypeFilter, setBagTypeFilter] = useState("all");
+
+    const filteredProducts = products.filter(p => {
+        const matchesSearch = p.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                              p.description.toLowerCase().includes(searchQuery.toLowerCase());
+        const matchesStatus = statusFilter === "all" || 
+                              (statusFilter === "active" && p.is_active) || 
+                              (statusFilter === "inactive" && !p.is_active);
+        const matchesBagType = bagTypeFilter === "all" || p.bag_type === bagTypeFilter;
+        
+        return matchesSearch && matchesStatus && matchesBagType;
+    });
 
     const openEdit = (product: Product) => {
         setEditingProduct(product);
@@ -99,12 +115,43 @@ export function ProductCatalogTab({ products, onUpdate, loading }: { products: P
 
     return (
         <Card>
-            <CardHeader className="pb-3 border-b border-border/50">
+            <CardHeader className="pb-3 border-b border-border/50 space-y-4">
                 <div className="flex items-center justify-between">
                     <div>
                         <CardTitle className="text-lg">Product Catalog</CardTitle>
                         <CardDescription>Manage available cement products and pricing.</CardDescription>
                     </div>
+                </div>
+                <div className="flex flex-col sm:flex-row gap-3">
+                    <div className="relative flex-1">
+                        <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                        <Input
+                            placeholder="Search products by name or description..."
+                            className="pl-9"
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                        />
+                    </div>
+                    <Select value={statusFilter} onValueChange={setStatusFilter}>
+                        <SelectTrigger className="w-full sm:w-[150px]">
+                            <SelectValue placeholder="Status" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all">All Status</SelectItem>
+                            <SelectItem value="active">Active</SelectItem>
+                            <SelectItem value="inactive">Inactive</SelectItem>
+                        </SelectContent>
+                    </Select>
+                    <Select value={bagTypeFilter} onValueChange={setBagTypeFilter}>
+                        <SelectTrigger className="w-full sm:w-[150px]">
+                            <SelectValue placeholder="Bag Type" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all">All Bag Types</SelectItem>
+                            <SelectItem value="JB">Jumbo Bag (JB)</SelectItem>
+                            <SelectItem value="SB">Sling Bag (SB)</SelectItem>
+                        </SelectContent>
+                    </Select>
                 </div>
             </CardHeader>
             <CardContent className="p-0">
@@ -120,7 +167,14 @@ export function ProductCatalogTab({ products, onUpdate, loading }: { products: P
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        {products.map((p) => (
+                        {filteredProducts.length === 0 ? (
+                            <TableRow>
+                                <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                                    No products match your filters.
+                                </TableCell>
+                            </TableRow>
+                        ) : (
+                            filteredProducts.map((p) => (
                             <TableRow key={p.id} className="group">
                                 <TableCell>
                                     <div className="w-12 h-12 rounded-lg bg-muted flex items-center justify-center overflow-hidden">
@@ -167,7 +221,7 @@ export function ProductCatalogTab({ products, onUpdate, loading }: { products: P
                                     </div>
                                 </TableCell>
                             </TableRow>
-                        ))}
+                        )))}
                     </TableBody>
                 </Table>
             </CardContent>
