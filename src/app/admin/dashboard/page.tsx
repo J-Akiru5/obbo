@@ -44,6 +44,7 @@ function getActivityLabel(action: string) {
         ledger_entry_added: "Ledger Entry Added",
         po_created: "PO Created",
         dr_created: "DR Created",
+        warehouse_report_submitted: "Warehouse Report Submitted",
         setting_updated: "Setting Updated",
     };
     return labels[action] ?? action.replace(/_/g, " ").replace(/\b\w/g, l => l.toUpperCase());
@@ -110,8 +111,11 @@ export default function AdminDashboard() {
 
     const totalInitial = shipments.reduce((s, sh) => s + (sh.total_jb ?? 0) + (sh.total_sb ?? 0), 0);
     const stockPct = totalInitial > 0 ? ((kpis.grandTotal / totalInitial) * 100) : 100;
-    const securityEvents = activityFeed.filter(
-        (a) => a.action === "successful_login" || a.action.includes("login") || a.action === "password_reset"
+    const activityEvents = activityFeed.filter(
+        (a) => a.action === "successful_login" || 
+               a.action.includes("login") || 
+               a.action === "password_reset" ||
+               a.action === "warehouse_report_submitted"
     );
 
     const kpiCards = [
@@ -314,15 +318,15 @@ export default function AdminDashboard() {
                     </CardContent>
                 </Card>
 
-                {/* Security Alert Feed */}
+                {/* System Activity Feed */}
                 <Card className="border-0 shadow-sm bg-[#eeece8] rounded-xl overflow-hidden">
                     <CardHeader className="pb-4 border-b border-[#e2dfd9]">
-                        <CardTitle className="text-base font-semibold text-slate-700 tracking-wide">Security Alert Feed</CardTitle>
+                        <CardTitle className="text-base font-semibold text-slate-700 tracking-wide">System Activity Feed</CardTitle>
                     </CardHeader>
                     <CardContent className="p-0">
-                        {securityEvents.length === 0 && (
+                        {activityEvents.length === 0 && (
                             <div className="p-5">
-                                <p className="text-sm text-slate-500 italic">No recent security events.</p>
+                                <p className="text-sm text-slate-500 italic">No recent system activity.</p>
                                 {/* Display default mock items to match screenshot if real feed is empty for this category */}
                                 <div className="space-y-4 mt-4">
                                     <div className="flex items-center justify-between">
@@ -359,16 +363,22 @@ export default function AdminDashboard() {
                             </div>
                         )}
                         <div className="space-y-4 p-5">
-                            {securityEvents.slice(0, 4).map((activity) => (
+                            {activityEvents.slice(0, 4).map((activity) => (
                                 <div key={activity.id} className="flex items-center justify-between">
                                     <div className="flex items-start gap-4">
                                         <span className="text-[12px] text-slate-400 font-mono mt-0.5">{new Date(activity.created_at).toLocaleTimeString([], { hour12: false })}</span>
                                         <div>
                                             <p className="text-[14px] font-bold text-slate-800">{getActivityLabel(activity.action)}</p>
-                                            <p className="text-[12px] text-slate-500">User: {activity.actor?.email ?? "Unknown"} · IP: {String((activity.metadata as any)?.ip ?? "Unknown")}</p>
+                                            <p className="text-[12px] text-slate-500">
+                                                {activity.action === "warehouse_report_submitted" 
+                                                    ? `Report for ${String((activity.metadata as any)?.date ?? "Unknown")}`
+                                                    : `User: ${activity.actor?.email ?? "Unknown"} · IP: ${String((activity.metadata as any)?.ip ?? "Unknown")}`}
+                                            </p>
                                         </div>
                                     </div>
-                                    <Badge className="bg-[#e6f9f0] text-emerald-600 hover:bg-[#e6f9f0] text-[10px] uppercase font-bold border-0 shadow-none">Success</Badge>
+                                    <Badge className={activity.action === "warehouse_report_submitted" ? "bg-indigo-100 text-indigo-600 border-0" : "bg-[#e6f9f0] text-emerald-600 border-0"} text-[10px] uppercase font-bold>
+                                        {activity.action === "warehouse_report_submitted" ? "Report" : "Success"}
+                                    </Badge>
                                 </div>
                             ))}
                         </div>

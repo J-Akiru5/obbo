@@ -436,10 +436,23 @@ export async function deleteDeliveryReceipt(id: string) {
 // WAREHOUSE REPORTS
 // ═══════════════════════════════════════════════════════════════
 
+
 export async function fetchWarehouseReport(date: string) {
     const { supabase } = await requireAdmin();
     const { data } = await supabase.from("warehouse_reports").select("*").eq("report_date", date).single();
     return data;
+}
+
+export async function checkReportSubmission(date: string) {
+    const { supabase } = await requireAdmin();
+    const { data } = await supabase
+        .from("activity_log")
+        .select("id")
+        .eq("action", "warehouse_report_submitted")
+        .eq("entity_type", "warehouse_report")
+        .filter("metadata->>date", "eq", date)
+        .limit(1);
+    return (data?.length ?? 0) > 0;
 }
 
 export async function saveWarehouseReport(report: {
@@ -456,6 +469,23 @@ export async function saveWarehouseReport(report: {
     if (error) throw new Error(error.message);
     await logActivity(supabase, userId, "warehouse_report_saved", "warehouse_report", data.id, { date: report.report_date });
     return data;
+}
+
+export async function submitWarehouseReport(date: string) {
+    const { supabase, userId } = await requireAdmin();
+    
+    // Ensure report exists first
+    const { data: report, error: fetchError } = await supabase
+        .from("warehouse_reports")
+        .select("id")
+        .eq("report_date", date)
+        .single();
+    
+    if (fetchError || !report) throw new Error("Please save the report before submitting.");
+
+    // Log the submission activity
+    await logActivity(supabase, userId, "warehouse_report_submitted", "warehouse_report", report.id, { date });
+    return { success: true };
 }
 
 // ═══════════════════════════════════════════════════════════════

@@ -7,6 +7,8 @@ import {
     fetchCustomerBalances,
     fetchOrders,
     generateDailyReportData,
+    submitWarehouseReport,
+    checkReportSubmission,
 } from "@/lib/actions/admin-actions";
 import { generateReportXLSX } from "@/lib/report-generators/report-xlsx";
 import { generateReportPDF } from "@/lib/report-generators/report-pdf";
@@ -29,6 +31,8 @@ export function ReportsTab() {
     const [isSaving, setIsSaving] = useState(false);
     const [isGenerating, setIsGenerating] = useState(false);
     const [isAutoFilled, setIsAutoFilled] = useState(false);
+    const [isSubmitted, setIsSubmitted] = useState(false);
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
     // Module 1: Physical Warehouse
     const [physical, setPhysical] = useState({
@@ -94,6 +98,10 @@ export function ReportsTab() {
                 setPhysical(p => ({ ...p, dispatched_jb: totalDispJb, dispatched_sb: totalDispSb }));
             }
 
+            // Check if already submitted
+            const submitted = await checkReportSubmission(reportDate);
+            setIsSubmitted(submitted);
+
             // Load balances for Module 3
             const bals = await fetchCustomerBalances();
             setBalances(bals as any[]);
@@ -102,6 +110,23 @@ export function ReportsTab() {
             toast.error("Failed to load report data");
         } finally {
             setLoading(false);
+        }
+    };
+
+    // ── Send to Admin ─────────────────────────────────────────────
+    const handleSendToAdmin = async () => {
+        setIsSubmitting(true);
+        try {
+            // First save to be sure
+            await handleSavePhysical();
+            
+            await submitWarehouseReport(reportDate);
+            setIsSubmitted(true);
+            toast.success("Report officially submitted to Admin!", { icon: "🚀" });
+        } catch (e: any) {
+            toast.error("Submission failed: " + e.message);
+        } finally {
+            setIsSubmitting(false);
         }
     };
 
@@ -268,6 +293,20 @@ export function ReportsTab() {
                             <FileText className="w-4 h-4" />
                             Export PDF
                         </Button>
+                        <Button
+                            onClick={handleSendToAdmin}
+                            disabled={isSubmitting || isSubmitted}
+                            className={`${isSubmitted ? 'bg-emerald-600' : 'bg-indigo-600'} hover:opacity-90 gap-2 min-w-[140px]`}
+                        >
+                            {isSubmitting ? (
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : isSubmitted ? (
+                                <CheckCircle2 className="w-4 h-4" />
+                            ) : (
+                                <ArrowRight className="w-4 h-4" />
+                            )}
+                            {isSubmitting ? "Sending..." : isSubmitted ? "Submitted to Admin" : "Send to Admin"}
+                        </Button>
                     </div>
                 </div>
             </div>
@@ -284,9 +323,15 @@ export function ReportsTab() {
                                     <CardTitle className="text-lg text-[var(--color-industrial-blue)]">1. Physical Warehouse Inventory</CardTitle>
                                     <CardDescription>Daily opening and closing physical stock count.</CardDescription>
                                 </div>
-                                <Button onClick={handleSavePhysical} disabled={isSaving} className="bg-[var(--color-industrial-blue)]">
-                                    <Save className="w-4 h-4 mr-2" /> {isSaving ? "Saving..." : "Save Report"}
-                                </Button>
+                                <div className="flex gap-2">
+                                    <Button variant="outline" onClick={handleSavePhysical} disabled={isSaving} className="border-[var(--color-industrial-blue)] text-[var(--color-industrial-blue)]">
+                                        <Save className="w-4 h-4 mr-2" /> {isSaving ? "Saving..." : "Save Draft"}
+                                    </Button>
+                                    <Button onClick={handleSendToAdmin} disabled={isSubmitting || isSubmitted} className="bg-indigo-600">
+                                        {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <ArrowRight className="w-4 h-4 mr-2" />}
+                                        {isSubmitted ? "Submitted" : "Send to Admin"}
+                                    </Button>
+                                </div>
                             </div>
                         </CardHeader>
                         <CardContent className="p-0">
