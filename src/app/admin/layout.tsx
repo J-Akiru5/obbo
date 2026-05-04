@@ -16,6 +16,7 @@ import {
     LogOut,
     Bell,
     ChevronDown,
+    Package,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -43,9 +44,13 @@ const navItems = [
         subItems: [
             { href: "/admin/orders?tab=new", label: "New Requests" },
             { href: "/admin/orders?tab=fulfillment", label: "Fulfillment" },
-            { href: "/admin/orders?tab=tracking", label: "Tracking" },
-            { href: "/admin/orders?tab=catalog", label: "Product Catalog" }
+            { href: "/admin/orders?tab=tracking", label: "Tracking" }
         ]
+    },
+    {
+        href: "/admin/products",
+        label: "Products",
+        icon: Package,
     },
     { 
         href: "/admin/inventory", 

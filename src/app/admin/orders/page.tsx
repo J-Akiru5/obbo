@@ -3,8 +3,7 @@
 import { useState, useEffect, Suspense } from "react";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { fetchOrders, fetchProducts, updateProduct, approveOrder, rejectOrder, finalConfirmCheck, dispatchOrder, updateTrackingStatus, fetchShipments } from "@/lib/actions/admin-actions";
-import { ProductCatalogTab } from "./components/product-catalog-tab";
+import { fetchOrders, approveOrder, rejectOrder, finalConfirmCheck, dispatchOrder, updateTrackingStatus, fetchShipments } from "@/lib/actions/admin-actions";
 import { NewRequestsTab } from "./components/new-requests-tab";
 import { FulfillmentTab } from "./components/fulfillment-tab";
 import { TrackingTab } from "./components/tracking-tab";
@@ -19,19 +18,16 @@ function OrdersContent() {
     const pathname = usePathname();
     const [activeTab, setActiveTab] = useState(searchParams.get("tab") || "new");
     const [orders, setOrders] = useState<Order[]>([]);
-    const [products, setProducts] = useState<Product[]>([]);
     const [shipments, setShipments] = useState<Shipment[]>([]);
     const [loading, setLoading] = useState(true);
 
     const loadData = async () => {
         try {
-            const [o, p, s] = await Promise.all([
+            const [o, s] = await Promise.all([
                 fetchOrders(),
-                fetchProducts(),
                 fetchShipments()
             ]);
             setOrders(o as Order[]);
-            setProducts(p as Product[]);
             setShipments(s as Shipment[]);
         } catch (error) {
             console.error("Error loading orders data:", error);
@@ -70,16 +66,6 @@ function OrdersContent() {
     const handleTabChange = (val: string) => {
         setActiveTab(val);
         router.push(`${pathname}?tab=${val}`);
-    };
-
-    const handleProductUpdate = async (id: string, updates: any) => {
-        try {
-            await updateProduct(id, updates);
-            toast.success("Product updated successfully.");
-            loadData();
-        } catch (e: any) {
-            toast.error(e.message || "Failed to update product.");
-        }
     };
 
     const handleApproveOrder = async (orderId: string, approvedItems: { itemId: string; qty: number }[], shippingFee?: number) => {
@@ -140,8 +126,7 @@ function OrdersContent() {
             </div>
 
             <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-                <TabsList className="grid w-full grid-cols-5 h-auto">
-                    <TabsTrigger value="catalog" className="py-2.5">Products</TabsTrigger>
+                <TabsList className="grid w-full grid-cols-4 h-auto">
                     <TabsTrigger value="new" className="py-2.5">
                         New Requests
                         {orders.filter(o => o.status === "pending").length > 0 && (
@@ -156,10 +141,6 @@ function OrdersContent() {
                 </TabsList>
 
                 <div className="mt-6">
-                    <TabsContent value="catalog">
-                        <ProductCatalogTab products={products} onUpdate={handleProductUpdate} loading={loading} />
-                    </TabsContent>
-                    
                     <TabsContent value="new">
                         <NewRequestsTab 
                             orders={orders.filter(o => o.status === "pending")} 
