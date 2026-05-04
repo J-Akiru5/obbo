@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import {
     Package, ShoppingCart, Truck, Users, ArrowUpRight,
     Clock, CheckCircle2, AlertCircle, UserPlus, PackagePlus,
-    Wifi, WifiOff, AlertTriangle, ShieldAlert,
+    AlertTriangle, ShieldAlert,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -12,6 +12,7 @@ import { createClient } from "@/lib/supabase/client";
 import { fetchDashboardKPIs, fetchActivityFeed, fetchShipments, fetchOrders } from "@/lib/actions/admin-actions";
 import type { ActivityLog, Order } from "@/lib/types/database";
 import Link from "next/link";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 
 // ── Activity helpers ───────────────────────────────────────────
 function getActivityIcon(action: string) {
@@ -60,12 +61,6 @@ function formatTimeAgo(dateStr: string) {
     return "Just now";
 }
 
-function StockAlertBadge({ percentage }: { percentage: number }) {
-    if (percentage > 50) return <Badge className="bg-emerald-100 text-emerald-800 hover:bg-emerald-100 text-[10px]">Safe</Badge>;
-    if (percentage > 20) return <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-100 text-[10px]">Warning</Badge>;
-    return <Badge className="bg-red-100 text-red-800 hover:bg-red-100 text-[10px]">Critical</Badge>;
-}
-
 export default function AdminDashboard() {
     const [kpis, setKpis] = useState({
         jbGood: 0, sbGood: 0, jbBalance: 0, sbBalance: 0,
@@ -108,32 +103,41 @@ export default function AdminDashboard() {
         return () => { supabase.removeChannel(channel); };
     }, [loadData]);
 
-    const totalInitial = shipments.reduce((s, sh) => s + (sh.total_jb ?? 0) + (sh.total_sb ?? 0), 0);
-    const stockPct = totalInitial > 0 ? ((kpis.grandTotal / totalInitial) * 100) : 100;
     const securityEvents = activityFeed.filter(
         (a) => a.action === "successful_login" || a.action.includes("login") || a.action === "password_reset"
     );
 
-    const kpiCards = [
+    const JB_THRESHOLD = 100;
+    const SB_THRESHOLD = 200;
+    const jbIsLow = kpis.jbGood < JB_THRESHOLD;
+    const sbIsLow = kpis.sbGood < SB_THRESHOLD;
+
+    const jbAlert = {
+        bg: jbIsLow ? "bg-[#ffebe6]" : "bg-[#e6f9f0]",
+        border: jbIsLow ? "border-[#ffb3b3]" : "border-[#a2e8c6]",
+        text: jbIsLow ? "text-[#ff6b6b]" : "text-emerald-600",
+        label: jbIsLow ? "Low Stock" : "Safe"
+    };
+
+    const sbAlert = {
+        bg: sbIsLow ? "bg-[#ffebe6]" : "bg-[#e6f9f0]",
+        border: sbIsLow ? "border-[#ffb3b3]" : "border-[#a2e8c6]",
+        text: sbIsLow ? "text-[#ff6b6b]" : "text-emerald-600",
+        label: sbIsLow ? "Low Stock" : "Safe"
+    };
+
+    const chartData = [
         {
-            title: "Good Stock (SB)", value: kpis.sbGood.toLocaleString(),
-            subtitle: `${kpis.sbBalance.toLocaleString()} obligated · ${kpis.sbNet.toLocaleString()} net`,
-            icon: Package, color: "text-blue-600 bg-blue-500/10",
+            name: 'Jumbo Bags (JB)',
+            good: kpis.jbGood,
+            obligated: Math.abs(kpis.jbBalance),
+            net: kpis.jbNet,
         },
         {
-            title: "Good Stock (JB)", value: kpis.jbGood.toLocaleString(),
-            subtitle: `${kpis.jbBalance.toLocaleString()} obligated · ${kpis.jbNet.toLocaleString()} net`,
-            icon: Package, color: "text-emerald-600 bg-emerald-500/10",
-        },
-        {
-            title: "Net Available", value: kpis.grandNet.toLocaleString(),
-            subtitle: `${kpis.grandTotal.toLocaleString()} total − ${kpis.grandBalance.toLocaleString()} owed`,
-            icon: Truck, color: "text-indigo-600 bg-indigo-500/10",
-        },
-        {
-            title: "Pending Orders", value: kpis.pendingOrders.toString(),
-            subtitle: `${kpis.activeClients} active clients · ${kpis.pendingKyc} pending KYC`,
-            icon: ShoppingCart, color: "text-amber-600 bg-amber-500/10",
+            name: 'Sling Bags (SB)',
+            good: kpis.sbGood,
+            obligated: Math.abs(kpis.sbBalance),
+            net: kpis.sbNet,
         },
     ];
 
@@ -240,6 +244,27 @@ export default function AdminDashboard() {
                 </Card>
             </div>
 
+            {/* Visual Analytics */}
+            <Card className="border-0 shadow-sm bg-white rounded-xl overflow-hidden mt-8 p-6">
+                <CardHeader className="p-0 pb-4 mb-4 border-b border-border">
+                    <CardTitle className="text-base font-semibold text-slate-700 tracking-wide">Warehouse Stock Overview</CardTitle>
+                </CardHeader>
+                <div className="h-[300px] w-full mt-4">
+                    <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                            <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12 }} dy={10} />
+                            <YAxis axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12 }} />
+                            <Tooltip cursor={{ fill: '#f8fafc' }} contentStyle={{ borderRadius: '8px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
+                            <Legend wrapperStyle={{ paddingTop: '20px' }} />
+                            <Bar dataKey="good" name="Good Stock" fill="#1dd1a1" radius={[4, 4, 0, 0]} maxBarSize={60} />
+                            <Bar dataKey="obligated" name="Obligated (Balances)" fill="#feca57" radius={[4, 4, 0, 0]} maxBarSize={60} />
+                            <Bar dataKey="net" name="Net Available" fill="#3b82f6" radius={[4, 4, 0, 0]} maxBarSize={60} />
+                        </BarChart>
+                    </ResponsiveContainer>
+                </div>
+            </Card>
+
             {/* Low Stock Alerts */}
             <Card className="border-0 shadow-sm bg-[#eeece8] rounded-xl overflow-hidden mt-8">
                 <CardHeader className="pb-2">
@@ -249,24 +274,24 @@ export default function AdminDashboard() {
                     </div>
                 </CardHeader>
                 <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2 pb-6">
-                    <div className="bg-[#e6f9f0] border border-[#a2e8c6] rounded-xl p-5 flex items-center justify-between">
+                    <div className={`${jbAlert.bg} border ${jbAlert.border} rounded-xl p-5 flex items-center justify-between transition-colors`}>
                         <div>
                             <h4 className="text-[15px] font-semibold text-slate-800">Jumbo Bags (JB)</h4>
-                            <p className="text-[13px] text-slate-500 mt-1">Threshold: 100 bags</p>
+                            <p className="text-[13px] text-slate-500 mt-1">Threshold: {JB_THRESHOLD} bags</p>
                         </div>
                         <div className="text-right">
-                            <p className="text-[28px] font-bold text-emerald-600 leading-none mb-1">{kpis.jbGood.toLocaleString()}</p>
-                            <span className="text-[10px] font-bold tracking-widest text-emerald-600 uppercase">Safe</span>
+                            <p className={`text-[28px] font-bold ${jbAlert.text} leading-none mb-1`}>{kpis.jbGood.toLocaleString()}</p>
+                            <span className={`text-[10px] font-bold tracking-widest ${jbAlert.text} uppercase`}>{jbAlert.label}</span>
                         </div>
                     </div>
-                    <div className="bg-[#e6f9f0] border border-[#a2e8c6] rounded-xl p-5 flex items-center justify-between">
+                    <div className={`${sbAlert.bg} border ${sbAlert.border} rounded-xl p-5 flex items-center justify-between transition-colors`}>
                         <div>
                             <h4 className="text-[15px] font-semibold text-slate-800">Sling Bags (SB)</h4>
-                            <p className="text-[13px] text-slate-500 mt-1">Threshold: 200 bags</p>
+                            <p className="text-[13px] text-slate-500 mt-1">Threshold: {SB_THRESHOLD} bags</p>
                         </div>
                         <div className="text-right">
-                            <p className="text-[28px] font-bold text-emerald-600 leading-none mb-1">{kpis.sbGood.toLocaleString()}</p>
-                            <span className="text-[10px] font-bold tracking-widest text-emerald-600 uppercase">Safe</span>
+                            <p className={`text-[28px] font-bold ${sbAlert.text} leading-none mb-1`}>{kpis.sbGood.toLocaleString()}</p>
+                            <span className={`text-[10px] font-bold tracking-widest ${sbAlert.text} uppercase`}>{sbAlert.label}</span>
                         </div>
                     </div>
                 </CardContent>
