@@ -599,6 +599,7 @@ export async function fetchAuditLog(page: number = 1, perPage: number = 50) {
     return { entries: data ?? [], total: count ?? 0 };
 }
 
+
 export async function fetchActivityFeed(limit: number = 20) {
     const { supabase } = await requireAdmin();
     const { data } = await supabase
@@ -607,4 +608,98 @@ export async function fetchActivityFeed(limit: number = 20) {
         .order("created_at", { ascending: false })
         .limit(limit);
     return data ?? [];
+}
+
+// ═══════════════════════════════════════════════════════════════
+// DAILY REPORT AUTO-GENERATION
+// ═══════════════════════════════════════════════════════════════
+
+export async function generateDailyReportData(date: string) {
+    const { supabase } = await requireAdmin();
+
+    // 1. Yesterday's closing = previous day's warehouse_report closing
+    const yesterday = new Date(date);
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayStr = yesterday.toISOString().split("T")[0];
+
+    const { data: prevReport } = await supabase
+        .from("warehouse_reports")
+        .select("closing_jb, closing_sb")
+        .eq("report_date", yesterdayStr)
+        .single();
+
+    const yesterday_jb = prevReport?.closing_jb ?? 0;
+    const yesterday_sb = prevReport?.closing_sb ?? 0;
+
+    // 2. Received = delivery_receipts created on this date
+    const { data: drs } = await supabase
+        .from("delivery_receipts")
+        .select("jb, sb")
+        .eq("received_date", date);
+
+    const received_jb = (drs ?? []).reduce((s, r) => s + (r.jb ?? 0), 0);
+    const received_sb = (drs ?? []).reduce((s, r) => s + (r.sb ?? 0), 0);
+
+    // 3. Dispatched = orders updated to dispatched/completed on this date
+    const { data: dispatchedOrders } = await supabase
+        .from("orders")
+        .select("items:order_items(bag_type, dispatched_qty), dr_number, client:profiles!orders_client_id_fkey(full_name, company_name), service_type")
+        .in("status", ["dispatched", "completed"])
+        .gte("updated_at", `${date}T00:00:00`)
+        .lte("updated_at", `${date}T23:59:59`);
+
+    const dispatches = (dispatchedOrders ?? []).map((o: any) => {
+        const jb = (o.items ?? []).filter((i: any) => i.bag_type === "JB").reduce((s: number, i: any) => s + (i.dispatched_qty ?? 0), 0);
+        const sb = (o.items ?? []).filter((i: any) => i.bag_type === "SB").reduce((s: number, i: any) => s + (i.dispatched_qty ?? 0), 0);
+        return {
+            client: o.client?.company_name || o.client?.full_name || "Unknown",
+            dr: o.dr_number ?? null,
+            service: o.service_type ?? "—",
+            jb,
+            sb,
+        };
+    });
+
+    const dispatched_jb = dispatches.reduce((s: number, d: any) => s + d.jb, 0);
+    const dispatched_sb = dispatches.reduce((s: number, d: any) => s + d.sb, 0);
+
+    // 4. Returned bags = shipment_ledger bags_returned on this date
+    const { data: ledgerReturns } = await supabase
+        .from("shipment_ledger")
+        .select("bags_returned")
+        .gte("date", `${date}`)
+        .lte("date", `${date}`);
+
+    const returned_total = (ledgerReturns ?? []).reduce((s, r) => s + (r.bags_returned ?? 0), 0);
+    // Assume equal split between JB/SB for bag returns unless more granular data exists
+    const returned_jb = Math.floor(returned_total / 2);
+    const returned_sb = returned_total - returned_jb;
+
+    // 5. Customer obligation balances
+    const { data: balances } = await supabase
+        .from("customer_balances")
+        .select("*, client:profiles!customer_balances_client_id_fkey(full_name, company_name), product:products!customer_balances_product_id_fkey(name)")
+        .eq("status", "pending");
+
+    const balanceRows = (balances ?? []).map((b: any) => ({
+        client: b.client?.company_name || b.client?.full_name || "Unknown",
+        product: b.product?.name || "—",
+        qty: b.remaining_qty,
+        bag_type: b.bag_type,
+    }));
+
+    return {
+        yesterday_jb,
+        yesterday_sb,
+        received_jb,
+        received_sb,
+        dispatched_jb,
+        dispatched_sb,
+        returned_jb,
+        returned_sb,
+        waste_jb: 0,
+        waste_sb: 0,
+        dispatches,
+        balances: balanceRows,
+    };
 }
