@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, Suspense } from "react";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { fetchShipments, fetchPurchaseOrders, fetchDeliveryReceipts, fetchWarehouseReport } from "@/lib/actions/admin-actions";
 import { ShipmentsTab } from "./components/shipments-tab";
@@ -14,6 +14,8 @@ import { createClient } from "@/lib/supabase/client";
 
 function InventoryContent() {
     const searchParams = useSearchParams();
+    const router = useRouter();
+    const pathname = usePathname();
     const [activeTab, setActiveTab] = useState(searchParams.get("tab") || "shipments");
     const [shipments, setShipments] = useState<Shipment[]>([]);
     const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrder[]>([]);
@@ -39,6 +41,13 @@ function InventoryContent() {
     };
 
     useEffect(() => {
+        const tab = searchParams.get("tab");
+        if (tab && tab !== activeTab) {
+            setActiveTab(tab);
+        }
+    }, [searchParams, activeTab]);
+
+    useEffect(() => {
         loadData();
 
         const supabase = createClient();
@@ -55,6 +64,11 @@ function InventoryContent() {
         };
     }, []);
 
+    const handleTabChange = (val: string) => {
+        setActiveTab(val);
+        router.push(`${pathname}?tab=${val}`);
+    };
+
     return (
         <div className="space-y-6">
             <div>
@@ -62,7 +76,7 @@ function InventoryContent() {
                 <p className="text-muted-foreground mt-1">Manage shipments, purchase orders, delivery receipts, and warehouse reports.</p>
             </div>
 
-            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+            <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
                 <TabsList className="grid w-full grid-cols-4 h-auto">
                     <TabsTrigger value="shipments" className="py-2.5">Shipment Batches</TabsTrigger>
                     <TabsTrigger value="po" className="py-2.5">PO List</TabsTrigger>

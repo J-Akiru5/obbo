@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useState, type ComponentType } from "react";
+import { useCallback, useEffect, useState, Suspense, type ComponentType } from "react";
+import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import {
     AlertTriangle,
     Building2,
@@ -539,7 +540,11 @@ function ClientDetailDialog({
     );
 }
 
-export default function AdminClientsPage() {
+function ClientsContent() {
+    const searchParams = useSearchParams();
+    const router = useRouter();
+    const pathname = usePathname();
+    const [activeTab, setActiveTab] = useState(searchParams.get("tab") || "kyc");
     const [profiles, setProfiles] = useState<Profile[]>([]);
     const [loading, setLoading] = useState(true);
     const [currentUserRole, setCurrentUserRole] = useState<string | null>(null);
@@ -557,6 +562,13 @@ export default function AdminClientsPage() {
     }, []);
 
     useEffect(() => {
+        const tab = searchParams.get("tab");
+        if (tab && tab !== activeTab) {
+            setActiveTab(tab);
+        }
+    }, [searchParams, activeTab]);
+
+    useEffect(() => {
         void fetchProfiles();
     }, [fetchProfiles]);
 
@@ -571,6 +583,11 @@ export default function AdminClientsPage() {
 
         void loadCurrentRole();
     }, []);
+
+    const handleTabChange = (val: string) => {
+        setActiveTab(val);
+        router.push(`${pathname}?tab=${val}`);
+    };
 
     async function handleKycAction(id: string, status: "verified" | "rejected", reason?: string) {
         if (status === "rejected" && !reason?.trim()) {
@@ -633,7 +650,7 @@ export default function AdminClientsPage() {
                     {loading ? (
                         <div className="py-16 text-center text-sm text-muted-foreground">Loading clients...</div>
                     ) : (
-                        <Tabs defaultValue="kyc" className="w-full">
+                        <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
                             <TabsList className="grid w-full grid-cols-2 sm:w-auto">
                                 <TabsTrigger value="kyc" className="gap-2">
                                     Verification Hub
@@ -757,5 +774,13 @@ export default function AdminClientsPage() {
             <ClientDetailDialog profile={detailTarget} open={detailOpen} onClose={() => setDetailOpen(false)} />
             <ManualClientDialog open={manualOpen} onClose={() => setManualOpen(false)} onCreated={fetchProfiles} />
         </div>
+    );
+}
+
+export default function AdminClientsPage() {
+    return (
+        <Suspense fallback={<div className="py-8 text-center text-muted-foreground animate-pulse">Loading clients...</div>}>
+            <ClientsContent />
+        </Suspense>
     );
 }
