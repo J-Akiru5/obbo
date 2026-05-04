@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { fetchShipments, fetchPurchaseOrders, fetchDeliveryReceipts, fetchWarehouseReport } from "@/lib/actions/admin-actions";
 import { ShipmentsTab } from "./components/shipments-tab";
@@ -12,7 +13,8 @@ import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
 
 export default function AdminInventoryPage() {
-    const [activeTab, setActiveTab] = useState("shipments");
+    const searchParams = useSearchParams();
+    const [activeTab, setActiveTab] = useState(searchParams.get("tab") || "shipments");
     const [shipments, setShipments] = useState<Shipment[]>([]);
     const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrder[]>([]);
     const [deliveryReceipts, setDeliveryReceipts] = useState<DeliveryReceipt[]>([]);

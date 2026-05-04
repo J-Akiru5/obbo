@@ -3,7 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   Bell,
   CircleUserRound,
@@ -15,10 +15,16 @@ import {
   PackageSearch,
   ShieldCheck,
   WalletCards,
+  AlertCircle,
+  CheckCircle2,
+  Info,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { createClient } from "@/lib/supabase/client";
+import { toast } from "sonner";
 
 const navItems = [
   { href: "/client/dashboard", label: "Dashboard", icon: Gauge },
@@ -81,6 +87,54 @@ function SidebarContent({ pathname, onNavigate }: { pathname: string; onNavigate
 export default function ClientLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [notifications, setNotifications] = useState<any[]>([]);
+  const [notifOpen, setNotifOpen] = useState(false);
+
+  const loadNotifications = useCallback(async () => {
+    try {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data, count } = await supabase
+        .from("notifications")
+        .select("*", { count: "exact" })
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false })
+        .limit(8);
+      setNotifications(data ?? []);
+      const unread = data?.filter((n: any) => !n.is_read).length ?? 0;
+      setUnreadCount(unread);
+    } catch {
+      // silently fail
+    }
+  }, []);
+
+  useEffect(() => {
+    loadNotifications();
+    // Subscribe to real-time notifications
+    const supabase = createClient();
+    const channel = supabase
+      .channel("client-notifications")
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "notifications" }, () => {
+        loadNotifications();
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [loadNotifications]);
+
+  const markAllRead = async () => {
+    try {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      await supabase.from("notifications").update({ is_read: true }).eq("user_id", user.id).eq("is_read", false);
+      setUnreadCount(0);
+      setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
+    } catch {
+      toast.error("Failed to mark notifications as read.");
+    }
+  };
 
   return (
     <div className="min-h-screen bg-muted/30 lg:flex">
@@ -116,23 +170,74 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
           </div>
 
           <div className="flex items-center gap-2">
-            <Button variant="ghost" size="icon-sm" className="relative">
-              <Bell className="h-4 w-4" />
-              <span className="absolute -right-0.5 -top-0.5 h-4 w-4 rounded-full bg-[var(--color-industrial-yellow)] text-[10px] font-bold text-[var(--color-industrial-blue)]">
-                3
-              </span>
-            </Button>
+            <Popover open={notifOpen} onOpenChange={setNotifOpen}>
+              <PopoverTrigger render={<button type="button" className="relative inline-flex h-8 w-8 items-center justify-center rounded-md hover:bg-muted" />}>
+                  <Bell className="h-4 w-4" />
+                  {unreadCount > 0 && (
+                    <span className="absolute -right-0.5 -top-0.5 h-4 w-4 rounded-full bg-[var(--color-industrial-yellow)] text-[10px] font-bold text-[var(--color-industrial-blue)] flex items-center justify-center">
+                      {unreadCount > 9 ? '9+' : unreadCount}
+                    </span>
+                  )}
+              </PopoverTrigger>
+              <PopoverContent align="end" className="w-80 p-0">
+                <div className="flex items-center justify-between p-3 border-b">
+                  <h3 className="text-sm font-semibold">Notifications</h3>
+                  {unreadCount > 0 && (
+                    <button onClick={markAllRead} className="text-xs text-[var(--color-industrial-blue)] hover:underline">
+                      Mark all as read
+                    </button>
+                  )}
+                </div>
+                <div className="max-h-80 overflow-y-auto">
+                  {notifications.length === 0 ? (
+                    <div className="p-6 text-center text-sm text-gray-500">No notifications yet</div>
+                  ) : (
+                    notifications.map((n: any) => (
+                      <Link key={n.id} href={n.href || "/client/orders"} onClick={() => setNotifOpen(false)}>
+                        <div className={`px-3 py-2.5 border-b border-gray-50 hover:bg-gray-50 transition-colors ${!n.is_read ? 'bg-blue-50/50' : ''}`}>
+                          <div className="flex items-start gap-2">
+                            {n.severity === 'warning' ? (
+                              <AlertCircle className="w-3.5 h-3.5 text-amber-500 mt-0.5 shrink-0" />
+                            ) : n.severity === 'success' ? (
+                              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 mt-0.5 shrink-0" />
+                            ) : (
+                              <Info className="w-3.5 h-3.5 text-blue-500 mt-0.5 shrink-0" />
+                            )}
+                            <div>
+                              <p className={`text-xs font-medium ${!n.is_read ? 'text-gray-900' : 'text-gray-600'}`}>{n.title}</p>
+                              <p className="text-[10px] text-gray-500 mt-0.5">{n.message}</p>
+                              <p className="text-[9px] text-gray-400 mt-1">{new Date(n.created_at).toLocaleString()}</p>
+                            </div>
+                          </div>
+                        </div>
+                      </Link>
+                    ))
+                  )}
+                </div>
+                <div className="p-2 border-t">
+                  <Link href="/client/dashboard" onClick={() => setNotifOpen(false)}>
+                    <Button variant="ghost" size="sm" className="w-full text-xs">View all on Dashboard</Button>
+                  </Link>
+                </div>
+              </PopoverContent>
+            </Popover>
             <Badge
               variant="outline"
               className="hidden border-emerald-200 bg-emerald-50 text-emerald-700 sm:inline-flex"
             >
               Verified Account
             </Badge>
-            <Link href="/login">
-              <Button variant="ghost" size="sm" className="gap-1.5 text-muted-foreground">
-                <LogOut className="h-4 w-4" /> Sign Out
-              </Button>
-            </Link>
+            <button
+              type="button"
+              onClick={async () => {
+                const supabase = createClient();
+                await supabase.auth.signOut();
+                window.location.href = "/login";
+              }}
+              className="inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium text-muted-foreground hover:bg-muted transition-colors"
+            >
+              <LogOut className="h-4 w-4" /> Sign Out
+            </button>
           </div>
         </header>
 

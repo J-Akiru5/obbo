@@ -17,6 +17,8 @@ export type OrderSource = 'port' | 'warehouse';
 export type ServiceType = 'pickup' | 'deliver';
 export type TrackingStatus = 'pending_dispatch' | 'in_transit' | 'delivered' | 'bags_returned';
 
+export type OrderType = 'new' | 'redelivery' | 'draft';
+
 export interface Profile {
     id: string;
     email: string;
@@ -38,6 +40,12 @@ export interface Profile {
     kyc_status: KycStatus;
     kyc_documents: string[] | null;
     avatar_url: string | null;
+    notification_preferences: {
+        order_approval: boolean;
+        payment_required: boolean;
+        dispatch: boolean;
+        delivery_status: boolean;
+    } | null;
     created_at: string;
     updated_at: string;
 }
@@ -133,6 +141,13 @@ export interface Order {
     bags_returned_jb: number;
     bags_returned_sb: number;
     shipment_id: string | null;
+    // Split delivery fields
+    is_split_delivery: boolean;
+    deliver_now_qty: number;
+    supplier_name: string | null;
+    preferred_pickup_date: string | null;
+    order_type: OrderType;
+    linked_po_number: string | null;
     created_at: string;
     updated_at: string;
 }
@@ -213,5 +228,16 @@ export interface ActivityLog {
     entity_type: string;
     entity_id: string;
     metadata: Record<string, unknown> | null;
+    created_at: string;
+}
+
+export interface Notification {
+    id: string;
+    user_id: string;
+    title: string;
+    message: string;
+    href: string | null;
+    severity: 'info' | 'warning' | 'success';
+    is_read: boolean;
     created_at: string;
 }

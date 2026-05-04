@@ -1,5 +1,6 @@
 "use server";
 
+import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
 // ─── Helper: ensure caller is admin or warehouse manager ─────
@@ -438,8 +439,18 @@ export async function deleteDeliveryReceipt(id: string) {
 
 export async function fetchWarehouseReport(date: string) {
     const { supabase } = await requireAdmin();
-    const { data } = await supabase.from("warehouse_reports").select("*").eq("report_date", date).single();
-    return data;
+    const { data } = await supabase.from("warehouse_reports").select("*").eq("report_date", date).maybeSingle();
+    return data ?? null;
+}
+
+export async function fetchWarehouseReports(limit: number = 30) {
+    const { supabase } = await requireAdmin();
+    const { data } = await supabase
+        .from("warehouse_reports")
+        .select("*")
+        .order("report_date", { ascending: false })
+        .limit(limit);
+    return data ?? [];
 }
 
 export async function saveWarehouseReport(report: {
@@ -505,6 +516,54 @@ export async function updateProfileRole(profileId: string, role: "client" | "war
         to: role,
     });
     return { success: true };
+}
+
+export async function createManualClient(input: {
+    email: string;
+    fullName: string;
+    password: string;
+    phone?: string;
+    companyName?: string;
+    accountType?: "individual" | "company";
+    addressStreet?: string;
+    addressCity?: string;
+    addressProvince?: string;
+    addressPostalCode?: string;
+    businessPermitNo?: string;
+    tinNo?: string;
+}) {
+    const { supabase, userId } = await requireAdminOnly();
+    const adminClient = createAdminClient();
+
+    const { data, error } = await adminClient.auth.admin.createUser({
+        email: input.email,
+        password: input.password,
+        email_confirm: true,
+        user_metadata: {
+            full_name: input.fullName,
+            phone: input.phone ?? null,
+            company_name: input.companyName ?? null,
+            account_type: input.accountType ?? (input.companyName ? "company" : "individual"),
+            address_street: input.addressStreet ?? null,
+            address_city: input.addressCity ?? null,
+            address_province: input.addressProvince ?? null,
+            address_postal_code: input.addressPostalCode ?? null,
+            business_permit_no: input.businessPermitNo ?? null,
+            tin_no: input.tinNo ?? null,
+            role: "client",
+            kyc_status: "verified",
+        },
+    });
+
+    if (error) throw new Error(error.message);
+    if (!data.user?.id) throw new Error("Supabase did not return a client id.");
+
+    await logActivity(supabase, userId, "manual_client_created", "profile", data.user.id, {
+        email: input.email,
+        fullName: input.fullName,
+    });
+
+    return { success: true, userId: data.user.id };
 }
 
 // ═══════════════════════════════════════════════════════════════

@@ -1,7 +1,7 @@
-import { fetchClientDashboardKPIs, fetchRecentOrders } from "@/lib/actions/client-actions";
+import { fetchClientDashboardKPIs, fetchRecentOrders, fetchClientNotifications, fetchActiveProducts } from "@/lib/actions/client-actions";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { AlertCircle, Clock, Package, PackageSearch, Truck } from "lucide-react";
+import { AlertCircle, Bell, Clock, Package, PackageSearch, Truck, Info } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 
@@ -10,15 +10,22 @@ export const metadata = {
 };
 
 export default async function ClientDashboardPage() {
-    const kpis = await fetchClientDashboardKPIs();
-    const recentOrders = await fetchRecentOrders();
+    const [kpis, recentOrders, notifications, products] = await Promise.all([
+        fetchClientDashboardKPIs(),
+        fetchRecentOrders(),
+        fetchClientNotifications(),
+        fetchActiveProducts(),
+    ]);
+
+    const unreadNotifications = notifications.filter((n: any) => !n.is_read);
+    const popularProducts = products.slice(0, 2);
 
     return (
         <div className="space-y-6">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
-                    <h2 className="text-2xl font-bold text-gray-900 tracking-tight">Welcome back</h2>
-                    <p className="text-sm text-gray-500">Here's an overview of your account.</p>
+                    <h2 className="text-2xl font-bold text-gray-900 tracking-tight">Welcome back, {kpis.clientName}</h2>
+                    <p className="text-sm text-gray-500">Here&apos;s an overview of your account.</p>
                 </div>
                 <div className="flex gap-2">
                     <Link href="/client/catalog">
@@ -30,45 +37,82 @@ export default async function ClientDashboardPage() {
                 </div>
             </div>
 
+            {/* KPI Cards — now clickable */}
             <div className="grid gap-4 md:grid-cols-3">
-                <Card className="bg-white border-blue-100 shadow-sm">
-                    <CardHeader className="flex flex-row items-center justify-between pb-2">
-                        <CardTitle className="text-sm font-medium text-gray-600">Pending Orders</CardTitle>
-                        <Clock className="w-4 h-4 text-amber-500" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold text-gray-900">{kpis.pendingOrders}</div>
-                        <p className="text-xs text-gray-500 mt-1">Awaiting approval or payment</p>
-                    </CardContent>
-                </Card>
+                <Link href="/client/orders">
+                    <Card className="bg-white border-blue-100 shadow-sm hover:shadow-md transition-shadow cursor-pointer">
+                        <CardHeader className="flex flex-row items-center justify-between pb-2">
+                            <CardTitle className="text-sm font-medium text-gray-600">Pending Orders</CardTitle>
+                            <Clock className="w-4 h-4 text-amber-500" />
+                        </CardHeader>
+                        <CardContent>
+                            <div className="text-2xl font-bold text-gray-900">{kpis.pendingOrders}</div>
+                            <p className="text-xs text-gray-500 mt-1">Awaiting approval or payment</p>
+                        </CardContent>
+                    </Card>
+                </Link>
 
-                <Card className="bg-white border-blue-100 shadow-sm">
-                    <CardHeader className="flex flex-row items-center justify-between pb-2">
-                        <CardTitle className="text-sm font-medium text-gray-600">Active Shipments</CardTitle>
-                        <Truck className="w-4 h-4 text-emerald-500" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold text-gray-900">{kpis.activeShipments}</div>
-                        <p className="text-xs text-gray-500 mt-1">Dispatched or In Transit</p>
-                    </CardContent>
-                </Card>
+                <Link href="/client/orders">
+                    <Card className="bg-white border-blue-100 shadow-sm hover:shadow-md transition-shadow cursor-pointer">
+                        <CardHeader className="flex flex-row items-center justify-between pb-2">
+                            <CardTitle className="text-sm font-medium text-gray-600">Active Shipments</CardTitle>
+                            <Truck className="w-4 h-4 text-emerald-500" />
+                        </CardHeader>
+                        <CardContent>
+                            <div className="text-2xl font-bold text-gray-900">{kpis.activeShipments}</div>
+                            <p className="text-xs text-gray-500 mt-1">Dispatched or In Transit</p>
+                        </CardContent>
+                    </Card>
+                </Link>
 
-                <Card className="bg-[var(--color-industrial-blue)] text-white shadow-md">
-                    <CardHeader className="flex flex-row items-center justify-between pb-2">
-                        <CardTitle className="text-sm font-medium text-blue-100">Remaining Balance</CardTitle>
-                        <Package className="w-4 h-4 text-blue-200" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold text-white">
-                            {kpis.remainingBags.toLocaleString()} <span className="text-sm font-normal text-blue-200">indiv. bags</span>
-                        </div>
-                        <p className="text-xs text-blue-200 mt-1">Available for re-delivery</p>
-                    </CardContent>
-                </Card>
+                <Link href="/client/ledger">
+                    <Card className="bg-[var(--color-industrial-blue)] text-white shadow-md hover:shadow-lg transition-shadow cursor-pointer">
+                        <CardHeader className="flex flex-row items-center justify-between pb-2">
+                            <CardTitle className="text-sm font-medium text-blue-100">Remaining Balance</CardTitle>
+                            <Package className="w-4 h-4 text-blue-200" />
+                        </CardHeader>
+                        <CardContent>
+                            <div className="text-2xl font-bold text-white">
+                                {kpis.remainingBags.toLocaleString()} <span className="text-sm font-normal text-blue-200">indiv. bags</span>
+                            </div>
+                            <p className="text-xs text-blue-200 mt-1">Available for re-delivery</p>
+                        </CardContent>
+                    </Card>
+                </Link>
             </div>
 
-            {/* Notification Banner */}
-            {kpis.pendingOrders > 0 && (
+            {/* Notification Alerts */}
+            {unreadNotifications.length > 0 && (
+                <div className="space-y-2">
+                    {unreadNotifications.slice(0, 3).map((notif: any) => (
+                        <Link key={notif.id} href={notif.href || "/client/orders"}>
+                            <div className={`rounded-xl p-4 flex items-start gap-3 cursor-pointer transition-colors ${
+                                notif.severity === "warning"
+                                    ? "bg-amber-50 border border-amber-200 hover:bg-amber-100"
+                                    : notif.severity === "success"
+                                        ? "bg-emerald-50 border border-emerald-200 hover:bg-emerald-100"
+                                        : "bg-blue-50 border border-blue-200 hover:bg-blue-100"
+                            }`}>
+                                {notif.severity === "warning" ? (
+                                    <AlertCircle className="w-5 h-5 text-amber-600 mt-0.5 shrink-0" />
+                                ) : notif.severity === "success" ? (
+                                    <Bell className="w-5 h-5 text-emerald-600 mt-0.5 shrink-0" />
+                                ) : (
+                                    <Info className="w-5 h-5 text-blue-600 mt-0.5 shrink-0" />
+                                )}
+                                <div>
+                                    <h4 className="text-sm font-semibold text-gray-900">{notif.title}</h4>
+                                    <p className="text-sm text-gray-600 mt-0.5">{notif.message}</p>
+                                    <p className="text-[10px] text-gray-400 mt-1">{new Date(notif.created_at).toLocaleString()}</p>
+                                </div>
+                            </div>
+                        </Link>
+                    ))}
+                </div>
+            )}
+
+            {/* Pending orders banner (fallback when no notifications) */}
+            {unreadNotifications.length === 0 && kpis.pendingOrders > 0 && (
                 <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-start gap-3">
                     <AlertCircle className="w-5 h-5 text-amber-600 mt-0.5 shrink-0" />
                     <div>
@@ -95,7 +139,7 @@ export default async function ClientDashboardPage() {
                         {recentOrders.length === 0 ? (
                             <div className="text-center py-12 text-gray-500">
                                 <PackageSearch className="w-12 h-12 mx-auto mb-3 text-gray-300" />
-                                <p>You haven't placed any orders yet.</p>
+                                <p>You haven&apos;t placed any orders yet.</p>
                             </div>
                         ) : (
                             <div className="space-y-4">
@@ -126,21 +170,26 @@ export default async function ClientDashboardPage() {
                                     }
 
                                     return (
-                                        <div key={order.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-lg border bg-gray-50/50 hover:bg-gray-50 transition-colors">
-                                            <div>
-                                                <div className="flex items-center gap-2 mb-1">
-                                                    <span className="font-semibold text-gray-900">PO: {order.po_number}</span>
-                                                    <Badge variant={statusVariant} className="text-[10px] uppercase tracking-wider">{statusLabel}</Badge>
+                                        <Link key={order.id} href="/client/orders">
+                                            <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-lg border bg-gray-50/50 hover:bg-gray-50 transition-colors cursor-pointer">
+                                                <div>
+                                                    <div className="flex items-center gap-2 mb-1">
+                                                        <span className="font-semibold text-gray-900">PO: {order.po_number}</span>
+                                                        <Badge variant={statusVariant} className="text-[10px] uppercase tracking-wider">{statusLabel}</Badge>
+                                                        {order.order_type === "redelivery" && (
+                                                            <Badge variant="outline" className="text-[10px] border-blue-200 text-blue-600">Re-delivery</Badge>
+                                                        )}
+                                                    </div>
+                                                    <div className="text-sm text-gray-500">
+                                                        {new Date(order.created_at).toLocaleDateString()} • {totalBags} bags • {order.service_type === 'pickup' ? 'Pick-up' : 'Delivery'}
+                                                    </div>
                                                 </div>
-                                                <div className="text-sm text-gray-500">
-                                                    {new Date(order.created_at).toLocaleDateString()} • {totalBags} bags • {order.service_type === 'pickup' ? 'Pick-up' : 'Delivery'}
+                                                <div className="mt-3 sm:mt-0 text-left sm:text-right">
+                                                    <div className="font-medium text-gray-900">₱{order.total_amount.toLocaleString()}</div>
+                                                    <div className="text-xs text-gray-500 capitalize">{order.payment_method}</div>
                                                 </div>
                                             </div>
-                                            <div className="mt-3 sm:mt-0 text-left sm:text-right">
-                                                <div className="font-medium text-gray-900">₱{order.total_amount.toLocaleString()}</div>
-                                                <div className="text-xs text-gray-500 capitalize">{order.payment_method}</div>
-                                            </div>
-                                        </div>
+                                        </Link>
                                     );
                                 })}
                                 <div className="pt-2">
@@ -159,7 +208,21 @@ export default async function ClientDashboardPage() {
                         <CardDescription>Need more cement?</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
-                        <p className="text-sm text-gray-600">Head over to the Product Catalog to browse our Portland Cement offerings in Jumbo Bags (JB) and Sling Bags (SB).</p>
+                        {popularProducts.length > 0 ? (
+                            <div className="space-y-3">
+                                {popularProducts.map((p: any) => (
+                                    <div key={p.id} className="p-3 bg-white border rounded-lg flex justify-between items-center">
+                                        <div>
+                                            <p className="text-sm font-medium text-gray-900">{p.name}</p>
+                                            <p className="text-xs text-gray-500">{p.bag_type === "JB" ? "Jumbo" : "Sling"} • From ₱{(p.price_warehouse || p.price_per_bag).toLocaleString()}/bag</p>
+                                        </div>
+                                        <Badge className="bg-[var(--color-industrial-blue)] text-white text-[10px]">{p.bag_type}</Badge>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <p className="text-sm text-gray-600">Head over to the Product Catalog to browse our Portland Cement offerings in Jumbo Bags (JB) and Sling Bags (SB).</p>
+                        )}
                         <Link href="/client/catalog" className="block">
                             <Button className="w-full bg-[var(--color-industrial-blue)]">Browse Catalog</Button>
                         </Link>

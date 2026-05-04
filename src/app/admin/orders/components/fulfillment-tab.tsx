@@ -7,7 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { AlertCircle, CheckCircle2, Truck, UploadCloud, User } from "lucide-react";
+import { AlertCircle, CheckCircle2, Truck, UploadCloud, User, X } from "lucide-react";
 
 export function FulfillmentTab({ orders, shipments, onDispatch, onConfirmCheck, loading }: { 
     orders: Order[]; 
@@ -24,6 +24,7 @@ export function FulfillmentTab({ orders, shipments, onDispatch, onConfirmCheck, 
     const [drNumber, setDrNumber] = useState("");
     const [driverName, setDriverName] = useState("");
     const [plateNumber, setPlateNumber] = useState("");
+    const [drImageFile, setDrImageFile] = useState<File | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     const openAction = (order: Order, type: "dispatch" | "check") => {
@@ -33,6 +34,7 @@ export function FulfillmentTab({ orders, shipments, onDispatch, onConfirmCheck, 
         setDrNumber("");
         setDriverName("");
         setPlateNumber("");
+        setDrImageFile(null);
     };
 
     const handleSubmit = async () => {
@@ -51,14 +53,30 @@ export function FulfillmentTab({ orders, shipments, onDispatch, onConfirmCheck, 
                     return;
                 }
                 
-                // For a real app, you'd upload the DR image to Supabase Storage first here.
-                // We'll pass null for the image URL for now to focus on the logic.
-                await onDispatch(selectedOrder.id, shipmentId, drNumber, null, driverName, plateNumber);
+                // Upload DR image to Supabase Storage if a file was provided
+                let drImageUrl: string | null = null;
+                if (drImageFile) {
+                    const { createClient } = await import("@/lib/supabase/client");
+                    const supabase = createClient();
+                    const ext = drImageFile.name.split(".").pop();
+                    const fileName = `dr_${drNumber.replace(/\//g, "-")}_${Date.now()}.${ext}`;
+                    const { error: uploadError } = await supabase.storage
+                        .from("order-attachments")
+                        .upload(fileName, drImageFile, { upsert: true });
+                    if (!uploadError) {
+                        const { data: { publicUrl } } = supabase.storage
+                            .from("order-attachments")
+                            .getPublicUrl(fileName);
+                        drImageUrl = publicUrl;
+                    }
+                }
+                await onDispatch(selectedOrder.id, shipmentId, drNumber, drImageUrl, driverName, plateNumber);
             } else {
                 await onConfirmCheck(selectedOrder.id);
             }
             setSelectedOrder(null);
             setActionType(null);
+            setDrImageFile(null);
         } finally {
             setIsSubmitting(false);
         }
@@ -230,11 +248,33 @@ export function FulfillmentTab({ orders, shipments, onDispatch, onConfirmCheck, 
                                 </div>
                             )}
 
-                            <div className="pt-2 border-t mt-4 flex items-center justify-between">
-                                <span className="text-sm font-medium">Upload DR Picture</span>
-                                <Button variant="outline" size="sm" type="button" onClick={() => alert("Upload logic placeholder")} className="text-xs">
-                                    <UploadCloud className="w-3.5 h-3.5 mr-1.5" /> Upload File
-                                </Button>
+                            <div className="space-y-2 pt-2 border-t mt-4">
+                                <Label>DR Picture <span className="text-muted-foreground text-xs">(optional)</span></Label>
+                                {drImageFile ? (
+                                    <div className="flex items-center gap-3 p-3 border border-emerald-200 bg-emerald-50 rounded-lg">
+                                        <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                                        <span className="text-sm text-emerald-800 flex-1 truncate">{drImageFile.name}</span>
+                                        <button type="button" onClick={() => setDrImageFile(null)} className="text-emerald-700 hover:text-red-600">
+                                            <X className="w-4 h-4" />
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <div
+                                        className="border-2 border-dashed border-border rounded-lg p-4 text-center cursor-pointer hover:border-[var(--color-industrial-blue)]/50 hover:bg-muted/30 transition-colors"
+                                        onClick={() => document.getElementById("dr-image-upload")?.click()}
+                                    >
+                                        <UploadCloud className="w-6 h-6 mx-auto mb-1 text-muted-foreground" />
+                                        <p className="text-xs text-muted-foreground">Click to attach DR photo</p>
+                                        <p className="text-[10px] text-muted-foreground/60 mt-0.5">JPG, PNG, PDF</p>
+                                        <input
+                                            id="dr-image-upload"
+                                            type="file"
+                                            className="hidden"
+                                            accept="image/*,.pdf"
+                                            onChange={(e) => setDrImageFile(e.target.files?.[0] || null)}
+                                        />
+                                    </div>
+                                )}
                             </div>
                         </div>
                     )}

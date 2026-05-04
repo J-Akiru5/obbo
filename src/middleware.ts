@@ -42,6 +42,14 @@ export async function middleware(request: NextRequest) {
             // Non-admin users get rerouted to client dashboard
             return NextResponse.redirect(new URL('/client/dashboard', request.url));
         }
+
+        if (profile?.role === 'admin' && (pathname.startsWith('/admin/orders') || pathname.startsWith('/admin/inventory'))) {
+            return NextResponse.redirect(new URL('/admin/dashboard', request.url));
+        }
+
+        if (profile?.role === 'warehouse_manager' && pathname.startsWith('/admin/reports')) {
+            return NextResponse.redirect(new URL('/admin/inventory', request.url));
+        }
     }
 
     // ── Protect client routes ───────────────────────────────

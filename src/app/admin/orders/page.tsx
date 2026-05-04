@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { fetchOrders, fetchProducts, updateProduct, approveOrder, rejectOrder, finalConfirmCheck, dispatchOrder, updateTrackingStatus, fetchShipments } from "@/lib/actions/admin-actions";
 import { ProductCatalogTab } from "./components/product-catalog-tab";
@@ -13,7 +14,8 @@ import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
 
 export default function AdminOrdersPage() {
-    const [activeTab, setActiveTab] = useState("new");
+    const searchParams = useSearchParams();
+    const [activeTab, setActiveTab] = useState(searchParams.get("tab") || "new");
     const [orders, setOrders] = useState<Order[]>([]);
     const [products, setProducts] = useState<Product[]>([]);
     const [shipments, setShipments] = useState<Shipment[]>([]);
