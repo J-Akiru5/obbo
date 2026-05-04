@@ -403,7 +403,7 @@ export default function AdminDashboard() {
                                             </p>
                                         </div>
                                     </div>
-                                    <Badge className={activity.action === "warehouse_report_submitted" ? "bg-indigo-100 text-indigo-600 border-0" : "bg-[#e6f9f0] text-emerald-600 border-0"} text-[10px] uppercase font-bold>
+                                    <Badge className={`${activity.action === "warehouse_report_submitted" ? "bg-indigo-100 text-indigo-600 border-0" : "bg-[#e6f9f0] text-emerald-600 border-0"} text-[10px] uppercase font-bold`}>
                                         {activity.action === "warehouse_report_submitted" ? "Report" : "Success"}
                                     </Badge>
                                 </div>
