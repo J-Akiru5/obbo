@@ -8,8 +8,8 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Edit, Package, UploadCloud, Loader2, Search } from "lucide-react";
+
+import { Edit, Package, UploadCloud, Loader2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
 
@@ -21,20 +21,9 @@ export function ProductCatalogTab({ products, onUpdate, loading }: { products: P
     const [isSaving, setIsSaving] = useState(false);
     const [isUploadingImage, setIsUploadingImage] = useState(false);
 
-    const [searchQuery, setSearchQuery] = useState("");
-    const [statusFilter, setStatusFilter] = useState("all");
-    const [bagTypeFilter, setBagTypeFilter] = useState("all");
-
-    const filteredProducts = products.filter(p => {
-        const matchesSearch = p.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                              p.description.toLowerCase().includes(searchQuery.toLowerCase());
-        const matchesStatus = statusFilter === "all" || 
-                              (statusFilter === "active" && p.is_active) || 
-                              (statusFilter === "inactive" && !p.is_active);
-        const matchesBagType = bagTypeFilter === "all" || p.bag_type === bagTypeFilter;
-        
-        return matchesSearch && matchesStatus && matchesBagType;
-    });
+    const filteredProducts = products.filter(p =>
+        p.name.toLowerCase().includes("portland cement type 1")
+    );
 
     const openEdit = (product: Product) => {
         setEditingProduct(product);
@@ -115,43 +104,15 @@ export function ProductCatalogTab({ products, onUpdate, loading }: { products: P
 
     return (
         <Card>
-            <CardHeader className="pb-3 border-b border-border/50 space-y-4">
+            <CardHeader className="pb-3 border-b border-border/50">
                 <div className="flex items-center justify-between">
                     <div>
                         <CardTitle className="text-lg">Product Catalog</CardTitle>
-                        <CardDescription>Manage available cement products and pricing.</CardDescription>
+                        <CardDescription>Manage Portland Cement Type 1 pricing (SB &amp; JB).</CardDescription>
                     </div>
                 </div>
-                <div className="flex flex-col sm:flex-row gap-3">
-                    <div className="relative flex-1">
-                        <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                        <Input
-                            placeholder="Search products by name or description..."
-                            className="pl-9"
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                        />
-                    </div>
-                    <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v ?? "all")}>
-                        <SelectTrigger className="w-full sm:w-[150px]">
-                            <SelectValue placeholder="Status" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="all">All Status</SelectItem>
-                            <SelectItem value="active">Active</SelectItem>
-                            <SelectItem value="inactive">Inactive</SelectItem>
-                        </SelectContent>
-                    </Select>
-                    <Select value={bagTypeFilter} onValueChange={(v) => setBagTypeFilter(v ?? "all")}>
-                        <SelectTrigger className="w-full sm:w-[150px]">
-                            <SelectValue placeholder="Bag Type" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="all">All Bag Types</SelectItem>
-                            <SelectItem value="JB">Jumbo Bag (JB)</SelectItem>
-                            <SelectItem value="SB">Sling Bag (SB)</SelectItem>
-                        </SelectContent>
-                    </Select>
+                <div className="p-3 bg-blue-50 border border-blue-100 rounded-lg text-xs text-blue-700">
+                    Product catalog is restricted to <span className="font-semibold">Portland Cement Type 1</span> (SB &amp; JB). Contact a system administrator to change product configuration.
                 </div>
             </CardHeader>
             <CardContent className="p-0">

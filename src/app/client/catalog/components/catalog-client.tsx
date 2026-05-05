@@ -132,6 +132,17 @@ export default function CatalogClient({ products }: { products: any[] }) {
             return;
         }
 
+        if (serviceType === "pickup") {
+            if (!driverName.trim()) {
+                toast.error("Driver Name is required for Pick-up orders.");
+                return;
+            }
+            if (!plateNumber.trim()) {
+                toast.error("Plate Number is required for Pick-up orders.");
+                return;
+            }
+        }
+
         setIsSubmitting(true);
         try {
             // 1. Upload PO image
@@ -379,12 +390,12 @@ export default function CatalogClient({ products }: { products: any[] }) {
                                     <h4 className="text-sm font-semibold text-amber-900">Pick-up Details</h4>
                                     <div className="grid grid-cols-2 gap-4">
                                         <div className="space-y-2">
-                                            <Label>Driver Name</Label>
-                                            <Input value={driverName} onChange={(e) => setDriverName(e.target.value)} placeholder="Name of driver" />
+                                            <Label>Driver Name <span className="text-red-500">*</span></Label>
+                                            <Input required value={driverName} onChange={(e) => setDriverName(e.target.value)} placeholder="Name of driver" />
                                         </div>
                                         <div className="space-y-2">
-                                            <Label>Plate Number</Label>
-                                            <Input value={plateNumber} onChange={(e) => setPlateNumber(e.target.value)} placeholder="Vehicle plate" />
+                                            <Label>Plate Number <span className="text-red-500">*</span></Label>
+                                            <Input required value={plateNumber} onChange={(e) => setPlateNumber(e.target.value)} placeholder="Vehicle plate" />
                                         </div>
                                         <div className="space-y-2 col-span-2">
                                             <Label>Preferred Date of Pick-up</Label>

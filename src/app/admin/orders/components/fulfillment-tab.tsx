@@ -52,6 +52,11 @@ export function FulfillmentTab({ orders, shipments, onDispatch, onConfirmCheck, 
                     setIsSubmitting(false);
                     return;
                 }
+                if (selectedOrder.service_type === 'deliver' && !drImageFile) {
+                    alert("Please upload a DR image for delivery orders.");
+                    setIsSubmitting(false);
+                    return;
+                }
                 
                 // Upload DR image to Supabase Storage if a file was provided
                 let drImageUrl: string | null = null;
@@ -249,7 +254,13 @@ export function FulfillmentTab({ orders, shipments, onDispatch, onConfirmCheck, 
                             )}
 
                             <div className="space-y-2 pt-2 border-t mt-4">
-                                <Label>DR Picture <span className="text-muted-foreground text-xs">(optional)</span></Label>
+                                <Label>
+                                    DR Picture
+                                    {selectedOrder.service_type === 'deliver'
+                                        ? <span className="text-red-500 ml-1">*</span>
+                                        : <span className="text-muted-foreground text-xs ml-1">(optional)</span>
+                                    }
+                                </Label>
                                 {drImageFile ? (
                                     <div className="flex items-center gap-3 p-3 border border-emerald-200 bg-emerald-50 rounded-lg">
                                         <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
@@ -260,11 +271,17 @@ export function FulfillmentTab({ orders, shipments, onDispatch, onConfirmCheck, 
                                     </div>
                                 ) : (
                                     <div
-                                        className="border-2 border-dashed border-border rounded-lg p-4 text-center cursor-pointer hover:border-[var(--color-industrial-blue)]/50 hover:bg-muted/30 transition-colors"
+                                        className={`border-2 border-dashed rounded-lg p-4 text-center cursor-pointer hover:bg-muted/30 transition-colors ${
+                                            selectedOrder.service_type === 'deliver'
+                                                ? 'border-red-300 hover:border-red-400'
+                                                : 'border-border hover:border-[var(--color-industrial-blue)]/50'
+                                        }`}
                                         onClick={() => document.getElementById("dr-image-upload")?.click()}
                                     >
-                                        <UploadCloud className="w-6 h-6 mx-auto mb-1 text-muted-foreground" />
-                                        <p className="text-xs text-muted-foreground">Click to attach DR photo</p>
+                                        <UploadCloud className={`w-6 h-6 mx-auto mb-1 ${selectedOrder.service_type === 'deliver' ? 'text-red-400' : 'text-muted-foreground'}`} />
+                                        <p className="text-xs text-muted-foreground">
+                                            {selectedOrder.service_type === 'deliver' ? 'DR photo is required for delivery orders' : 'Click to attach DR photo'}
+                                        </p>
                                         <p className="text-[10px] text-muted-foreground/60 mt-0.5">JPG, PNG, PDF</p>
                                         <input
                                             id="dr-image-upload"
