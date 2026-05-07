@@ -292,7 +292,7 @@ function ManualClientDialog({
                 addressCity: form.addressCity.trim() || undefined,
                 addressProvince: form.addressProvince.trim() || undefined,
                 addressPostalCode: form.addressPostalCode.trim() || undefined,
-                businessPermitNo: form.accountType === "company" ? (form.businessPermitNo.trim() || undefined) : undefined,
+                businessPermitNo: form.accountType === "company" && form.businessPermitNo.trim() ? form.businessPermitNo.trim() : undefined,
                 tinNo: form.tinNo.trim() || undefined,
             });
             toast.success("Client created.");
