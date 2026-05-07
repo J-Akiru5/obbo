@@ -133,6 +133,7 @@ export async function approveOrder(orderId: string, approvedItems: { itemId: str
     // Get order
     const { data: order } = await supabase.from("orders").select("*, items:order_items(*)").eq("id", orderId).single();
     if (!order) throw new Error("Order not found");
+    const requestedOrderQty = order.items.reduce((sum: number, item: { requested_qty: number }) => sum + item.requested_qty, 0);
 
     const approvedLookup = new Map(approvedItems.map((item) => [item.itemId, item.qty]));
     let constrainedApprovedItems = order.items.map((item: { id: string; requested_qty: number }) => ({
@@ -141,10 +142,7 @@ export async function approveOrder(orderId: string, approvedItems: { itemId: str
     }));
 
     if (order.is_split_delivery && order.deliver_now_qty > 0) {
-        const splitTarget = Math.min(
-            order.deliver_now_qty,
-            order.items.reduce((sum: number, item: { requested_qty: number }) => sum + item.requested_qty, 0)
-        );
+        const splitTarget = Math.min(order.deliver_now_qty, requestedOrderQty);
         const totalApprovedQty = constrainedApprovedItems.reduce((sum, item) => sum + item.qty, 0);
         if (totalApprovedQty > splitTarget) {
             let remainingToApprove = splitTarget;

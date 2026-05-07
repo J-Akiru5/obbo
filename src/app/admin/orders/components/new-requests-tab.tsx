@@ -89,9 +89,16 @@ export function NewRequestsTab({ orders, onApprove, onReject, loading }: {
                                              </h3>
                                              <div className="flex flex-wrap items-center gap-2 mt-2">
                                                  {order.order_type === "redelivery" ? (
-                                                     <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100 border border-blue-200">
-                                                         Re-delivery Request{order.linked_po_number ? ` — Linked PO #${order.linked_po_number}` : ""}
-                                                     </Badge>
+                                                     <>
+                                                         <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100 border border-blue-200">
+                                                             Re-delivery Request
+                                                         </Badge>
+                                                         {order.linked_po_number && (
+                                                             <Badge variant="outline" className="border-blue-200 text-blue-700">
+                                                                 Linked PO #{order.linked_po_number}
+                                                             </Badge>
+                                                         )}
+                                                     </>
                                                  ) : (
                                                      <Badge variant="outline">New Order</Badge>
                                                  )}
@@ -160,7 +167,7 @@ export function NewRequestsTab({ orders, onApprove, onReject, loading }: {
                                      )}
                                      {order.is_split_delivery && (
                                          <div className="rounded-md border border-blue-200 bg-blue-50 px-3 py-2 text-xs text-blue-900">
-                                             Client requested split delivery: deliver <span className="font-semibold">{order.deliver_now_qty}</span> individual bags now. Remaining approved bags will be saved to balance.
+                                             Client requested split delivery: deliver <span className="font-semibold">{order.deliver_now_qty}</span> bags now. Remaining approved bags will be saved to balance.
                                          </div>
                                      )}
                                  </div>
