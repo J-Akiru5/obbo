@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState, Suspense, type ComponentType } from "react";
+import { useEffect, useState, Suspense, type ComponentType } from "react";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import {
     AlertTriangle,
@@ -98,13 +98,6 @@ function KycDialog({
     const [reason, setReason] = useState("");
     const [saving, setSaving] = useState(false);
 
-    useEffect(() => {
-        if (!open) {
-            setReason("");
-            setSaving(false);
-        }
-    }, [open]);
-
     if (!profile) return null;
 
     const initials = getInitials(profile.full_name);
@@ -134,7 +127,16 @@ function KycDialog({
     }
 
     return (
-        <Dialog open={open} onOpenChange={onClose}>
+        <Dialog
+            open={open}
+            onOpenChange={(nextOpen) => {
+                if (!nextOpen) {
+                    setReason("");
+                    setSaving(false);
+                    onClose();
+                }
+            }}
+        >
             <DialogContent className="sm:max-w-2xl">
                 <DialogHeader>
                     <DialogTitle>KYC review - {profile.full_name}</DialogTitle>
@@ -267,26 +269,6 @@ function ManualClientDialog({
         tinNo: "",
     });
 
-    useEffect(() => {
-        if (!open) {
-            setSaving(false);
-            setForm({
-                fullName: "",
-                email: "",
-                password: "",
-                phone: "",
-                companyName: "",
-                accountType: "individual",
-                addressStreet: "",
-                addressCity: "",
-                addressProvince: "",
-                addressPostalCode: "",
-                businessPermitNo: "",
-                tinNo: "",
-            });
-        }
-    }, [open]);
-
     async function handleCreate() {
         if (!form.fullName.trim() || !form.email.trim() || !form.password.trim()) {
             toast.error("Full name, email, and temporary password are required.");
@@ -316,15 +298,38 @@ function ManualClientDialog({
             toast.success("Client created.");
             onCreated();
             onClose();
-        } catch (error: any) {
-            toast.error(error?.message || "Failed to create client.");
+        } catch (error: unknown) {
+            const message = error instanceof Error ? error.message : "Failed to create client.";
+            toast.error(message);
         } finally {
             setSaving(false);
         }
     }
 
     return (
-        <Dialog open={open} onOpenChange={onClose}>
+        <Dialog
+            open={open}
+            onOpenChange={(nextOpen) => {
+                if (!nextOpen) {
+                    setSaving(false);
+                    setForm({
+                        fullName: "",
+                        email: "",
+                        password: "",
+                        phone: "",
+                        companyName: "",
+                        accountType: "individual",
+                        addressStreet: "",
+                        addressCity: "",
+                        addressProvince: "",
+                        addressPostalCode: "",
+                        businessPermitNo: "",
+                        tinNo: "",
+                    });
+                    onClose();
+                }
+            }}
+        >
             <DialogContent className="sm:max-w-3xl max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                     <DialogTitle>Add manual client</DialogTitle>
@@ -545,7 +550,7 @@ function ClientsContent() {
     const searchParams = useSearchParams();
     const router = useRouter();
     const pathname = usePathname();
-    const [activeTab, setActiveTab] = useState(searchParams.get("tab") || "kyc");
+    const activeTab = searchParams.get("tab") || "kyc";
     const [profiles, setProfiles] = useState<Profile[]>([]);
     const [loading, setLoading] = useState(true);
     const [currentUserRole, setCurrentUserRole] = useState<string | null>(null);
@@ -555,23 +560,22 @@ function ClientsContent() {
     const [detailOpen, setDetailOpen] = useState(false);
     const [manualOpen, setManualOpen] = useState(false);
 
-    const fetchProfiles = useCallback(async () => {
+    useEffect(() => {
         const supabase = createClient();
-        const { data } = await supabase.from("profiles").select("*").eq("role", "client").order("created_at", { ascending: false });
-        setProfiles(data ?? []);
-        setLoading(false);
+        let mounted = true;
+
+        const loadProfiles = async () => {
+            const { data } = await supabase.from("profiles").select("*").eq("role", "client").order("created_at", { ascending: false });
+            if (!mounted) return;
+            setProfiles(data ?? []);
+            setLoading(false);
+        };
+
+        void loadProfiles();
+        return () => {
+            mounted = false;
+        };
     }, []);
-
-    useEffect(() => {
-        const tab = searchParams.get("tab");
-        if (tab && tab !== activeTab) {
-            setActiveTab(tab);
-        }
-    }, [searchParams, activeTab]);
-
-    useEffect(() => {
-        void fetchProfiles();
-    }, [fetchProfiles]);
 
     useEffect(() => {
         const loadCurrentRole = async () => {
@@ -586,7 +590,6 @@ function ClientsContent() {
     }, []);
 
     const handleTabChange = (val: string) => {
-        setActiveTab(val);
         router.push(`${pathname}?tab=${val}`);
     };
 
