@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, Suspense, type ComponentType } from "react";
+import { useCallback, useEffect, useState, Suspense, type ComponentType } from "react";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import {
     AlertTriangle,
@@ -560,30 +560,23 @@ function ClientsContent() {
     const [detailOpen, setDetailOpen] = useState(false);
     const [manualOpen, setManualOpen] = useState(false);
 
-    useEffect(() => {
+    const fetchProfiles = useCallback(async () => {
         const supabase = createClient();
-        let mounted = true;
-
-        const loadProfiles = async () => {
-            try {
-                const { data, error } = await supabase.from("profiles").select("*").eq("role", "client").order("created_at", { ascending: false });
-                if (error) throw error;
-                if (!mounted) return;
-                setProfiles(data ?? []);
-            } catch (error) {
-                if (!mounted) return;
-                const message = error instanceof Error ? error.message : "Failed to load clients.";
-                toast.error(message);
-            } finally {
-                if (mounted) setLoading(false);
-            }
-        };
-
-        void loadProfiles();
-        return () => {
-            mounted = false;
-        };
+        try {
+            const { data, error } = await supabase.from("profiles").select("*").eq("role", "client").order("created_at", { ascending: false });
+            if (error) throw error;
+            setProfiles(data ?? []);
+        } catch (error) {
+            const message = error instanceof Error ? error.message : "Failed to load clients.";
+            toast.error(message);
+        } finally {
+            setLoading(false);
+        }
     }, []);
+
+    useEffect(() => {
+        void fetchProfiles();
+    }, [fetchProfiles]);
 
     useEffect(() => {
         const loadCurrentRole = async () => {
