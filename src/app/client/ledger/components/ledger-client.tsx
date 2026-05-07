@@ -71,7 +71,7 @@ export default function LedgerClient({ balances, summary }: { balances: any[]; s
             }
         }
 
-        const linkedPoNumber = selectedBalance.order?.po_number?.trim() || poNumber.trim();
+        const linkedPoNumber = selectedBalance.order?.po_number?.trim() || "";
         if (!linkedPoNumber) {
             toast.error("Missing linked PO number for this balance.");
             return;

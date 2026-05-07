@@ -354,7 +354,7 @@ export async function submitRedeliveryRequest(balanceId: string, orderData: {
     if (balError || !balance) throw new Error("Balance not found");
 
     const linkedPo = balance.order?.po_number || "";
-    const effectivePoNumber = linkedPo || orderData.po_number?.trim() || "";
+    const effectivePoNumber = linkedPo;
     if (!effectivePoNumber) throw new Error("PO number is required for re-delivery.");
     if (!orderData.po_image_url?.trim()) throw new Error("PO image is required for re-delivery.");
     if (orderData.service_type === "pickup") {

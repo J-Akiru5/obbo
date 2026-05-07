@@ -209,8 +209,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     const [mobileOpen, setMobileOpen] = useState(false);
     const [adminName, setAdminName] = useState("Administrator");
     const [adminInitials, setAdminInitials] = useState("AD");
-    const [adminRole, setAdminRole] = useState<"admin" | "warehouse_manager">("warehouse_manager");
-    const navItems = adminRole === "admin" ? ADMIN_NAV_ITEMS : WAREHOUSE_NAV_ITEMS;
+    const [adminRole, setAdminRole] = useState<"admin" | "warehouse_manager" | null>(null);
+    const navItems = adminRole === "admin"
+        ? ADMIN_NAV_ITEMS
+        : adminRole === "warehouse_manager"
+            ? WAREHOUSE_NAV_ITEMS
+            : [];
 
     useEffect(() => {
         const supabase = createClient();
@@ -226,11 +230,15 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                         setAdminName(name);
                         if (profile?.role === "admin" || profile?.role === "warehouse_manager") {
                             setAdminRole(profile.role);
+                        } else {
+                            setAdminRole(null);
                         }
                         setAdminInitials(
                             name.split(" ").map((n: string) => n[0]).join("").toUpperCase().slice(0, 2)
                         );
                     });
+            } else {
+                setAdminRole(null);
             }
         });
     }, []);

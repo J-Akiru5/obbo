@@ -82,6 +82,11 @@ export function FulfillmentTab({ orders, shipments, onDispatch, onConfirmCheck, 
                 const resolvedPlateNumber = selectedOrder.service_type === "deliver"
                     ? plateNumber.trim()
                     : selectedOrder.plate_number;
+                if (selectedOrder.service_type === "pickup" && (!resolvedDriverName || !resolvedPlateNumber)) {
+                    alert("Pickup order is missing driver and/or plate details. Please contact the client to update the request.");
+                    setIsSubmitting(false);
+                    return;
+                }
 
                 await onDispatch(selectedOrder.id, shipmentId, drNumber.trim(), drImageUrl, resolvedDriverName, resolvedPlateNumber);
             } else {

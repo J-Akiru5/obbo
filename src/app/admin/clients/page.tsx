@@ -565,10 +565,18 @@ function ClientsContent() {
         let mounted = true;
 
         const loadProfiles = async () => {
-            const { data } = await supabase.from("profiles").select("*").eq("role", "client").order("created_at", { ascending: false });
-            if (!mounted) return;
-            setProfiles(data ?? []);
-            setLoading(false);
+            try {
+                const { data, error } = await supabase.from("profiles").select("*").eq("role", "client").order("created_at", { ascending: false });
+                if (error) throw error;
+                if (!mounted) return;
+                setProfiles(data ?? []);
+            } catch (error) {
+                if (!mounted) return;
+                const message = error instanceof Error ? error.message : "Failed to load clients.";
+                toast.error(message);
+            } finally {
+                if (mounted) setLoading(false);
+            }
         };
 
         void loadProfiles();
