@@ -121,6 +121,12 @@ export async function submitOrder(
     splitDetails?: { wantsSplit: boolean; deliverNowQty: number; splitNote: string }
 ) {
     const { supabase, user } = await requireClient();
+    if (!orderData.po_number?.trim()) throw new Error("PO number is required.");
+    if (!orderData.po_image_url?.trim()) throw new Error("PO image is required.");
+    if (orderData.service_type === "pickup") {
+        if (!orderData.driver_name?.trim()) throw new Error("Driver name is required for pick-up orders.");
+        if (!orderData.plate_number?.trim()) throw new Error("Plate number is required for pick-up orders.");
+    }
 
     // Build notes
     let notes = orderData.notes || "";
@@ -348,6 +354,13 @@ export async function submitRedeliveryRequest(balanceId: string, orderData: {
     if (balError || !balance) throw new Error("Balance not found");
 
     const linkedPo = balance.order?.po_number || "";
+    const effectivePoNumber = linkedPo || orderData.po_number?.trim() || "";
+    if (!effectivePoNumber) throw new Error("PO number is required for re-delivery.");
+    if (!orderData.po_image_url?.trim()) throw new Error("PO image is required for re-delivery.");
+    if (orderData.service_type === "pickup") {
+        if (!orderData.driver_name?.trim()) throw new Error("Driver name is required for pick-up orders.");
+        if (!orderData.plate_number?.trim()) throw new Error("Plate number is required for pick-up orders.");
+    }
 
     // Build notes
     let notes = `[REDELIVERY REQUEST for PO: ${linkedPo}]\n` + (orderData.notes || "");
@@ -361,7 +374,7 @@ export async function submitRedeliveryRequest(balanceId: string, orderData: {
         status: "pending",
         total_amount: 0, // Re-delivery: bags already paid, only shipping fee (set by admin)
         payment_method: orderData.payment_method,
-        po_number: orderData.po_number,
+        po_number: effectivePoNumber,
         po_image_url: orderData.po_image_url,
         source: orderData.source,
         service_type: orderData.service_type,

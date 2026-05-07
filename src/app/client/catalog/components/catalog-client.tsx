@@ -100,11 +100,11 @@ export default function CatalogClient({ products }: { products: any[] }) {
             source,
             service_type: serviceType,
             payment_method: paymentMethod,
-            po_number: poNumber,
+            po_number: poNumber.trim(),
             po_image_url: poImageUrl,
             supplier_name: supplierName,
-            driver_name: serviceType === "pickup" ? driverName : null,
-            plate_number: serviceType === "pickup" ? plateNumber : null,
+            driver_name: serviceType === "pickup" ? driverName.trim() : null,
+            plate_number: serviceType === "pickup" ? plateNumber.trim() : null,
             total_amount: subtotal,
             items,
             notes: serviceType === "pickup" && pickupDate ? `Preferred Pick-up Date: ${pickupDate}` : "",
@@ -127,6 +127,11 @@ export default function CatalogClient({ products }: { products: any[] }) {
             }
         }
 
+        if (!poNumber.trim()) {
+            toast.error("PO Number is required.");
+            return;
+        }
+
         if (!poFile) {
             toast.error("Please upload a PO picture.");
             return;
@@ -147,11 +152,14 @@ export default function CatalogClient({ products }: { products: any[] }) {
         try {
             // 1. Upload PO image
             const supabase = createClient();
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) throw new Error("Not authenticated");
+
             const fileExt = poFile.name.split('.').pop();
-            const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
+            const fileName = `${user.id}/po_${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
             const { error: uploadError } = await supabase.storage
                 .from('order-attachments')
-                .upload(fileName, poFile);
+                .upload(fileName, poFile, { upsert: true, contentType: poFile.type });
 
             if (uploadError) throw new Error("Failed to upload PO image.");
             
@@ -192,9 +200,11 @@ export default function CatalogClient({ products }: { products: any[] }) {
             let poImageUrl = "";
             if (poFile) {
                 const supabase = createClient();
+                const { data: { user } } = await supabase.auth.getUser();
+                if (!user) throw new Error("Not authenticated");
                 const fileExt = poFile.name.split('.').pop();
-                const fileName = `draft_${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
-                const { error: uploadError } = await supabase.storage.from('order-attachments').upload(fileName, poFile);
+                const fileName = `${user.id}/draft_${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
+                const { error: uploadError } = await supabase.storage.from('order-attachments').upload(fileName, poFile, { upsert: true, contentType: poFile.type });
                 if (!uploadError) {
                     const { data: { publicUrl } } = supabase.storage.from('order-attachments').getPublicUrl(fileName);
                     poImageUrl = publicUrl;

@@ -52,8 +52,8 @@ export function FulfillmentTab({ orders, shipments, onDispatch, onConfirmCheck, 
                     setIsSubmitting(false);
                     return;
                 }
-                if (selectedOrder.service_type === 'deliver' && !drImageFile) {
-                    alert("Please upload a DR image for delivery orders.");
+                if (!drImageFile) {
+                    alert("Please upload a DR image before dispatch.");
                     setIsSubmitting(false);
                     return;
                 }
@@ -63,19 +63,27 @@ export function FulfillmentTab({ orders, shipments, onDispatch, onConfirmCheck, 
                 if (drImageFile) {
                     const { createClient } = await import("@/lib/supabase/client");
                     const supabase = createClient();
+                    const { data: { user } } = await supabase.auth.getUser();
+                    if (!user) throw new Error("Not authenticated");
                     const ext = drImageFile.name.split(".").pop();
-                    const fileName = `dr_${drNumber.replace(/\//g, "-")}_${Date.now()}.${ext}`;
+                    const fileName = `${user.id}/dr_${drNumber.replace(/\//g, "-")}_${Date.now()}.${ext}`;
                     const { error: uploadError } = await supabase.storage
                         .from("order-attachments")
-                        .upload(fileName, drImageFile, { upsert: true });
-                    if (!uploadError) {
-                        const { data: { publicUrl } } = supabase.storage
-                            .from("order-attachments")
-                            .getPublicUrl(fileName);
-                        drImageUrl = publicUrl;
-                    }
+                        .upload(fileName, drImageFile, { upsert: true, contentType: drImageFile.type });
+                    if (uploadError) throw new Error(`Failed to upload DR image: ${uploadError.message}`);
+                    const { data: { publicUrl } } = supabase.storage
+                        .from("order-attachments")
+                        .getPublicUrl(fileName);
+                    drImageUrl = publicUrl;
                 }
-                await onDispatch(selectedOrder.id, shipmentId, drNumber, drImageUrl, driverName, plateNumber);
+                const resolvedDriverName = selectedOrder.service_type === "deliver"
+                    ? driverName.trim()
+                    : selectedOrder.driver_name;
+                const resolvedPlateNumber = selectedOrder.service_type === "deliver"
+                    ? plateNumber.trim()
+                    : selectedOrder.plate_number;
+
+                await onDispatch(selectedOrder.id, shipmentId, drNumber.trim(), drImageUrl, resolvedDriverName, resolvedPlateNumber);
             } else {
                 await onConfirmCheck(selectedOrder.id);
             }
@@ -256,10 +264,7 @@ export function FulfillmentTab({ orders, shipments, onDispatch, onConfirmCheck, 
                             <div className="space-y-2 pt-2 border-t mt-4">
                                 <Label>
                                     DR Picture
-                                    {selectedOrder.service_type === 'deliver'
-                                        ? <span className="text-red-500 ml-1">*</span>
-                                        : <span className="text-muted-foreground text-xs ml-1">(optional)</span>
-                                    }
+                                    <span className="text-red-500 ml-1">*</span>
                                 </Label>
                                 {drImageFile ? (
                                     <div className="flex items-center gap-3 p-3 border border-emerald-200 bg-emerald-50 rounded-lg">
@@ -271,16 +276,12 @@ export function FulfillmentTab({ orders, shipments, onDispatch, onConfirmCheck, 
                                     </div>
                                 ) : (
                                     <div
-                                        className={`border-2 border-dashed rounded-lg p-4 text-center cursor-pointer hover:bg-muted/30 transition-colors ${
-                                            selectedOrder.service_type === 'deliver'
-                                                ? 'border-red-300 hover:border-red-400'
-                                                : 'border-border hover:border-[var(--color-industrial-blue)]/50'
-                                        }`}
+                                        className="border-2 border-dashed rounded-lg p-4 text-center cursor-pointer hover:bg-muted/30 transition-colors border-red-300 hover:border-red-400"
                                         onClick={() => document.getElementById("dr-image-upload")?.click()}
                                     >
-                                        <UploadCloud className={`w-6 h-6 mx-auto mb-1 ${selectedOrder.service_type === 'deliver' ? 'text-red-400' : 'text-muted-foreground'}`} />
+                                        <UploadCloud className="w-6 h-6 mx-auto mb-1 text-red-400" />
                                         <p className="text-xs text-muted-foreground">
-                                            {selectedOrder.service_type === 'deliver' ? 'DR photo is required for delivery orders' : 'Click to attach DR photo'}
+                                            DR photo is required before dispatch
                                         </p>
                                         <p className="text-[10px] text-muted-foreground/60 mt-0.5">JPG, PNG, PDF</p>
                                         <input

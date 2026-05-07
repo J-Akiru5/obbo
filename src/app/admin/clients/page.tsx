@@ -33,7 +33,6 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
@@ -311,7 +310,7 @@ function ManualClientDialog({
                 addressCity: form.addressCity.trim() || undefined,
                 addressProvince: form.addressProvince.trim() || undefined,
                 addressPostalCode: form.addressPostalCode.trim() || undefined,
-                businessPermitNo: form.businessPermitNo.trim() || undefined,
+                businessPermitNo: form.accountType === "company" ? (form.businessPermitNo.trim() || undefined) : undefined,
                 tinNo: form.tinNo.trim() || undefined,
             });
             toast.success("Client created.");
@@ -370,7 +369,7 @@ function ManualClientDialog({
                         <Input value={form.addressStreet} onChange={(event) => setForm((prev) => ({ ...prev, addressStreet: event.target.value }))} />
                     </div>
                     <div className="space-y-2">
-                        <Label>City</Label>
+                        <Label>Municipality</Label>
                         <Input value={form.addressCity} onChange={(event) => setForm((prev) => ({ ...prev, addressCity: event.target.value }))} />
                     </div>
                     <div className="space-y-2">
@@ -381,10 +380,12 @@ function ManualClientDialog({
                         <Label>Postal code</Label>
                         <Input value={form.addressPostalCode} onChange={(event) => setForm((prev) => ({ ...prev, addressPostalCode: event.target.value }))} />
                     </div>
-                    <div className="space-y-2">
-                        <Label>Business permit no.</Label>
-                        <Input value={form.businessPermitNo} onChange={(event) => setForm((prev) => ({ ...prev, businessPermitNo: event.target.value }))} />
-                    </div>
+                    {form.accountType === "company" && (
+                        <div className="space-y-2">
+                            <Label>Business permit no.</Label>
+                            <Input value={form.businessPermitNo} onChange={(event) => setForm((prev) => ({ ...prev, businessPermitNo: event.target.value }))} />
+                        </div>
+                    )}
                     <div className="space-y-2 md:col-span-2">
                         <Label>TIN no.</Label>
                         <Input value={form.tinNo} onChange={(event) => setForm((prev) => ({ ...prev, tinNo: event.target.value }))} />

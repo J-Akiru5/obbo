@@ -30,12 +30,38 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 
-const navItems = [
+const ADMIN_NAV_ITEMS = [
     { 
         href: "/admin/dashboard", 
         label: "Dashboard", 
         icon: LayoutDashboard,
-        // No subItems — direct link, no dropdown
+    },
+    {
+        href: "/admin/products",
+        label: "Products",
+        icon: Package,
+    },
+    { 
+        href: "/admin/clients", 
+        label: "Clients", 
+        icon: Users,
+        subItems: [
+            { href: "/admin/clients?tab=directory", label: "Directory" },
+            { href: "/admin/clients?tab=kyc", label: "KYC Approvals" }
+        ]
+    },
+    {
+        href: "/admin/reports",
+        label: "Reports",
+        icon: Warehouse,
+    },
+];
+
+const WAREHOUSE_NAV_ITEMS = [
+    { 
+        href: "/admin/dashboard", 
+        label: "Dashboard", 
+        icon: LayoutDashboard,
     },
     { 
         href: "/admin/orders", 
@@ -63,18 +89,9 @@ const navItems = [
             { href: "/admin/inventory?tab=reports", label: "Reports" }
         ]
     },
-    { 
-        href: "/admin/clients", 
-        label: "Clients", 
-        icon: Users,
-        subItems: [
-            { href: "/admin/clients?tab=directory", label: "Directory" },
-            { href: "/admin/clients?tab=kyc", label: "KYC Approvals" }
-        ]
-    },
 ];
 
-function SidebarContent({ pathname, onNavigate, adminName, adminInitials }: { pathname: string; onNavigate?: () => void; adminName?: string; adminInitials?: string }) {
+function SidebarContent({ pathname, navItems, onNavigate, adminName, adminInitials }: { pathname: string; navItems: typeof ADMIN_NAV_ITEMS; onNavigate?: () => void; adminName?: string; adminInitials?: string }) {
     const [expanded, setExpanded] = useState<Record<string, boolean>>(() => {
         const initial: Record<string, boolean> = {};
         navItems.forEach(item => {
@@ -192,6 +209,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     const [mobileOpen, setMobileOpen] = useState(false);
     const [adminName, setAdminName] = useState("Administrator");
     const [adminInitials, setAdminInitials] = useState("AD");
+    const [adminRole, setAdminRole] = useState<"admin" | "warehouse_manager">("warehouse_manager");
+    const navItems = adminRole === "admin" ? ADMIN_NAV_ITEMS : WAREHOUSE_NAV_ITEMS;
 
     useEffect(() => {
         const supabase = createClient();
@@ -199,12 +218,15 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             if (data.user) {
                 supabase
                     .from("profiles")
-                    .select("full_name")
+                    .select("full_name, role")
                     .eq("id", data.user.id)
                     .single()
                     .then(({ data: profile }) => {
                         const name = profile?.full_name || data.user?.email?.split("@")[0] || "Admin";
                         setAdminName(name);
+                        if (profile?.role === "admin" || profile?.role === "warehouse_manager") {
+                            setAdminRole(profile.role);
+                        }
                         setAdminInitials(
                             name.split(" ").map((n: string) => n[0]).join("").toUpperCase().slice(0, 2)
                         );
@@ -225,7 +247,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         <div className="min-h-screen flex bg-muted/30">
             {/* Desktop Sidebar */}
             <aside className="hidden lg:flex lg:w-64 flex-col bg-sidebar border-r border-sidebar-border fixed inset-y-0 left-0 z-40">
-                <SidebarContent pathname={pathname} adminName={adminName} adminInitials={adminInitials} />
+                <SidebarContent pathname={pathname} navItems={navItems} adminName={adminName} adminInitials={adminInitials} />
             </aside>
 
             {/* Main Content */}
@@ -241,7 +263,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                                 <Menu className="w-5 h-5" />
                             </SheetTrigger>
                             <SheetContent side="left" className="w-64 p-0 bg-sidebar">
-                                <SidebarContent pathname={pathname} onNavigate={() => setMobileOpen(false)} />
+                                <SidebarContent pathname={pathname} navItems={navItems} onNavigate={() => setMobileOpen(false)} />
                             </SheetContent>
                         </Sheet>
 

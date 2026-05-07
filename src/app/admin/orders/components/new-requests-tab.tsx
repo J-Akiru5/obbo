@@ -137,6 +137,13 @@ export function NewRequestsTab({ orders, onApprove, onReject, loading }: {
                                             </a>
                                         )}
                                     </div>
+                                    {order.service_type === "pickup" && (
+                                        <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+                                            Driver: <span className="font-semibold">{order.driver_name || "Not provided"}</span>
+                                            {" · "}
+                                            Plate: <span className="font-semibold">{order.plate_number || "Not provided"}</span>
+                                        </div>
+                                    )}
                                 </div>
                                 <div className="bg-muted/40 p-5 md:w-48 flex flex-col justify-center gap-3 border-l border-border/50">
                                     <Button onClick={() => openAction(order, "approve")} className="w-full bg-[var(--color-industrial-blue)] hover:bg-[var(--color-industrial-blue-light)]">

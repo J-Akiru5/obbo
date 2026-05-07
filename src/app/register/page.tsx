@@ -333,8 +333,8 @@ export default function RegisterPage() {
                             <div>
                                 <h3 className="font-semibold text-lg mb-4 text-foreground">Address</h3>
                                 <div className="grid grid-cols-1 gap-3">
-                                    <div><Label className="mb-1.5 block text-sm font-medium">Street</Label><Input value={form.street} onChange={(e) => updateField("street", e.target.value)} className="h-11" required /></div>
-                                    <div><Label className="mb-1.5 block text-sm font-medium">City</Label><Input value={form.city} onChange={(e) => updateField("city", e.target.value)} className="h-11" required /></div>
+                                    <div><Label className="mb-1.5 block text-sm font-medium">Street Address</Label><Input value={form.street} onChange={(e) => updateField("street", e.target.value)} className="h-11" required /></div>
+                                    <div><Label className="mb-1.5 block text-sm font-medium">Municipality</Label><Input value={form.city} onChange={(e) => updateField("city", e.target.value)} className="h-11" required /></div>
                                     <div><Label className="mb-1.5 block text-sm font-medium">Province</Label><Input value={form.province} onChange={(e) => updateField("province", e.target.value)} className="h-11" required /></div>
                                     <div><Label className="mb-1.5 block text-sm font-medium">Postal code</Label><Input value={form.postal_code} onChange={(e) => updateField("postal_code", e.target.value)} className="h-11" required /></div>
                                 </div>
