@@ -135,7 +135,7 @@ export async function approveOrder(orderId: string, approvedItems: { itemId: str
     if (!order) throw new Error("Order not found");
 
     const approvedLookup = new Map(approvedItems.map((item) => [item.itemId, item.qty]));
-    let resolvedApprovedItems = order.items.map((item: { id: string; requested_qty: number }) => ({
+    let constrainedApprovedItems = order.items.map((item: { id: string; requested_qty: number }) => ({
         itemId: item.id,
         qty: Math.max(0, Math.min(item.requested_qty, approvedLookup.get(item.id) ?? 0)),
     }));
@@ -145,10 +145,10 @@ export async function approveOrder(orderId: string, approvedItems: { itemId: str
             order.deliver_now_qty,
             order.items.reduce((sum: number, item: { requested_qty: number }) => sum + item.requested_qty, 0)
         );
-        const requestedApprovalTotal = resolvedApprovedItems.reduce((sum, item) => sum + item.qty, 0);
-        if (requestedApprovalTotal > splitTarget) {
+        const totalApprovedQty = constrainedApprovedItems.reduce((sum, item) => sum + item.qty, 0);
+        if (totalApprovedQty > splitTarget) {
             let remainingToApprove = splitTarget;
-            resolvedApprovedItems = resolvedApprovedItems.map((item) => {
+            constrainedApprovedItems = constrainedApprovedItems.map((item) => {
                 const nextQty = Math.max(0, Math.min(item.qty, remainingToApprove));
                 remainingToApprove -= nextQty;
                 return { ...item, qty: nextQty };
@@ -157,12 +157,12 @@ export async function approveOrder(orderId: string, approvedItems: { itemId: str
     }
 
     // Update each item's approved_qty
-    for (const item of resolvedApprovedItems) {
+    for (const item of constrainedApprovedItems) {
         await supabase.from("order_items").update({ approved_qty: item.qty }).eq("id", item.itemId);
     }
 
     // Check if any item is partially approved
-    const isPartial = resolvedApprovedItems.some(ai => {
+    const isPartial = constrainedApprovedItems.some(ai => {
         const original = order.items.find((i: { id: string }) => i.id === ai.itemId);
         return original && ai.qty < original.requested_qty;
     });
@@ -184,7 +184,7 @@ export async function approveOrder(orderId: string, approvedItems: { itemId: str
 
     // Create customer balance records for partial quantities
     if (isPartial) {
-        for (const ai of resolvedApprovedItems) {
+        for (const ai of constrainedApprovedItems) {
             const original = order.items.find((i: { id: string }) => i.id === ai.itemId);
             if (original && ai.qty < original.requested_qty) {
                 const remaining = original.requested_qty - ai.qty;
@@ -202,7 +202,7 @@ export async function approveOrder(orderId: string, approvedItems: { itemId: str
 
     await logActivity(supabase, userId, "order_approved", "order", orderId, {
         status: newStatus,
-        approvedItems: resolvedApprovedItems,
+        approvedItems: constrainedApprovedItems,
         splitDeliveryApplied: Boolean(order.is_split_delivery),
     });
     return { success: true, newStatus };

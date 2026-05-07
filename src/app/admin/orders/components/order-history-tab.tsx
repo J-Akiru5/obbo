@@ -16,10 +16,7 @@ export function OrderHistoryTab({ orders, loading }: { orders: Order[], loading:
         const query = searchQuery.trim().toLowerCase();
         const matchesQuery = !query
             || o.po_number?.toLowerCase().includes(query)
-            || o.dr_number?.toLowerCase().includes(query)
-            || o.id.toLowerCase().includes(query)
-            || o.client?.company_name?.toLowerCase().includes(query)
-            || o.client?.full_name.toLowerCase().includes(query);
+            || o.dr_number?.toLowerCase().includes(query);
 
         const orderDate = new Date(o.updated_at);
         const fromDate = dateFrom ? new Date(dateFrom) : null;
