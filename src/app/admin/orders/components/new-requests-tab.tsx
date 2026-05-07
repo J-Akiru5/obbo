@@ -83,15 +83,29 @@ export function NewRequestsTab({ orders, onApprove, onReject, loading }: {
                                                 <span className="text-xs text-muted-foreground">ID: {order.id.slice(0,8)}</span>
                                                 <span className="text-xs text-muted-foreground">• {new Date(order.created_at).toLocaleDateString()}</span>
                                             </div>
-                                            <h3 className="text-lg font-bold flex items-center gap-2">
-                                                <User className="w-4 h-4 text-muted-foreground" />
-                                                {order.client?.company_name || order.client?.full_name}
-                                            </h3>
-                                        </div>
-                                        <div className="text-right">
-                                            <p className="text-xs text-muted-foreground uppercase font-semibold tracking-wider">Payment Method</p>
-                                            <Badge variant="outline" className={`mt-1 font-mono uppercase ${order.payment_method === 'check' ? 'border-amber-500 text-amber-700' : 'border-emerald-500 text-emerald-700'}`}>
-                                                {order.payment_method}
+                                             <h3 className="text-lg font-bold flex items-center gap-2">
+                                                 <User className="w-4 h-4 text-muted-foreground" />
+                                                 {order.client?.company_name || order.client?.full_name}
+                                             </h3>
+                                             <div className="flex flex-wrap items-center gap-2 mt-2">
+                                                 {order.order_type === "redelivery" ? (
+                                                     <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100 border border-blue-200">
+                                                         Re-delivery Request{order.linked_po_number ? ` — Linked PO #${order.linked_po_number}` : ""}
+                                                     </Badge>
+                                                 ) : (
+                                                     <Badge variant="outline">New Order</Badge>
+                                                 )}
+                                                 {order.is_split_delivery && (
+                                                     <Badge className="bg-indigo-100 text-indigo-800 hover:bg-indigo-100 border border-indigo-200">
+                                                         Split: {order.deliver_now_qty} bags now
+                                                     </Badge>
+                                                 )}
+                                             </div>
+                                         </div>
+                                         <div className="text-right">
+                                             <p className="text-xs text-muted-foreground uppercase font-semibold tracking-wider">Payment Method</p>
+                                             <Badge variant="outline" className={`mt-1 font-mono uppercase ${order.payment_method === 'check' ? 'border-amber-500 text-amber-700' : 'border-emerald-500 text-emerald-700'}`}>
+                                                 {order.payment_method}
                                             </Badge>
                                         </div>
                                     </div>
@@ -137,18 +151,23 @@ export function NewRequestsTab({ orders, onApprove, onReject, loading }: {
                                             </a>
                                         )}
                                     </div>
-                                    {order.service_type === "pickup" && (
-                                        <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
-                                            Driver: <span className="font-semibold">{order.driver_name || "Not provided"}</span>
-                                            {" · "}
-                                            Plate: <span className="font-semibold">{order.plate_number || "Not provided"}</span>
-                                        </div>
-                                    )}
-                                </div>
-                                <div className="bg-muted/40 p-5 md:w-48 flex flex-col justify-center gap-3 border-l border-border/50">
-                                    <Button onClick={() => openAction(order, "approve")} className="w-full bg-[var(--color-industrial-blue)] hover:bg-[var(--color-industrial-blue-light)]">
-                                        <Check className="w-4 h-4 mr-2" /> Approve
-                                    </Button>
+                                     {order.service_type === "pickup" && (
+                                         <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+                                             Driver: <span className="font-semibold">{order.driver_name || "Not provided"}</span>
+                                             {" · "}
+                                             Plate: <span className="font-semibold">{order.plate_number || "Not provided"}</span>
+                                         </div>
+                                     )}
+                                     {order.is_split_delivery && (
+                                         <div className="rounded-md border border-blue-200 bg-blue-50 px-3 py-2 text-xs text-blue-900">
+                                             Client requested split delivery: deliver <span className="font-semibold">{order.deliver_now_qty}</span> individual bags now. Remaining approved bags will be saved to balance.
+                                         </div>
+                                     )}
+                                 </div>
+                                 <div className="bg-muted/40 p-5 md:w-48 flex flex-col justify-center gap-3 border-l border-border/50">
+                                     <Button onClick={() => openAction(order, "approve")} className="w-full bg-[var(--color-industrial-blue)] hover:bg-[var(--color-industrial-blue-light)]">
+                                         <Check className="w-4 h-4 mr-2" /> Approve
+                                     </Button>
                                     <Button onClick={() => openAction(order, "reject")} variant="outline" className="w-full text-destructive hover:bg-destructive/10 hover:text-destructive border-destructive/20">
                                         <X className="w-4 h-4 mr-2" /> Reject
                                     </Button>

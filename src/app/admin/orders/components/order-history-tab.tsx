@@ -7,28 +7,58 @@ import { Search, MapPin, Truck, CheckCircle2, XCircle } from "lucide-react";
 
 export function OrderHistoryTab({ orders, loading }: { orders: Order[], loading: boolean }) {
     const [searchQuery, setSearchQuery] = useState("");
+    const [dateFrom, setDateFrom] = useState("");
+    const [dateTo, setDateTo] = useState("");
 
     if (loading) return <div className="py-8 text-center text-muted-foreground animate-pulse">Loading order history...</div>;
 
-    const filteredOrders = orders.filter(o => 
-        o.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        o.client?.company_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        o.client?.full_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        o.dr_number?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        o.po_number?.toLowerCase().includes(searchQuery.toLowerCase())
-    );
+    const filteredOrders = orders.filter(o => {
+        const query = searchQuery.trim().toLowerCase();
+        const matchesQuery = !query
+            || o.po_number?.toLowerCase().includes(query)
+            || o.dr_number?.toLowerCase().includes(query)
+            || o.id.toLowerCase().includes(query)
+            || o.client?.company_name?.toLowerCase().includes(query)
+            || o.client?.full_name.toLowerCase().includes(query);
+
+        const orderDate = new Date(o.updated_at);
+        const fromDate = dateFrom ? new Date(dateFrom) : null;
+        const toDate = dateTo ? new Date(`${dateTo}T23:59:59`) : null;
+
+        const matchesFrom = !fromDate || orderDate >= fromDate;
+        const matchesTo = !toDate || orderDate <= toDate;
+
+        return matchesQuery && matchesFrom && matchesTo;
+    });
 
     return (
         <div className="space-y-4">
-            <div className="relative w-full max-w-sm">
-                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input
-                    type="search"
-                    placeholder="Search by ID, client, DR, or PO..."
-                    className="pl-8"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                />
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                <div className="relative w-full sm:max-w-sm">
+                    <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                    <Input
+                        type="search"
+                        placeholder="Search by DR # or PO #..."
+                        className="pl-8"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                    />
+                </div>
+                <div className="flex items-center gap-2">
+                    <Input
+                        type="date"
+                        value={dateFrom}
+                        onChange={(e) => setDateFrom(e.target.value)}
+                        className="w-full sm:w-auto"
+                    />
+                    <span className="text-xs text-muted-foreground">to</span>
+                    <Input
+                        type="date"
+                        value={dateTo}
+                        onChange={(e) => setDateTo(e.target.value)}
+                        className="w-full sm:w-auto"
+                    />
+                </div>
             </div>
 
             <div className="bg-card rounded-xl border border-border shadow-sm overflow-hidden">
