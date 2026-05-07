@@ -54,17 +54,18 @@ export function DrListTab({ deliveryReceipts, shipments, loading, onReload }: { 
             let drImageUrl: string | undefined = editingDr?.dr_image_url ?? undefined;
             if (photoFile) {
                 const supabase = createClient();
+                const { data: { user } } = await supabase.auth.getUser();
+                if (!user) throw new Error("Not authenticated");
                 const ext = photoFile.name.split(".").pop();
-                const fileName = `dr_${drNumber.replace(/\//g, "-")}_${Date.now()}.${ext}`;
+                const fileName = `${user.id}/dr_${drNumber.replace(/\//g, "-")}_${Date.now()}.${ext}`;
                 const { error: uploadError } = await supabase.storage
                     .from("order-attachments")
-                    .upload(fileName, photoFile, { upsert: true });
-                if (!uploadError) {
-                    const { data: { publicUrl } } = supabase.storage
-                        .from("order-attachments")
-                        .getPublicUrl(fileName);
-                    drImageUrl = publicUrl;
-                }
+                    .upload(fileName, photoFile, { upsert: true, contentType: photoFile.type });
+                if (uploadError) throw new Error(`Failed to upload DR image: ${uploadError.message}`);
+                const { data: { publicUrl } } = supabase.storage
+                    .from("order-attachments")
+                    .getPublicUrl(fileName);
+                drImageUrl = publicUrl;
             }
 
             if (editingDr) {

@@ -23,6 +23,7 @@ export function ProductCatalogTab({ products, onUpdate, loading }: { products: P
 
     const filteredProducts = products.filter(p =>
         p.name.toLowerCase().includes("portland cement type 1")
+        && (p.bag_type === "SB" || p.bag_type === "JB")
     );
 
     const openEdit = (product: Product) => {

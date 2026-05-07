@@ -95,7 +95,10 @@ export async function fetchDashboardKPIs() {
 export async function fetchProducts() {
     const { supabase } = await requireAdmin();
     const { data } = await supabase.from("products").select("*").order("created_at");
-    return data ?? [];
+    return (data ?? []).filter((product) =>
+        product.name?.toLowerCase().includes("portland cement type 1")
+        && (product.bag_type === "JB" || product.bag_type === "SB")
+    );
 }
 
 export async function updateProduct(id: string, updates: {

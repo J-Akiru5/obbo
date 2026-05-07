@@ -71,20 +71,39 @@ export default function LedgerClient({ balances, summary }: { balances: any[]; s
             }
         }
 
+        const linkedPoNumber = selectedBalance.order?.po_number?.trim() || "";
+        if (!linkedPoNumber) {
+            toast.error("Missing linked PO number for this balance.");
+            return;
+        }
+
         if (!poFile) {
             toast.error("Please upload a PO picture (even for redelivery).");
             return;
+        }
+
+        if (serviceType === "pickup") {
+            if (!driverName.trim()) {
+                toast.error("Driver Name is required for Pick-up orders.");
+                return;
+            }
+            if (!plateNumber.trim()) {
+                toast.error("Plate Number is required for Pick-up orders.");
+                return;
+            }
         }
 
         setIsSubmitting(true);
         try {
             // 1. Upload PO image
             const supabase = createClient();
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) throw new Error("Not authenticated");
             const fileExt = poFile.name.split('.').pop();
-            const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
+            const fileName = `${user.id}/redelivery_${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
             const { error: uploadError } = await supabase.storage
                 .from('order-attachments')
-                .upload(fileName, poFile);
+                .upload(fileName, poFile, { upsert: true, contentType: poFile.type });
 
             if (uploadError) throw new Error("Failed to upload PO image.");
             const { data: { publicUrl } } = supabase.storage.from('order-attachments').getPublicUrl(fileName);
@@ -93,10 +112,10 @@ export default function LedgerClient({ balances, summary }: { balances: any[]; s
                 source,
                 service_type: serviceType,
                 payment_method: paymentMethod,
-                po_number: poNumber,
+                po_number: linkedPoNumber,
                 po_image_url: publicUrl,
-                driver_name: serviceType === "pickup" ? driverName : null,
-                plate_number: serviceType === "pickup" ? plateNumber : null,
+                driver_name: serviceType === "pickup" ? driverName.trim() : null,
+                plate_number: serviceType === "pickup" ? plateNumber.trim() : null,
                 notes: serviceType === "pickup" && pickupDate ? `Preferred Pick-up Date: ${pickupDate}` : "",
                 preferred_pickup_date: serviceType === "pickup" ? pickupDate : undefined,
             };
@@ -296,8 +315,8 @@ export default function LedgerClient({ balances, summary }: { balances: any[]; s
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-2">
                                     <Label>PO Number <span className="text-red-500">*</span></Label>
-                                    <Input required value={poNumber} onChange={(e) => setPoNumber(e.target.value)} />
-                                    <p className="text-[10px] text-muted-foreground">You can use your original PO or enter a new one.</p>
+                                    <Input value={poNumber} readOnly className="bg-slate-50 cursor-not-allowed" />
+                                    <p className="text-[10px] text-muted-foreground">This PO is linked to your original purchase.</p>
                                 </div>
                                 <div className="space-y-2">
                                     <Label>Payment Method (For Shipping Fees) <span className="text-red-500">*</span></Label>
@@ -321,12 +340,12 @@ export default function LedgerClient({ balances, summary }: { balances: any[]; s
                                     <h4 className="text-sm font-semibold text-amber-900">Pick-up Details</h4>
                                     <div className="grid grid-cols-2 gap-4">
                                         <div className="space-y-2">
-                                            <Label>Driver Name</Label>
-                                            <Input value={driverName} onChange={(e) => setDriverName(e.target.value)} />
+                                            <Label>Driver Name <span className="text-red-500">*</span></Label>
+                                            <Input required value={driverName} onChange={(e) => setDriverName(e.target.value)} />
                                         </div>
                                         <div className="space-y-2">
-                                            <Label>Plate Number</Label>
-                                            <Input value={plateNumber} onChange={(e) => setPlateNumber(e.target.value)} />
+                                            <Label>Plate Number <span className="text-red-500">*</span></Label>
+                                            <Input required value={plateNumber} onChange={(e) => setPlateNumber(e.target.value)} />
                                         </div>
                                         <div className="space-y-2 col-span-2">
                                             <Label>Preferred Date of Pick-up</Label>
