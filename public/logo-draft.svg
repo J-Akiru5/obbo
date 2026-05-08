@@ -1,0 +1,103 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 560 380" fill="none">
+  <!--
+    OBBO Logo Mark — Golden Yellow on Transparent
+    Precise geometric reconstruction
+
+    The mark is composed of TWO interlocking shapes,
+    each a stylized "B" rotated 90° in opposite directions,
+    forming a horizontal infinity/figure-8 with heart-like tips.
+
+    GEOMETRY BREAKDOWN:
+    ─────────────────────────────────────────────────────────────
+    Center diamond/X:
+      - Top vertex (V_top):    (280, 110)
+      - Right vertex (V_right): (430, 190)
+      - Bottom vertex (V_bot): (280, 270)
+      - Left vertex (V_left):  (130, 190)
+      The X is formed by: V_top—V_left—V_bot and V_top—V_right—V_bot
+      which make two straight-line paths crossing at (280,190)
+
+    Left B (occupies left half):
+      Tip  = V_top pointing upper-left  → (110, 85)
+      Upper loop center = (170, 220), r ≈ 52
+      Lower loop center = (138, 295), r ≈ 48
+
+    Right B (occupies right half):
+      Tip  = V_bot pointing lower-right → (455, 300)
+      Upper loop center = (390, 160), r ≈ 48
+      Lower loop center = (424, 240), r ≈ 52
+    ─────────────────────────────────────────────────────────────
+  -->
+
+  <g stroke="#FFD100" stroke-width="14" stroke-linecap="round" stroke-linejoin="round" fill="none">
+
+    <!-- ══════════════════════════════════════════════
+         LEFT B SHAPE
+         Two arms from center diamond to the upper-left tip,
+         then down to two interlocked circles (lower left)
+         ══════════════════════════════════════════════ -->
+
+    <!-- Upper arm: from top-diamond-vertex straight to upper-left tip -->
+    <line x1="280" y1="115" x2="113" y2="83" />
+
+    <!-- Lower arm: from left-diamond-vertex straight to lower-left area -->
+    <line x1="133" y1="190" x2="113" y2="83" />
+
+    <!-- Upper loop (left B, upper circle) -->
+    <circle cx="172" cy="218" r="50" />
+
+    <!-- Lower loop (left B, lower circle) -->
+    <circle cx="142" cy="296" r="46" />
+
+    <!-- Connection: left-diamond-vertex to upper loop -->
+    <!-- The arm from the X crosses into upper circle -->
+    <path d="M 133 190 Q 148 198 172 218" />
+
+    <!-- Connection: bottom-diamond-vertex exits toward left loops -->
+    <path d="M 280 268 Q 220 268 172 268" />
+
+
+    <!-- ══════════════════════════════════════════════
+         RIGHT B SHAPE
+         Mirror of left: two interlocked circles (upper right)
+         then arms to lower-right tip
+         ══════════════════════════════════════════════ -->
+
+    <!-- Upper loop (right B, upper circle) -->
+    <circle cx="388" cy="162" r="46" />
+
+    <!-- Lower loop (right B, lower circle) -->
+    <circle cx="418" cy="240" r="50" />
+
+    <!-- Lower arm: from bottom-diamond-vertex straight to lower-right tip -->
+    <line x1="280" y1="268" x2="449" y2="300" />
+
+    <!-- Upper arm: from right-diamond-vertex straight to lower-right tip -->
+    <line x1="427" y1="190" x2="449" y2="300" />
+
+    <!-- Connection: right-diamond-vertex to lower loop -->
+    <path d="M 427 190 Q 415 198 418 240" />
+
+    <!-- Connection: top-diamond-vertex exits toward right loops -->
+    <path d="M 280 115 Q 340 115 388 115" />
+
+
+    <!-- ══════════════════════════════════════════════
+         CENTER DIAMOND (X shape)
+         4 straight lines meeting at center (280,190)
+         ══════════════════════════════════════════════ -->
+
+    <!-- Line: top-vertex to left-vertex (upper-left arm of X) -->
+    <line x1="280" y1="115" x2="133" y2="190" />
+
+    <!-- Line: top-vertex to right-vertex (upper-right arm of X) -->
+    <line x1="280" y1="115" x2="427" y2="190" />
+
+    <!-- Line: bottom-vertex to left-vertex (lower-left arm of X) -->
+    <line x1="280" y1="268" x2="133" y2="190" />
+
+    <!-- Line: bottom-vertex to right-vertex (lower-right arm of X) -->
+    <line x1="280" y1="268" x2="427" y2="190" />
+
+  </g>
+</svg>

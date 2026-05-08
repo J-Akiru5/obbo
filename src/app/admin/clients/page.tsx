@@ -37,7 +37,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
-import { createManualClient } from "@/lib/actions/admin-actions";
+import { createManualClient, approveKyc, rejectKyc } from "@/lib/actions/admin-actions";
 import type { Profile } from "@/lib/types/database";
 
 function getInitials(name: string) {
@@ -560,29 +560,23 @@ function ClientsContent() {
     const [detailOpen, setDetailOpen] = useState(false);
     const [manualOpen, setManualOpen] = useState(false);
 
-    useEffect(() => {
+    const fetchProfiles = async () => {
         const supabase = createClient();
-        let mounted = true;
+        try {
+            const { data, error } = await supabase.from("profiles").select("*").eq("role", "client").order("created_at", { ascending: false });
+            if (error) throw error;
+            setProfiles(data ?? []);
+        } catch (error) {
+            const message = error instanceof Error ? error.message : "Failed to load clients.";
+            toast.error(message);
+        } finally {
+            setLoading(false);
+        }
+    };
 
-        const loadProfiles = async () => {
-            try {
-                const { data, error } = await supabase.from("profiles").select("*").eq("role", "client").order("created_at", { ascending: false });
-                if (error) throw error;
-                if (!mounted) return;
-                setProfiles(data ?? []);
-            } catch (error) {
-                if (!mounted) return;
-                const message = error instanceof Error ? error.message : "Failed to load clients.";
-                toast.error(message);
-            } finally {
-                if (mounted) setLoading(false);
-            }
-        };
-
-        void loadProfiles();
-        return () => {
-            mounted = false;
-        };
+    useEffect(() => {
+        void fetchProfiles();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     useEffect(() => {
@@ -602,27 +596,23 @@ function ClientsContent() {
     };
 
     async function handleKycAction(id: string, status: "verified" | "rejected", reason?: string) {
-        if (status === "rejected" && !reason?.trim()) {
-            toast.error("A rejection reason is required.");
-            return;
+        try {
+            if (status === "verified") {
+                await approveKyc(id);
+                toast.success("Client verified.");
+            } else {
+                if (!reason?.trim()) {
+                    toast.error("A rejection reason is required.");
+                    return;
+                }
+                await rejectKyc(id, reason.trim());
+                toast.error("Client rejected.");
+            }
+            setProfiles((previous) => previous.map((profile) => (profile.id === id ? { ...profile, kyc_status: status } : profile)));
+        } catch (error: unknown) {
+            const message = error instanceof Error ? error.message : "Failed to update KYC status.";
+            toast.error(message);
         }
-
-        const supabase = createClient();
-        const { error } = await supabase.from("profiles").update({ kyc_status: status, updated_at: new Date().toISOString() }).eq("id", id);
-        if (error) {
-            toast.error("Failed to update status.");
-            return;
-        }
-
-        if (status === "verified") {
-            await supabase.from("activity_log").insert({ actor_id: id, action: "kyc_approved", entity_type: "profile", entity_id: id, metadata: {} });
-            toast.success("Client verified.");
-        } else {
-            await supabase.from("activity_log").insert({ actor_id: id, action: "kyc_rejected", entity_type: "profile", entity_id: id, metadata: { reason } });
-            toast.error("Client rejected.");
-        }
-
-        setProfiles((previous) => previous.map((profile) => (profile.id === id ? { ...profile, kyc_status: status } : profile)));
     }
 
     const pending = profiles.filter((profile) => profile.kyc_status === "pending_verification");

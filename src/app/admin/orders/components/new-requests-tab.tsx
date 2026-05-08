@@ -7,7 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Check, X, FileText, User, Truck, MapPin } from "lucide-react";
+import { Check, X, FileText, User, Truck, MapPin, ExternalLink, Car } from "lucide-react";
 import { toast } from "sonner";
 
 export function NewRequestsTab({ orders, onApprove, onReject, loading }: { 
@@ -132,16 +132,28 @@ export function NewRequestsTab({ orders, onApprove, onReject, loading }: {
                                             <span className="font-bold text-[var(--color-industrial-blue)]">₱{order.total_amount.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
                                         </div>
                                         {order.po_image_url && (
-                                            <a href={order.po_image_url} target="_blank" rel="noreferrer" className="text-xs text-blue-600 hover:underline flex items-center gap-1">
+                                            <a href={order.po_image_url} target="_blank" rel="noreferrer" className="flex items-center gap-1.5 text-xs font-medium text-blue-600 hover:text-blue-800 hover:underline bg-blue-50 border border-blue-200 px-2 py-1 rounded">
+                                                <ExternalLink className="w-3 h-3" />
                                                 View PO Document
                                             </a>
                                         )}
                                     </div>
                                     {order.service_type === "pickup" && (
-                                        <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
-                                            Driver: <span className="font-semibold">{order.driver_name || "Not provided"}</span>
-                                            {" · "}
-                                            Plate: <span className="font-semibold">{order.plate_number || "Not provided"}</span>
+                                        <div className="rounded-md border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                                            <p className="font-semibold text-amber-800 mb-2 flex items-center gap-1.5">
+                                                <Car className="w-4 h-4" />
+                                                Pick-up Details
+                                            </p>
+                                            <div className="grid grid-cols-2 gap-2">
+                                                <div>
+                                                    <p className="text-xs text-amber-600 font-medium uppercase tracking-wider">Driver</p>
+                                                    <p className="font-semibold text-amber-900">{order.driver_name || <span className="text-red-500 font-normal italic">Not provided</span>}</p>
+                                                </div>
+                                                <div>
+                                                    <p className="text-xs text-amber-600 font-medium uppercase tracking-wider">Plate No.</p>
+                                                    <p className="font-semibold text-amber-900 font-mono">{order.plate_number || <span className="text-red-500 font-normal italic">Not provided</span>}</p>
+                                                </div>
+                                            </div>
                                         </div>
                                     )}
                                 </div>
@@ -215,6 +227,24 @@ export function NewRequestsTab({ orders, onApprove, onReject, loading }: {
                                         onChange={(e) => setShippingFee(parseFloat(e.target.value) || 0)}
                                     />
                                     <p className="text-xs text-muted-foreground">Required for delivery orders.</p>
+                                </div>
+                            )}
+                            {selectedOrder.po_image_url && (
+                                <div className="flex items-center justify-between p-2 bg-slate-50 rounded-lg border text-sm mt-3">
+                                    <span className="text-muted-foreground">PO Document</span>
+                                    <a href={selectedOrder.po_image_url} target="_blank" rel="noreferrer" className="flex items-center gap-1 text-blue-600 hover:underline font-medium">
+                                        <ExternalLink className="w-3.5 h-3.5" />
+                                        View
+                                    </a>
+                                </div>
+                            )}
+                            {selectedOrder.service_type === "pickup" && (
+                                <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm mt-3">
+                                    <p className="font-semibold text-amber-800 mb-1.5 flex items-center gap-1.5"><Car className="w-4 h-4" />Pick-up Details</p>
+                                    <div className="grid grid-cols-2 gap-2 text-amber-900">
+                                        <div><p className="text-xs text-amber-600 font-medium">Driver</p><p className="font-semibold">{selectedOrder.driver_name || <span className="text-red-500 italic font-normal">Missing</span>}</p></div>
+                                        <div><p className="text-xs text-amber-600 font-medium">Plate</p><p className="font-semibold font-mono">{selectedOrder.plate_number || <span className="text-red-500 italic font-normal">Missing</span>}</p></div>
+                                    </div>
                                 </div>
                             )}
                         </div>

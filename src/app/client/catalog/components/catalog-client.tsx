@@ -161,7 +161,7 @@ export default function CatalogClient({ products }: { products: any[] }) {
                 .from('order-attachments')
                 .upload(fileName, poFile, { upsert: true, contentType: poFile.type });
 
-            if (uploadError) throw new Error("Failed to upload PO image.");
+            if (uploadError) throw new Error(`Failed to upload PO image: ${uploadError.message}`);
             
             const { data: { publicUrl } } = supabase.storage.from('order-attachments').getPublicUrl(fileName);
 

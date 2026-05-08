@@ -7,7 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { AlertCircle, CheckCircle2, Truck, UploadCloud, User, X } from "lucide-react";
+import { AlertCircle, CheckCircle2, ExternalLink, Truck, UploadCloud, User, X } from "lucide-react";
 
 export function FulfillmentTab({ orders, shipments, onDispatch, onConfirmCheck, loading }: { 
     orders: Order[]; 
@@ -186,6 +186,17 @@ export function FulfillmentTab({ orders, shipments, onDispatch, onConfirmCheck, 
                                                 <span className="font-bold uppercase text-[var(--color-industrial-slate)]">{order.service_type}</span>
                                             </div>
                                         </div>
+                                        {order.service_type === "pickup" && (
+                                            <div className="text-xs text-muted-foreground mt-1 flex items-center gap-3">
+                                                <span>Driver: <span className="font-semibold text-foreground">{order.driver_name || <em className="text-red-500">missing</em>}</span></span>
+                                                <span>Plate: <span className="font-semibold text-foreground font-mono">{order.plate_number || <em className="text-red-500">missing</em>}</span></span>
+                                            </div>
+                                        )}
+                                        {order.po_image_url && (
+                                            <a href={order.po_image_url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs text-blue-600 hover:underline mt-1">
+                                                <ExternalLink className="w-3 h-3" /> View PO Document
+                                            </a>
+                                        )}
                                     </div>
                                     <div className="flex items-center">
                                         <Button onClick={() => openAction(order, "dispatch")} className="bg-[var(--color-industrial-blue)] hover:bg-[var(--color-industrial-blue-light)] w-full md:w-auto h-12 px-8">

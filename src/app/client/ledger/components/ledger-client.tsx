@@ -77,10 +77,6 @@ export default function LedgerClient({ balances, summary }: { balances: any[]; s
             return;
         }
 
-        if (!poFile) {
-            toast.error("Please upload a PO picture (even for redelivery).");
-            return;
-        }
 
         if (serviceType === "pickup") {
             if (!driverName.trim()) {
@@ -95,25 +91,31 @@ export default function LedgerClient({ balances, summary }: { balances: any[]; s
 
         setIsSubmitting(true);
         try {
-            // 1. Upload PO image
+            // 1. Upload Redelivery Form image (optional)
             const supabase = createClient();
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) throw new Error("Not authenticated");
-            const fileExt = poFile.name.split('.').pop();
-            const fileName = `${user.id}/redelivery_${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
-            const { error: uploadError } = await supabase.storage
-                .from('order-attachments')
-                .upload(fileName, poFile, { upsert: true, contentType: poFile.type });
 
-            if (uploadError) throw new Error("Failed to upload PO image.");
-            const { data: { publicUrl } } = supabase.storage.from('order-attachments').getPublicUrl(fileName);
+            let publicUrl = selectedBalance.order?.po_image_url || "";
+
+            if (poFile) {
+                const fileExt = poFile.name.split('.').pop();
+                const fileName = `${user.id}/redelivery_${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
+                const { error: uploadError } = await supabase.storage
+                    .from('order-attachments')
+                    .upload(fileName, poFile, { upsert: true, contentType: poFile.type });
+
+                if (uploadError) throw new Error(`Failed to upload redelivery form: ${uploadError.message}`);
+                const { data: { publicUrl: uploadedUrl } } = supabase.storage.from('order-attachments').getPublicUrl(fileName);
+                publicUrl = uploadedUrl;
+            }
 
             const orderData = {
                 source,
                 service_type: serviceType,
                 payment_method: paymentMethod,
                 po_number: linkedPoNumber,
-                po_image_url: publicUrl,
+                po_image_url: publicUrl || undefined,
                 driver_name: serviceType === "pickup" ? driverName.trim() : null,
                 plate_number: serviceType === "pickup" ? plateNumber.trim() : null,
                 notes: serviceType === "pickup" && pickupDate ? `Preferred Pick-up Date: ${pickupDate}` : "",
@@ -329,8 +331,8 @@ export default function LedgerClient({ balances, summary }: { balances: any[]; s
                                     </Select>
                                 </div>
                                 <div className="space-y-2 col-span-2">
-                                    <Label>PO / Redelivery Form Upload <span className="text-red-500">*</span></Label>
-                                    <Input type="file" accept="image/*,.pdf" onChange={handleFileChange} required className="cursor-pointer" />
+                                    <Label>Redelivery Authorization Document <span className="text-xs text-muted-foreground ml-1">(Optional — original PO image will be used if not provided)</span></Label>
+                                    <Input type="file" accept="image/*,.pdf" onChange={handleFileChange} className="cursor-pointer" />
                                 </div>
                             </div>
 
