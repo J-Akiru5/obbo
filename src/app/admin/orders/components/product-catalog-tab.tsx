@@ -22,7 +22,7 @@ export function ProductCatalogTab({ products, onUpdate, loading }: { products: P
     const [isUploadingImage, setIsUploadingImage] = useState(false);
 
     const filteredProducts = products.filter(p =>
-        p.name.toLowerCase().includes("portland cement type 1")
+        (p.name.toLowerCase().includes("portland cement type 1") || p.name.toLowerCase().includes("portland cement type i"))
         && (p.bag_type === "SB" || p.bag_type === "JB")
     );
 
