@@ -734,12 +734,14 @@ export async function generateDailyReportData(date: string) {
         waste_sb: 0,
         dispatches,
         balances: balanceRows,
+    };
+}
 
-        // ═══════════════════════════════════════════════════════════════
-        // KYC VERIFICATION
-        // ═══════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════
+// KYC VERIFICATION
+// ═══════════════════════════════════════════════════════════════
 
-        export async function fetchPendingKyc() {
+export async function fetchPendingKyc() {
         const { supabase } = await requireAdmin();
         const { data } = await supabase
             .from("profiles")
