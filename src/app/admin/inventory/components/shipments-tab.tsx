@@ -252,8 +252,8 @@ export function ShipmentsTab({ shipments, loading, onReload }: { shipments: Ship
                                                 <TableHead className="text-xs">DR #</TableHead>
                                                 <TableHead className="text-xs">PO #</TableHead>
                                                 <TableHead className="text-xs">Client Name</TableHead>
-                                                <TableHead className="text-xs text-right text-red-600">Out JB</TableHead>
-                                                <TableHead className="text-xs text-right text-red-600">Out SB</TableHead>
+                                                <TableHead className="text-xs text-right text-red-500">Out JB</TableHead>
+                                                <TableHead className="text-xs text-right text-red-500">Out SB</TableHead>
                                                 <TableHead className="text-xs text-right w-[60px]"></TableHead>
                                             </TableRow>
                                         </TableHeader>
@@ -268,8 +268,8 @@ export function ShipmentsTab({ shipments, loading, onReload }: { shipments: Ship
                                                     <TableCell className="text-xs font-medium">{entry.dr_number || "—"}</TableCell>
                                                     <TableCell className="text-xs font-medium">{entry.po_number || "—"}</TableCell>
                                                     <TableCell className="text-xs">{entry.client_name || "—"}</TableCell>
-                                                    <TableCell className="text-xs text-right text-red-600 font-medium">-{entry.jb}</TableCell>
-                                                    <TableCell className="text-xs text-right text-red-600 font-medium">-{entry.sb}</TableCell>
+                                                    <TableCell className="text-xs text-right text-red-500 font-medium">-{entry.jb}</TableCell>
+                                                    <TableCell className="text-xs text-right text-red-500 font-medium">-{entry.sb}</TableCell>
                                                     <TableCell className="text-right">
                                                         <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:bg-destructive/10" onClick={() => handleDeleteEntry(entry.id, shipment.id)}>
                                                             <Trash2 className="w-3.5 h-3.5" />
@@ -311,7 +311,7 @@ export function ShipmentsTab({ shipments, loading, onReload }: { shipments: Ship
                                 <Input type="number" min="0" value={editForm.total_sb} onChange={e => setEditForm({ ...editForm, total_sb: parseInt(e.target.value) || 0 })} />
                             </div>
                         </div>
-                        <div className="bg-amber-50 p-3 rounded-lg border border-amber-200 text-xs text-amber-800">
+                        <div className="bg-amber-500/10 p-3 rounded-lg border border-amber-500/20 text-xs text-amber-500">
                             <p className="font-semibold mb-1">Warning: Changing Total Counts</p>
                             <p>Changing total counts will NOT automatically update remaining counts. Only use this to fix accidental entry errors.</p>
                         </div>

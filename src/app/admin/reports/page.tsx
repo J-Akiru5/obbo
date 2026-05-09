@@ -11,14 +11,14 @@ import type { WarehouseReport } from "@/lib/types/database";
 
 function reportStatusFor(report: WarehouseReport | null, reportDate: string) {
     if (!report) {
-        return { label: "Draft", tone: "bg-slate-100 text-slate-700 border-slate-200" };
+        return { label: "Draft", tone: "bg-muted text-muted-foreground border-border" };
     }
 
     if (reportDate === new Date().toISOString().split("T")[0]) {
-        return { label: "Submitted", tone: "bg-amber-100 text-amber-800 border-amber-200" };
+        return { label: "Submitted", tone: "bg-amber-500/10 text-amber-500 border-amber-500/20" };
     }
 
-    return { label: "Reviewed", tone: "bg-emerald-100 text-emerald-800 border-emerald-200" };
+    return { label: "Reviewed", tone: "bg-emerald-500/10 text-emerald-500 border-emerald-500/20" };
 }
 
 function MetricCard({ title, value, icon: Icon, description }: { title: string; value: string; icon: React.ComponentType<{ className?: string }>; description: string; }) {
@@ -288,7 +288,7 @@ export default function AdminReportsPage() {
                                                     <TableCell className="font-medium">{balance.client?.company_name || balance.client?.full_name || "Client"}</TableCell>
                                                     <TableCell className="text-muted-foreground">{balance.product?.name ?? "Product"}</TableCell>
                                                     <TableCell className="text-right">
-                                                        <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-100">
+                                                    <Badge className="bg-amber-500/10 text-amber-500 hover:bg-amber-500/20 border-0">
                                                             {balance.remaining_qty} {balance.bag_type}
                                                         </Badge>
                                                     </TableCell>

@@ -148,27 +148,27 @@ export default function AdminDashboard() {
     ];
 
     return (
-        <div className="space-y-6 max-w-7xl mx-auto p-4 md:p-6 lg:p-8 font-sans bg-[#f4f2ef] min-h-screen">
+        <div className="space-y-6 max-w-7xl mx-auto p-4 md:p-6 lg:p-8 font-sans min-h-screen">
             {/* Header */}
             <div className="flex items-center justify-between mb-8">
                 <div>
-                    <h2 className="text-[28px] font-bold tracking-tight text-slate-800">Dashboard</h2>
-                    <p className="text-sm text-slate-500 font-medium mt-1">Real-time operational overview of warehouse performance</p>
+                    <h2 className="text-[28px] font-bold tracking-tight text-foreground">Dashboard</h2>
+                    <p className="text-sm text-muted-foreground font-medium mt-1">Real-time operational overview of warehouse performance</p>
                 </div>
             </div>
 
             {/* KPI Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 {/* Total Good Stock */}
-                <Card className="border-0 shadow-sm bg-white rounded-xl overflow-hidden relative">
+                <Card className="border-border shadow-sm bg-card rounded-xl overflow-hidden relative">
                     <div className="absolute top-0 left-0 right-0 h-1 bg-[#ff9f43]" />
                     <CardContent className="p-6">
                         <div className="flex items-start justify-between">
                             <div className="space-y-4 w-full">
-                                <p className="text-[13px] font-medium text-slate-500 uppercase tracking-wide">Total Good Stock</p>
+                                <p className="text-[13px] font-medium text-muted-foreground uppercase tracking-wide">Total Good Stock</p>
                                 <div className="flex items-baseline justify-between w-full">
-                                    <p className="text-[38px] font-bold tracking-tight text-slate-800 leading-none">{kpis.grandTotal.toLocaleString()}</p>
-                                    <div className="w-10 h-10 rounded-lg bg-[#fff4e6] flex items-center justify-center">
+                                    <p className="text-[38px] font-bold tracking-tight text-foreground leading-none">{kpis.grandTotal.toLocaleString()}</p>
+                                    <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center">
                                         <Package className="w-5 h-5 text-[#ff9f43]" />
                                     </div>
                                 </div>
@@ -184,20 +184,20 @@ export default function AdminDashboard() {
                 </Card>
 
                 {/* Client Balances */}
-                <Card className="border-0 shadow-sm bg-white rounded-xl overflow-hidden relative">
+                <Card className="border-border shadow-sm bg-card rounded-xl overflow-hidden relative">
                     <div className="absolute top-0 left-0 right-0 h-1 bg-[#feca57]" />
                     <CardContent className="p-6">
                         <div className="flex items-start justify-between">
                             <div className="space-y-4 w-full">
-                                <p className="text-[13px] font-medium text-slate-500 uppercase tracking-wide">Client Balances</p>
+                                <p className="text-[13px] font-medium text-muted-foreground uppercase tracking-wide">Client Balances</p>
                                 <div className="flex items-baseline justify-between w-full">
-                                    <p className="text-[38px] font-bold tracking-tight text-slate-800 leading-none">{kpis.grandBalance.toLocaleString()}</p>
-                                    <div className="w-10 h-10 rounded-lg bg-[#fff8e1] flex items-center justify-center">
+                                    <p className="text-[38px] font-bold tracking-tight text-foreground leading-none">{kpis.grandBalance.toLocaleString()}</p>
+                                    <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center">
                                         <Users className="w-5 h-5 text-[#feca57]" />
                                     </div>
                                 </div>
                                 <div className="space-y-1 mt-4">
-                                    <p className="text-[13px] font-medium text-slate-400">Total owed in-bags</p>
+                                    <p className="text-[13px] font-medium text-muted-foreground">Total owed in-bags</p>
                                     <p className="text-[12px] font-semibold text-transparent select-none">&nbsp;</p>
                                 </div>
                             </div>
@@ -206,20 +206,20 @@ export default function AdminDashboard() {
                 </Card>
 
                 {/* Pending KYC */}
-                <Card className="border-0 shadow-sm bg-[#f2f2f2] rounded-xl overflow-hidden relative">
+                <Card className="border-border shadow-sm bg-card rounded-xl overflow-hidden relative">
                     <div className="absolute top-0 left-0 right-0 h-1 bg-[#ff6b6b]" />
                     <CardContent className="p-6">
                         <div className="flex items-start justify-between">
                             <div className="space-y-4 w-full">
-                                <p className="text-[13px] font-medium text-slate-500 uppercase tracking-wide">Pending KYC</p>
+                                <p className="text-[13px] font-medium text-muted-foreground uppercase tracking-wide">Pending KYC</p>
                                 <div className="flex items-baseline justify-between w-full">
-                                    <p className="text-[38px] font-bold tracking-tight text-slate-800 leading-none">{kpis.pendingKyc}</p>
-                                    <div className="w-10 h-10 rounded-lg bg-[#ffebe6] flex items-center justify-center">
+                                    <p className="text-[38px] font-bold tracking-tight text-foreground leading-none">{kpis.pendingKyc}</p>
+                                    <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center">
                                         <ShieldAlert className="w-5 h-5 text-[#ff6b6b]" />
                                     </div>
                                 </div>
                                 <div className="space-y-1 mt-4">
-                                    <p className="text-[13px] font-medium text-slate-400">Unverified users</p>
+                                    <p className="text-[13px] font-medium text-muted-foreground">Unverified users</p>
                                     <p className="text-[12px] font-semibold text-transparent select-none">&nbsp;</p>
                                 </div>
                             </div>
@@ -228,20 +228,20 @@ export default function AdminDashboard() {
                 </Card>
 
                 {/* Net Available */}
-                <Card className="border-0 shadow-sm bg-white rounded-xl overflow-hidden relative">
+                <Card className="border-border shadow-sm bg-card rounded-xl overflow-hidden relative">
                     <div className="absolute top-0 left-0 right-0 h-1 bg-[#1dd1a1]" />
                     <CardContent className="p-6">
                         <div className="flex items-start justify-between">
                             <div className="space-y-4 w-full">
-                                <p className="text-[13px] font-medium text-slate-500 uppercase tracking-wide">Net Available</p>
+                                <p className="text-[13px] font-medium text-muted-foreground uppercase tracking-wide">Net Available</p>
                                 <div className="flex items-baseline justify-between w-full">
-                                    <p className="text-[38px] font-bold tracking-tight text-slate-800 leading-none">{kpis.grandNet.toLocaleString()}</p>
-                                    <div className="w-10 h-10 rounded-lg bg-[#e6fbf5] flex items-center justify-center">
+                                    <p className="text-[38px] font-bold tracking-tight text-foreground leading-none">{kpis.grandNet.toLocaleString()}</p>
+                                    <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center">
                                         <Package className="w-5 h-5 text-[#1dd1a1]" />
                                     </div>
                                 </div>
                                 <div className="space-y-1 mt-4">
-                                    <p className="text-[13px] font-medium text-slate-400">Physical - Balances</p>
+                                    <p className="text-[13px] font-medium text-muted-foreground">Physical - Balances</p>
                                     <p className="text-[12px] font-semibold text-transparent select-none">&nbsp;</p>
                                 </div>
                             </div>
@@ -251,17 +251,17 @@ export default function AdminDashboard() {
             </div>
 
             {/* Visual Analytics */}
-            <Card className="border-0 shadow-sm bg-white rounded-xl overflow-hidden mt-8 p-6">
+            <Card className="border-border shadow-sm bg-card rounded-xl overflow-hidden mt-8 p-6">
                 <CardHeader className="p-0 pb-4 mb-4 border-b border-border">
-                    <CardTitle className="text-base font-semibold text-slate-700 tracking-wide">Warehouse Stock Overview</CardTitle>
+                    <CardTitle className="text-base font-semibold text-foreground tracking-wide">Warehouse Stock Overview</CardTitle>
                 </CardHeader>
                 <div className="h-[300px] w-full mt-4">
                     <ResponsiveContainer width="100%" height="100%">
                         <BarChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
-                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-                            <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12 }} dy={10} />
-                            <YAxis axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12 }} />
-                            <Tooltip cursor={{ fill: '#f8fafc' }} contentStyle={{ borderRadius: '8px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
+                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
+                            <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }} dy={10} />
+                            <YAxis axisLine={false} tickLine={false} tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }} />
+                            <Tooltip cursor={{ fill: 'hsl(var(--muted)/0.2)' }} contentStyle={{ borderRadius: '8px', backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', color: 'hsl(var(--foreground))' }} />
                             <Legend wrapperStyle={{ paddingTop: '20px' }} />
                             <Bar dataKey="good" name="Good Stock" fill="#1dd1a1" radius={[4, 4, 0, 0]} maxBarSize={60} />
                             <Bar dataKey="obligated" name="Obligated (Balances)" fill="#feca57" radius={[4, 4, 0, 0]} maxBarSize={60} />
@@ -272,11 +272,11 @@ export default function AdminDashboard() {
             </Card>
 
             {/* Low Stock Alerts */}
-            <Card className="border-0 shadow-sm bg-[#eeece8] rounded-xl overflow-hidden mt-8">
+            <Card className="border-border shadow-sm bg-card rounded-xl overflow-hidden mt-8">
                 <CardHeader className="pb-2">
                     <div className="flex items-center gap-2">
-                        <AlertTriangle className="w-5 h-5 text-slate-500" />
-                        <CardTitle className="text-base font-semibold text-slate-600 tracking-wide">Low Stock Alerts</CardTitle>
+                        <AlertTriangle className="w-5 h-5 text-muted-foreground" />
+                        <CardTitle className="text-base font-semibold text-foreground tracking-wide">Low Stock Alerts</CardTitle>
                     </div>
                 </CardHeader>
                 <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2 pb-6">
@@ -305,40 +305,40 @@ export default function AdminDashboard() {
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-8">
                 {/* Pending Tasks */}
-                <Card className="border-0 shadow-sm bg-[#eeece8] rounded-xl overflow-hidden">
-                    <CardHeader className="pb-4 border-b border-[#e2dfd9]">
-                        <CardTitle className="text-base font-semibold text-slate-700 tracking-wide">Pending Tasks</CardTitle>
+                <Card className="border-border shadow-sm bg-card rounded-xl overflow-hidden">
+                    <CardHeader className="pb-4 border-b border-border">
+                        <CardTitle className="text-base font-semibold text-foreground tracking-wide">Pending Tasks</CardTitle>
                     </CardHeader>
                     <CardContent className="p-0">
-                        <div className="divide-y divide-[#e2dfd9]">
-                            <Link href="/admin/clients" className="flex items-center justify-between p-5 hover:bg-[#e6e4df] transition-colors group">
+                        <div className="divide-y divide-border">
+                            <Link href="/admin/clients" className="flex items-center justify-between p-5 hover:bg-muted/50 transition-colors group">
                                 <div className="flex items-center gap-3">
                                     <ShieldAlert className="w-5 h-5 text-[#ff6b6b]" />
-                                    <span className="text-[14px] font-medium text-slate-700">New Users Awaiting Verification</span>
+                                    <span className="text-[14px] font-medium text-foreground">New Users Awaiting Verification</span>
                                 </div>
                                 <div className="flex items-center gap-4">
                                     <span className="bg-[#ff6b6b] text-white text-[11px] font-bold px-2 py-0.5 rounded-full min-w-[24px] text-center">{kpis.pendingKyc}</span>
-                                    <ArrowUpRight className="w-4 h-4 text-slate-400 group-hover:text-slate-600 transition-colors" />
+                                    <ArrowUpRight className="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors" />
                                 </div>
                             </Link>
-                            <Link href="/admin/orders#new" className="flex items-center justify-between p-5 hover:bg-[#e6e4df] transition-colors group">
+                            <Link href="/admin/orders#new" className="flex items-center justify-between p-5 hover:bg-muted/50 transition-colors group">
                                 <div className="flex items-center gap-3">
                                     <ShoppingCart className="w-5 h-5 text-[#ff9f43]" />
-                                    <span className="text-[14px] font-medium text-slate-700">Pending Orders / Requests</span>
+                                    <span className="text-[14px] font-medium text-foreground">Pending Orders / Requests</span>
                                 </div>
                                 <div className="flex items-center gap-4">
                                     <span className="bg-[#ff9f43] text-white text-[11px] font-bold px-2 py-0.5 rounded-full min-w-[24px] text-center">{kpis.pendingOrders}</span>
-                                    <ArrowUpRight className="w-4 h-4 text-slate-400 group-hover:text-slate-600 transition-colors" />
+                                    <ArrowUpRight className="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors" />
                                 </div>
                             </Link>
-                            <Link href="/admin/orders#fulfillment" className="flex items-center justify-between p-5 hover:bg-[#e6e4df] transition-colors group">
+                            <Link href="/admin/orders#fulfillment" className="flex items-center justify-between p-5 hover:bg-muted/50 transition-colors group">
                                 <div className="flex items-center gap-3">
                                     <Truck className="w-5 h-5 text-[#3b82f6]" />
-                                    <span className="text-[14px] font-medium text-slate-700">Pending Fulfillment</span>
+                                    <span className="text-[14px] font-medium text-foreground">Pending Fulfillment</span>
                                 </div>
                                 <div className="flex items-center gap-4">
                                     <span className="bg-[#3b82f6] text-white text-[11px] font-bold px-2 py-0.5 rounded-full min-w-[24px] text-center">{kpis.pendingFulfillment}</span>
-                                    <ArrowUpRight className="w-4 h-4 text-slate-400 group-hover:text-slate-600 transition-colors" />
+                                    <ArrowUpRight className="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors" />
                                 </div>
                             </Link>
                         </div>
@@ -346,9 +346,9 @@ export default function AdminDashboard() {
                 </Card>
 
                 {/* System Activity Feed */}
-                <Card className="border-0 shadow-sm bg-[#eeece8] rounded-xl overflow-hidden">
-                    <CardHeader className="pb-4 border-b border-[#e2dfd9]">
-                        <CardTitle className="text-base font-semibold text-slate-700 tracking-wide">System Activity Feed</CardTitle>
+                <Card className="border-border shadow-sm bg-card rounded-xl overflow-hidden">
+                    <CardHeader className="pb-4 border-b border-border">
+                        <CardTitle className="text-base font-semibold text-foreground tracking-wide">System Activity Feed</CardTitle>
                     </CardHeader>
                     <CardContent className="p-0">
                         {activityEvents.length === 0 && (
@@ -393,17 +393,17 @@ export default function AdminDashboard() {
                             {activityEvents.slice(0, 4).map((activity) => (
                                 <div key={activity.id} className="flex items-center justify-between">
                                     <div className="flex items-start gap-4">
-                                        <span className="text-[12px] text-slate-400 font-mono mt-0.5">{new Date(activity.created_at).toLocaleTimeString([], { hour12: false })}</span>
+                                        <span className="text-[12px] text-muted-foreground font-mono mt-0.5">{new Date(activity.created_at).toLocaleTimeString([], { hour12: false })}</span>
                                         <div>
-                                            <p className="text-[14px] font-bold text-slate-800">{getActivityLabel(activity.action)}</p>
-                                            <p className="text-[12px] text-slate-500">
+                                            <p className="text-[14px] font-bold text-foreground">{getActivityLabel(activity.action)}</p>
+                                            <p className="text-[12px] text-muted-foreground">
                                                 {activity.action === "warehouse_report_submitted" 
                                                     ? `Report for ${String((activity.metadata as any)?.date ?? "Unknown")}`
                                                     : `User: ${activity.actor?.email ?? "Unknown"} · IP: ${String((activity.metadata as any)?.ip ?? "Unknown")}`}
                                             </p>
                                         </div>
                                     </div>
-                                    <Badge className={`${activity.action === "warehouse_report_submitted" ? "bg-indigo-100 text-indigo-600 border-0" : "bg-[#e6f9f0] text-emerald-600 border-0"} text-[10px] uppercase font-bold`}>
+                                    <Badge className={`${activity.action === "warehouse_report_submitted" ? "bg-indigo-500/10 text-indigo-500 border-0" : "bg-emerald-500/10 text-emerald-500 border-0"} text-[10px] uppercase font-bold`}>
                                         {activity.action === "warehouse_report_submitted" ? "Report" : "Success"}
                                     </Badge>
                                 </div>
@@ -414,10 +414,10 @@ export default function AdminDashboard() {
             </div>
 
             {/* Recent Pending Orders */}
-            <Card className="border-0 shadow-sm bg-[#eeece8] rounded-xl overflow-hidden mt-8">
-                <CardHeader className="pb-4 border-b border-[#e2dfd9]">
+            <Card className="border-border shadow-sm bg-card rounded-xl overflow-hidden mt-8">
+                <CardHeader className="pb-4 border-b border-border">
                     <div className="flex items-center justify-between">
-                        <CardTitle className="text-base font-semibold text-slate-700 tracking-wide">Recent Pending Orders</CardTitle>
+                        <CardTitle className="text-base font-semibold text-foreground tracking-wide">Recent Pending Orders</CardTitle>
                         <Link href="/admin/orders" className="text-[13px] font-medium text-slate-500 hover:text-slate-800 flex items-center gap-1 transition-colors">
                             View All <ArrowUpRight className="w-3.5 h-3.5" />
                         </Link>
@@ -425,7 +425,7 @@ export default function AdminDashboard() {
                 </CardHeader>
                 <CardContent className="p-0 overflow-x-auto">
                     <table className="w-full text-sm text-left whitespace-nowrap">
-                        <thead className="bg-[#e6e4df] text-slate-500 font-medium text-[12px] uppercase tracking-wider">
+                        <thead className="bg-muted text-muted-foreground font-medium text-[12px] uppercase tracking-wider">
                             <tr>
                                 <th className="px-6 py-4 rounded-tl-xl">PO #</th>
                                 <th className="px-6 py-4">Client</th>
@@ -437,7 +437,7 @@ export default function AdminDashboard() {
                                 <th className="px-6 py-4 text-right rounded-tr-xl">Actions</th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-[#e2dfd9]">
+                        <tbody className="divide-y divide-border">
                             {recentOrders.length === 0 ? (
                                 <tr>
                                     <td colSpan={8} className="px-6 py-12 text-center text-slate-400 font-medium">No pending orders</td>
@@ -447,15 +447,15 @@ export default function AdminDashboard() {
                                     const jb = order.items?.filter((i: any) => i.bag_type === 'JB').reduce((sum: number, i: any) => sum + i.requested_qty, 0) ?? 0;
                                     const sb = order.items?.filter((i: any) => i.bag_type === 'SB').reduce((sum: number, i: any) => sum + i.requested_qty, 0) ?? 0;
                                     return (
-                                        <tr key={order.id} className="hover:bg-slate-50/50 transition-colors">
-                                            <td className="px-6 py-4 font-mono font-medium text-slate-700">{order.po_number || `#${order.id.slice(0, 8).toUpperCase()}`}</td>
-                                            <td className="px-6 py-4 font-semibold text-[var(--color-industrial-blue)]">{(order as any).client?.full_name ?? "Unknown"}</td>
-                                            <td className="px-6 py-4"><Badge variant="outline" className="text-[10px] uppercase bg-white">{order.source}</Badge></td>
+                                        <tr key={order.id} className="hover:bg-muted/30 transition-colors">
+                                            <td className="px-6 py-4 font-mono font-medium text-foreground">{order.po_number || `#${order.id.slice(0, 8).toUpperCase()}`}</td>
+                                            <td className="px-6 py-4 font-semibold text-primary">{(order as any).client?.full_name ?? "Unknown"}</td>
+                                            <td className="px-6 py-4"><Badge variant="outline" className="text-[10px] uppercase bg-transparent text-foreground border-border">{order.source}</Badge></td>
                                             <td className="px-6 py-4 text-right font-medium">{jb}</td>
                                             <td className="px-6 py-4 text-right font-medium">{sb}</td>
-                                            <td className="px-6 py-4 text-right font-bold text-slate-800">{jb + sb}</td>
+                                            <td className="px-6 py-4 text-right font-bold text-foreground">{jb + sb}</td>
                                             <td className="px-6 py-4">
-                                                <Badge className={order.payment_method === 'cash' ? "bg-emerald-100 text-emerald-800 hover:bg-emerald-100" : "bg-blue-100 text-blue-800 hover:bg-blue-100"}>
+                                                <Badge className={order.payment_method === 'cash' ? "bg-emerald-500/10 text-emerald-500 border-0" : "bg-blue-500/10 text-blue-500 border-0"}>
                                                     {order.payment_method.toUpperCase()}
                                                 </Badge>
                                             </td>

@@ -210,7 +210,7 @@ export default function AdminSettingsPage() {
                                                 setTheme(option.value as "system" | "light" | "dark");
                                                 toast.success(`Theme set to ${option.label}.`);
                                             }}
-                                            className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-all ${theme === option.value ? "bg-white text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
+                                            className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-all ${theme === option.value ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
                                         >
                                             <option.icon className="h-3.5 w-3.5" /> {option.label}
                                         </button>

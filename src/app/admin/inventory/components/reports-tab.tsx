@@ -270,7 +270,7 @@ export function ReportsTab() {
                     </Button>
 
                     {isAutoFilled && (
-                        <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100 gap-1.5 px-3 py-1.5 text-xs">
+                        <Badge className="bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20 gap-1.5 px-3 py-1.5 text-xs border-0">
                             <CheckCircle2 className="w-3.5 h-3.5" />
                             Auto-filled from today&apos;s transactions — review &amp; edit before saving
                         </Badge>
@@ -280,7 +280,7 @@ export function ReportsTab() {
                         <Button
                             variant="outline"
                             onClick={handleExportXLSX}
-                            className="gap-2 border-emerald-200 text-emerald-700 hover:bg-emerald-50"
+                            className="gap-2 border-emerald-500/20 text-emerald-500 hover:bg-emerald-500/10"
                         >
                             <FileSpreadsheet className="w-4 h-4" />
                             Export XLSX
@@ -288,7 +288,7 @@ export function ReportsTab() {
                         <Button
                             variant="outline"
                             onClick={handleExportPDF}
-                            className="gap-2 border-red-200 text-red-700 hover:bg-red-50"
+                            className="gap-2 border-red-500/20 text-red-500 hover:bg-red-500/10"
                         >
                             <FileText className="w-4 h-4" />
                             Export PDF
@@ -344,10 +344,10 @@ export function ReportsTab() {
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    <TableRow className="bg-slate-50">
+                                    <TableRow className="bg-muted/30">
                                         <TableCell className="font-semibold">Yesterday&apos;s Closing</TableCell>
-                                        <TableCell><Input type="number" value={physical.yesterday_jb} onChange={e => setPhysical({ ...physical, yesterday_jb: parseInt(e.target.value) || 0 })} className="w-32 h-8 bg-white" /></TableCell>
-                                        <TableCell><Input type="number" value={physical.yesterday_sb} onChange={e => setPhysical({ ...physical, yesterday_sb: parseInt(e.target.value) || 0 })} className="w-32 h-8 bg-white" /></TableCell>
+                                        <TableCell><Input type="number" value={physical.yesterday_jb} onChange={e => setPhysical({ ...physical, yesterday_jb: parseInt(e.target.value) || 0 })} className="w-32 h-8 bg-card" /></TableCell>
+                                        <TableCell><Input type="number" value={physical.yesterday_sb} onChange={e => setPhysical({ ...physical, yesterday_sb: parseInt(e.target.value) || 0 })} className="w-32 h-8 bg-card" /></TableCell>
                                     </TableRow>
                                     <TableRow>
                                         <TableCell className="font-medium text-emerald-600 flex items-center gap-2"><ArrowDownRight className="w-4 h-4" /> Stock Received (+)</TableCell>
@@ -443,7 +443,7 @@ export function ReportsTab() {
                                             <TableCell className="font-medium">{b.client?.company_name || b.client?.full_name}</TableCell>
                                             <TableCell className="text-muted-foreground">{b.product?.name}</TableCell>
                                             <TableCell className="text-right">
-                                                <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-100">{b.remaining_qty} {b.bag_type}</Badge>
+                                                <Badge className="bg-amber-500/10 text-amber-500 hover:bg-amber-500/20 border-0">{b.remaining_qty} {b.bag_type}</Badge>
                                             </TableCell>
                                         </TableRow>
                                     ))}

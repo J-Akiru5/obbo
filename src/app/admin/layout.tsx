@@ -330,7 +330,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     }
 
     return (
-        <div className="min-h-screen flex bg-muted/30">
+        <div className="min-h-screen flex bg-background">
             {/* Desktop Sidebar */}
             <aside className="hidden lg:flex lg:w-64 flex-col bg-sidebar border-r border-sidebar-border fixed inset-y-0 left-0 z-40">
                 <SidebarContent pathname={pathname} navItems={navItems} adminName={adminName} adminInitials={adminInitials} />
@@ -339,7 +339,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             {/* Main Content */}
             <div className="flex-1 lg:ml-64 flex flex-col min-h-screen">
                 {/* Top Bar */}
-                <header className="h-16 bg-white border-b border-border flex items-center justify-between px-4 lg:px-6 sticky top-0 z-30">
+                <header className="h-16 bg-card border-b border-border flex items-center justify-between px-4 lg:px-6 sticky top-0 z-30">
                     <div className="flex items-center gap-3">
                         {/* Mobile menu */}
                         <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
