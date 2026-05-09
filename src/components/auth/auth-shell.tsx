@@ -27,7 +27,7 @@ export function AuthShell({
   children,
 }: AuthShellProps) {
   return (
-    <div className="relative min-h-screen w-full overflow-hidden bg-white text-foreground">
+    <div className="relative min-h-screen w-full overflow-hidden bg-background text-foreground">
       <div className="relative grid min-h-screen w-full lg:grid-cols-2">
         <section className="relative flex min-h-[18rem] flex-col justify-between overflow-hidden bg-[linear-gradient(160deg,#0f1b29_0%,#17263d_55%,#0d1420_100%)] px-6 py-8 text-white sm:px-8 lg:min-h-screen lg:px-16 lg:py-12">
           <div
@@ -95,11 +95,11 @@ export function AuthShell({
           </div>
         </section>
 
-        <section className="relative flex flex-col justify-center px-6 py-12 sm:px-8 lg:px-20">
+        <section className="relative flex flex-col justify-center px-6 pt-20 pb-12 sm:px-8 lg:px-20 lg:pt-12">
           <div className="absolute left-6 top-6 z-20 lg:left-8 lg:top-8">
             <Link
               href={backHref}
-              className="inline-flex items-center gap-2 rounded-full border border-border/70 bg-white px-4 py-2 text-sm font-medium text-foreground shadow-sm hover:border-[var(--color-industrial-blue)]/30 hover:bg-slate-50 hover:text-[var(--color-industrial-blue)] transition-colors"
+              className="inline-flex items-center gap-2 rounded-full border border-border/70 bg-background px-4 py-2 text-sm font-medium text-foreground shadow-sm hover:border-[var(--color-industrial-blue)]/30 hover:bg-muted hover:text-[var(--color-industrial-blue)] transition-colors"
             >
               <ArrowLeft className="size-4" />
               {backLabel}

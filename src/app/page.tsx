@@ -74,10 +74,9 @@ function Navbar() {
 // ─── Hero ──────────────────────────────────────────────
 function Hero() {
   return (
-    <section className="relative pt-32 pb-20 sm:pt-40 sm:pb-28 overflow-hidden">
+    <section className="relative pt-32 pb-20 sm:pt-40 sm:pb-28 overflow-hidden bg-[linear-gradient(160deg,#0f1b29_0%,#17263d_55%,#0d1420_100%)]">
       {/* Background pattern */}
-      <div className="absolute inset-0 -z-10">
-        <div className="absolute inset-0 bg-gradient-to-br from-[var(--color-industrial-blue)] via-[#1a3352] to-[#0f1f33]" />
+      <div className="absolute inset-0">
         <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'radial-gradient(circle at 1px 1px, rgba(255,255,255,0.3) 1px, transparent 0)', backgroundSize: '40px 40px' }} />
         <div className="absolute top-20 right-10 w-72 h-72 bg-[var(--color-industrial-yellow)]/10 rounded-full blur-3xl animate-glow-pulse" />
         <div className="absolute bottom-10 left-10 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl animate-glow-pulse delay-500" />
