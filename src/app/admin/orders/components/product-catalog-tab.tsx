@@ -8,27 +8,65 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-
-import { Edit, Package, UploadCloud, Loader2 } from "lucide-react";
+import { Edit, Package, UploadCloud, Loader2, Plus, Trash2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
 
-export function ProductCatalogTab({ products, onUpdate, loading }: { products: Product[], onUpdate: (id: string, updates: Partial<Product>) => Promise<void>, loading: boolean }) {
+interface ProductCatalogTabProps {
+    products: Product[];
+    onUpdate: (id: string, updates: Partial<Product>) => Promise<void>;
+    onCreate?: (product: any) => Promise<void>;
+    onDelete?: (id: string) => Promise<void>;
+    loading: boolean;
+}
+
+export function ProductCatalogTab({ products, onUpdate, onCreate, onDelete, loading }: ProductCatalogTabProps) {
     const [editingProduct, setEditingProduct] = useState<Product | null>(null);
-    const [editPrices, setEditPrices] = useState({ port: 0, warehouse: 0 });
+    const [isCreating, setIsCreating] = useState(false);
+    
+    // Form state (used for both edit and create)
+    const [formData, setFormData] = useState({
+        name: "",
+        description: "",
+        bag_type: "JB",
+        port: 0,
+        warehouse: 0
+    });
+
     const [imageFile, setImageFile] = useState<File | null>(null);
     const [imagePreview, setImagePreview] = useState<string | null>(null);
     const [isSaving, setIsSaving] = useState(false);
     const [isUploadingImage, setIsUploadingImage] = useState(false);
+    const [productToDelete, setProductToDelete] = useState<Product | null>(null);
+    const [isDeleting, setIsDeleting] = useState(false);
 
     const filteredProducts = products.filter(p =>
         (p.name.toLowerCase().includes("portland cement type 1") || p.name.toLowerCase().includes("portland cement type i"))
         && (p.bag_type === "SB" || p.bag_type === "JB")
     );
 
+    const openCreate = () => {
+        setFormData({
+            name: "Portland Cement Type 1",
+            description: "",
+            bag_type: "JB",
+            port: 0,
+            warehouse: 0
+        });
+        setImageFile(null);
+        setImagePreview(null);
+        setIsCreating(true);
+    };
+
     const openEdit = (product: Product) => {
         setEditingProduct(product);
-        setEditPrices({ port: product.price_port ?? product.price_per_bag, warehouse: product.price_warehouse ?? product.price_per_bag });
+        setFormData({
+            name: product.name,
+            description: product.description,
+            bag_type: product.bag_type,
+            port: product.price_port ?? product.price_per_bag,
+            warehouse: product.price_warehouse ?? product.price_per_bag
+        });
         setImageFile(null);
         setImagePreview(null);
     };
@@ -37,63 +75,106 @@ export function ProductCatalogTab({ products, onUpdate, loading }: { products: P
         const file = e.target.files?.[0];
         if (file) {
             setImageFile(file);
-            // Generate preview URL for display
             const reader = new FileReader();
             reader.onload = (ev) => setImagePreview(ev.target?.result as string);
             reader.readAsDataURL(file);
         }
     };
 
+    const uploadImage = async (productId: string, file: File): Promise<string> => {
+        setIsUploadingImage(true);
+        const supabase = createClient();
+        const fileExt = file.name.split('.').pop()?.toLowerCase() ?? 'jpg';
+        const fileName = `product_${productId}_${Date.now()}.${fileExt}`;
+
+        const { error: uploadError } = await supabase.storage
+            .from('product-images')
+            .upload(fileName, file, {
+                upsert: true,
+                cacheControl: '3600',
+                contentType: file.type,
+            });
+
+        if (uploadError) {
+            throw new Error(`Image upload failed: ${uploadError.message}`);
+        }
+
+        const { data: { publicUrl } } = supabase.storage
+            .from('product-images')
+            .getPublicUrl(fileName);
+
+        setIsUploadingImage(false);
+        return publicUrl;
+    };
+
     const handleSave = async () => {
-        if (!editingProduct) return;
         setIsSaving(true);
         try {
-            let newImageUrl = editingProduct.image_url;
-
-            if (imageFile) {
-                setIsUploadingImage(true);
-                const supabase = createClient();
-                const fileExt = imageFile.name.split('.').pop()?.toLowerCase() ?? 'jpg';
-                // Use a stable filename per product — overwrites the old image automatically
-                const fileName = `product_${editingProduct.id}.${fileExt}`;
-
-                const { error: uploadError } = await supabase.storage
-                    .from('product-images')
-                    .upload(fileName, imageFile, {
-                        upsert: true,          // Replace if already exists
-                        cacheControl: '3600',  // 1 hour browser cache
-                        contentType: imageFile.type,
-                    });
-
-                if (uploadError) {
-                    // Surface the actual Supabase error for easier debugging
-                    throw new Error(`Image upload failed: ${uploadError.message}`);
+            if (isCreating && onCreate) {
+                // For create, we first create the product, then upload image if needed and update
+                const newProductData = {
+                    name: formData.name,
+                    description: formData.description,
+                    bag_type: formData.bag_type,
+                    price_port: formData.port,
+                    price_warehouse: formData.warehouse,
+                    price_per_bag: formData.warehouse, // legacy
+                    is_active: true
+                };
+                
+                // We don't have the ID yet, but our backend action returns the created product data
+                // In this setup, we'll let onCreate handle the database insert, but we need to upload the image first
+                // A better approach is to upload with a temporary name, or just use the action.
+                // We'll pass the image later or let the admin action handle it.
+                // Since `onCreate` doesn't return the ID in our current setup (it returns void because it's wrapped in page.tsx),
+                // we'll just generate a random ID for the image name if needed.
+                let imageUrl = null;
+                if (imageFile) {
+                    imageUrl = await uploadImage(Date.now().toString(), imageFile);
                 }
 
-                const { data: { publicUrl } } = supabase.storage
-                    .from('product-images')
-                    .getPublicUrl(fileName);
+                await onCreate({ ...newProductData, image_url: imageUrl });
+                setIsCreating(false);
+            } else if (editingProduct) {
+                let newImageUrl = editingProduct.image_url;
 
-                // Append cache-buster so the new image shows without hard-refresh
-                newImageUrl = `${publicUrl}?t=${Date.now()}`;
-                setIsUploadingImage(false);
+                if (imageFile) {
+                    newImageUrl = await uploadImage(editingProduct.id, imageFile);
+                }
+
+                await onUpdate(editingProduct.id, {
+                    name: formData.name,
+                    description: formData.description,
+                    bag_type: formData.bag_type as 'JB' | 'SB',
+                    price_port: formData.port,
+                    price_warehouse: formData.warehouse,
+                    price_per_bag: formData.warehouse, // Fallback for legacy
+                    image_url: newImageUrl
+                });
+                setEditingProduct(null);
             }
-
-            await onUpdate(editingProduct.id, {
-                price_port: editPrices.port,
-                price_warehouse: editPrices.warehouse,
-                price_per_bag: editPrices.warehouse, // Fallback for legacy
-                image_url: newImageUrl
-            });
-            toast.success("Product updated successfully.");
-            setEditingProduct(null);
             setImagePreview(null);
+            setImageFile(null);
         } catch (err: unknown) {
-            const message = err instanceof Error ? err.message : "Failed to update product.";
-            toast.error(message);
+            const message = err instanceof Error ? err.message : "Failed to save product.";
+            // toast is already handled in page.tsx for create, but we handle it here for image errors
+            if (err instanceof Error && err.message.includes('upload')) toast.error(message);
         } finally {
             setIsSaving(false);
             setIsUploadingImage(false);
+        }
+    };
+
+    const handleDelete = async () => {
+        if (!productToDelete || !onDelete) return;
+        setIsDeleting(true);
+        try {
+            await onDelete(productToDelete.id);
+            setProductToDelete(null);
+        } catch (err) {
+            // Error is handled in page.tsx
+        } finally {
+            setIsDeleting(false);
         }
     };
 
@@ -103,6 +184,9 @@ export function ProductCatalogTab({ products, onUpdate, loading }: { products: P
 
     if (loading) return <div className="py-8 text-center text-muted-foreground text-sm animate-pulse">Loading products...</div>;
 
+    const modalOpen = isCreating || !!editingProduct;
+    const modalTitle = isCreating ? "Create New Product" : `Edit Product: ${editingProduct?.name}`;
+
     return (
         <Card>
             <CardHeader className="pb-3 border-b border-border/50">
@@ -111,6 +195,11 @@ export function ProductCatalogTab({ products, onUpdate, loading }: { products: P
                         <CardTitle className="text-lg">Product Catalog</CardTitle>
                         <CardDescription>Manage Portland Cement Type 1 pricing (SB &amp; JB).</CardDescription>
                     </div>
+                    {onCreate && (
+                        <Button onClick={openCreate} className="bg-[var(--color-industrial-blue)] gap-2">
+                            <Plus className="w-4 h-4" /> Create Product
+                        </Button>
+                    )}
                 </div>
                 <div className="p-3 bg-blue-50 border border-blue-100 rounded-lg text-xs text-blue-700">
                     Product catalog is restricted to <span className="font-semibold">Portland Cement Type 1</span> (SB &amp; JB). Contact a system administrator to change product configuration.
@@ -180,6 +269,11 @@ export function ProductCatalogTab({ products, onUpdate, loading }: { products: P
                                         <Button variant="outline" size="sm" onClick={() => openEdit(p)} className="text-xs border-[var(--color-industrial-blue)] text-[var(--color-industrial-blue)] hover:bg-[var(--color-industrial-blue)] hover:text-white">
                                             <Edit className="w-3.5 h-3.5 mr-1.5" /> Edit
                                         </Button>
+                                        {onDelete && (
+                                            <Button variant="outline" size="sm" onClick={() => setProductToDelete(p)} className="text-xs border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700">
+                                                <Trash2 className="w-3.5 h-3.5" />
+                                            </Button>
+                                        )}
                                     </div>
                                 </TableCell>
                             </TableRow>
@@ -188,32 +282,65 @@ export function ProductCatalogTab({ products, onUpdate, loading }: { products: P
                 </Table>
             </CardContent>
 
-            <Dialog open={!!editingProduct} onOpenChange={(open) => !open && setEditingProduct(null)}>
-                <DialogContent>
+            <Dialog open={modalOpen} onOpenChange={(open) => {
+                if (!open) {
+                    setEditingProduct(null);
+                    setIsCreating(false);
+                }
+            }}>
+                <DialogContent className="max-h-[90vh] overflow-y-auto">
                     <DialogHeader>
-                        <DialogTitle>Edit Prices: {editingProduct?.name}</DialogTitle>
+                        <DialogTitle>{modalTitle}</DialogTitle>
                     </DialogHeader>
                     <div className="space-y-4 py-4">
                         <div className="space-y-2">
-                            <Label>Port Price (₱)</Label>
+                            <Label>Name</Label>
                             <Input 
-                                type="number" 
-                                value={editPrices.port} 
-                                onChange={(e) => setEditPrices({ ...editPrices, port: Number(e.target.value) })} 
+                                value={formData.name} 
+                                onChange={(e) => setFormData({ ...formData, name: e.target.value })} 
+                                placeholder="Portland Cement Type 1"
                             />
                         </div>
                         <div className="space-y-2">
-                            <Label>Warehouse Price (₱)</Label>
+                            <Label>Description</Label>
                             <Input 
-                                type="number" 
-                                value={editPrices.warehouse} 
-                                onChange={(e) => setEditPrices({ ...editPrices, warehouse: Number(e.target.value) })} 
+                                value={formData.description} 
+                                onChange={(e) => setFormData({ ...formData, description: e.target.value })} 
+                                placeholder="Description"
                             />
+                        </div>
+                        <div className="space-y-2">
+                            <Label>Bag Type</Label>
+                            <select 
+                                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                value={formData.bag_type} 
+                                onChange={(e) => setFormData({ ...formData, bag_type: e.target.value })}
+                            >
+                                <option value="JB">Jumbo Bag (JB)</option>
+                                <option value="SB">Sling Bag (SB)</option>
+                            </select>
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <Label>Port Price (₱)</Label>
+                                <Input 
+                                    type="number" 
+                                    value={formData.port} 
+                                    onChange={(e) => setFormData({ ...formData, port: Number(e.target.value) })} 
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label>Warehouse Price (₱)</Label>
+                                <Input 
+                                    type="number" 
+                                    value={formData.warehouse} 
+                                    onChange={(e) => setFormData({ ...formData, warehouse: Number(e.target.value) })} 
+                                />
+                            </div>
                         </div>
                         <div className="space-y-2">
                             <Label htmlFor="productImage">Product Image</Label>
 
-                            {/* Image preview */}
                             {(imagePreview || editingProduct?.image_url) && (
                                 <div className="relative w-full h-36 rounded-lg overflow-hidden border border-border bg-muted">
                                     <Image
@@ -237,7 +364,7 @@ export function ProductCatalogTab({ products, onUpdate, loading }: { products: P
                                     id="productImage"
                                     type="file"
                                     accept="image/jpeg,image/png,image/webp,image/gif"
-                                    className="mt-2"
+                                    className="hidden"
                                     onChange={handleFileChange}
                                 />
                             </div>
@@ -245,11 +372,30 @@ export function ProductCatalogTab({ products, onUpdate, loading }: { products: P
                         </div>
                     </div>
                     <DialogFooter>
-                        <Button variant="outline" onClick={() => setEditingProduct(null)} disabled={isSaving}>Cancel</Button>
+                        <Button variant="outline" onClick={() => { setEditingProduct(null); setIsCreating(false); }} disabled={isSaving}>Cancel</Button>
                         <Button onClick={handleSave} disabled={isSaving} className="bg-[var(--color-industrial-blue)] gap-2">
                             {isSaving ? (
-                                <><Loader2 className="h-4 w-4 animate-spin" />{isUploadingImage ? "Uploading image..." : "Saving..."}</>
-                            ) : "Save Changes"}
+                                <><Loader2 className="h-4 w-4 animate-spin" />{isUploadingImage ? "Uploading..." : "Saving..."}</>
+                            ) : "Save Product"}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            <Dialog open={!!productToDelete} onOpenChange={(open) => !open && setProductToDelete(null)}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Delete Product</DialogTitle>
+                    </DialogHeader>
+                    <div className="py-4 text-sm text-muted-foreground">
+                        Are you sure you want to delete <strong>{productToDelete?.name} ({productToDelete?.bag_type})</strong>? This action cannot be undone.
+                        <br/><br/>
+                        If this product has been used in orders or shipments, you will not be able to delete it. Please use the <strong>Disable</strong> button instead.
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setProductToDelete(null)} disabled={isDeleting}>Cancel</Button>
+                        <Button variant="destructive" onClick={handleDelete} disabled={isDeleting} className="gap-2">
+                            {isDeleting ? <><Loader2 className="h-4 w-4 animate-spin" /> Deleting...</> : "Delete Product"}
                         </Button>
                     </DialogFooter>
                 </DialogContent>
@@ -257,3 +403,4 @@ export function ProductCatalogTab({ products, onUpdate, loading }: { products: P
         </Card>
     );
 }
+

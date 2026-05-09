@@ -102,13 +102,37 @@ export async function fetchProducts() {
 }
 
 export async function updateProduct(id: string, updates: {
-    name?: string; description?: string; price_per_bag?: number;
+    name?: string; description?: string; price_per_bag?: number; bag_type?: string;
     price_port?: number; price_warehouse?: number; is_active?: boolean; image_url?: string;
 }) {
     const { supabase, userId } = await requireAdmin();
     const { error } = await supabase.from("products").update(updates).eq("id", id);
     if (error) throw new Error(error.message);
     await logActivity(supabase, userId, "product_updated", "product", id, updates);
+    return { success: true };
+}
+
+export async function createProduct(product: {
+    name: string; description: string; bag_type: string; price_per_bag: number;
+    price_port: number; price_warehouse: number; is_active: boolean; image_url?: string;
+}) {
+    const { supabase, userId } = await requireAdmin();
+    const { data, error } = await supabase.from("products").insert(product).select().single();
+    if (error) throw new Error(error.message);
+    await logActivity(supabase, userId, "product_created", "product", data.id, product);
+    return data;
+}
+
+export async function deleteProduct(id: string) {
+    const { supabase, userId } = await requireAdmin();
+    const { error } = await supabase.from("products").delete().eq("id", id);
+    if (error) {
+        if (error.code === '23503') { // Foreign key violation
+            throw new Error("Cannot delete product because it is already used in orders or shipments. Please disable it instead.");
+        }
+        throw new Error(error.message);
+    }
+    await logActivity(supabase, userId, "product_deleted", "product", id);
     return { success: true };
 }
 

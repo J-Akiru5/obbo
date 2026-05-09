@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, Suspense } from "react";
-import { fetchProducts, updateProduct } from "@/lib/actions/admin-actions";
+import { fetchProducts, updateProduct, createProduct, deleteProduct } from "@/lib/actions/admin-actions";
 import { ProductCatalogTab } from "../orders/components/product-catalog-tab";
 import { Product } from "@/lib/types/database";
 import { toast } from "sonner";
@@ -48,6 +48,26 @@ function ProductsContent() {
             toast.error(e.message || "Failed to update product.");
         }
     };
+    const handleProductCreate = async (data: any) => {
+        try {
+            await createProduct(data);
+            toast.success("Product created successfully.");
+            loadData();
+        } catch (e: any) {
+            toast.error(e.message || "Failed to create product.");
+            throw e; // rethrow so the component can stop its loading state
+        }
+    };
+
+    const handleProductDelete = async (id: string) => {
+        try {
+            await deleteProduct(id);
+            toast.success("Product deleted successfully.");
+            loadData();
+        } catch (e: any) {
+            toast.error(e.message || "Failed to delete product.");
+        }
+    };
 
     return (
         <div className="space-y-6">
@@ -59,6 +79,8 @@ function ProductsContent() {
             <ProductCatalogTab 
                 products={products} 
                 onUpdate={handleProductUpdate} 
+                onCreate={handleProductCreate}
+                onDelete={handleProductDelete}
                 loading={loading} 
             />
         </div>
