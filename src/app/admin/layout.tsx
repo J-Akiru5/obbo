@@ -361,7 +361,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                         </div>
                     </div>
 
-                    <div className="flex-1 max-w-xl px-4 flex justify-center">
+                    <div className="flex-1 flex justify-center px-2 sm:px-4">
                         <GlobalSearch />
                     </div>
 

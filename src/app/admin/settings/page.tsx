@@ -38,15 +38,15 @@ import { useTheme } from "next-themes";
 
 function SettingRow({ icon, title, description, children }: { icon: React.ReactNode; title: string; description: string; children: React.ReactNode; }) {
     return (
-        <div className="flex flex-col gap-3 border-b border-border/60 py-4 last:border-b-0 last:pb-0 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-start gap-3">
-                <div className="mt-0.5 flex h-9 w-9 items-center justify-center rounded-lg bg-muted">{icon}</div>
-                <div>
-                    <p className="text-sm font-semibold text-foreground">{title}</p>
-                    <p className="mt-0.5 max-w-sm text-xs text-muted-foreground">{description}</p>
+        <div className="flex flex-col gap-4 border-b border-border/60 py-5 last:border-b-0 last:pb-0 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-start gap-4">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-muted shadow-sm">{icon}</div>
+                <div className="space-y-1">
+                    <p className="text-sm font-bold text-foreground">{title}</p>
+                    <p className="max-w-md text-xs leading-relaxed text-muted-foreground">{description}</p>
                 </div>
             </div>
-            <div>{children}</div>
+            <div className="flex items-center sm:justify-end">{children}</div>
         </div>
     );
 }
@@ -182,12 +182,12 @@ export default function AdminSettingsPage() {
             </header>
 
             <Tabs defaultValue="appearance" className="w-full">
-                <TabsList className="grid w-full grid-cols-2 gap-2 sm:grid-cols-5">
-                    <TabsTrigger value="appearance">Appearance</TabsTrigger>
-                    <TabsTrigger value="contact">Contact Info</TabsTrigger>
-                    <TabsTrigger value="security">Login Security</TabsTrigger>
-                    <TabsTrigger value="audit">System Audits</TabsTrigger>
-                    <TabsTrigger value="account">Admin Account</TabsTrigger>
+                <TabsList className="flex h-auto w-full items-center justify-start gap-1 overflow-x-auto bg-muted p-1 no-scrollbar sm:grid sm:grid-cols-5 sm:gap-2">
+                    <TabsTrigger value="appearance" className="flex-shrink-0 px-4 py-2 sm:px-3">Appearance</TabsTrigger>
+                    <TabsTrigger value="contact" className="flex-shrink-0 px-4 py-2 sm:px-3">Contact Info</TabsTrigger>
+                    <TabsTrigger value="security" className="flex-shrink-0 px-4 py-2 sm:px-3">Login Security</TabsTrigger>
+                    <TabsTrigger value="audit" className="flex-shrink-0 px-4 py-2 sm:px-3">System Audits</TabsTrigger>
+                    <TabsTrigger value="account" className="flex-shrink-0 px-4 py-2 sm:px-3">Admin Account</TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="appearance" className="mt-6">

@@ -31,12 +31,12 @@ export function GlobalSearch() {
     <>
       <Button
         variant="outline"
-        className="relative h-9 w-full justify-start rounded-[0.5rem] bg-muted/50 text-sm font-normal text-muted-foreground shadow-none sm:pr-12 md:w-40 lg:w-64"
+        className="relative h-9 w-9 p-0 justify-center rounded-lg bg-muted/50 text-muted-foreground shadow-none lg:w-64 lg:h-9 lg:px-4 lg:justify-start"
         onClick={() => setOpen(true)}
       >
-        <span className="hidden lg:inline-flex"><Search className="mr-2 h-4 w-4" /> Search for anything...</span>
-        <span className="inline-flex lg:hidden"><Search className="h-4 w-4" /></span>
-        <kbd className="pointer-events-none absolute right-[0.3rem] top-[0.3rem] hidden h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-100 sm:flex">
+        <Search className="h-4 w-4 lg:mr-2" />
+        <span className="hidden lg:inline-flex">Search for anything...</span>
+        <kbd className="pointer-events-none absolute right-[0.3rem] top-[0.3rem] hidden h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-100 lg:flex">
           <span className="text-xs">⌘</span>K
         </kbd>
       </Button>

@@ -27,7 +27,7 @@ import { CountUp } from "@/components/count-up";
 function Navbar() {
   const [mobileOpen, setMobileOpen] = useState(false);
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-lg border-b border-border">
+    <nav className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-lg border-b border-border">
       <div className="max-w-7xl mx-auto flex items-center justify-between px-4 sm:px-6 lg:px-8 h-16">
         <Link href="/" className="flex items-center gap-2 group">
           <div className="w-9 h-9 flex items-center justify-center transition-transform duration-300 group-hover:scale-110 group-hover:rotate-3">
@@ -54,7 +54,7 @@ function Navbar() {
         </button>
       </div>
       {mobileOpen && (
-        <div className="md:hidden bg-white border-b border-border px-4 py-4 space-y-3 animate-in slide-in-from-top-2">
+        <div className="md:hidden bg-background border-b border-border px-4 py-4 space-y-3 animate-in slide-in-from-top-2">
           <a href="#features" onClick={() => setMobileOpen(false)} className="block text-sm font-medium py-2">Features</a>
           <a href="#how-it-works" onClick={() => setMobileOpen(false)} className="block text-sm font-medium py-2">How It Works</a>
           <Link href="/login" onClick={() => setMobileOpen(false)}>
@@ -172,7 +172,7 @@ function Stats() {
             {stats.map((s, i) => (
               <div
                 key={s.label}
-                className="group bg-white rounded-xl border border-border p-6 text-center shadow-lg shadow-black/5 hover:shadow-xl transition-all duration-300 hover:-translate-y-1"
+                className="group bg-card rounded-xl border border-border p-6 text-center shadow-lg shadow-black/5 hover:shadow-xl transition-all duration-300 hover:-translate-y-1"
                 style={{ animationDelay: `${i * 100}ms` }}
               >
                 <s.icon className="w-6 h-6 mx-auto mb-3 text-[var(--color-industrial-blue)] group-hover:scale-110 transition-transform duration-300" />
@@ -213,7 +213,7 @@ const features = [
 
 function Features() {
   return (
-    <section id="features" className="py-20 sm:py-28 bg-white">
+    <section id="features" className="py-20 sm:py-28 bg-background">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <ScrollReveal className="text-center max-w-2xl mx-auto mb-16">
           <span className="text-sm font-bold uppercase tracking-widest text-[var(--color-industrial-yellow)]">Why Choose OBBO</span>
@@ -254,7 +254,7 @@ const steps = [
 
 function HowItWorks() {
   return (
-    <section id="how-it-works" className="py-20 sm:py-28 bg-muted/30">
+    <section id="how-it-works" className="py-20 sm:py-28 bg-muted/20">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <ScrollReveal className="text-center max-w-2xl mx-auto mb-16">
           <span className="text-sm font-bold uppercase tracking-widest text-[var(--color-industrial-yellow)]">Process</span>
@@ -267,7 +267,7 @@ function HowItWorks() {
           {steps.map((s, i) => (
             <ScrollReveal key={s.title} delay={i * 120}>
               <div className="relative">
-                <div className="group flex flex-col items-center text-center p-6 rounded-2xl bg-white border border-border hover:shadow-lg transition-all duration-300 hover:-translate-y-1">
+                <div className="group flex flex-col items-center text-center p-6 rounded-2xl bg-card border border-border hover:shadow-lg transition-all duration-300 hover:-translate-y-1">
                   <div className="w-12 h-12 rounded-full bg-[var(--color-industrial-blue)] text-white flex items-center justify-center text-lg font-bold mb-4 transition-transform duration-300 group-hover:scale-110">
                     {i + 1}
                   </div>
@@ -345,7 +345,7 @@ function Footer() {
 // ─── Page ──────────────────────────────────────────────
 export default function LandingPage() {
   return (
-    <main className="min-h-screen">
+    <main className="min-h-screen bg-background text-foreground">
       <Navbar />
       <Hero />
       <Stats />

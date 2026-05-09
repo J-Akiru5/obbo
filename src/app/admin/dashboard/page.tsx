@@ -119,16 +119,16 @@ export default function AdminDashboard() {
     const sbIsLow = kpis.sbGood < SB_THRESHOLD;
 
     const jbAlert = {
-        bg: jbIsLow ? "bg-[#ffebe6]" : "bg-[#e6f9f0]",
-        border: jbIsLow ? "border-[#ffb3b3]" : "border-[#a2e8c6]",
-        text: jbIsLow ? "text-[#ff6b6b]" : "text-emerald-600",
+        bg: jbIsLow ? "bg-red-500/10" : "bg-emerald-500/10",
+        border: jbIsLow ? "border-red-500/20" : "border-emerald-500/20",
+        text: jbIsLow ? "text-red-500" : "text-emerald-500",
         label: jbIsLow ? "Low Stock" : "Safe"
     };
 
     const sbAlert = {
-        bg: sbIsLow ? "bg-[#ffebe6]" : "bg-[#e6f9f0]",
-        border: sbIsLow ? "border-[#ffb3b3]" : "border-[#a2e8c6]",
-        text: sbIsLow ? "text-[#ff6b6b]" : "text-emerald-600",
+        bg: sbIsLow ? "bg-red-500/10" : "bg-emerald-500/10",
+        border: sbIsLow ? "border-red-500/20" : "border-emerald-500/20",
+        text: sbIsLow ? "text-red-500" : "text-emerald-500",
         label: sbIsLow ? "Low Stock" : "Safe"
     };
 
@@ -158,7 +158,7 @@ export default function AdminDashboard() {
             </div>
 
             {/* KPI Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
                 {/* Total Good Stock */}
                 <Card className="border-border shadow-sm bg-card rounded-xl overflow-hidden relative">
                     <div className="absolute top-0 left-0 right-0 h-1 bg-[#ff9f43]" />
@@ -279,24 +279,24 @@ export default function AdminDashboard() {
                         <CardTitle className="text-base font-semibold text-foreground tracking-wide">Low Stock Alerts</CardTitle>
                     </div>
                 </CardHeader>
-                <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2 pb-6">
-                    <div className={`${jbAlert.bg} border ${jbAlert.border} rounded-xl p-5 flex items-center justify-between transition-colors`}>
+                <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2 pb-6">
+                    <div className={`${jbAlert.bg} border ${jbAlert.border} rounded-xl p-5 flex items-center justify-between transition-colors shadow-sm`}>
                         <div>
-                            <h4 className="text-[15px] font-semibold text-slate-800">Jumbo Bags (JB)</h4>
-                            <p className="text-[13px] text-slate-500 mt-1">Threshold: {JB_THRESHOLD} bags</p>
+                            <h4 className="text-[15px] font-bold text-foreground">Jumbo Bags (JB)</h4>
+                            <p className="text-[12px] text-muted-foreground mt-1 font-medium">Threshold: {JB_THRESHOLD} bags</p>
                         </div>
                         <div className="text-right">
-                            <p className={`text-[28px] font-bold ${jbAlert.text} leading-none mb-1`}>{kpis.jbGood.toLocaleString()}</p>
+                            <p className={`text-[28px] font-bold ${jbAlert.text} leading-none mb-1 tracking-tight`}>{kpis.jbGood.toLocaleString()}</p>
                             <span className={`text-[10px] font-bold tracking-widest ${jbAlert.text} uppercase`}>{jbAlert.label}</span>
                         </div>
                     </div>
-                    <div className={`${sbAlert.bg} border ${sbAlert.border} rounded-xl p-5 flex items-center justify-between transition-colors`}>
+                    <div className={`${sbAlert.bg} border ${sbAlert.border} rounded-xl p-5 flex items-center justify-between transition-colors shadow-sm`}>
                         <div>
-                            <h4 className="text-[15px] font-semibold text-slate-800">Sling Bags (SB)</h4>
-                            <p className="text-[13px] text-slate-500 mt-1">Threshold: {SB_THRESHOLD} bags</p>
+                            <h4 className="text-[15px] font-bold text-foreground">Sling Bags (SB)</h4>
+                            <p className="text-[12px] text-muted-foreground mt-1 font-medium">Threshold: {SB_THRESHOLD} bags</p>
                         </div>
                         <div className="text-right">
-                            <p className={`text-[28px] font-bold ${sbAlert.text} leading-none mb-1`}>{kpis.sbGood.toLocaleString()}</p>
+                            <p className={`text-[28px] font-bold ${sbAlert.text} leading-none mb-1 tracking-tight`}>{kpis.sbGood.toLocaleString()}</p>
                             <span className={`text-[10px] font-bold tracking-widest ${sbAlert.text} uppercase`}>{sbAlert.label}</span>
                         </div>
                     </div>
@@ -423,51 +423,92 @@ export default function AdminDashboard() {
                         </Link>
                     </div>
                 </CardHeader>
-                <CardContent className="p-0 overflow-x-auto">
-                    <table className="w-full text-sm text-left whitespace-nowrap">
-                        <thead className="bg-muted text-muted-foreground font-medium text-[12px] uppercase tracking-wider">
-                            <tr>
-                                <th className="px-6 py-4 rounded-tl-xl">PO #</th>
-                                <th className="px-6 py-4">Client</th>
-                                <th className="px-6 py-4">Type</th>
-                                <th className="px-6 py-4 text-right">JB</th>
-                                <th className="px-6 py-4 text-right">SB</th>
-                                <th className="px-6 py-4 text-right">Total Bags</th>
-                                <th className="px-6 py-4">Payment</th>
-                                <th className="px-6 py-4 text-right rounded-tr-xl">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-border">
-                            {recentOrders.length === 0 ? (
+                <CardContent className="p-0">
+                    {/* Mobile Card View */}
+                    <div className="grid grid-cols-1 divide-y divide-border sm:hidden">
+                        {recentOrders.length === 0 ? (
+                            <div className="px-6 py-12 text-center text-muted-foreground font-medium">No pending orders</div>
+                        ) : (
+                            recentOrders.map((order) => {
+                                const jb = order.items?.filter((i: any) => i.bag_type === 'JB').reduce((sum: number, i: any) => sum + i.requested_qty, 0) ?? 0;
+                                const sb = order.items?.filter((i: any) => i.bag_type === 'SB').reduce((sum: number, i: any) => sum + i.requested_qty, 0) ?? 0;
+                                return (
+                                    <div key={order.id} className="p-4 space-y-3">
+                                        <div className="flex items-center justify-between">
+                                            <span className="font-mono text-xs font-bold text-foreground">
+                                                {order.po_number || `#${order.id.slice(0, 8).toUpperCase()}`}
+                                            </span>
+                                            <Badge variant="outline" className="text-[10px] uppercase bg-transparent text-foreground border-border">
+                                                {order.source}
+                                            </Badge>
+                                        </div>
+                                        <div className="flex items-center justify-between">
+                                            <span className="text-sm font-bold text-primary">{(order as any).client?.full_name ?? "Unknown"}</span>
+                                            <Badge className={order.payment_method === 'cash' ? "bg-emerald-500/10 text-emerald-500 border-0" : "bg-blue-500/10 text-blue-500 border-0"}>
+                                                {order.payment_method.toUpperCase()}
+                                            </Badge>
+                                        </div>
+                                        <div className="flex items-center justify-between text-xs text-muted-foreground">
+                                            <span>JB: <span className="font-bold text-foreground">{jb}</span></span>
+                                            <span>SB: <span className="font-bold text-foreground">{sb}</span></span>
+                                            <span>Total: <span className="font-bold text-foreground">{jb + sb}</span></span>
+                                        </div>
+                                        <Link href={`/admin/orders#${order.id}`} className="block w-full text-center py-2 text-xs font-bold text-[var(--color-industrial-blue)] bg-[var(--color-industrial-blue)]/5 rounded-lg">
+                                            Review Details
+                                        </Link>
+                                    </div>
+                                );
+                            })
+                        )}
+                    </div>
+
+                    {/* Desktop Table View */}
+                    <div className="hidden sm:block overflow-x-auto">
+                        <table className="w-full text-sm text-left whitespace-nowrap">
+                            <thead className="bg-muted/50 text-muted-foreground font-medium text-[12px] uppercase tracking-wider">
                                 <tr>
-                                    <td colSpan={8} className="px-6 py-12 text-center text-slate-400 font-medium">No pending orders</td>
+                                    <th className="px-6 py-4">PO #</th>
+                                    <th className="px-6 py-4">Client</th>
+                                    <th className="px-6 py-4">Type</th>
+                                    <th className="px-6 py-4 text-right">JB</th>
+                                    <th className="px-6 py-4 text-right">SB</th>
+                                    <th className="px-6 py-4 text-right">Total Bags</th>
+                                    <th className="px-6 py-4">Payment</th>
+                                    <th className="px-6 py-4 text-right">Actions</th>
                                 </tr>
-                            ) : (
-                                recentOrders.map((order) => {
-                                    const jb = order.items?.filter((i: any) => i.bag_type === 'JB').reduce((sum: number, i: any) => sum + i.requested_qty, 0) ?? 0;
-                                    const sb = order.items?.filter((i: any) => i.bag_type === 'SB').reduce((sum: number, i: any) => sum + i.requested_qty, 0) ?? 0;
-                                    return (
-                                        <tr key={order.id} className="hover:bg-muted/30 transition-colors">
-                                            <td className="px-6 py-4 font-mono font-medium text-foreground">{order.po_number || `#${order.id.slice(0, 8).toUpperCase()}`}</td>
-                                            <td className="px-6 py-4 font-semibold text-primary">{(order as any).client?.full_name ?? "Unknown"}</td>
-                                            <td className="px-6 py-4"><Badge variant="outline" className="text-[10px] uppercase bg-transparent text-foreground border-border">{order.source}</Badge></td>
-                                            <td className="px-6 py-4 text-right font-medium">{jb}</td>
-                                            <td className="px-6 py-4 text-right font-medium">{sb}</td>
-                                            <td className="px-6 py-4 text-right font-bold text-foreground">{jb + sb}</td>
-                                            <td className="px-6 py-4">
-                                                <Badge className={order.payment_method === 'cash' ? "bg-emerald-500/10 text-emerald-500 border-0" : "bg-blue-500/10 text-blue-500 border-0"}>
-                                                    {order.payment_method.toUpperCase()}
-                                                </Badge>
-                                            </td>
-                                            <td className="px-6 py-4 text-right">
-                                                <Link href={`/admin/orders#${order.id}`} className="text-[#3b82f6] hover:underline text-xs font-medium">Review</Link>
-                                            </td>
-                                        </tr>
-                                    );
-                                })
-                            )}
-                        </tbody>
-                    </table>
+                            </thead>
+                            <tbody className="divide-y divide-border">
+                                {recentOrders.length === 0 ? (
+                                    <tr>
+                                        <td colSpan={8} className="px-6 py-12 text-center text-slate-400 font-medium">No pending orders</td>
+                                    </tr>
+                                ) : (
+                                    recentOrders.map((order) => {
+                                        const jb = order.items?.filter((i: any) => i.bag_type === 'JB').reduce((sum: number, i: any) => sum + i.requested_qty, 0) ?? 0;
+                                        const sb = order.items?.filter((i: any) => i.bag_type === 'SB').reduce((sum: number, i: any) => sum + i.requested_qty, 0) ?? 0;
+                                        return (
+                                            <tr key={order.id} className="hover:bg-muted/30 transition-colors">
+                                                <td className="px-6 py-4 font-mono font-medium text-foreground">{order.po_number || `#${order.id.slice(0, 8).toUpperCase()}`}</td>
+                                                <td className="px-6 py-4 font-semibold text-primary">{(order as any).client?.full_name ?? "Unknown"}</td>
+                                                <td className="px-6 py-4"><Badge variant="outline" className="text-[10px] uppercase bg-transparent text-foreground border-border">{order.source}</Badge></td>
+                                                <td className="px-6 py-4 text-right font-medium">{jb}</td>
+                                                <td className="px-6 py-4 text-right font-medium">{sb}</td>
+                                                <td className="px-6 py-4 text-right font-bold text-foreground">{jb + sb}</td>
+                                                <td className="px-6 py-4">
+                                                    <Badge className={order.payment_method === 'cash' ? "bg-emerald-500/10 text-emerald-500 border-0" : "bg-blue-500/10 text-blue-500 border-0"}>
+                                                        {order.payment_method.toUpperCase()}
+                                                    </Badge>
+                                                </td>
+                                                <td className="px-6 py-4 text-right">
+                                                    <Link href={`/admin/orders#${order.id}`} className="text-[#3b82f6] hover:underline text-xs font-medium">Review</Link>
+                                                </td>
+                                            </tr>
+                                        );
+                                    })
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
                 </CardContent>
             </Card>
         </div>
