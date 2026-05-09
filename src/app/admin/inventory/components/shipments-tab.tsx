@@ -6,19 +6,25 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from "@/components/ui/dialog";
-import { ChevronDown, ChevronRight, PackagePlus, Plus, Save, Trash2 } from "lucide-react";
-import { createShipment, fetchShipmentLedger, addLedgerEntry, deleteLedgerEntry } from "@/lib/actions/admin-actions";
+import { ChevronDown, ChevronRight, PackagePlus, Plus, Save, Trash2, Edit, MoreVertical } from "lucide-react";
+import { createShipment, fetchShipmentLedger, addLedgerEntry, deleteLedgerEntry, updateShipment, deleteShipment } from "@/lib/actions/admin-actions";
 import { toast } from "sonner";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
 export function ShipmentsTab({ shipments, loading, onReload }: { shipments: Shipment[], loading: boolean, onReload: () => void }) {
     const [expandedBatch, setExpandedBatch] = useState<string | null>(null);
     const [ledgerData, setLedgerData] = useState<Record<string, ShipmentLedgerEntry[]>>({});
     const [isCreating, setIsCreating] = useState(false);
+    const [isUpdating, setIsUpdating] = useState(false);
     
     // New batch form
     const [newBatchName, setNewBatchName] = useState("");
     const [newJb, setNewJb] = useState(0);
     const [newSb, setNewSb] = useState(0);
+
+    // Edit batch form
+    const [editingShipment, setEditingShipment] = useState<Shipment | null>(null);
+    const [editForm, setEditForm] = useState({ batch_name: "", total_jb: 0, total_sb: 0, arrival_date: "" });
 
     // Manual entry form
     const [manualEntry, setManualEntry] = useState({
@@ -50,6 +56,42 @@ export function ShipmentsTab({ shipments, loading, onReload }: { shipments: Ship
         } finally {
             setIsCreating(false);
         }
+    };
+
+    const handleUpdateShipment = async () => {
+        if (!editingShipment) return;
+        setIsUpdating(true);
+        try {
+            await updateShipment(editingShipment.id, editForm);
+            toast.success("Shipment batch updated.");
+            setEditingShipment(null);
+            onReload();
+        } catch (e: any) {
+            toast.error(e.message || "Failed to update batch.");
+        } finally {
+            setIsUpdating(false);
+        }
+    };
+
+    const handleDeleteBatch = async (shipmentId: string) => {
+        if (!confirm("Are you sure you want to delete this shipment batch? This action cannot be undone and may fail if there are active orders or ledger entries linked to it.")) return;
+        try {
+            await deleteShipment(shipmentId);
+            toast.success("Shipment batch deleted.");
+            onReload();
+        } catch (e: any) {
+            toast.error(e.message || "Failed to delete batch.");
+        }
+    };
+
+    const openEditDialog = (shipment: Shipment) => {
+        setEditingShipment(shipment);
+        setEditForm({
+            batch_name: shipment.batch_name,
+            total_jb: shipment.total_jb,
+            total_sb: shipment.total_sb,
+            arrival_date: shipment.arrival_date.split('T')[0]
+        });
     };
 
     const handleAddManualEntry = async (shipmentId: string) => {
@@ -146,6 +188,23 @@ export function ShipmentsTab({ shipments, loading, onReload }: { shipments: Ship
                                     <p className="text-[10px] uppercase font-bold text-[var(--color-industrial-blue)] tracking-wider mb-1">Remaining</p>
                                     <p className="text-base font-bold text-[var(--color-industrial-blue)]">{shipment.remaining_jb} JB · {shipment.remaining_sb} SB</p>
                                 </div>
+                                <div onClick={(e) => e.stopPropagation()}>
+                                    <DropdownMenu>
+                                        <DropdownMenuTrigger asChild>
+                                            <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground">
+                                                <MoreVertical className="w-4 h-4" />
+                                            </Button>
+                                        </DropdownMenuTrigger>
+                                        <DropdownMenuContent align="end">
+                                            <DropdownMenuItem onClick={() => openEditDialog(shipment)}>
+                                                <Edit className="w-4 h-4 mr-2" /> Rename / Edit
+                                            </DropdownMenuItem>
+                                            <DropdownMenuItem onClick={() => handleDeleteBatch(shipment.id)} className="text-destructive focus:text-destructive">
+                                                <Trash2 className="w-4 h-4 mr-2" /> Delete Batch
+                                            </DropdownMenuItem>
+                                        </DropdownMenuContent>
+                                    </DropdownMenu>
+                                </div>
                             </div>
                         </div>
 
@@ -224,6 +283,45 @@ export function ShipmentsTab({ shipments, loading, onReload }: { shipments: Ship
                     </Card>
                 ))}
             </div>
+
+            {/* Edit Shipment Dialog */}
+            <Dialog open={!!editingShipment} onOpenChange={(open) => !open && setEditingShipment(null)}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Edit Shipment Batch</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                        <div className="space-y-2">
+                            <Label>Batch Name / Vessel <span className="text-red-500">*</span></Label>
+                            <Input value={editForm.batch_name} onChange={e => setEditForm({ ...editForm, batch_name: e.target.value })} placeholder="e.g. Vessel Alpha - Nov 2023" />
+                        </div>
+                        <div className="space-y-2">
+                            <Label>Arrival Date</Label>
+                            <Input type="date" value={editForm.arrival_date} onChange={e => setEditForm({ ...editForm, arrival_date: e.target.value })} />
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <Label>Total JB</Label>
+                                <Input type="number" min="0" value={editForm.total_jb} onChange={e => setEditForm({ ...editForm, total_jb: parseInt(e.target.value) || 0 })} />
+                            </div>
+                            <div className="space-y-2">
+                                <Label>Total SB</Label>
+                                <Input type="number" min="0" value={editForm.total_sb} onChange={e => setEditForm({ ...editForm, total_sb: parseInt(e.target.value) || 0 })} />
+                            </div>
+                        </div>
+                        <div className="bg-amber-50 p-3 rounded-lg border border-amber-200 text-xs text-amber-800">
+                            <p className="font-semibold mb-1">Warning: Changing Total Counts</p>
+                            <p>Changing total counts will NOT automatically update remaining counts. Only use this to fix accidental entry errors.</p>
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="ghost" onClick={() => setEditingShipment(null)}>Cancel</Button>
+                        <Button onClick={handleUpdateShipment} disabled={isUpdating || !editForm.batch_name} className="bg-[var(--color-industrial-blue)]">
+                            {isUpdating ? "Saving..." : "Save Changes"}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }

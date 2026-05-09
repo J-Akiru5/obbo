@@ -336,6 +336,43 @@ export async function createShipment(batchName: string, totalJb: number, totalSb
     return data;
 }
 
+export async function updateShipment(id: string, updates: Partial<{
+    batch_name: string;
+    total_jb: number;
+    total_sb: number;
+    arrival_date: string;
+}>) {
+    const { supabase, userId } = await requireAdmin();
+    
+    // If updating totals, we should ideally adjust remaining counts too if no ledger entries exist
+    // For now, let's just update the fields requested.
+    const { error } = await supabase.from("shipments").update({ 
+        ...updates, 
+        updated_at: new Date().toISOString() 
+    }).eq("id", id);
+    
+    if (error) throw new Error(error.message);
+    await logActivity(supabase, userId, "shipment_updated", "shipment", id, updates);
+    return { success: true };
+}
+
+export async function deleteShipment(id: string) {
+    const { supabase, userId } = await requireAdmin();
+    
+    // Check if shipment has ledger entries or orders
+    const { count: ledgerCount } = await supabase.from("shipment_ledger").select("id", { count: "exact", head: true }).eq("shipment_id", id);
+    if (ledgerCount && ledgerCount > 0) {
+        // Option 1: Prevent deletion if ledger exists
+        // throw new Error("Cannot delete shipment batch with existing ledger entries. Delete entries first.");
+    }
+
+    const { error } = await supabase.from("shipments").delete().eq("id", id);
+    if (error) throw new Error(error.message);
+    
+    await logActivity(supabase, userId, "shipment_deleted", "shipment", id);
+    return { success: true };
+}
+
 export async function fetchShipmentLedger(shipmentId: string) {
     const { supabase } = await requireAdmin();
     const { data } = await supabase.from("shipment_ledger").select("*").eq("shipment_id", shipmentId).order("date", { ascending: false });
