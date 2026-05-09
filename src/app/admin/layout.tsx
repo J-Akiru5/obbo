@@ -360,16 +360,18 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
                     <div className="flex items-center gap-2">
                         <Popover open={notifOpen} onOpenChange={(open) => { setNotifOpen(open); if (open && unreadCount > 0) markAllRead(); }}>
-                            <PopoverTrigger asChild>
-                                <Button variant="ghost" size="icon" className="relative">
-                                    <Bell className="w-5 h-5" />
-                                    {unreadCount > 0 && (
-                                        <span className="absolute -top-0.5 -right-0.5 w-4 h-4 rounded-full bg-[var(--color-industrial-red)] text-white text-[10px] font-bold flex items-center justify-center">
-                                            {unreadCount > 9 ? "9+" : unreadCount}
-                                        </span>
-                                    )}
-                                </Button>
-                            </PopoverTrigger>
+                            <PopoverTrigger 
+                                render={
+                                    <Button variant="ghost" size="icon" className="relative">
+                                        <Bell className="w-5 h-5" />
+                                        {unreadCount > 0 && (
+                                            <span className="absolute -top-0.5 -right-0.5 w-4 h-4 rounded-full bg-[var(--color-industrial-red)] text-white text-[10px] font-bold flex items-center justify-center">
+                                                {unreadCount > 9 ? "9+" : unreadCount}
+                                            </span>
+                                        )}
+                                    </Button>
+                                }
+                            />
                             <PopoverContent align="end" className="w-80 p-0">
                                 <div className="flex items-center justify-between p-3 border-b">
                                     <h3 className="text-sm font-semibold">Notifications</h3>
