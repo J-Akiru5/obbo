@@ -63,8 +63,11 @@ export default function AdminSettingsPage() {
     const [fullName, setFullName] = useState("");
     const [phone, setPhone] = useState("");
     const [newPassword, setNewPassword] = useState("");
+    const [auditSearchQuery, setAuditSearchQuery] = useState("");
     const [savingAccount, setSavingAccount] = useState(false);
     const [changingPassword, setChangingPassword] = useState(false);
+
+    const GIT_SHA = "f399c95";
 
     useEffect(() => {
         const loadSettings = async () => {
@@ -223,7 +226,7 @@ export default function AdminSettingsPage() {
                                     {[
                                         { icon: <HardDrive className="h-4 w-4 text-blue-500" />, label: "Platform", value: "Next.js 16" },
                                         { icon: <Database className="h-4 w-4 text-emerald-500" />, label: "Database", value: "Supabase" },
-                                        { icon: <Settings className="h-4 w-4 text-amber-500" />, label: "Version", value: "v1.0.0" },
+                                        { icon: <Settings className="h-4 w-4 text-amber-500" />, label: "Version", value: `V. 1.${GIT_SHA}` },
                                     ].map((item) => (
                                         <div key={item.label} className="flex items-center gap-3 rounded-xl border border-border/70 bg-muted/30 px-3 py-3">
                                             {item.icon}
@@ -309,11 +312,21 @@ export default function AdminSettingsPage() {
 
                 <TabsContent value="audit" className="mt-6">
                     <Card className="border-border/70 shadow-sm">
-                        <CardHeader>
-                            <CardTitle className="flex items-center gap-2 text-base">
-                                <Activity className="h-5 w-5 text-[var(--color-industrial-blue)]" /> System audit log
-                            </CardTitle>
-                            <CardDescription>Immutable record of administrative actions taken in the system.</CardDescription>
+                        <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                            <div>
+                                <CardTitle className="flex items-center gap-2 text-base">
+                                    <Activity className="h-5 w-5 text-[var(--color-industrial-blue)]" /> System audit log
+                                </CardTitle>
+                                <CardDescription>Immutable record of administrative actions taken in the system.</CardDescription>
+                            </div>
+                            <div className="w-full sm:w-64">
+                                <Input 
+                                    placeholder="Filter audits..." 
+                                    value={auditSearchQuery}
+                                    onChange={(e) => setAuditSearchQuery(e.target.value)}
+                                    className="h-9 text-sm"
+                                />
+                            </div>
                         </CardHeader>
                         <CardContent>
                             {loadingLogs ? (
@@ -331,12 +344,22 @@ export default function AdminSettingsPage() {
                                             </TableRow>
                                         </TableHeader>
                                         <TableBody>
-                                            {auditLogs.length === 0 ? (
+                                            {auditLogs.filter(log => 
+                                                log.action.toLowerCase().includes(auditSearchQuery.toLowerCase()) ||
+                                                (log.actor?.full_name || "").toLowerCase().includes(auditSearchQuery.toLowerCase()) ||
+                                                (log.entity_type || "").toLowerCase().includes(auditSearchQuery.toLowerCase())
+                                            ).length === 0 ? (
                                                 <TableRow>
-                                                    <TableCell colSpan={5} className="py-8 text-center text-muted-foreground">No audit logs found.</TableCell>
+                                                    <TableCell colSpan={5} className="py-8 text-center text-muted-foreground">
+                                                        {auditSearchQuery ? "No matching audit logs found." : "No audit logs found."}
+                                                    </TableCell>
                                                 </TableRow>
                                             ) : (
-                                                auditLogs.map((log) => (
+                                                auditLogs.filter(log => 
+                                                    log.action.toLowerCase().includes(auditSearchQuery.toLowerCase()) ||
+                                                    (log.actor?.full_name || "").toLowerCase().includes(auditSearchQuery.toLowerCase()) ||
+                                                    (log.entity_type || "").toLowerCase().includes(auditSearchQuery.toLowerCase())
+                                                ).map((log) => (
                                                     <TableRow key={log.id}>
                                                         <TableCell className="font-mono text-xs text-muted-foreground">{new Date(log.created_at).toLocaleString()}</TableCell>
                                                         <TableCell className="text-sm font-medium">{log.actor?.full_name || "System"}</TableCell>
