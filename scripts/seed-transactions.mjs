@@ -1,3 +1,6 @@
+// ⚠️  DEPRECATED — Use `scripts/seed-fresh.mjs` instead.
+// seed-fresh.mjs handles transaction seeding as part of its combined flow.
+
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';

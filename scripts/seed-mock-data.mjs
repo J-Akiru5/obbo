@@ -1,3 +1,6 @@
+// ⚠️  DEPRECATED — Use `scripts/seed-fresh.mjs` instead.
+// This script uses non-Portland Cement products and is no longer maintained.
+
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
