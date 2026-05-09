@@ -179,12 +179,12 @@ export function ShipmentsTab({ shipments, loading, onReload }: { shipments: Ship
                                     <p className="text-xs text-muted-foreground mt-0.5">Arrived: {new Date(shipment.arrival_date).toLocaleDateString()}</p>
                                 </div>
                             </div>
-                            <div className="flex items-center gap-8">
-                                <div className="text-center">
+                            <div className="flex flex-col sm:flex-row items-end sm:items-center gap-4 sm:gap-8">
+                                <div className="text-right sm:text-center order-2 sm:order-1">
                                     <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider mb-1">Initial</p>
                                     <p className="text-sm font-semibold">{shipment.total_jb} JB · {shipment.total_sb} SB</p>
                                 </div>
-                                <div className="text-center">
+                                <div className="text-right sm:text-center order-1 sm:order-2">
                                     <p className="text-[10px] uppercase font-bold text-[var(--color-industrial-blue)] tracking-wider mb-1">Remaining</p>
                                     <p className="text-base font-bold text-[var(--color-industrial-blue)]">{shipment.remaining_jb} JB · {shipment.remaining_sb} SB</p>
                                 </div>
@@ -213,72 +213,104 @@ export function ShipmentsTab({ shipments, loading, onReload }: { shipments: Ship
                         {expandedBatch === shipment.id && (
                             <div className="border-t border-border bg-muted/10 p-4 space-y-4">
                                 {/* Manual Entry Row */}
-                                <div className="bg-card p-3 rounded-lg border border-border shadow-sm flex items-end gap-3">
-                                    <div className="space-y-1.5 flex-1 max-w-[120px]">
-                                        <Label className="text-[10px] uppercase text-muted-foreground">Date</Label>
-                                        <Input type="date" className="h-8 text-xs" defaultValue={new Date().toISOString().split('T')[0]} />
+                                <div className="bg-card p-3 rounded-lg border border-border shadow-sm flex flex-col sm:flex-row items-stretch sm:items-end gap-3">
+                                    <div className="grid grid-cols-2 sm:flex sm:flex-row gap-3 flex-1">
+                                        <div className="space-y-1.5 flex-1 sm:max-w-[120px]">
+                                            <Label className="text-[10px] uppercase text-muted-foreground">Date</Label>
+                                            <Input type="date" className="h-8 text-xs" defaultValue={new Date().toISOString().split('T')[0]} />
+                                        </div>
+                                        <div className="space-y-1.5 flex-1 sm:max-w-[120px]">
+                                            <Label className="text-[10px] uppercase text-muted-foreground">DR #</Label>
+                                            <Input className="h-8 text-xs" value={manualEntry.dr_number} onChange={e => setManualEntry({...manualEntry, dr_number: e.target.value})} placeholder="DR-XXXX" />
+                                        </div>
+                                        <div className="space-y-1.5 flex-1 sm:max-w-[120px]">
+                                            <Label className="text-[10px] uppercase text-muted-foreground">PO #</Label>
+                                            <Input className="h-8 text-xs" value={manualEntry.po_number} onChange={e => setManualEntry({...manualEntry, po_number: e.target.value})} placeholder="PO-XXXX" />
+                                        </div>
+                                        <div className="space-y-1.5 flex-1 sm:flex-[2]">
+                                            <Label className="text-[10px] uppercase text-muted-foreground">Client Name</Label>
+                                            <Input className="h-8 text-xs" value={manualEntry.client_name} onChange={e => setManualEntry({...manualEntry, client_name: e.target.value})} placeholder="Client name" />
+                                        </div>
                                     </div>
-                                    <div className="space-y-1.5 flex-1 max-w-[120px]">
-                                        <Label className="text-[10px] uppercase text-muted-foreground">DR #</Label>
-                                        <Input className="h-8 text-xs" value={manualEntry.dr_number} onChange={e => setManualEntry({...manualEntry, dr_number: e.target.value})} placeholder="DR-XXXX" />
+                                    <div className="flex items-end gap-3">
+                                        <div className="space-y-1.5 flex-1 sm:max-w-[80px]">
+                                            <Label className="text-[10px] uppercase text-muted-foreground">Out JB</Label>
+                                            <Input type="number" className="h-8 text-xs" value={manualEntry.jb} onChange={e => setManualEntry({...manualEntry, jb: parseInt(e.target.value) || 0})} />
+                                        </div>
+                                        <div className="space-y-1.5 flex-1 sm:max-w-[80px]">
+                                            <Label className="text-[10px] uppercase text-muted-foreground">Out SB</Label>
+                                            <Input type="number" className="h-8 text-xs" value={manualEntry.sb} onChange={e => setManualEntry({...manualEntry, sb: parseInt(e.target.value) || 0})} />
+                                        </div>
+                                        <Button size="sm" onClick={() => handleAddManualEntry(shipment.id)} className="h-8 px-3 bg-[var(--color-industrial-blue)] flex-1 sm:flex-none">
+                                            <Plus className="w-3.5 h-3.5 mr-1" /> Add
+                                        </Button>
                                     </div>
-                                    <div className="space-y-1.5 flex-1 max-w-[120px]">
-                                        <Label className="text-[10px] uppercase text-muted-foreground">PO #</Label>
-                                        <Input className="h-8 text-xs" value={manualEntry.po_number} onChange={e => setManualEntry({...manualEntry, po_number: e.target.value})} placeholder="PO-XXXX" />
-                                    </div>
-                                    <div className="space-y-1.5 flex-[2]">
-                                        <Label className="text-[10px] uppercase text-muted-foreground">Client Name</Label>
-                                        <Input className="h-8 text-xs" value={manualEntry.client_name} onChange={e => setManualEntry({...manualEntry, client_name: e.target.value})} placeholder="Client name" />
-                                    </div>
-                                    <div className="space-y-1.5 flex-1 max-w-[80px]">
-                                        <Label className="text-[10px] uppercase text-muted-foreground">Out JB</Label>
-                                        <Input type="number" className="h-8 text-xs" value={manualEntry.jb} onChange={e => setManualEntry({...manualEntry, jb: parseInt(e.target.value) || 0})} />
-                                    </div>
-                                    <div className="space-y-1.5 flex-1 max-w-[80px]">
-                                        <Label className="text-[10px] uppercase text-muted-foreground">Out SB</Label>
-                                        <Input type="number" className="h-8 text-xs" value={manualEntry.sb} onChange={e => setManualEntry({...manualEntry, sb: parseInt(e.target.value) || 0})} />
-                                    </div>
-                                    <Button size="sm" onClick={() => handleAddManualEntry(shipment.id)} className="h-8 px-3 bg-[var(--color-industrial-blue)]">
-                                        <Plus className="w-3.5 h-3.5 mr-1" /> Add
-                                    </Button>
                                 </div>
-
-                                {/* Ledger Table */}
+                                {/* Ledger View */}
                                 <div className="bg-card rounded-lg border border-border overflow-hidden">
-                                    <Table>
-                                        <TableHeader className="bg-muted/50">
-                                            <TableRow>
-                                                <TableHead className="text-xs w-[100px]">Date</TableHead>
-                                                <TableHead className="text-xs">DR #</TableHead>
-                                                <TableHead className="text-xs">PO #</TableHead>
-                                                <TableHead className="text-xs">Client Name</TableHead>
-                                                <TableHead className="text-xs text-right text-red-500">Out JB</TableHead>
-                                                <TableHead className="text-xs text-right text-red-500">Out SB</TableHead>
-                                                <TableHead className="text-xs text-right w-[60px]"></TableHead>
-                                            </TableRow>
-                                        </TableHeader>
-                                        <TableBody>
-                                            {!ledgerData[shipment.id] ? (
-                                                <TableRow><TableCell colSpan={7} className="text-center py-4 text-xs text-muted-foreground">Loading ledger...</TableCell></TableRow>
-                                            ) : ledgerData[shipment.id].length === 0 ? (
-                                                <TableRow><TableCell colSpan={7} className="text-center py-4 text-xs text-muted-foreground">No ledger entries.</TableCell></TableRow>
-                                            ) : ledgerData[shipment.id].map(entry => (
-                                                <TableRow key={entry.id}>
-                                                    <TableCell className="text-xs">{new Date(entry.date).toLocaleDateString()}</TableCell>
-                                                    <TableCell className="text-xs font-medium">{entry.dr_number || "—"}</TableCell>
-                                                    <TableCell className="text-xs font-medium">{entry.po_number || "—"}</TableCell>
-                                                    <TableCell className="text-xs">{entry.client_name || "—"}</TableCell>
-                                                    <TableCell className="text-xs text-right text-red-500 font-medium">-{entry.jb}</TableCell>
-                                                    <TableCell className="text-xs text-right text-red-500 font-medium">-{entry.sb}</TableCell>
-                                                    <TableCell className="text-right">
-                                                        <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:bg-destructive/10" onClick={() => handleDeleteEntry(entry.id, shipment.id)}>
-                                                            <Trash2 className="w-3.5 h-3.5" />
-                                                        </Button>
-                                                    </TableCell>
+                                    {/* Mobile Ledger: Cards */}
+                                    <div className="lg:hidden divide-y divide-border">
+                                        {!ledgerData[shipment.id] ? (
+                                            <div className="p-4 text-center text-xs text-muted-foreground">Loading ledger...</div>
+                                        ) : ledgerData[shipment.id].length === 0 ? (
+                                            <div className="p-4 text-center text-xs text-muted-foreground">No ledger entries.</div>
+                                        ) : ledgerData[shipment.id].map(entry => (
+                                            <div key={entry.id} className="p-3 flex items-center justify-between gap-4">
+                                                <div className="min-w-0 flex-1">
+                                                    <div className="flex items-center gap-2 mb-1">
+                                                        <span className="text-[10px] font-mono text-muted-foreground">{new Date(entry.date).toLocaleDateString()}</span>
+                                                        <span className="text-[10px] font-bold text-foreground bg-muted px-1.5 rounded">{entry.dr_number || "No DR"}</span>
+                                                    </div>
+                                                    <p className="text-sm font-bold truncate">{entry.client_name || "Unknown Client"}</p>
+                                                    <p className="text-xs text-muted-foreground">PO: {entry.po_number || "—"}</p>
+                                                </div>
+                                                <div className="text-right flex flex-col items-end gap-1">
+                                                    <p className="text-xs font-bold text-red-500">-{entry.jb} JB / -{entry.sb} SB</p>
+                                                    <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => handleDeleteEntry(entry.id, shipment.id)}>
+                                                        <Trash2 className="w-3.5 h-3.5" />
+                                                    </Button>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+
+                                    {/* Desktop Ledger: Table */}
+                                    <div className="hidden lg:block">
+                                        <Table>
+                                            <TableHeader className="bg-muted/50">
+                                                <TableRow>
+                                                    <TableHead className="text-xs w-[100px]">Date</TableHead>
+                                                    <TableHead className="text-xs">DR #</TableHead>
+                                                    <TableHead className="text-xs">PO #</TableHead>
+                                                    <TableHead className="text-xs">Client Name</TableHead>
+                                                    <TableHead className="text-xs text-right text-red-500">Out JB</TableHead>
+                                                    <TableHead className="text-xs text-right text-red-500">Out SB</TableHead>
+                                                    <TableHead className="text-right w-[60px]"></TableHead>
                                                 </TableRow>
-                                            ))}
-                                        </TableBody>
-                                    </Table>
+                                            </TableHeader>
+                                            <TableBody>
+                                                {!ledgerData[shipment.id] ? (
+                                                    <TableRow><TableCell colSpan={7} className="text-center py-4 text-xs text-muted-foreground">Loading ledger...</TableCell></TableRow>
+                                                ) : ledgerData[shipment.id].length === 0 ? (
+                                                    <TableRow><TableCell colSpan={7} className="text-center py-4 text-xs text-muted-foreground">No ledger entries.</TableCell></TableRow>
+                                                ) : ledgerData[shipment.id].map(entry => (
+                                                    <TableRow key={entry.id}>
+                                                        <TableCell className="text-xs">{new Date(entry.date).toLocaleDateString()}</TableCell>
+                                                        <TableCell className="text-xs font-medium">{entry.dr_number || "—"}</TableCell>
+                                                        <TableCell className="text-xs font-medium">{entry.po_number || "—"}</TableCell>
+                                                        <TableCell className="text-xs">{entry.client_name || "—"}</TableCell>
+                                                        <TableCell className="text-xs text-right text-red-500 font-medium">-{entry.jb}</TableCell>
+                                                        <TableCell className="text-xs text-right text-red-500 font-medium">-{entry.sb}</TableCell>
+                                                        <TableCell className="text-right">
+                                                            <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:bg-destructive/10" onClick={() => handleDeleteEntry(entry.id, shipment.id)}>
+                                                                <Trash2 className="w-3.5 h-3.5" />
+                                                            </Button>
+                                                        </TableCell>
+                                                    </TableRow>
+                                                ))}
+                                            </TableBody>
+                                        </Table>
+                                    </div>
                                 </div>
                             </div>
                         )}

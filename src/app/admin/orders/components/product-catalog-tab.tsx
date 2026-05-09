@@ -190,96 +190,153 @@ export function ProductCatalogTab({ products, onUpdate, onCreate, onDelete, load
     return (
         <Card>
             <CardHeader className="pb-3 border-b border-border/50">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                     <div>
                         <CardTitle className="text-lg">Product Catalog</CardTitle>
                         <CardDescription>Manage Portland Cement Type 1 pricing (SB &amp; JB).</CardDescription>
                     </div>
                     {onCreate && (
-                        <Button onClick={openCreate} className="bg-[var(--color-industrial-blue)] gap-2">
+                        <Button onClick={openCreate} className="bg-[var(--color-industrial-blue)] gap-2 w-full sm:w-auto">
                             <Plus className="w-4 h-4" /> Create Product
                         </Button>
                     )}
                 </div>
-                <div className="p-3 bg-blue-50 border border-blue-100 rounded-lg text-xs text-blue-700">
-                    Product catalog is restricted to <span className="font-semibold">Portland Cement Type 1</span> (SB &amp; JB). Contact a system administrator to change product configuration.
+                <div className="p-3 bg-blue-50 dark:bg-blue-950/30 border border-blue-100 dark:border-blue-900/30 rounded-lg text-xs text-blue-700 dark:text-blue-400">
+                    Product catalog is restricted to <span className="font-semibold">Portland Cement Type 1</span> (SB &amp; JB).
                 </div>
             </CardHeader>
             <CardContent className="p-0">
-                <Table>
-                    <TableHeader className="bg-muted/50">
-                        <TableRow>
-                            <TableHead className="w-[80px]">Product</TableHead>
-                            <TableHead>Details</TableHead>
-                            <TableHead className="text-right">Port Price</TableHead>
-                            <TableHead className="text-right">Warehouse Price</TableHead>
-                            <TableHead className="text-center">Status</TableHead>
-                            <TableHead className="text-right">Actions</TableHead>
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {filteredProducts.length === 0 ? (
-                            <TableRow>
-                                <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
-                                    No products match your filters.
-                                </TableCell>
-                            </TableRow>
-                        ) : (
-                            filteredProducts.map((p) => (
-                            <TableRow key={p.id} className="group">
-                                <TableCell>
-                                    <div className="w-12 h-12 rounded-lg bg-muted flex items-center justify-center overflow-hidden">
+                {/* Mobile View: Cards */}
+                <div className="grid grid-cols-1 gap-4 p-4 lg:hidden">
+                    {filteredProducts.length === 0 ? (
+                        <div className="text-center py-8 text-muted-foreground text-sm">No products found.</div>
+                    ) : (
+                        filteredProducts.map((p) => (
+                            <div key={p.id} className="flex flex-col gap-4 rounded-xl border border-border bg-card p-4 shadow-sm">
+                                <div className="flex items-center gap-4">
+                                    <div className="w-16 h-16 rounded-lg bg-muted flex items-center justify-center overflow-hidden flex-shrink-0">
                                         {p.image_url ? (
-                                            <Image
-                                                src={p.image_url}
-                                                alt={p.name}
-                                                width={48}
-                                                height={48}
-                                                className="w-full h-full object-cover rounded-lg"
-                                                unoptimized
-                                            />
+                                            <Image src={p.image_url} alt={p.name} width={64} height={64} className="w-full h-full object-cover" unoptimized />
                                         ) : (
-                                            <Package className="w-6 h-6 text-muted-foreground" />
+                                            <Package className="w-8 h-8 text-muted-foreground" />
                                         )}
                                     </div>
-                                </TableCell>
-                                <TableCell>
-                                    <p className="font-semibold text-sm">{p.name}</p>
-                                    <p className="text-xs text-muted-foreground flex gap-2">
-                                        <Badge variant="outline" className="text-[10px] uppercase font-mono tracking-wider">{p.bag_type}</Badge>
-                                        <span className="truncate max-w-[200px]">{p.description}</span>
-                                    </p>
-                                </TableCell>
-                                <TableCell className="text-right font-medium">
-                                    ₱{(p.price_port ?? p.price_per_bag).toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                                </TableCell>
-                                <TableCell className="text-right font-medium text-[var(--color-industrial-blue)]">
-                                    ₱{(p.price_warehouse ?? p.price_per_bag).toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                                </TableCell>
-                                <TableCell className="text-center">
-                                    <Badge variant={p.is_active ? "default" : "secondary"} className={p.is_active ? "bg-emerald-100 text-emerald-800 hover:bg-emerald-200" : ""}>
-                                        {p.is_active ? "Active" : "Inactive"}
-                                    </Badge>
-                                </TableCell>
-                                <TableCell className="text-right">
-                                    <div className="flex justify-end gap-2">
-                                        <Button variant="ghost" size="sm" onClick={() => toggleActive(p)} className="text-xs">
-                                            {p.is_active ? "Disable" : "Enable"}
-                                        </Button>
-                                        <Button variant="outline" size="sm" onClick={() => openEdit(p)} className="text-xs border-[var(--color-industrial-blue)] text-[var(--color-industrial-blue)] hover:bg-[var(--color-industrial-blue)] hover:text-white">
-                                            <Edit className="w-3.5 h-3.5 mr-1.5" /> Edit
-                                        </Button>
-                                        {onDelete && (
-                                            <Button variant="outline" size="sm" onClick={() => setProductToDelete(p)} className="text-xs border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700">
-                                                <Trash2 className="w-3.5 h-3.5" />
-                                            </Button>
-                                        )}
+                                    <div className="min-w-0 flex-1">
+                                        <div className="flex items-center gap-2 mb-1">
+                                            <Badge variant={p.is_active ? "default" : "secondary"} className={p.is_active ? "bg-emerald-100 text-emerald-800 text-[10px] h-5" : "text-[10px] h-5"}>
+                                                {p.is_active ? "Active" : "Inactive"}
+                                            </Badge>
+                                            <Badge variant="outline" className="text-[10px] uppercase font-mono h-5">{p.bag_type}</Badge>
+                                        </div>
+                                        <h4 className="font-bold text-sm truncate">{p.name}</h4>
+                                        <p className="text-xs text-muted-foreground truncate">{p.description}</p>
                                     </div>
-                                </TableCell>
+                                </div>
+                                <div className="grid grid-cols-2 gap-3 border-y border-border/50 py-3">
+                                    <div>
+                                        <p className="text-[10px] uppercase font-bold text-muted-foreground mb-1">Port Price</p>
+                                        <p className="text-sm font-bold text-foreground">₱{(p.price_port ?? p.price_per_bag).toLocaleString()}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-[10px] uppercase font-bold text-[var(--color-industrial-blue)] mb-1">Warehouse Price</p>
+                                        <p className="text-sm font-bold text-[var(--color-industrial-blue)]">₱{(p.price_warehouse ?? p.price_per_bag).toLocaleString()}</p>
+                                    </div>
+                                </div>
+                                <div className="flex gap-2">
+                                    <Button variant="outline" size="sm" onClick={() => openEdit(p)} className="flex-1 text-xs border-[var(--color-industrial-blue)] text-[var(--color-industrial-blue)]">
+                                        <Edit className="w-3.5 h-3.5 mr-1.5" /> Edit
+                                    </Button>
+                                    <Button variant="ghost" size="sm" onClick={() => toggleActive(p)} className="flex-1 text-xs">
+                                        {p.is_active ? "Disable" : "Enable"}
+                                    </Button>
+                                    {onDelete && (
+                                        <Button variant="outline" size="sm" onClick={() => setProductToDelete(p)} className="w-10 border-red-200 text-red-600">
+                                            <Trash2 className="w-3.5 h-3.5" />
+                                        </Button>
+                                    )}
+                                </div>
+                            </div>
+                        ))
+                    )}
+                </div>
+
+                {/* Desktop View: Table */}
+                <div className="hidden lg:block">
+                    <Table>
+                        <TableHeader className="bg-muted/50">
+                            <TableRow>
+                                <TableHead className="w-[80px]">Product</TableHead>
+                                <TableHead>Details</TableHead>
+                                <TableHead className="text-right">Port Price</TableHead>
+                                <TableHead className="text-right">Warehouse Price</TableHead>
+                                <TableHead className="text-center">Status</TableHead>
+                                <TableHead className="text-right">Actions</TableHead>
                             </TableRow>
-                        )))}
-                    </TableBody>
-                </Table>
+                        </TableHeader>
+                        <TableBody>
+                            {filteredProducts.length === 0 ? (
+                                <TableRow>
+                                    <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                                        No products match your filters.
+                                    </TableCell>
+                                </TableRow>
+                            ) : (
+                                filteredProducts.map((p) => (
+                                <TableRow key={p.id} className="group">
+                                    <TableCell>
+                                        <div className="w-12 h-12 rounded-lg bg-muted flex items-center justify-center overflow-hidden">
+                                            {p.image_url ? (
+                                                <Image
+                                                    src={p.image_url}
+                                                    alt={p.name}
+                                                    width={48}
+                                                    height={48}
+                                                    className="w-full h-full object-cover rounded-lg"
+                                                    unoptimized
+                                                />
+                                            ) : (
+                                                <Package className="w-6 h-6 text-muted-foreground" />
+                                            )}
+                                        </div>
+                                    </TableCell>
+                                    <TableCell>
+                                        <p className="font-semibold text-sm">{p.name}</p>
+                                        <p className="text-xs text-muted-foreground flex gap-2">
+                                            <Badge variant="outline" className="text-[10px] uppercase font-mono tracking-wider">{p.bag_type}</Badge>
+                                            <span className="truncate max-w-[200px]">{p.description}</span>
+                                        </p>
+                                    </TableCell>
+                                    <TableCell className="text-right font-medium">
+                                        ₱{(p.price_port ?? p.price_per_bag).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                    </TableCell>
+                                    <TableCell className="text-right font-medium text-[var(--color-industrial-blue)]">
+                                        ₱{(p.price_warehouse ?? p.price_per_bag).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                    </TableCell>
+                                    <TableCell className="text-center">
+                                        <Badge variant={p.is_active ? "default" : "secondary"} className={p.is_active ? "bg-emerald-100 text-emerald-800 hover:bg-emerald-200" : ""}>
+                                            {p.is_active ? "Active" : "Inactive"}
+                                        </Badge>
+                                    </TableCell>
+                                    <TableCell className="text-right">
+                                        <div className="flex justify-end gap-2">
+                                            <Button variant="ghost" size="sm" onClick={() => toggleActive(p)} className="text-xs">
+                                                {p.is_active ? "Disable" : "Enable"}
+                                            </Button>
+                                            <Button variant="outline" size="sm" onClick={() => openEdit(p)} className="text-xs border-[var(--color-industrial-blue)] text-[var(--color-industrial-blue)] hover:bg-[var(--color-industrial-blue)] hover:text-white">
+                                                <Edit className="w-3.5 h-3.5 mr-1.5" /> Edit
+                                            </Button>
+                                            {onDelete && (
+                                                <Button variant="outline" size="sm" onClick={() => setProductToDelete(p)} className="text-xs border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700">
+                                                    <Trash2 className="w-3.5 h-3.5" />
+                                                </Button>
+                                            )}
+                                        </div>
+                                    </TableCell>
+                                </TableRow>
+                            )))}
+                        </TableBody>
+                    </Table>
+                </div>
             </CardContent>
 
             <Dialog open={modalOpen} onOpenChange={(open) => {

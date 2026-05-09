@@ -36,6 +36,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import type { Notification } from "@/lib/types/database";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { GlobalSearch } from "@/components/global-search";
+import { BottomNavbar } from "@/components/bottom-navbar";
 
 const ADMIN_NAV_ITEMS = [
     { 
@@ -445,8 +446,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 </header>
 
                 {/* Page Content */}
-                <main className="flex-1 p-4 lg:p-6">{children}</main>
+                <main className="flex-1 p-4 pb-20 lg:p-6 lg:pb-6">{children}</main>
             </div>
+            
+            {/* Mobile Bottom Nav */}
+            <BottomNavbar />
         </div>
     );
 }

@@ -167,7 +167,7 @@ export default function AdminDashboard() {
                             <div className="space-y-4 w-full">
                                 <p className="text-[13px] font-medium text-muted-foreground uppercase tracking-wide">Total Good Stock</p>
                                 <div className="flex items-baseline justify-between w-full">
-                                    <p className="text-[38px] font-bold tracking-tight text-foreground leading-none">{kpis.grandTotal.toLocaleString()}</p>
+                                    <p className="text-3xl sm:text-[38px] font-bold tracking-tight text-foreground leading-none">{kpis.grandTotal.toLocaleString()}</p>
                                     <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center">
                                         <Package className="w-5 h-5 text-[#ff9f43]" />
                                     </div>
@@ -191,7 +191,7 @@ export default function AdminDashboard() {
                             <div className="space-y-4 w-full">
                                 <p className="text-[13px] font-medium text-muted-foreground uppercase tracking-wide">Client Balances</p>
                                 <div className="flex items-baseline justify-between w-full">
-                                    <p className="text-[38px] font-bold tracking-tight text-foreground leading-none">{kpis.grandBalance.toLocaleString()}</p>
+                                    <p className="text-3xl sm:text-[38px] font-bold tracking-tight text-foreground leading-none">{kpis.grandBalance.toLocaleString()}</p>
                                     <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center">
                                         <Users className="w-5 h-5 text-[#feca57]" />
                                     </div>
@@ -213,7 +213,7 @@ export default function AdminDashboard() {
                             <div className="space-y-4 w-full">
                                 <p className="text-[13px] font-medium text-muted-foreground uppercase tracking-wide">Pending KYC</p>
                                 <div className="flex items-baseline justify-between w-full">
-                                    <p className="text-[38px] font-bold tracking-tight text-foreground leading-none">{kpis.pendingKyc}</p>
+                                    <p className="text-3xl sm:text-[38px] font-bold tracking-tight text-foreground leading-none">{kpis.pendingKyc}</p>
                                     <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center">
                                         <ShieldAlert className="w-5 h-5 text-[#ff6b6b]" />
                                     </div>
@@ -235,7 +235,7 @@ export default function AdminDashboard() {
                             <div className="space-y-4 w-full">
                                 <p className="text-[13px] font-medium text-muted-foreground uppercase tracking-wide">Net Available</p>
                                 <div className="flex items-baseline justify-between w-full">
-                                    <p className="text-[38px] font-bold tracking-tight text-foreground leading-none">{kpis.grandNet.toLocaleString()}</p>
+                                    <p className="text-3xl sm:text-[38px] font-bold tracking-tight text-foreground leading-none">{kpis.grandNet.toLocaleString()}</p>
                                     <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center">
                                         <Package className="w-5 h-5 text-[#1dd1a1]" />
                                     </div>
@@ -403,7 +403,7 @@ export default function AdminDashboard() {
                                             </p>
                                         </div>
                                     </div>
-                                    <Badge className={`${activity.action === "warehouse_report_submitted" ? "bg-indigo-500/10 text-indigo-500 border-0" : "bg-emerald-500/10 text-emerald-500 border-0"} text-[10px] uppercase font-bold`}>
+                                    <Badge className={`${activity.action === "warehouse_report_submitted" ? "bg-indigo-500/10 text-indigo-500 border-0" : "bg-emerald-500/10 text-emerald-500 border-0"} text-[10px] uppercase font-bold hidden sm:flex`}>
                                         {activity.action === "warehouse_report_submitted" ? "Report" : "Success"}
                                     </Badge>
                                 </div>
