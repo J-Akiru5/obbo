@@ -34,6 +34,8 @@ import { toast } from "sonner";
 import { fetchAuditLog, getAdminSetting, saveAdminSetting } from "@/lib/actions/admin-actions";
 import { createClient } from "@/lib/supabase/client";
 
+import { useTheme } from "next-themes";
+
 function SettingRow({ icon, title, description, children }: { icon: React.ReactNode; title: string; description: string; children: React.ReactNode; }) {
     return (
         <div className="flex flex-col gap-3 border-b border-border/60 py-4 last:border-b-0 last:pb-0 sm:flex-row sm:items-center sm:justify-between">
@@ -50,7 +52,7 @@ function SettingRow({ icon, title, description, children }: { icon: React.ReactN
 }
 
 export default function AdminSettingsPage() {
-    const [theme, setTheme] = useState<"system" | "light" | "dark">("system");
+    const { theme, setTheme } = useTheme();
     const [contactInfo, setContactInfo] = useState({ email: "", phone: "", address: "", businessHours: "" });
     const [isSavingContact, setIsSavingContact] = useState(false);
     const [auditLogs, setAuditLogs] = useState<any[]>([]);
