@@ -137,12 +137,12 @@ function Hero() {
                 <div className="absolute inset-0 bg-gradient-to-t from-[var(--color-industrial-blue)]/40 to-transparent" />
               </div>
               {/* Mascot Overlay */}
-              <div className="absolute -bottom-16 -right-12 z-30 w-72 h-72 drop-shadow-2xl">
+              <div className="absolute -bottom-24 -right-20 z-30 w-[576px] h-[576px] drop-shadow-3xl">
                 <Image
                   src="/obbo.gif"
                   alt="OBBO Mascot"
-                  width={288}
-                  height={288}
+                  width={576}
+                  height={576}
                   className="w-full h-full object-contain"
                   unoptimized
                 />
