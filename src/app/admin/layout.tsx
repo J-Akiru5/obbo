@@ -34,6 +34,8 @@ import { Badge } from "@/components/ui/badge";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import type { Notification } from "@/lib/types/database";
+import { ThemeToggle } from "@/components/theme-toggle";
+import { GlobalSearch } from "@/components/global-search";
 
 const ADMIN_NAV_ITEMS = [
     { 
@@ -352,13 +354,18 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                         </Sheet>
 
                         <div className="hidden sm:block">
-                            <h1 className="text-lg font-semibold text-foreground">
+                            <h1 className="text-lg font-semibold text-foreground whitespace-nowrap">
                                 {navItems.find((i) => pathname.startsWith(i.href))?.label || "Admin"}
                             </h1>
                         </div>
                     </div>
 
+                    <div className="flex-1 max-w-xl px-4 flex justify-center">
+                        <GlobalSearch />
+                    </div>
+
                     <div className="flex items-center gap-2">
+                        <ThemeToggle />
                         <Popover open={notifOpen} onOpenChange={(open) => { setNotifOpen(open); if (open && unreadCount > 0) markAllRead(); }}>
                             <PopoverTrigger 
                                 render={
