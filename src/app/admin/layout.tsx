@@ -3,7 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
 import {
@@ -17,6 +17,9 @@ import {
     Bell,
     ChevronDown,
     Package,
+    AlertCircle,
+    CheckCircle2,
+    Info,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -29,6 +32,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import type { Notification } from "@/lib/types/database";
 
 const ADMIN_NAV_ITEMS = [
     { 
@@ -210,6 +215,37 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     const [adminName, setAdminName] = useState("Administrator");
     const [adminInitials, setAdminInitials] = useState("AD");
     const [adminRole, setAdminRole] = useState<"admin" | "warehouse_manager" | null>(null);
+    const [unreadCount, setUnreadCount] = useState(0);
+    const [notifications, setNotifications] = useState<Notification[]>([]);
+    const [notifOpen, setNotifOpen] = useState(false);
+
+    const loadNotifications = useCallback(async () => {
+        try {
+            const supabase = createClient();
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) return;
+
+            // Fetch last 20 notifications
+            const { data: notifs } = await supabase
+                .from("notifications")
+                .select("*")
+                .eq("user_id", user.id)
+                .order("created_at", { ascending: false })
+                .limit(20);
+            
+            // Fetch TOTAL unread count
+            const { count: unread } = await supabase
+                .from("notifications")
+                .select("*", { count: "exact", head: true })
+                .eq("user_id", user.id)
+                .eq("is_read", false);
+
+            setNotifications(notifs ?? []);
+            setUnreadCount(unread ?? 0);
+        } catch (e) {
+            console.error("Error loading notifications:", e);
+        }
+    }, []);
     const navItems = adminRole === "admin"
         ? ADMIN_NAV_ITEMS
         : adminRole === "warehouse_manager"
@@ -241,7 +277,47 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 setAdminRole(null);
             }
         });
-    }, []);
+
+        loadNotifications();
+
+        let channel: any;
+        const setupSubscription = async () => {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) return;
+
+            channel = supabase
+                .channel(`admin-notifications-${user.id}`)
+                .on(
+                    "postgres_changes", 
+                    { 
+                        event: "*", 
+                        schema: "public", 
+                        table: "notifications",
+                        filter: `user_id=eq.${user.id}`
+                    }, 
+                    () => {
+                        loadNotifications();
+                    }
+                )
+                .subscribe();
+        };
+
+        setupSubscription();
+        return () => { if (channel) supabase.removeChannel(channel); };
+    }, [loadNotifications]);
+
+    const markAllRead = async () => {
+        try {
+            const supabase = createClient();
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) return;
+            await supabase.from("notifications").update({ is_read: true }).eq("user_id", user.id).eq("is_read", false);
+            setUnreadCount(0);
+            setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
+        } catch {
+            toast.error("Failed to mark notifications as read.");
+        }
+    };
 
     async function handleSignOut() {
         const supabase = createClient();
@@ -283,12 +359,59 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                     </div>
 
                     <div className="flex items-center gap-2">
-                        <Button variant="ghost" size="icon" className="relative">
-                            <Bell className="w-5 h-5" />
-                            <span className="absolute -top-0.5 -right-0.5 w-4 h-4 rounded-full bg-[var(--color-industrial-red)] text-white text-[10px] font-bold flex items-center justify-center">
-                                3
-                            </span>
-                        </Button>
+                        <Popover open={notifOpen} onOpenChange={(open) => { setNotifOpen(open); if (open && unreadCount > 0) markAllRead(); }}>
+                            <PopoverTrigger asChild>
+                                <Button variant="ghost" size="icon" className="relative">
+                                    <Bell className="w-5 h-5" />
+                                    {unreadCount > 0 && (
+                                        <span className="absolute -top-0.5 -right-0.5 w-4 h-4 rounded-full bg-[var(--color-industrial-red)] text-white text-[10px] font-bold flex items-center justify-center">
+                                            {unreadCount > 9 ? "9+" : unreadCount}
+                                        </span>
+                                    )}
+                                </Button>
+                            </PopoverTrigger>
+                            <PopoverContent align="end" className="w-80 p-0">
+                                <div className="flex items-center justify-between p-3 border-b">
+                                    <h3 className="text-sm font-semibold">Notifications</h3>
+                                    {unreadCount > 0 && (
+                                        <button onClick={markAllRead} className="text-xs text-[var(--color-industrial-blue)] hover:underline">
+                                            Mark all as read
+                                        </button>
+                                    )}
+                                </div>
+                                <div className="max-h-80 overflow-y-auto">
+                                    {notifications.length === 0 ? (
+                                        <div className="p-6 text-center text-sm text-gray-500">No notifications yet</div>
+                                    ) : (
+                                        notifications.map((n) => (
+                                            <Link key={n.id} href={n.href || "/admin/dashboard"} onClick={() => setNotifOpen(false)}>
+                                                <div className={`px-3 py-2.5 border-b border-gray-50 hover:bg-gray-50 transition-colors ${!n.is_read ? 'bg-blue-50/50' : ''}`}>
+                                                    <div className="flex items-start gap-2">
+                                                        {n.severity === 'warning' ? (
+                                                            <AlertCircle className="w-3.5 h-3.5 text-amber-500 mt-0.5 shrink-0" />
+                                                        ) : n.severity === 'success' ? (
+                                                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 mt-0.5 shrink-0" />
+                                                        ) : (
+                                                            <Info className="w-3.5 h-3.5 text-blue-500 mt-0.5 shrink-0" />
+                                                        )}
+                                                        <div>
+                                                            <p className={`text-xs font-medium ${!n.is_read ? 'text-gray-900' : 'text-gray-600'}`}>{n.title}</p>
+                                                            <p className="text-[10px] text-gray-500 mt-0.5">{n.message}</p>
+                                                            <p className="text-[9px] text-gray-400 mt-1">{new Date(n.created_at).toLocaleString()}</p>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </Link>
+                                        ))
+                                    )}
+                                </div>
+                                <div className="p-2 border-t text-center">
+                                    <Button variant="ghost" size="sm" className="w-full text-xs text-muted-foreground" onClick={() => setNotifOpen(false)}>
+                                        Close
+                                    </Button>
+                                </div>
+                            </PopoverContent>
+                        </Popover>
 
                         <DropdownMenu>
                             <DropdownMenuTrigger

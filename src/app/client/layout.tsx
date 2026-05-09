@@ -97,15 +97,24 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
       const supabase = createClient();
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
-      const { data, count } = await supabase
+
+      // Fetch last 20 notifications
+      const { data: notifs } = await supabase
         .from("notifications")
-        .select("*", { count: "exact" })
+        .select("*")
         .eq("user_id", user.id)
         .order("created_at", { ascending: false })
-        .limit(8);
-      setNotifications(data ?? []);
-      const unread = data?.filter((n: any) => !n.is_read).length ?? 0;
-      setUnreadCount(unread);
+        .limit(20);
+      
+      // Fetch TOTAL unread count
+      const { count: unread } = await supabase
+        .from("notifications")
+        .select("*", { count: "exact", head: true })
+        .eq("user_id", user.id)
+        .eq("is_read", false);
+
+      setNotifications(notifs ?? []);
+      setUnreadCount(unread ?? 0);
     } catch {
       // silently fail
     }
@@ -113,15 +122,33 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
 
   useEffect(() => {
     loadNotifications();
-    // Subscribe to real-time notifications
+    
+    let channel: any;
     const supabase = createClient();
-    const channel = supabase
-      .channel("client-notifications")
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "notifications" }, () => {
-        loadNotifications();
-      })
-      .subscribe();
-    return () => { supabase.removeChannel(channel); };
+
+    const setupSubscription = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      channel = supabase
+        .channel(`client-notifications-${user.id}`)
+        .on(
+          "postgres_changes", 
+          { 
+            event: "*", 
+            schema: "public", 
+            table: "notifications",
+            filter: `user_id=eq.${user.id}`
+          }, 
+          () => {
+            loadNotifications();
+          }
+        )
+        .subscribe();
+    };
+
+    setupSubscription();
+    return () => { if (channel) supabase.removeChannel(channel); };
   }, [loadNotifications]);
 
   const markAllRead = async () => {
