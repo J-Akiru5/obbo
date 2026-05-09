@@ -190,10 +190,12 @@ export function ShipmentsTab({ shipments, loading, onReload }: { shipments: Ship
                                 </div>
                                 <div onClick={(e) => e.stopPropagation()}>
                                     <DropdownMenu>
-                                        <DropdownMenuTrigger asChild>
-                                            <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground">
-                                                <MoreVertical className="w-4 h-4" />
-                                            </Button>
+                                        <DropdownMenuTrigger 
+                                            render={
+                                                <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground" />
+                                            }
+                                        >
+                                            <MoreVertical className="w-4 h-4" />
                                         </DropdownMenuTrigger>
                                         <DropdownMenuContent align="end">
                                             <DropdownMenuItem onClick={() => openEditDialog(shipment)}>
