@@ -259,11 +259,11 @@ export default function CatalogClient({ products }: { products: any[] }) {
             <div className="grid gap-6 md:grid-cols-2">
                 {products.map(product => (
                     <Card key={product.id} className="overflow-hidden shadow-sm flex flex-col bg-card border-border">
-                        <div className="aspect-video w-full bg-muted flex items-center justify-center border-b">
+                        <div className="h-48 sm:h-64 w-full bg-muted flex shrink-0 items-center justify-center border-b overflow-hidden relative">
                             {product.image_url ? (
-                                <img src={product.image_url} alt={product.name} className="w-full h-full object-cover" />
+                                <img src={product.image_url} alt={product.name} className="absolute inset-0 w-full h-full object-cover" />
                             ) : (
-                                <PackageSearch className="w-16 h-16 text-muted-foreground/50" />
+                                <PackageSearch className="w-16 h-16 text-muted-foreground/50 z-10" />
                             )}
                         </div>
                         <CardHeader>
