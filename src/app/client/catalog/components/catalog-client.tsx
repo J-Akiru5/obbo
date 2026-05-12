@@ -256,6 +256,26 @@ export default function CatalogClient({ products }: { products: any[] }) {
                 <p className="text-sm text-muted-foreground">Browse our available Portland Cement configurations and place your orders.</p>
             </div>
 
+            <div className="bg-card border-border border p-4 sm:p-6 rounded-xl shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4">
+                <div className="text-left">
+                    <h3 className="text-lg font-bold text-foreground">Ready to place an order?</h3>
+                    <p className="text-sm text-muted-foreground">Select your desired quantities and source to generate your PO.</p>
+                </div>
+
+                {!isVerified ? (
+                    <div className="flex items-center gap-2 rounded-lg border border-status-pending-border bg-status-pending-bg px-4 py-2.5 text-sm text-status-pending-text">
+                        <ShieldAlert className="w-4 h-4 text-status-pending-text shrink-0" />
+                        <span className="hidden sm:inline">KYC verification required.</span>
+                        <Link href="/client/pending-kyc" className="font-semibold underline underline-offset-2 hover:brightness-75">Learn more</Link>
+                    </div>
+                ) : (
+                    <Button onClick={() => setIsOrderOpen(true)} className="bg-[var(--color-industrial-blue)] hover:bg-[var(--color-industrial-blue)]/90" size="lg">
+                        <ShoppingCart className="w-4 h-4 mr-2" />
+                        Create New Order
+                    </Button>
+                )}
+            </div>
+
             <div className="grid gap-6 md:grid-cols-2">
                 {products.map(product => (
                     <Card key={product.id} className="overflow-hidden shadow-sm flex flex-col bg-card border-border">
@@ -304,28 +324,22 @@ export default function CatalogClient({ products }: { products: any[] }) {
                             {product.bag_type === "JB" && <p className="text-xs text-center text-muted-foreground mt-3">* 1 JB contains 25 individual bags</p>}
                             {product.bag_type === "SB" && <p className="text-xs text-center text-muted-foreground mt-3">* 1 SB contains 50 individual bags</p>}
                         </CardContent>
+                        <div className="p-6 pt-0 mt-auto">
+                            <Button 
+                                className="w-full bg-[var(--color-industrial-blue)] hover:bg-[var(--color-industrial-blue)]/90" 
+                                disabled={!isVerified}
+                                onClick={() => setIsOrderOpen(true)}
+                            >
+                                <ShoppingCart className="w-4 h-4 mr-2" />
+                                {isVerified ? "Place Order" : "Verification Required"}
+                            </Button>
+                        </div>
                     </Card>
                 ))}
             </div>
 
-            <div className="bg-card border-border border p-6 rounded-xl shadow-sm text-center">
-                <h3 className="text-lg font-bold mb-2 text-foreground">Ready to place an order?</h3>
-                <p className="text-sm text-muted-foreground mb-6 max-w-lg mx-auto">Select your desired quantities and source to generate your PO. You can split your delivery if you don&apos;t need the entire stock immediately.</p>
-
-                {!isVerified && (
-                    <div className="mb-4 flex items-center justify-center gap-2 rounded-lg border border-status-pending-border bg-status-pending-bg px-4 py-2.5 text-sm text-status-pending-text">
-                        <ShieldAlert className="w-4 h-4 text-status-pending-text shrink-0" />
-                        KYC verification required to place orders.
-                        <Link href="/client/pending-kyc" className="font-semibold underline underline-offset-2 hover:brightness-75">Learn more</Link>
-                    </div>
-                )}
-
-                {isVerified ? (
+            {isVerified && (
                 <Dialog open={isOrderOpen} onOpenChange={setIsOrderOpen}>
-                    <DialogTrigger render={<Button className="bg-[var(--color-industrial-blue)] hover:bg-[var(--color-industrial-blue)]/90" size="lg" />}>
-                        <ShoppingCart className="w-4 h-4 mr-2" />
-                        Create New Order
-                    </DialogTrigger>
                     <DialogContent className="max-w-[100vw] w-[100vw] h-[100dvh] !rounded-none border-0 p-4 sm:p-6 sm:max-w-4xl sm:w-full sm:h-auto sm:max-h-[90vh] sm:!rounded-xl overflow-y-auto sm:border">
                         <DialogHeader>
                             <DialogTitle>New Order Placement</DialogTitle>
@@ -499,15 +513,7 @@ export default function CatalogClient({ products }: { products: any[] }) {
                         </form>
                     </DialogContent>
                 </Dialog>
-                ) : (
-                    <Link href="/client/pending-kyc">
-                        <Button size="lg" className="gap-2 bg-muted text-muted-foreground hover:bg-muted/80 cursor-not-allowed">
-                            <Lock className="w-4 h-4" />
-                            Verify Account to Order
-                        </Button>
-                    </Link>
-                )}
-            </div>
+            )}
         </div>
     );
 }
