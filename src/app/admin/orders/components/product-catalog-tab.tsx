@@ -382,16 +382,18 @@ export function ProductCatalogTab({ products, onUpdate, onCreate, onDelete, load
                                 <Label>Port Price (₱)</Label>
                                 <Input 
                                     type="number" 
-                                    value={formData.port} 
-                                    onChange={(e) => setFormData({ ...formData, port: Number(e.target.value) })} 
+                                    value={formData.port || ""} 
+                                    placeholder="0"
+                                    onChange={(e) => setFormData({ ...formData, port: Number(e.target.value) || 0 })} 
                                 />
                             </div>
                             <div className="space-y-2">
                                 <Label>Warehouse Price (₱)</Label>
                                 <Input 
                                     type="number" 
-                                    value={formData.warehouse} 
-                                    onChange={(e) => setFormData({ ...formData, warehouse: Number(e.target.value) })} 
+                                    value={formData.warehouse || ""} 
+                                    placeholder="0"
+                                    onChange={(e) => setFormData({ ...formData, warehouse: Number(e.target.value) || 0 })} 
                                 />
                             </div>
                         </div>

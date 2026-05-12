@@ -234,11 +234,11 @@ export function DrListTab({ deliveryReceipts, shipments, loading, onReload }: { 
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
                                 <Label>JB Bags</Label>
-                                <Input type="number" min="0" value={jb} onChange={e => setJb(parseInt(e.target.value) || 0)} />
+                                <Input type="number" min="0" value={jb || ""} placeholder="0" onChange={e => setJb(parseInt(e.target.value) || 0)} />
                             </div>
                             <div className="space-y-2">
                                 <Label>SB Bags</Label>
-                                <Input type="number" min="0" value={sb} onChange={e => setSb(parseInt(e.target.value) || 0)} />
+                                <Input type="number" min="0" value={sb || ""} placeholder="0" onChange={e => setSb(parseInt(e.target.value) || 0)} />
                             </div>
                         </div>
                         <div className="grid grid-cols-2 gap-4">
@@ -257,7 +257,7 @@ export function DrListTab({ deliveryReceipts, shipments, loading, onReload }: { 
                         </div>
                         <div className="space-y-2">
                             <Label>Shipping Fee (₱)</Label>
-                            <Input type="number" min="0" value={shippingFee} onChange={e => setShippingFee(parseFloat(e.target.value) || 0)} />
+                            <Input type="number" min="0" value={shippingFee || ""} placeholder="0" onChange={e => setShippingFee(parseFloat(e.target.value) || 0)} />
                         </div>
 
                         {/* Photo Upload */}

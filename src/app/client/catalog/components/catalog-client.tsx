@@ -363,12 +363,12 @@ export default function CatalogClient({ products }: { products: any[] }) {
                                 <div className="grid grid-cols-2 gap-4">
                                     <div className="space-y-2">
                                         <Label>Number of JB (Optional)</Label>
-                                        <Input type="number" min="0" value={qtyJB} onChange={(e) => setQtyJB(parseInt(e.target.value) || 0)} />
+                                        <Input type="number" min="0" value={qtyJB || ""} placeholder="0" onChange={(e) => setQtyJB(parseInt(e.target.value) || 0)} />
                                         <p className="text-[10px] text-muted-foreground">= {qtyJB * 25} individual bags</p>
                                     </div>
                                     <div className="space-y-2">
                                         <Label>Number of SB (Optional)</Label>
-                                        <Input type="number" min="0" value={qtySB} onChange={(e) => setQtySB(parseInt(e.target.value) || 0)} />
+                                        <Input type="number" min="0" value={qtySB || ""} placeholder="0" onChange={(e) => setQtySB(parseInt(e.target.value) || 0)} />
                                         <p className="text-[10px] text-muted-foreground">= {qtySB * 50} individual bags</p>
                                     </div>
                                 </div>

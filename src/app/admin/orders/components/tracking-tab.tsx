@@ -149,11 +149,11 @@ export function TrackingTab({ orders, onUpdateTracking, loading }: {
                                 <div className="grid grid-cols-2 gap-4">
                                     <div className="space-y-2">
                                         <Label>JB Returned</Label>
-                                        <Input type="number" min="0" value={jbReturned} onChange={(e) => setJbReturned(parseInt(e.target.value) || 0)} />
+                                        <Input type="number" min="0" value={jbReturned || ""} placeholder="0" onChange={(e) => setJbReturned(parseInt(e.target.value) || 0)} />
                                     </div>
                                     <div className="space-y-2">
                                         <Label>SB Returned</Label>
-                                        <Input type="number" min="0" value={sbReturned} onChange={(e) => setSbReturned(parseInt(e.target.value) || 0)} />
+                                        <Input type="number" min="0" value={sbReturned || ""} placeholder="0" onChange={(e) => setSbReturned(parseInt(e.target.value) || 0)} />
                                     </div>
                                 </div>
                                 <p className="text-xs text-purple-700">These will be added back to the warehouse physical count in reports.</p>

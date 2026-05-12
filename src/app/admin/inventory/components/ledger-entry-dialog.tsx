@@ -136,11 +136,11 @@ export function LedgerEntryDialog({ open, onOpenChange, entry, onSubmit }: Ledge
                     <div className="grid grid-cols-3 gap-3">
                         <div className="space-y-1.5">
                             <Label className="text-xs">Total JB (out)</Label>
-                            <Input type="number" min={0} value={form.jb} onChange={e => set("jb", parseInt(e.target.value) || 0)} className="h-9" />
+                            <Input type="number" min={0} value={form.jb || ""} placeholder="0" onChange={e => set("jb", parseInt(e.target.value) || 0)} className="h-9" />
                         </div>
                         <div className="space-y-1.5">
                             <Label className="text-xs">Total SB (out)</Label>
-                            <Input type="number" min={0} value={form.sb} onChange={e => set("sb", parseInt(e.target.value) || 0)} className="h-9" />
+                            <Input type="number" min={0} value={form.sb || ""} placeholder="0" onChange={e => set("sb", parseInt(e.target.value) || 0)} className="h-9" />
                         </div>
                         <div className="space-y-1.5">
                             <Label className="text-xs text-muted-foreground">Total Bags (auto)</Label>
@@ -170,7 +170,7 @@ export function LedgerEntryDialog({ open, onOpenChange, entry, onSubmit }: Ledge
                         )}
                         <div className="space-y-1.5">
                             <Label className="text-xs">Amount (₱)</Label>
-                            <Input type="number" min={0} value={form.amount} onChange={e => set("amount", parseFloat(e.target.value) || 0)} className="h-9" />
+                            <Input type="number" min={0} value={form.amount || ""} placeholder="0" onChange={e => set("amount", parseFloat(e.target.value) || 0)} className="h-9" />
                         </div>
                     </div>
 
@@ -180,7 +180,7 @@ export function LedgerEntryDialog({ open, onOpenChange, entry, onSubmit }: Ledge
                         <div className="grid grid-cols-3 gap-3">
                             <div className="space-y-1.5">
                                 <Label className="text-xs">Bags Returned</Label>
-                                <Input type="number" min={0} value={form.bags_returned} onChange={e => set("bags_returned", parseInt(e.target.value) || 0)} className="h-9" />
+                                <Input type="number" min={0} value={form.bags_returned || ""} placeholder="0" onChange={e => set("bags_returned", parseInt(e.target.value) || 0)} className="h-9" />
                             </div>
                             <div className="space-y-1.5">
                                 <Label className="text-xs">Returned Type</Label>

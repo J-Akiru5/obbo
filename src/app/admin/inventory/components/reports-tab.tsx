@@ -346,28 +346,28 @@ export function ReportsTab() {
                                 <TableBody>
                                     <TableRow className="bg-muted/30">
                                         <TableCell className="font-semibold">Yesterday&apos;s Closing</TableCell>
-                                        <TableCell><Input type="number" value={physical.yesterday_jb} onChange={e => setPhysical({ ...physical, yesterday_jb: parseInt(e.target.value) || 0 })} className="w-32 h-8 bg-card" /></TableCell>
-                                        <TableCell><Input type="number" value={physical.yesterday_sb} onChange={e => setPhysical({ ...physical, yesterday_sb: parseInt(e.target.value) || 0 })} className="w-32 h-8 bg-card" /></TableCell>
+                                        <TableCell><Input type="number" value={physical.yesterday_jb || ""} placeholder="0" onChange={e => setPhysical({ ...physical, yesterday_jb: parseInt(e.target.value) || 0 })} className="w-32 h-8 bg-card" /></TableCell>
+                                        <TableCell><Input type="number" value={physical.yesterday_sb || ""} placeholder="0" onChange={e => setPhysical({ ...physical, yesterday_sb: parseInt(e.target.value) || 0 })} className="w-32 h-8 bg-card" /></TableCell>
                                     </TableRow>
                                     <TableRow>
                                         <TableCell className="font-medium text-emerald-600 flex items-center gap-2"><ArrowDownRight className="w-4 h-4" /> Stock Received (+)</TableCell>
-                                        <TableCell><Input type="number" value={physical.received_jb} onChange={e => setPhysical({ ...physical, received_jb: parseInt(e.target.value) || 0 })} className="w-32 h-8" /></TableCell>
-                                        <TableCell><Input type="number" value={physical.received_sb} onChange={e => setPhysical({ ...physical, received_sb: parseInt(e.target.value) || 0 })} className="w-32 h-8" /></TableCell>
+                                        <TableCell><Input type="number" value={physical.received_jb || ""} placeholder="0" onChange={e => setPhysical({ ...physical, received_jb: parseInt(e.target.value) || 0 })} className="w-32 h-8" /></TableCell>
+                                        <TableCell><Input type="number" value={physical.received_sb || ""} placeholder="0" onChange={e => setPhysical({ ...physical, received_sb: parseInt(e.target.value) || 0 })} className="w-32 h-8" /></TableCell>
                                     </TableRow>
                                     <TableRow>
                                         <TableCell className="font-medium text-blue-600 flex items-center gap-2"><ArrowUpRight className="w-4 h-4" /> Total Dispatched (-)</TableCell>
-                                        <TableCell><Input type="number" value={physical.dispatched_jb} onChange={e => setPhysical({ ...physical, dispatched_jb: parseInt(e.target.value) || 0 })} className="w-32 h-8" /></TableCell>
-                                        <TableCell><Input type="number" value={physical.dispatched_sb} onChange={e => setPhysical({ ...physical, dispatched_sb: parseInt(e.target.value) || 0 })} className="w-32 h-8" /></TableCell>
+                                        <TableCell><Input type="number" value={physical.dispatched_jb || ""} placeholder="0" onChange={e => setPhysical({ ...physical, dispatched_jb: parseInt(e.target.value) || 0 })} className="w-32 h-8" /></TableCell>
+                                        <TableCell><Input type="number" value={physical.dispatched_sb || ""} placeholder="0" onChange={e => setPhysical({ ...physical, dispatched_sb: parseInt(e.target.value) || 0 })} className="w-32 h-8" /></TableCell>
                                     </TableRow>
                                     <TableRow>
                                         <TableCell className="font-medium text-purple-600 flex items-center gap-2"><ArrowDownRight className="w-4 h-4" /> Customer Returns (+)</TableCell>
-                                        <TableCell><Input type="number" value={physical.returned_jb} onChange={e => setPhysical({ ...physical, returned_jb: parseInt(e.target.value) || 0 })} className="w-32 h-8" /></TableCell>
-                                        <TableCell><Input type="number" value={physical.returned_sb} onChange={e => setPhysical({ ...physical, returned_sb: parseInt(e.target.value) || 0 })} className="w-32 h-8" /></TableCell>
+                                        <TableCell><Input type="number" value={physical.returned_jb || ""} placeholder="0" onChange={e => setPhysical({ ...physical, returned_jb: parseInt(e.target.value) || 0 })} className="w-32 h-8" /></TableCell>
+                                        <TableCell><Input type="number" value={physical.returned_sb || ""} placeholder="0" onChange={e => setPhysical({ ...physical, returned_sb: parseInt(e.target.value) || 0 })} className="w-32 h-8" /></TableCell>
                                     </TableRow>
                                     <TableRow>
                                         <TableCell className="font-medium text-red-600 flex items-center gap-2"><ArrowUpRight className="w-4 h-4" /> Waste/Damaged (-)</TableCell>
-                                        <TableCell><Input type="number" value={physical.waste_jb} onChange={e => setPhysical({ ...physical, waste_jb: parseInt(e.target.value) || 0 })} className="w-32 h-8" /></TableCell>
-                                        <TableCell><Input type="number" value={physical.waste_sb} onChange={e => setPhysical({ ...physical, waste_sb: parseInt(e.target.value) || 0 })} className="w-32 h-8" /></TableCell>
+                                        <TableCell><Input type="number" value={physical.waste_jb || ""} placeholder="0" onChange={e => setPhysical({ ...physical, waste_jb: parseInt(e.target.value) || 0 })} className="w-32 h-8" /></TableCell>
+                                        <TableCell><Input type="number" value={physical.waste_sb || ""} placeholder="0" onChange={e => setPhysical({ ...physical, waste_sb: parseInt(e.target.value) || 0 })} className="w-32 h-8" /></TableCell>
                                     </TableRow>
                                     <TableRow className="bg-[var(--color-industrial-blue)]/5 hover:bg-[var(--color-industrial-blue)]/10">
                                         <TableCell className="font-bold text-[var(--color-industrial-blue)] text-base">Today&apos;s Closing</TableCell>

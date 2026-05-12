@@ -245,11 +245,11 @@ export function PoListTab({ purchaseOrders, loading, onReload }: { purchaseOrder
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
                                 <Label>JB Qty</Label>
-                                <Input type="number" min="0" value={jb} onChange={e => setJb(parseInt(e.target.value) || 0)} />
+                                <Input type="number" min="0" value={jb || ""} placeholder="0" onChange={e => setJb(parseInt(e.target.value) || 0)} />
                             </div>
                             <div className="space-y-2">
                                 <Label>SB Qty</Label>
-                                <Input type="number" min="0" value={sb} onChange={e => setSb(parseInt(e.target.value) || 0)} />
+                                <Input type="number" min="0" value={sb || ""} placeholder="0" onChange={e => setSb(parseInt(e.target.value) || 0)} />
                             </div>
                         </div>
 
@@ -262,12 +262,12 @@ export function PoListTab({ purchaseOrders, loading, onReload }: { purchaseOrder
                                 </div>
                                 <div className="space-y-2">
                                     <Label>Check Amount (₱)</Label>
-                                    <Input type="number" min="0" value={checkAmount} onChange={e => setCheckAmount(parseFloat(e.target.value) || 0)} />
+                                    <Input type="number" min="0" value={checkAmount || ""} placeholder="0" onChange={e => setCheckAmount(parseFloat(e.target.value) || 0)} />
                                 </div>
                             </div>
                             <div className="space-y-2">
                                 <Label>Cash Amount (₱)</Label>
-                                <Input type="number" min="0" value={cashAmount} onChange={e => setCashAmount(parseFloat(e.target.value) || 0)} />
+                                <Input type="number" min="0" value={cashAmount || ""} placeholder="0" onChange={e => setCashAmount(parseFloat(e.target.value) || 0)} />
                             </div>
                         </div>
 

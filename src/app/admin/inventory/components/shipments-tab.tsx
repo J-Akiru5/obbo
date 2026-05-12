@@ -188,11 +188,11 @@ export function ShipmentsTab({ shipments, loading, onReload }: { shipments: Ship
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-2">
                                     <Label>JB Bags <span className="text-red-500">*</span></Label>
-                                    <Input type="number" min={0} value={newJbBags} onChange={e => setNewJbBags(parseInt(e.target.value) || 0)} placeholder="Jumbo Bags" />
+                                    <Input type="number" min={0} value={newJbBags || ""} onChange={e => setNewJbBags(parseInt(e.target.value) || 0)} placeholder="Jumbo Bags" />
                                 </div>
                                 <div className="space-y-2">
                                     <Label>SB Bags <span className="text-red-500">*</span></Label>
-                                    <Input type="number" min={0} value={newSbBags} onChange={e => setNewSbBags(parseInt(e.target.value) || 0)} placeholder="Standard Bags" />
+                                    <Input type="number" min={0} value={newSbBags || ""} onChange={e => setNewSbBags(parseInt(e.target.value) || 0)} placeholder="Standard Bags" />
                                 </div>
                             </div>
                             <div className="bg-muted p-3 rounded-lg border border-dashed border-border">
@@ -364,11 +364,11 @@ export function ShipmentsTab({ shipments, loading, onReload }: { shipments: Ship
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
                                 <Label>Initial JB</Label>
-                                <Input type="number" min={0} value={editForm.total_jb} onChange={e => setEditForm({ ...editForm, total_jb: parseInt(e.target.value) || 0 })} />
+                                <Input type="number" min={0} value={editForm.total_jb || ""} placeholder="0" onChange={e => setEditForm({ ...editForm, total_jb: parseInt(e.target.value) || 0 })} />
                             </div>
                             <div className="space-y-2">
                                 <Label>Initial SB</Label>
-                                <Input type="number" min={0} value={editForm.total_sb} onChange={e => setEditForm({ ...editForm, total_sb: parseInt(e.target.value) || 0 })} />
+                                <Input type="number" min={0} value={editForm.total_sb || ""} placeholder="0" onChange={e => setEditForm({ ...editForm, total_sb: parseInt(e.target.value) || 0 })} />
                             </div>
                         </div>
                         <div className="bg-muted p-3 rounded-lg border border-dashed border-border">
@@ -405,11 +405,11 @@ export function ShipmentsTab({ shipments, loading, onReload }: { shipments: Ship
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
                                 <Label>Remaining JB</Label>
-                                <Input type="number" min={0} value={overrideRemJb} onChange={e => setOverrideRemJb(parseInt(e.target.value) || 0)} />
+                                <Input type="number" min={0} value={overrideRemJb || ""} placeholder="0" onChange={e => setOverrideRemJb(parseInt(e.target.value) || 0)} />
                             </div>
                             <div className="space-y-2">
                                 <Label>Remaining SB</Label>
-                                <Input type="number" min={0} value={overrideRemSb} onChange={e => setOverrideRemSb(parseInt(e.target.value) || 0)} />
+                                <Input type="number" min={0} value={overrideRemSb || ""} placeholder="0" onChange={e => setOverrideRemSb(parseInt(e.target.value) || 0)} />
                             </div>
                         </div>
                         <div className="bg-muted p-3 rounded-lg text-sm">

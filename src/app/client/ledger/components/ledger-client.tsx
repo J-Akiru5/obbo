@@ -376,7 +376,8 @@ export default function LedgerClient({ balances, summary }: { balances: any[]; s
                                             type="number" 
                                             min="1" 
                                             max={selectedBalance.remaining_qty} 
-                                            value={deliverNowQty} 
+                                            value={deliverNowQty || ""} 
+                                            placeholder="0"
                                             onChange={(e) => setDeliverNowQty(parseInt(e.target.value) || 0)} 
                                         />
                                         <p className="text-[10px] text-blue-600">

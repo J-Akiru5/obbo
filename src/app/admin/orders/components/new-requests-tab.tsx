@@ -210,7 +210,8 @@ export function NewRequestsTab({ orders, onApprove, onReject, loading }: {
                                                 type="number" 
                                                 min="0" 
                                                 max={item.requested_qty}
-                                                value={approvedQtys[item.id] || 0}
+                                                value={approvedQtys[item.id] || ""}
+                                                placeholder="0"
                                                 onChange={(e) => setApprovedQtys(prev => ({...prev, [item.id]: parseInt(e.target.value) || 0}))}
                                             />
                                         </div>
@@ -223,7 +224,8 @@ export function NewRequestsTab({ orders, onApprove, onReject, loading }: {
                                     <Label>Shipping Fee (₱)</Label>
                                     <Input 
                                         type="number" 
-                                        value={shippingFee}
+                                        value={shippingFee || ""}
+                                        placeholder="0"
                                         onChange={(e) => setShippingFee(parseFloat(e.target.value) || 0)}
                                     />
                                     <p className="text-xs text-muted-foreground">Required for delivery orders.</p>
