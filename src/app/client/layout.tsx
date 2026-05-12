@@ -134,6 +134,20 @@ function SidebarContent({ pathname, onNavigate }: { pathname: string; onNavigate
         <div className="border-t border-sidebar-border pt-4">
           <KycStatusBox kycStatus={kycStatus} />
         </div>
+        <div className="lg:hidden pt-2 border-t border-sidebar-border">
+          <button
+            type="button"
+            onClick={async () => {
+              const supabase = createClient();
+              await supabase.auth.signOut();
+              window.location.href = "/login";
+            }}
+            className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-sidebar-foreground hover:bg-sidebar-accent/50 transition-colors"
+          >
+            <LogOut className="h-4 w-4 shrink-0" />
+            <span>Sign Out</span>
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -252,8 +266,8 @@ function ClientLayoutInner({ children }: { children: React.ReactNode }) {
       </aside>
 
       <div className="flex min-h-screen flex-1 flex-col lg:ml-72">
-        <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-border bg-background/95 px-4 backdrop-blur-sm lg:px-6">
-          <div className="flex items-center gap-3">
+        <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-border bg-background/95 px-3 sm:px-4 backdrop-blur-sm lg:px-6 gap-2 sm:gap-4">
+          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
             <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
               <SheetTrigger className="inline-flex h-8 w-8 items-center justify-center rounded-md hover:bg-muted lg:hidden">
                 <Menu className="h-4 w-4" />
@@ -278,11 +292,11 @@ function ClientLayoutInner({ children }: { children: React.ReactNode }) {
             </div>
           </div>
 
-          <div className="flex-1 flex justify-center px-2 sm:px-4">
+          <div className="flex-1 flex justify-end lg:justify-center">
             <GlobalSearch />
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
             <ThemeToggle />
             <Popover open={notifOpen} onOpenChange={(open) => { setNotifOpen(open); if (open && unreadCount > 0) markAllRead(); }}>
               <PopoverTrigger className="relative inline-flex h-8 w-8 items-center justify-center rounded-md hover:bg-muted">
@@ -361,7 +375,7 @@ function ClientLayoutInner({ children }: { children: React.ReactNode }) {
                 await supabase.auth.signOut();
                 window.location.href = "/login";
               }}
-              className="inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium text-muted-foreground hover:bg-muted transition-colors"
+              className="hidden sm:inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium text-muted-foreground hover:bg-muted transition-colors"
             >
               <LogOut className="h-4 w-4" /> Sign Out
             </button>
