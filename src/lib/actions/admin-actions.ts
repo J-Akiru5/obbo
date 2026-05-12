@@ -597,24 +597,44 @@ export async function createDeliveryReceipt(dr: {
     shipment_id: string; dr_number: string; quantity?: number; bag_type?: string;
     received_date?: string; po_number?: string; client_name?: string; jb?: number;
     sb?: number; driver?: string; plate_number?: string; shipping_fee?: number;
+    destination?: string;
 }) {
     const { supabase, userId } = await requireAdmin();
+
+    // 1. Fetch linked PO data to unify ledger row
+    let poData = null;
+    if (dr.po_number) {
+        const { data: po } = await supabase.from("purchase_orders").select("*").eq("po_number", dr.po_number).single();
+        if (po) poData = po;
+    }
+
+    const clientName = dr.client_name || poData?.client_name || "Unknown";
+
+    // 2. Create the DR record
     const { data, error } = await supabase.from("delivery_receipts").insert({
         ...dr,
+        client_name: clientName,
         quantity: (dr.jb ?? 0) + (dr.sb ?? 0),
         bag_type: dr.bag_type ?? ((dr.jb ?? 0) > 0 ? "JB" : "SB"),
         received_date: dr.received_date ?? new Date().toISOString().split("T")[0],
     }).select().single();
     if (error) throw new Error(error.message);
 
-    // Auto-insert ledger row into the selected shipment batch
-    await supabase.from("shipment_ledger").insert({
-        shipment_id: dr.shipment_id,
+    // 3. Auto-insert UNIFIED ledger row via addLedgerEntry (handles stock deduction)
+    await addLedgerEntry(dr.shipment_id, {
         dr_number: dr.dr_number,
         po_number: dr.po_number,
-        client_name: dr.client_name,
+        date: dr.received_date,
+        client_name: clientName,
+        destination: dr.destination, // DR destination
+        service_type: poData?.service_type || "pickup",
         jb: dr.jb ?? 0,
         sb: dr.sb ?? 0,
+        driver_name: dr.driver,
+        plate_number: dr.plate_number,
+        payment_method: poData?.check_number ? "check" : (poData?.cash_amount ? "cash" : undefined),
+        check_number: poData?.check_number,
+        amount: poData ? (Number(poData.check_amount) || Number(poData.cash_amount) || undefined) : undefined,
     });
 
     await logActivity(supabase, userId, "dr_created", "delivery_receipt", data.id, dr);

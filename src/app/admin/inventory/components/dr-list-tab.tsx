@@ -51,7 +51,7 @@ export function DrListTab({ deliveryReceipts, shipments, loading, onReload }: { 
     };
 
     const handleSubmit = async () => {
-        if (!drNumber || !shipmentId) return toast.error("DR Number and Shipment Batch are required");
+        if (!drNumber || !shipmentId || !poNumber) return toast.error("DR Number, PO# Link, and Shipment Batch are required");
         setIsSubmitting(true);
         try {
             // Upload DR photo if provided
@@ -226,8 +226,9 @@ export function DrListTab({ deliveryReceipts, shipments, loading, onReload }: { 
                                 <Input value={clientName} onChange={e => setClientName(e.target.value)} />
                             </div>
                             <div className="space-y-2">
-                                <Label>PO Number</Label>
-                                <Input value={poNumber} onChange={e => setPoNumber(e.target.value)} />
+                                <Label>PO# Link <span className="text-red-500">*</span></Label>
+                                <Input value={poNumber} onChange={e => setPoNumber(e.target.value)} placeholder="Must match PO List" />
+                                {!editingDr && <p className="text-[10px] text-emerald-600 leading-tight">Linking a PO automatically syncs its payment data into the Shipment Ledger.</p>}
                             </div>
                         </div>
                         <div className="grid grid-cols-2 gap-4">
