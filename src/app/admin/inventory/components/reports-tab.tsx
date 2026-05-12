@@ -13,6 +13,7 @@ import {
 import { generateReportXLSX } from "@/lib/report-generators/report-xlsx";
 import { generateReportPDF } from "@/lib/report-generators/report-pdf";
 import type { ReportExportData } from "@/lib/report-generators/types";
+import type { Product, Profile, CustomerBalance, Order, OrderItem } from "@/lib/types/database";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -44,8 +45,8 @@ export function ReportsTab() {
     });
 
     // Module 2 & 3 Data
-    const [todayDispatches, setTodayDispatches] = useState<any[]>([]);
-    const [balances, setBalances] = useState<any[]>([]);
+    const [todayDispatches, setTodayDispatches] = useState<{ client: string; dr: string | null; service: string; jb: number; sb: number; }[]>([]);
+    const [balances, setBalances] = useState<CustomerBalance[]>([]);
 
     useEffect(() => {
         setIsAutoFilled(false);
@@ -74,16 +75,16 @@ export function ReportsTab() {
             }
 
             // Load today's dispatches for Module 2
-            const orders = await fetchOrders("dispatched");
-            const completed = await fetchOrders("completed");
-            const todayOrders = [...(orders as any[]), ...(completed as any[])].filter(o =>
+            const orders = await fetchOrders("dispatched") as Order[];
+            const completed = await fetchOrders("completed") as Order[];
+            const todayOrders = [...orders, ...completed].filter(o =>
                 o.updated_at.startsWith(reportDate) && (o.status === "dispatched" || o.status === "completed")
             );
             const dispatches = todayOrders.map(o => {
-                const jb = o.items.filter((i: any) => i.bag_type === "JB").reduce((s: number, i: any) => s + i.dispatched_qty, 0);
-                const sb = o.items.filter((i: any) => i.bag_type === "SB").reduce((s: number, i: any) => s + i.dispatched_qty, 0);
+                const jb = o.items.filter((i: OrderItem) => i.bag_type === "JB").reduce((s: number, i: OrderItem) => s + i.dispatched_qty, 0);
+                const sb = o.items.filter((i: OrderItem) => i.bag_type === "SB").reduce((s: number, i: OrderItem) => s + i.dispatched_qty, 0);
                 return {
-                    client: o.client?.company_name || o.client?.full_name,
+                    client: o.client?.company_name || o.client?.full_name || "Unknown",
                     dr: o.dr_number,
                     service: o.service_type,
                     jb, sb,
@@ -104,7 +105,7 @@ export function ReportsTab() {
 
             // Load balances for Module 3
             const bals = await fetchCustomerBalances();
-            setBalances(bals as any[]);
+            setBalances(bals as CustomerBalance[]);
         } catch (e) {
             console.error(e);
             toast.error("Failed to load report data");
@@ -151,13 +152,21 @@ export function ReportsTab() {
                 setTodayDispatches(generated.dispatches);
             }
             if (generated.balances.length > 0) {
-                setBalances(generated.balances.map((b: any) => ({
-                    id: Math.random().toString(),
-                    client: { company_name: b.client, full_name: b.client },
-                    product: { name: b.product },
-                    remaining_qty: b.qty,
-                    bag_type: b.bag_type,
-                })));
+                setBalances(generated.balances.map((b: any) => {
+                    const randomId = Math.random().toString();
+                    return {
+                        id: randomId,
+                        client: { company_name: b.client, full_name: b.client } as Profile,
+                        product: { name: b.product } as Product,
+                        remaining_qty: b.qty,
+                        bag_type: b.bag_type,
+                        client_id: "",
+                        order_id: "",
+                        product_id: "",
+                        status: "pending",
+                        created_at: new Date().toISOString()
+                    } as CustomerBalance;
+                }));
             }
             setIsAutoFilled(true);
             toast.success("Report auto-generated from today's transactions!", { icon: "✨" });
@@ -346,28 +355,28 @@ export function ReportsTab() {
                                 <TableBody>
                                     <TableRow className="bg-muted/30">
                                         <TableCell className="font-semibold">Yesterday&apos;s Closing</TableCell>
-                                        <TableCell><Input type="number" value={physical.yesterday_jb || ""} placeholder="0" onChange={e => setPhysical({ ...physical, yesterday_jb: parseInt(e.target.value) || 0 })} className="w-32 h-8 bg-card" /></TableCell>
-                                        <TableCell><Input type="number" value={physical.yesterday_sb || ""} placeholder="0" onChange={e => setPhysical({ ...physical, yesterday_sb: parseInt(e.target.value) || 0 })} className="w-32 h-8 bg-card" /></TableCell>
+                                        <TableCell><Input type="number" value={physical.yesterday_jb || ""} placeholder="0" onFocus={e => e.target.select()} onChange={e => setPhysical({ ...physical, yesterday_jb: parseInt(e.target.value) || 0 })} className="w-32 h-8 bg-card" /></TableCell>
+                                        <TableCell><Input type="number" value={physical.yesterday_sb || ""} placeholder="0" onFocus={e => e.target.select()} onChange={e => setPhysical({ ...physical, yesterday_sb: parseInt(e.target.value) || 0 })} className="w-32 h-8 bg-card" /></TableCell>
                                     </TableRow>
                                     <TableRow>
                                         <TableCell className="font-medium text-emerald-600 flex items-center gap-2"><ArrowDownRight className="w-4 h-4" /> Stock Received (+)</TableCell>
-                                        <TableCell><Input type="number" value={physical.received_jb || ""} placeholder="0" onChange={e => setPhysical({ ...physical, received_jb: parseInt(e.target.value) || 0 })} className="w-32 h-8" /></TableCell>
-                                        <TableCell><Input type="number" value={physical.received_sb || ""} placeholder="0" onChange={e => setPhysical({ ...physical, received_sb: parseInt(e.target.value) || 0 })} className="w-32 h-8" /></TableCell>
+                                        <TableCell><Input type="number" value={physical.received_jb || ""} placeholder="0" onFocus={e => e.target.select()} onChange={e => setPhysical({ ...physical, received_jb: parseInt(e.target.value) || 0 })} className="w-32 h-8" /></TableCell>
+                                        <TableCell><Input type="number" value={physical.received_sb || ""} placeholder="0" onFocus={e => e.target.select()} onChange={e => setPhysical({ ...physical, received_sb: parseInt(e.target.value) || 0 })} className="w-32 h-8" /></TableCell>
                                     </TableRow>
                                     <TableRow>
                                         <TableCell className="font-medium text-blue-600 flex items-center gap-2"><ArrowUpRight className="w-4 h-4" /> Total Dispatched (-)</TableCell>
-                                        <TableCell><Input type="number" value={physical.dispatched_jb || ""} placeholder="0" onChange={e => setPhysical({ ...physical, dispatched_jb: parseInt(e.target.value) || 0 })} className="w-32 h-8" /></TableCell>
-                                        <TableCell><Input type="number" value={physical.dispatched_sb || ""} placeholder="0" onChange={e => setPhysical({ ...physical, dispatched_sb: parseInt(e.target.value) || 0 })} className="w-32 h-8" /></TableCell>
+                                        <TableCell><Input type="number" value={physical.dispatched_jb || ""} placeholder="0" onFocus={e => e.target.select()} onChange={e => setPhysical({ ...physical, dispatched_jb: parseInt(e.target.value) || 0 })} className="w-32 h-8" /></TableCell>
+                                        <TableCell><Input type="number" value={physical.dispatched_sb || ""} placeholder="0" onFocus={e => e.target.select()} onChange={e => setPhysical({ ...physical, dispatched_sb: parseInt(e.target.value) || 0 })} className="w-32 h-8" /></TableCell>
                                     </TableRow>
                                     <TableRow>
                                         <TableCell className="font-medium text-purple-600 flex items-center gap-2"><ArrowDownRight className="w-4 h-4" /> Customer Returns (+)</TableCell>
-                                        <TableCell><Input type="number" value={physical.returned_jb || ""} placeholder="0" onChange={e => setPhysical({ ...physical, returned_jb: parseInt(e.target.value) || 0 })} className="w-32 h-8" /></TableCell>
-                                        <TableCell><Input type="number" value={physical.returned_sb || ""} placeholder="0" onChange={e => setPhysical({ ...physical, returned_sb: parseInt(e.target.value) || 0 })} className="w-32 h-8" /></TableCell>
+                                        <TableCell><Input type="number" value={physical.returned_jb || ""} placeholder="0" onFocus={e => e.target.select()} onChange={e => setPhysical({ ...physical, returned_jb: parseInt(e.target.value) || 0 })} className="w-32 h-8" /></TableCell>
+                                        <TableCell><Input type="number" value={physical.returned_sb || ""} placeholder="0" onFocus={e => e.target.select()} onChange={e => setPhysical({ ...physical, returned_sb: parseInt(e.target.value) || 0 })} className="w-32 h-8" /></TableCell>
                                     </TableRow>
                                     <TableRow>
                                         <TableCell className="font-medium text-red-600 flex items-center gap-2"><ArrowUpRight className="w-4 h-4" /> Waste/Damaged (-)</TableCell>
-                                        <TableCell><Input type="number" value={physical.waste_jb || ""} placeholder="0" onChange={e => setPhysical({ ...physical, waste_jb: parseInt(e.target.value) || 0 })} className="w-32 h-8" /></TableCell>
-                                        <TableCell><Input type="number" value={physical.waste_sb || ""} placeholder="0" onChange={e => setPhysical({ ...physical, waste_sb: parseInt(e.target.value) || 0 })} className="w-32 h-8" /></TableCell>
+                                        <TableCell><Input type="number" value={physical.waste_jb || ""} placeholder="0" onFocus={e => e.target.select()} onChange={e => setPhysical({ ...physical, waste_jb: parseInt(e.target.value) || 0 })} className="w-32 h-8" /></TableCell>
+                                        <TableCell><Input type="number" value={physical.waste_sb || ""} placeholder="0" onFocus={e => e.target.select()} onChange={e => setPhysical({ ...physical, waste_sb: parseInt(e.target.value) || 0 })} className="w-32 h-8" /></TableCell>
                                     </TableRow>
                                     <TableRow className="bg-[var(--color-industrial-blue)]/5 hover:bg-[var(--color-industrial-blue)]/10">
                                         <TableCell className="font-bold text-[var(--color-industrial-blue)] text-base">Today&apos;s Closing</TableCell>
