@@ -262,12 +262,23 @@ export function PoListTab({ purchaseOrders, loading, onReload }: { purchaseOrder
                                 </div>
                                 <div className="space-y-2">
                                     <Label>Check Amount (₱)</Label>
-                                    <Input type="number" min="0" value={checkAmount || ""} placeholder="0" onChange={e => setCheckAmount(parseFloat(e.target.value) || 0)} />
+                                    <Input type="number" min="0" value={checkAmount || ""} placeholder="0" onChange={e => {
+                                        const val = parseFloat(e.target.value) || 0;
+                                        setCheckAmount(val);
+                                        if (val > 0) setCashAmount(0);
+                                    }} />
                                 </div>
                             </div>
                             <div className="space-y-2">
                                 <Label>Cash Amount (₱)</Label>
-                                <Input type="number" min="0" value={cashAmount || ""} placeholder="0" onChange={e => setCashAmount(parseFloat(e.target.value) || 0)} />
+                                <Input type="number" min="0" value={cashAmount || ""} placeholder="0" onChange={e => {
+                                    const val = parseFloat(e.target.value) || 0;
+                                    setCashAmount(val);
+                                    if (val > 0) {
+                                        setCheckAmount(0);
+                                        setCheckNumber("");
+                                    }
+                                }} />
                             </div>
                         </div>
 
