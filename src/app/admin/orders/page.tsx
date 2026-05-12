@@ -170,7 +170,7 @@ function OrdersContent() {
 
                     <TabsContent value="history">
                         <OrderHistoryTab 
-                            orders={orders.filter(o => o.status === "completed" || o.status === "rejected")}
+                            orders={orders}
                             loading={loading}
                         />
                     </TabsContent>

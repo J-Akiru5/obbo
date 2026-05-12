@@ -659,6 +659,77 @@ export async function deleteDeliveryReceipt(id: string) {
 // WAREHOUSE REPORTS
 // ═══════════════════════════════════════════════════════════════
 
+export async function generateDailyReportData(date: string) {
+    const { supabase } = await requireAdmin();
+
+    // 1. Get yesterday's closing stock
+    const prevDate = new Date(date);
+    prevDate.setDate(prevDate.getDate() - 1);
+    const prevDateStr = prevDate.toISOString().split("T")[0];
+    
+    const { data: yesterdayReport } = await supabase.from("warehouse_reports").select("closing_jb, closing_sb").eq("report_date", prevDateStr).maybeSingle();
+    const yesterday_jb = yesterdayReport?.closing_jb || 0;
+    const yesterday_sb = yesterdayReport?.closing_sb || 0;
+
+    // 2. Get today's received stock from shipments
+    const { data: shipments } = await supabase.from("shipments").select("total_jb, total_sb").eq("arrival_date", date);
+    const received_jb = shipments?.reduce((sum, s) => sum + (s.total_jb || 0), 0) || 0;
+    const received_sb = shipments?.reduce((sum, s) => sum + (s.total_sb || 0), 0) || 0;
+
+    // 3. Get today's dispatches & returns from ledger
+    const { data: ledger } = await supabase.from("shipment_ledger").select("*").eq("date", date);
+    const dispatched_jb = ledger?.reduce((sum, l) => sum + (l.jb || 0), 0) || 0;
+    const dispatched_sb = ledger?.reduce((sum, l) => sum + (l.sb || 0), 0) || 0;
+    
+    let returned_jb = 0;
+    let returned_sb = 0;
+    ledger?.forEach(l => {
+        if (l.bags_returned && l.bag_returned_type === "JB") returned_jb += l.bags_returned;
+        if (l.bags_returned && l.bag_returned_type === "SB") returned_sb += l.bags_returned;
+    });
+
+    // 4. Get today's dispatches for Module 2
+    const { data: orders } = await supabase
+        .from("orders")
+        .select("*, client:profiles!orders_client_id_fkey(full_name, company_name), items:order_items(*)")
+        .in("status", ["dispatched", "completed"])
+        .gte("updated_at", `${date}T00:00:00.000Z`)
+        .lt("updated_at", `${date}T23:59:59.999Z`);
+        
+    const dispatches = (orders || []).map(o => {
+        const jb = o.items?.filter((i: any) => i.bag_type === "JB").reduce((s: number, i: any) => s + i.dispatched_qty, 0) || 0;
+        const sb = o.items?.filter((i: any) => i.bag_type === "SB").reduce((s: number, i: any) => s + i.dispatched_qty, 0) || 0;
+        return {
+            client: o.client?.company_name || o.client?.full_name,
+            dr: o.dr_number,
+            service: o.service_type,
+            jb, sb,
+        };
+    });
+
+    // 5. Get pending balances for Module 3
+    const { data: customerBalances } = await supabase
+        .from("customer_balances")
+        .select("*, client:profiles!customer_balances_client_id_fkey(full_name, company_name), product:products!customer_balances_product_id_fkey(name)")
+        .eq("status", "pending");
+        
+    const balances = (customerBalances || []).map(b => ({
+        client: b.client?.company_name || b.client?.full_name,
+        product: b.product?.name,
+        qty: b.remaining_qty,
+        bag_type: b.bag_type,
+    }));
+
+    return {
+        yesterday_jb, yesterday_sb,
+        received_jb, received_sb,
+        dispatched_jb, dispatched_sb,
+        returned_jb, returned_sb,
+        waste_jb: 0, waste_sb: 0,
+        dispatches,
+        balances
+    };
+}
 
 export async function fetchWarehouseReport(date: string) {
     const { supabase } = await requireAdmin();

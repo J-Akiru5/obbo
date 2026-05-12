@@ -2,48 +2,58 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useState, useEffect } from "react";
+import { createClient } from "@/lib/supabase/client";
 import { 
     LayoutDashboard, 
     Package, 
     Users, 
     Warehouse, 
-    Settings 
+    Settings,
+    FileText
 } from "lucide-react";
 
-const NAV_ITEMS = [
-    { 
-        href: "/admin/dashboard", 
-        label: "Home", 
-        icon: LayoutDashboard 
-    },
-    { 
-        href: "/admin/products", 
-        label: "Inventory", 
-        icon: Package 
-    },
-    { 
-        href: "/admin/clients", 
-        label: "Clients", 
-        icon: Users 
-    },
-    { 
-        href: "/admin/reports", 
-        label: "Reports", 
-        icon: Warehouse 
-    },
-    { 
-        href: "/admin/settings", 
-        label: "Settings", 
-        icon: Settings 
-    }
+const ADMIN_NAV_ITEMS = [
+    { href: "/admin/dashboard", label: "Home", icon: LayoutDashboard },
+    { href: "/admin/products", label: "Inventory", icon: Package },
+    { href: "/admin/clients", label: "Clients", icon: Users },
+    { href: "/admin/reports", label: "Reports", icon: Warehouse },
+    { href: "/admin/settings", label: "Settings", icon: Settings }
+];
+
+const WAREHOUSE_NAV_ITEMS = [
+    { href: "/admin/dashboard", label: "Home", icon: LayoutDashboard },
+    { href: "/admin/orders", label: "Orders", icon: Package },
+    { href: "/admin/inventory", label: "Inventory", icon: Warehouse },
+    { href: "/admin/reports/warehouse-manager", label: "Reports", icon: FileText },
+    { href: "/admin/clients", label: "Clients", icon: Users }
 ];
 
 export function BottomNavbar() {
     const pathname = usePathname();
+    const [role, setRole] = useState<string | null>(null);
+
+    useEffect(() => {
+        const supabase = createClient();
+        supabase.auth.getUser().then(({ data }) => {
+            if (data.user) {
+                supabase
+                    .from("profiles")
+                    .select("role")
+                    .eq("id", data.user.id)
+                    .single()
+                    .then(({ data: profile }) => {
+                        setRole(profile?.role || null);
+                    });
+            }
+        });
+    }, []);
+
+    const navItems = role === "warehouse_manager" ? WAREHOUSE_NAV_ITEMS : ADMIN_NAV_ITEMS;
 
     return (
         <nav className="fixed bottom-0 left-0 right-0 z-50 flex h-16 items-center justify-around border-t border-border bg-background/80 px-2 pb-safe backdrop-blur-md lg:hidden">
-            {NAV_ITEMS.map((item) => {
+            {navItems.map((item) => {
                 const isActive = pathname.startsWith(item.href);
                 return (
                     <Link

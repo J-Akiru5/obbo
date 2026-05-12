@@ -7,28 +7,61 @@ import { Search, MapPin, Truck, CheckCircle2, XCircle } from "lucide-react";
 
 export function OrderHistoryTab({ orders, loading }: { orders: Order[], loading: boolean }) {
     const [searchQuery, setSearchQuery] = useState("");
+    const [dateFilter, setDateFilter] = useState("");
 
     if (loading) return <div className="py-8 text-center text-muted-foreground animate-pulse">Loading order history...</div>;
 
-    const filteredOrders = orders.filter(o => 
-        o.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        o.client?.company_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        o.client?.full_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        o.dr_number?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        o.po_number?.toLowerCase().includes(searchQuery.toLowerCase())
-    );
+    const filteredOrders = orders.filter(o => {
+        const matchesSearch = o.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            o.client?.company_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            o.client?.full_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            o.dr_number?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            o.po_number?.toLowerCase().includes(searchQuery.toLowerCase());
+            
+        let matchesDate = true;
+        if (dateFilter) {
+            try {
+                // Parse date regardless of time zone anomalies
+                const orderDateObj = new Date(o.updated_at);
+                const localDateStr = `${orderDateObj.getFullYear()}-${String(orderDateObj.getMonth() + 1).padStart(2, '0')}-${String(orderDateObj.getDate()).padStart(2, '0')}`;
+                matchesDate = localDateStr === dateFilter;
+            } catch (e) {
+                matchesDate = true;
+            }
+        }
+
+        return matchesSearch && matchesDate;
+    });
 
     return (
         <div className="space-y-4">
-            <div className="relative w-full max-w-sm">
-                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input
-                    type="search"
-                    placeholder="Search by ID, client, DR, or PO..."
-                    className="pl-8"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                />
+            <div className="flex flex-col sm:flex-row gap-4 items-center">
+                <div className="relative w-full max-w-sm">
+                    <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                    <Input
+                        type="search"
+                        placeholder="Search by ID, client, DR, or PO..."
+                        className="pl-8"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                    />
+                </div>
+                <div className="w-full sm:w-auto flex items-center gap-2">
+                    <Input 
+                        type="date" 
+                        value={dateFilter}
+                        onChange={(e) => setDateFilter(e.target.value)}
+                        className="text-sm"
+                    />
+                    {dateFilter && (
+                        <button 
+                            onClick={() => setDateFilter("")}
+                            className="text-xs text-muted-foreground hover:text-foreground underline whitespace-nowrap"
+                        >
+                            Clear Date
+                        </button>
+                    )}
+                </div>
             </div>
 
             <div className="bg-card rounded-xl border border-border shadow-sm overflow-hidden">
@@ -93,9 +126,13 @@ export function OrderHistoryTab({ orders, loading }: { orders: Order[], loading:
                                             <div className="flex items-center justify-end gap-1.5 text-emerald-600 font-medium text-sm">
                                                 <CheckCircle2 className="w-4 h-4" /> Completed
                                             </div>
-                                        ) : (
+                                        ) : order.status === "rejected" ? (
                                             <div className="flex items-center justify-end gap-1.5 text-red-600 font-medium text-sm">
                                                 <XCircle className="w-4 h-4" /> Rejected
+                                            </div>
+                                        ) : (
+                                            <div className="flex items-center justify-end gap-1.5 text-muted-foreground font-medium text-sm">
+                                                <span className="capitalize">{order.status.replace(/_/g, ' ')}</span>
                                             </div>
                                         )}
                                     </TableCell>
