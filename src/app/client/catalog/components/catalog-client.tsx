@@ -372,23 +372,23 @@ export default function CatalogClient({ products }: { products: any[] }) {
                             </div>
 
                             {/* Quantities */}
-                            <div className="p-4 bg-slate-50 border rounded-lg space-y-4">
-                                <h4 className="text-sm font-semibold text-slate-800">Quantity Selection</h4>
+                            <div className="p-4 bg-muted/30 border border-border rounded-lg space-y-4">
+                                <h4 className="text-sm font-bold text-foreground uppercase tracking-tight">Quantity Selection</h4>
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                     <div className="space-y-2">
-                                        <Label>Number of JB (Optional)</Label>
-                                        <Input type="number" min="0" value={qtyJB || ""} placeholder="0" onChange={(e) => setQtyJB(parseInt(e.target.value) || 0)} />
-                                        <p className="text-[10px] text-muted-foreground">= {qtyJB * 25} individual bags</p>
+                                        <Label className="text-xs font-semibold uppercase text-muted-foreground">Number of JB (Optional)</Label>
+                                        <Input type="number" min="0" value={qtyJB || ""} placeholder="0" onChange={(e) => setQtyJB(parseInt(e.target.value) || 0)} className="bg-background" />
+                                        <p className="text-[10px] text-muted-foreground/70 font-medium">= {qtyJB * 25} individual bags</p>
                                     </div>
                                     <div className="space-y-2">
-                                        <Label>Number of SB (Optional)</Label>
-                                        <Input type="number" min="0" value={qtySB || ""} placeholder="0" onChange={(e) => setQtySB(parseInt(e.target.value) || 0)} />
-                                        <p className="text-[10px] text-muted-foreground">= {qtySB * 50} individual bags</p>
+                                        <Label className="text-xs font-semibold uppercase text-muted-foreground">Number of SB (Optional)</Label>
+                                        <Input type="number" min="0" value={qtySB || ""} placeholder="0" onChange={(e) => setQtySB(parseInt(e.target.value) || 0)} className="bg-background" />
+                                        <p className="text-[10px] text-muted-foreground/70 font-medium">= {qtySB * 50} individual bags</p>
                                     </div>
                                 </div>
-                                <div className="pt-2 flex justify-between items-center border-t border-slate-200">
-                                    <span className="text-sm font-semibold text-slate-700">Total Individual Bags:</span>
-                                    <span className="text-lg font-bold text-[var(--color-industrial-blue)]">{totalIndividualBags.toLocaleString()} bags</span>
+                                <div className="pt-3 flex justify-between items-center border-t border-border">
+                                    <span className="text-sm font-semibold text-foreground">Total Individual Bags:</span>
+                                    <span className="text-lg font-black text-[var(--color-industrial-blue)]">{totalIndividualBags.toLocaleString()} bags</span>
                                 </div>
                             </div>
 
@@ -404,7 +404,7 @@ export default function CatalogClient({ products }: { products: any[] }) {
                                 </div>
                                 <div className="space-y-2">
                                     <Label>Client Name</Label>
-                                    <Input value={clientName} readOnly className="bg-slate-50 cursor-not-allowed" />
+                                    <Input value={clientName} readOnly className="bg-muted/50 cursor-not-allowed border-dashed" />
                                 </div>
                                 <div className="space-y-2">
                                     <Label>Payment Method <span className="text-red-500">*</span></Label>
@@ -424,52 +424,56 @@ export default function CatalogClient({ products }: { products: any[] }) {
 
                             {/* Conditional Pickup fields */}
                             {serviceType === "pickup" && (
-                                <div className="p-4 border border-amber-200 bg-amber-50 rounded-lg space-y-4">
-                                    <h4 className="text-sm font-semibold text-amber-900">Pick-up Details</h4>
+                                <div className="p-4 border border-amber-500/20 bg-amber-500/5 rounded-lg space-y-4">
+                                    <h4 className="text-sm font-bold text-amber-600 dark:text-amber-400 uppercase tracking-tight flex items-center gap-2">
+                                        <Car className="w-4 h-4" />
+                                        Pick-up Details
+                                    </h4>
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                         <div className="space-y-2">
-                                            <Label>Driver Name <span className="text-red-500">*</span></Label>
-                                            <Input required value={driverName} onChange={(e) => setDriverName(e.target.value)} placeholder="Name of driver" />
+                                            <Label className="text-amber-700 dark:text-amber-300/80">Driver Name <span className="text-red-500">*</span></Label>
+                                            <Input required value={driverName} onChange={(e) => setDriverName(e.target.value)} placeholder="Name of driver" className="bg-background border-amber-500/20 focus-visible:ring-amber-500" />
                                         </div>
                                         <div className="space-y-2">
-                                            <Label>Plate Number <span className="text-red-500">*</span></Label>
-                                            <Input required value={plateNumber} onChange={(e) => setPlateNumber(e.target.value)} placeholder="Vehicle plate" />
+                                            <Label className="text-amber-700 dark:text-amber-300/80">Plate Number <span className="text-red-500">*</span></Label>
+                                            <Input required value={plateNumber} onChange={(e) => setPlateNumber(e.target.value)} placeholder="Vehicle plate" className="bg-background border-amber-500/20 focus-visible:ring-amber-500" />
                                         </div>
                                         <div className="space-y-2 sm:col-span-2">
-                                            <Label>Preferred Date of Pick-up</Label>
-                                            <Input type="date" value={pickupDate} onChange={(e) => setPickupDate(e.target.value)} />
+                                            <Label className="text-amber-700 dark:text-amber-300/80">Preferred Date of Pick-up</Label>
+                                            <Input type="date" value={pickupDate} onChange={(e) => setPickupDate(e.target.value)} className="bg-background border-amber-500/20 focus-visible:ring-amber-500" />
                                         </div>
                                     </div>
                                 </div>
                             )}
 
                             {/* Split Delivery — available for BOTH pickup and deliver */}
-                            <div className="p-4 border border-blue-200 bg-blue-50 rounded-lg space-y-4">
+                            <div className="p-4 border border-blue-500/20 bg-blue-500/5 rounded-lg space-y-4">
                                 <div className="flex items-center justify-between">
                                     <div className="flex items-center gap-2">
-                                        <Split className="w-4 h-4 text-blue-600" />
+                                        <Split className="w-4 h-4 text-blue-500" />
                                         <div>
-                                            <h4 className="text-sm font-semibold text-blue-900">Split Delivery Option</h4>
-                                            <p className="text-xs text-blue-700">
+                                            <h4 className="text-sm font-bold text-blue-600 dark:text-blue-400 uppercase tracking-tight">Split Delivery Option</h4>
+                                            <p className="text-[10px] text-blue-500/80 font-medium">
                                                 {serviceType === "deliver"
                                                     ? "Save your remaining balance for later re-delivery."
                                                     : "Only pick up part of your order now; the rest stays at the warehouse."}
                                             </p>
                                         </div>
                                     </div>
-                                    <input type="checkbox" checked={wantsSplit} onChange={e => setWantsSplit(e.target.checked)} className="w-5 h-5 text-[var(--color-industrial-blue)] rounded border-blue-300 focus:ring-[var(--color-industrial-blue)]" />
+                                    <input type="checkbox" checked={wantsSplit} onChange={e => setWantsSplit(e.target.checked)} className="w-5 h-5 text-blue-600 rounded border-blue-500/30 focus:ring-blue-500 bg-background" />
                                 </div>
                                 {wantsSplit && (
-                                    <div className="pt-2 space-y-2 border-t border-blue-100">
-                                        <Label className="text-blue-900">How many individual bags do you want to receive now?</Label>
+                                    <div className="pt-3 space-y-2 border-t border-blue-500/20">
+                                        <Label className="text-blue-700 dark:text-blue-300/80">How many individual bags do you want to receive now?</Label>
                                         <Input 
                                             type="number" 
                                             min="1" 
                                             max={totalIndividualBags} 
                                             value={deliverNowQty} 
                                             onChange={(e) => setDeliverNowQty(parseInt(e.target.value) || 0)} 
+                                            className="bg-background border-blue-500/20 focus-visible:ring-blue-500"
                                         />
-                                        <p className="text-[10px] text-blue-600">
+                                        <p className="text-[10px] text-blue-500 font-bold">
                                             {totalIndividualBags - deliverNowQty} bags will be saved to your balance for later.
                                         </p>
                                     </div>
