@@ -130,19 +130,37 @@ alter table public.shipments alter column bag_type   drop not null;
 
 -- ── SHIPMENT LEDGER ──────────────────────────────────────────
 create table if not exists public.shipment_ledger (
-  id            uuid primary key default gen_random_uuid(),
-  shipment_id   uuid not null references public.shipments(id) on delete cascade,
-  date          date not null default current_date,
-  dr_number     text,
-  po_number     text,
-  client_name   text,
-  jb            integer not null default 0,
-  sb            integer not null default 0,
-  bags_returned integer not null default 0,
-  notes         text,
-  created_at    timestamptz not null default now(),
-  updated_at    timestamptz not null default now()
+  id                uuid primary key default gen_random_uuid(),
+  shipment_id       uuid not null references public.shipments(id) on delete cascade,
+  date              date not null default current_date,
+  po_number         text,
+  dr_number         text,
+  client_name       text,
+  driver_name       text,
+  plate_number      text,
+  destination       text,
+  service_type      text check (service_type in ('pickup', 'deliver')),
+  jb                integer not null default 0,
+  sb                integer not null default 0,
+  payment_method    text check (payment_method in ('cash', 'check')),
+  check_number      text,
+  amount            numeric(14, 2),
+  bags_returned     integer not null default 0,
+  bag_returned_type text check (bag_returned_type in ('JB', 'SB')),
+  notes             text,
+  created_at        timestamptz not null default now(),
+  updated_at        timestamptz not null default now()
 );
+-- For existing DBs
+alter table public.shipment_ledger add column if not exists driver_name       text;
+alter table public.shipment_ledger add column if not exists plate_number      text;
+alter table public.shipment_ledger add column if not exists destination       text;
+alter table public.shipment_ledger add column if not exists service_type      text;
+alter table public.shipment_ledger add column if not exists payment_method    text;
+alter table public.shipment_ledger add column if not exists check_number      text;
+alter table public.shipment_ledger add column if not exists amount            numeric(14, 2);
+alter table public.shipment_ledger add column if not exists bag_returned_type text;
+
 
 -- ── DELIVERY RECEIPTS ────────────────────────────────────────
 create table if not exists public.delivery_receipts (

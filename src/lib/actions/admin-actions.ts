@@ -259,14 +259,23 @@ export async function dispatchOrder(
         good_stock: shipment.good_stock - (jbQty + sbQty),
     }).eq("id", shipmentId);
 
-    // Create ledger row
+    // Create ledger row (with all new fields)
+    const clientName = order.client?.company_name || order.client?.full_name || "Unknown";
+    const destination = [order.client?.address_street, order.client?.address_city, order.client?.address_province].filter(Boolean).join(", ") || null;
     await supabase.from("shipment_ledger").insert({
         shipment_id: shipmentId,
         dr_number: drNumber,
-        po_number: order.po_number,
-        client_name: order.client?.full_name ?? "Unknown",
+        po_number: order.po_number || `SYS-${orderId.slice(0, 8).toUpperCase()}`,
+        client_name: clientName,
+        driver_name: driverName,
+        plate_number: plateNumber,
+        destination,
+        service_type: order.service_type,
         jb: jbQty,
         sb: sbQty,
+        payment_method: order.payment_method,
+        check_number: order.payment_method === "check" ? order.check_number : null,
+        amount: Number(order.total_amount) || null,
     });
 
     // Update order items dispatched_qty
@@ -287,7 +296,6 @@ export async function dispatchOrder(
     }).eq("id", orderId);
 
     // ── AUTO-GENERATE PO RECORD ──────────────────────────────
-    const clientName = order.client?.company_name || order.client?.full_name || "Unknown";
     const poNumber = order.po_number || `SYS-${orderId.slice(0, 8).toUpperCase()}`;
 
     // Determine payment columns
@@ -318,11 +326,6 @@ export async function dispatchOrder(
     }, { onConflict: "po_number" });
 
     // ── AUTO-GENERATE DR RECORD ──────────────────────────────
-    const destination = [
-        order.client?.address_street,
-        order.client?.address_city,
-        order.client?.address_province,
-    ].filter(Boolean).join(", ") || null;
 
     await supabase.from("delivery_receipts").upsert({
         dr_number: drNumber,
@@ -375,21 +378,24 @@ export async function fetchShipments() {
     return data ?? [];
 }
 
-export async function createShipment(batchName: string, totalJb: number, totalSb: number) {
+export async function createShipment(batchName: string, totalBags: number, arrivalDate?: string) {
     const { supabase, userId } = await requireAdmin();
+    // New flow: total bags is a combined grand total; JB/SB split is tracked per-ledger-entry.
+    // We store the full total in both total_jb (as combined) and remaining_jb for simplicity,
+    // keeping total_sb / remaining_sb at 0 until the ledger is used.
     const { data, error } = await supabase.from("shipments").insert({
         batch_name: batchName,
-        total_jb: totalJb,
-        total_sb: totalSb,
-        remaining_jb: totalJb,
-        remaining_sb: totalSb,
-        initial_quantity: totalJb + totalSb,
-        good_stock: totalJb + totalSb,
+        total_jb: totalBags,     // grand total stored here
+        total_sb: 0,
+        remaining_jb: totalBags, // mirrors total on creation
+        remaining_sb: 0,
+        initial_quantity: totalBags,
+        good_stock: totalBags,
         damaged_stock: 0,
-        arrival_date: new Date().toISOString().split("T")[0],
+        arrival_date: arrivalDate ?? new Date().toISOString().split("T")[0],
     }).select().single();
     if (error) throw new Error(error.message);
-    await logActivity(supabase, userId, "shipment_created", "shipment", data.id, { batchName, totalJb, totalSb });
+    await logActivity(supabase, userId, "shipment_created", "shipment", data.id, { batchName, totalBags });
     return data;
 }
 
@@ -397,17 +403,19 @@ export async function updateShipment(id: string, updates: Partial<{
     batch_name: string;
     total_jb: number;
     total_sb: number;
+    remaining_jb: number;
+    remaining_sb: number;
+    good_stock: number;
     arrival_date: string;
 }>) {
     const { supabase, userId } = await requireAdmin();
-    
-    // If updating totals, we should ideally adjust remaining counts too if no ledger entries exist
-    // For now, let's just update the fields requested.
     const { error } = await supabase.from("shipments").update({ 
         ...updates, 
-        updated_at: new Date().toISOString() 
+        // Keep good_stock in sync if remaining counts are manually set
+        ...(updates.remaining_jb !== undefined || updates.remaining_sb !== undefined ? {
+            good_stock: (updates.remaining_jb ?? 0) + (updates.remaining_sb ?? 0),
+        } : {}),
     }).eq("id", id);
-    
     if (error) throw new Error(error.message);
     await logActivity(supabase, userId, "shipment_updated", "shipment", id, updates);
     return { success: true };
@@ -437,23 +445,97 @@ export async function fetchShipmentLedger(shipmentId: string) {
 }
 
 export async function addLedgerEntry(shipmentId: string, entry: {
-    date?: string; dr_number?: string; po_number?: string; client_name?: string;
-    jb?: number; sb?: number; bags_returned?: number; notes?: string;
+    date?: string;
+    po_number?: string;
+    dr_number?: string;
+    client_name?: string;
+    driver_name?: string;
+    plate_number?: string;
+    destination?: string;
+    service_type?: string;
+    jb?: number;
+    sb?: number;
+    payment_method?: string;
+    check_number?: string;
+    amount?: number;
+    bags_returned?: number;
+    bag_returned_type?: string;
+    notes?: string;
 }) {
     const { supabase, userId } = await requireAdmin();
-    const { data, error } = await supabase.from("shipment_ledger").insert({ shipment_id: shipmentId, ...entry }).select().single();
+    const jbOut = entry.jb ?? 0;
+    const sbOut = entry.sb ?? 0;
+    const returned = entry.bags_returned ?? 0;
+    const returnedType = entry.bag_returned_type ?? null;
+
+    // Insert the ledger row
+    const { data, error } = await supabase.from("shipment_ledger").insert({
+        shipment_id: shipmentId,
+        ...entry,
+        date: entry.date ?? new Date().toISOString().split("T")[0],
+    }).select().single();
     if (error) throw new Error(error.message);
+
+    // Adjust shipment remaining stock
+    const { data: shipment } = await supabase.from("shipments").select("remaining_jb, remaining_sb, good_stock").eq("id", shipmentId).single();
+    if (shipment) {
+        const jbReturned = returned > 0 && returnedType === "JB" ? returned : 0;
+        const sbReturned = returned > 0 && returnedType === "SB" ? returned : 0;
+        const newRemainingJb = Math.max(0, (shipment.remaining_jb ?? 0) - jbOut + jbReturned);
+        const newRemainingSb = Math.max(0, (shipment.remaining_sb ?? 0) - sbOut + sbReturned);
+        await supabase.from("shipments").update({
+            remaining_jb: newRemainingJb,
+            remaining_sb: newRemainingSb,
+            good_stock: newRemainingJb + newRemainingSb,
+        }).eq("id", shipmentId);
+    }
+
     await logActivity(supabase, userId, "ledger_entry_added", "shipment_ledger", data.id, entry);
     return data;
 }
 
-export async function updateLedgerEntry(id: string, updates: Partial<{
-    date: string; dr_number: string; po_number: string; client_name: string;
-    jb: number; sb: number; bags_returned: number; notes: string;
-}>) {
+export async function updateLedgerEntry(
+    id: string,
+    shipmentId: string,
+    oldEntry: { jb: number; sb: number; bags_returned: number; bag_returned_type: string | null },
+    updates: Partial<{
+        date: string; po_number: string; dr_number: string; client_name: string;
+        driver_name: string; plate_number: string; destination: string; service_type: string;
+        jb: number; sb: number; payment_method: string; check_number: string; amount: number;
+        bags_returned: number; bag_returned_type: string; notes: string;
+    }>
+) {
     const { supabase, userId } = await requireAdmin();
     const { error } = await supabase.from("shipment_ledger").update({ ...updates, updated_at: new Date().toISOString() }).eq("id", id);
     if (error) throw new Error(error.message);
+
+    // Recalculate stock delta: reverse old, apply new
+    const { data: shipment } = await supabase.from("shipments").select("remaining_jb, remaining_sb").eq("id", shipmentId).single();
+    if (shipment) {
+        const oldJbReturned = oldEntry.bags_returned > 0 && oldEntry.bag_returned_type === "JB" ? oldEntry.bags_returned : 0;
+        const oldSbReturned = oldEntry.bags_returned > 0 && oldEntry.bag_returned_type === "SB" ? oldEntry.bags_returned : 0;
+        const newJbOut = updates.jb ?? oldEntry.jb;
+        const newSbOut = updates.sb ?? oldEntry.sb;
+        const newReturned = updates.bags_returned ?? oldEntry.bags_returned;
+        const newReturnedType = updates.bag_returned_type ?? oldEntry.bag_returned_type;
+        const newJbReturned = newReturned > 0 && newReturnedType === "JB" ? newReturned : 0;
+        const newSbReturned = newReturned > 0 && newReturnedType === "SB" ? newReturned : 0;
+
+        // Reverse old effect, apply new effect
+        const correctedJb = (shipment.remaining_jb ?? 0)
+            + oldEntry.jb - oldJbReturned   // undo old
+            - newJbOut + newJbReturned;       // apply new
+        const correctedSb = (shipment.remaining_sb ?? 0)
+            + oldEntry.sb - oldSbReturned
+            - newSbOut + newSbReturned;
+
+        await supabase.from("shipments").update({
+            remaining_jb: Math.max(0, correctedJb),
+            remaining_sb: Math.max(0, correctedSb),
+            good_stock: Math.max(0, correctedJb) + Math.max(0, correctedSb),
+        }).eq("id", shipmentId);
+    }
+
     await logActivity(supabase, userId, "ledger_entry_updated", "shipment_ledger", id, updates);
     return { success: true };
 }

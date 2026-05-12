@@ -1,61 +1,71 @@
-import { useState, useEffect } from "react";
+"use client";
+import { useState } from "react";
 import { Shipment, ShipmentLedgerEntry } from "@/lib/types/database";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from "@/components/ui/dialog";
-import { ChevronDown, ChevronRight, PackagePlus, Plus, Save, Trash2, Edit, MoreVertical } from "lucide-react";
-import { createShipment, fetchShipmentLedger, addLedgerEntry, deleteLedgerEntry, updateShipment, deleteShipment } from "@/lib/actions/admin-actions";
+import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogTrigger } from "@/components/ui/dialog";
+import { ChevronDown, ChevronRight, PackagePlus, Plus, Trash2, Edit2, MoreVertical, Save, AlertTriangle, Pencil } from "lucide-react";
+import { createShipment, fetchShipmentLedger, addLedgerEntry, updateLedgerEntry, deleteLedgerEntry, updateShipment, deleteShipment } from "@/lib/actions/admin-actions";
 import { toast } from "sonner";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { LedgerEntryDialog } from "./ledger-entry-dialog";
 
 export function ShipmentsTab({ shipments, loading, onReload }: { shipments: Shipment[], loading: boolean, onReload: () => void }) {
     const [expandedBatch, setExpandedBatch] = useState<string | null>(null);
     const [ledgerData, setLedgerData] = useState<Record<string, ShipmentLedgerEntry[]>>({});
     const [isCreating, setIsCreating] = useState(false);
-    const [isUpdating, setIsUpdating] = useState(false);
-    
+
     // New batch form
     const [newBatchName, setNewBatchName] = useState("");
-    const [newJb, setNewJb] = useState(0);
-    const [newSb, setNewSb] = useState(0);
+    const [newTotalBags, setNewTotalBags] = useState(0);
+    const [newArrivalDate, setNewArrivalDate] = useState(new Date().toISOString().split("T")[0]);
 
-    // Edit batch form
+    // Edit batch dialog
     const [editingShipment, setEditingShipment] = useState<Shipment | null>(null);
-    const [editForm, setEditForm] = useState({ batch_name: "", total_jb: 0, total_sb: 0, arrival_date: "" });
+    const [editForm, setEditForm] = useState({ batch_name: "", total_jb: 0, arrival_date: "" });
+    const [isUpdating, setIsUpdating] = useState(false);
 
-    // Manual entry form
-    const [manualEntry, setManualEntry] = useState({
-        dr_number: "", po_number: "", client_name: "", jb: 0, sb: 0, bags_returned: 0, notes: ""
-    });
+    // Manual remaining override
+    const [overrideShipment, setOverrideShipment] = useState<Shipment | null>(null);
+    const [overrideRemJb, setOverrideRemJb] = useState(0);
+    const [overrideRemSb, setOverrideRemSb] = useState(0);
+    const [isSavingOverride, setIsSavingOverride] = useState(false);
+
+    // Ledger entry dialog
+    const [ledgerDialogOpen, setLedgerDialogOpen] = useState(false);
+    const [editingEntry, setEditingEntry] = useState<ShipmentLedgerEntry | null>(null);
+    const [activeShipmentId, setActiveShipmentId] = useState<string>("");
+
+    // Delete confirmation
+    const [deleteTarget, setDeleteTarget] = useState<{ entry: ShipmentLedgerEntry; shipmentId: string } | null>(null);
+
+    const refreshLedger = async (shipmentId: string) => {
+        const ledger = await fetchShipmentLedger(shipmentId);
+        setLedgerData(prev => ({ ...prev, [shipmentId]: ledger as ShipmentLedgerEntry[] }));
+    };
 
     const toggleExpand = async (shipmentId: string) => {
-        if (expandedBatch === shipmentId) {
-            setExpandedBatch(null);
-        } else {
-            setExpandedBatch(shipmentId);
-            if (!ledgerData[shipmentId]) {
-                const ledger = await fetchShipmentLedger(shipmentId);
-                setLedgerData(prev => ({ ...prev, [shipmentId]: ledger as ShipmentLedgerEntry[] }));
-            }
-        }
+        if (expandedBatch === shipmentId) { setExpandedBatch(null); return; }
+        setExpandedBatch(shipmentId);
+        if (!ledgerData[shipmentId]) await refreshLedger(shipmentId);
     };
 
     const handleCreateBatch = async () => {
         if (!newBatchName) return toast.error("Batch name is required.");
+        if (newTotalBags <= 0) return toast.error("Total bags must be greater than 0.");
         setIsCreating(true);
         try {
-            await createShipment(newBatchName, newJb, newSb);
+            await createShipment(newBatchName, newTotalBags, newArrivalDate);
             toast.success("Shipment batch created.");
-            setNewBatchName(""); setNewJb(0); setNewSb(0);
+            setNewBatchName(""); setNewTotalBags(0);
+            setNewArrivalDate(new Date().toISOString().split("T")[0]);
             onReload();
-        } catch (e: any) {
-            toast.error(e.message || "Failed to create batch.");
-        } finally {
-            setIsCreating(false);
-        }
+        } catch (e: any) { toast.error(e.message || "Failed to create batch."); }
+        finally { setIsCreating(false); }
     };
 
     const handleUpdateShipment = async () => {
@@ -66,68 +76,93 @@ export function ShipmentsTab({ shipments, loading, onReload }: { shipments: Ship
             toast.success("Shipment batch updated.");
             setEditingShipment(null);
             onReload();
-        } catch (e: any) {
-            toast.error(e.message || "Failed to update batch.");
-        } finally {
-            setIsUpdating(false);
-        }
+        } catch (e: any) { toast.error(e.message || "Failed to update batch."); }
+        finally { setIsUpdating(false); }
     };
 
-    const handleDeleteBatch = async (shipmentId: string) => {
-        if (!confirm("Are you sure you want to delete this shipment batch? This action cannot be undone and may fail if there are active orders or ledger entries linked to it.")) return;
+    const handleDeleteBatch = async (id: string) => {
+        if (!confirm("Delete this shipment batch? This cannot be undone.")) return;
+        try { await deleteShipment(id); toast.success("Batch deleted."); onReload(); }
+        catch (e: any) { toast.error(e.message || "Failed to delete batch."); }
+    };
+
+    const openEditDialog = (s: Shipment) => {
+        setEditingShipment(s);
+        setEditForm({ batch_name: s.batch_name, total_jb: s.total_jb, arrival_date: s.arrival_date.split("T")[0] });
+    };
+
+    const openOverrideDialog = (s: Shipment) => {
+        setOverrideShipment(s);
+        setOverrideRemJb(s.remaining_jb);
+        setOverrideRemSb(s.remaining_sb);
+    };
+
+    const handleSaveOverride = async () => {
+        if (!overrideShipment) return;
+        setIsSavingOverride(true);
         try {
-            await deleteShipment(shipmentId);
-            toast.success("Shipment batch deleted.");
+            await updateShipment(overrideShipment.id, {
+                remaining_jb: overrideRemJb,
+                remaining_sb: overrideRemSb,
+            });
+            toast.success("Remaining stock updated. Dashboard totals will reflect this change.");
+            setOverrideShipment(null);
             onReload();
-        } catch (e: any) {
-            toast.error(e.message || "Failed to delete batch.");
+        } catch (e: any) { toast.error(e.message || "Failed to update."); }
+        finally { setIsSavingOverride(false); }
+    };
+
+    // Ledger entry add
+    const openAddEntry = (shipmentId: string) => {
+        setActiveShipmentId(shipmentId);
+        setEditingEntry(null);
+        setLedgerDialogOpen(true);
+    };
+
+    // Ledger entry edit
+    const openEditEntry = (entry: ShipmentLedgerEntry, shipmentId: string) => {
+        setActiveShipmentId(shipmentId);
+        setEditingEntry(entry);
+        setLedgerDialogOpen(true);
+    };
+
+    const handleLedgerSubmit = async (data: Record<string, unknown>) => {
+        if (editingEntry) {
+            await updateLedgerEntry(
+                editingEntry.id,
+                activeShipmentId,
+                { jb: editingEntry.jb, sb: editingEntry.sb, bags_returned: editingEntry.bags_returned, bag_returned_type: editingEntry.bag_returned_type },
+                data as any
+            );
+            toast.success("Ledger entry updated.");
+        } else {
+            await addLedgerEntry(activeShipmentId, data as any);
+            toast.success("Ledger entry added.");
         }
+        await refreshLedger(activeShipmentId);
+        onReload();
     };
 
-    const openEditDialog = (shipment: Shipment) => {
-        setEditingShipment(shipment);
-        setEditForm({
-            batch_name: shipment.batch_name,
-            total_jb: shipment.total_jb,
-            total_sb: shipment.total_sb,
-            arrival_date: shipment.arrival_date.split('T')[0]
-        });
-    };
-
-    const handleAddManualEntry = async (shipmentId: string) => {
+    const confirmDeleteEntry = async () => {
+        if (!deleteTarget) return;
         try {
-            await addLedgerEntry(shipmentId, manualEntry);
-            toast.success("Manual entry added.");
-            setManualEntry({ dr_number: "", po_number: "", client_name: "", jb: 0, sb: 0, bags_returned: 0, notes: "" });
-            const ledger = await fetchShipmentLedger(shipmentId);
-            setLedgerData(prev => ({ ...prev, [shipmentId]: ledger as ShipmentLedgerEntry[] }));
-            onReload(); // Refresh remaining counts
-        } catch (e: any) {
-            toast.error(e.message || "Failed to add entry.");
-        }
-    };
-
-    const handleDeleteEntry = async (entryId: string, shipmentId: string) => {
-        if (!confirm("Are you sure you want to delete this ledger entry? Stock will NOT be automatically reverted in the UI for safety; you may need to adjust the shipment manually.")) return;
-        try {
-            await deleteLedgerEntry(entryId);
+            await deleteLedgerEntry(deleteTarget.entry.id);
             toast.success("Entry deleted.");
-            const ledger = await fetchShipmentLedger(shipmentId);
-            setLedgerData(prev => ({ ...prev, [shipmentId]: ledger as ShipmentLedgerEntry[] }));
+            await refreshLedger(deleteTarget.shipmentId);
             onReload();
-        } catch (e: any) {
-            toast.error(e.message || "Failed to delete entry.");
-        }
+        } catch (e: any) { toast.error(e.message || "Failed to delete."); }
+        finally { setDeleteTarget(null); }
     };
 
     if (loading) return <div className="py-8 text-center text-muted-foreground animate-pulse">Loading shipment batches...</div>;
 
     return (
         <div className="space-y-6">
+            {/* Header + Create */}
             <div className="flex justify-between items-center bg-card p-4 rounded-xl border border-border shadow-sm">
                 <div>
                     <h3 className="font-semibold text-lg">Shipment Batches</h3>
-                    <p className="text-sm text-muted-foreground">Batches act as folders holding JB and SB inventory.</p>
+                    <p className="text-sm text-muted-foreground">Each batch tracks a shipment of Portland Cement Type 1.</p>
                 </div>
                 <Dialog>
                     <DialogTrigger render={<Button className="bg-[var(--color-industrial-blue)]" />}>
@@ -136,28 +171,25 @@ export function ShipmentsTab({ shipments, loading, onReload }: { shipments: Ship
                     <DialogContent>
                         <DialogHeader>
                             <DialogTitle>Create New Shipment Batch</DialogTitle>
+                            <DialogDescription>Enter the batch name and total bags received.</DialogDescription>
                         </DialogHeader>
                         <div className="space-y-4 py-4">
                             <div className="space-y-2">
                                 <Label>Batch Name / Vessel <span className="text-red-500">*</span></Label>
-                                <Input value={newBatchName} onChange={e => setNewBatchName(e.target.value)} placeholder="e.g. Vessel Alpha - Nov 2023" />
+                                <Input value={newBatchName} onChange={e => setNewBatchName(e.target.value)} placeholder="e.g. MV Alpha - May 2026" />
                             </div>
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-2">
-                                    <Label>Total JB</Label>
-                                    <Input type="number" min="0" value={newJb} onChange={e => setNewJb(parseInt(e.target.value) || 0)} />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label>Total SB</Label>
-                                    <Input type="number" min="0" value={newSb} onChange={e => setNewSb(parseInt(e.target.value) || 0)} />
-                                </div>
+                            <div className="space-y-2">
+                                <Label>Total Bags <span className="text-red-500">*</span></Label>
+                                <Input type="number" min={1} value={newTotalBags} onChange={e => setNewTotalBags(parseInt(e.target.value) || 0)} placeholder="Combined JB + SB total" />
+                                <p className="text-xs text-muted-foreground">This is the combined grand total of all bag types in this shipment.</p>
                             </div>
-                            <div className="bg-muted p-3 rounded-lg text-sm">
-                                <p className="text-muted-foreground">Grand Total: <span className="font-bold text-foreground">{newJb + newSb} bags</span></p>
+                            <div className="space-y-2">
+                                <Label>Arrival Date</Label>
+                                <Input type="date" value={newArrivalDate} onChange={e => setNewArrivalDate(e.target.value)} />
                             </div>
                         </div>
                         <DialogFooter>
-                            <Button onClick={handleCreateBatch} disabled={isCreating || !newBatchName} className="bg-[var(--color-industrial-blue)]">
+                            <Button onClick={handleCreateBatch} disabled={isCreating || !newBatchName || newTotalBags <= 0} className="bg-[var(--color-industrial-blue)]">
                                 {isCreating ? "Creating..." : "Create Batch"}
                             </Button>
                         </DialogFooter>
@@ -165,13 +197,15 @@ export function ShipmentsTab({ shipments, loading, onReload }: { shipments: Ship
                 </Dialog>
             </div>
 
+            {/* Batch List */}
             <div className="space-y-4">
-                {shipments.map(shipment => (
+                {shipments.map(shipment => {
+                    const totalRemaining = shipment.remaining_jb + shipment.remaining_sb;
+                    const totalInitial = shipment.total_jb + shipment.total_sb;
+                    return (
                     <Card key={shipment.id} className="overflow-hidden border border-border/50 shadow-sm transition-shadow hover:shadow-md">
-                        <div 
-                            className="p-4 flex items-center justify-between cursor-pointer hover:bg-muted/30 transition-colors"
-                            onClick={() => toggleExpand(shipment.id)}
-                        >
+                        {/* Batch Header */}
+                        <div className="p-4 flex items-center justify-between cursor-pointer hover:bg-muted/30 transition-colors" onClick={() => toggleExpand(shipment.id)}>
                             <div className="flex items-center gap-4">
                                 {expandedBatch === shipment.id ? <ChevronDown className="w-5 h-5 text-muted-foreground" /> : <ChevronRight className="w-5 h-5 text-muted-foreground" />}
                                 <div>
@@ -179,27 +213,27 @@ export function ShipmentsTab({ shipments, loading, onReload }: { shipments: Ship
                                     <p className="text-xs text-muted-foreground mt-0.5">Arrived: {new Date(shipment.arrival_date).toLocaleDateString()}</p>
                                 </div>
                             </div>
-                            <div className="flex flex-col sm:flex-row items-end sm:items-center gap-4 sm:gap-8">
-                                <div className="text-right sm:text-center order-2 sm:order-1">
-                                    <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider mb-1">Initial</p>
-                                    <p className="text-sm font-semibold">{shipment.total_jb} JB · {shipment.total_sb} SB</p>
+                            <div className="flex items-center gap-6">
+                                <div className="text-right">
+                                    <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider mb-0.5">Initial Total</p>
+                                    <p className="text-sm font-semibold">{totalInitial} bags</p>
                                 </div>
-                                <div className="text-right sm:text-center order-1 sm:order-2">
-                                    <p className="text-[10px] uppercase font-bold text-[var(--color-industrial-blue)] tracking-wider mb-1">Remaining</p>
-                                    <p className="text-base font-bold text-[var(--color-industrial-blue)]">{shipment.remaining_jb} JB · {shipment.remaining_sb} SB</p>
+                                <div className="text-right">
+                                    <p className="text-[10px] uppercase font-bold text-[var(--color-industrial-blue)] tracking-wider mb-0.5">Remaining</p>
+                                    <p className="text-base font-bold text-[var(--color-industrial-blue)]">{totalRemaining} bags</p>
+                                    <p className="text-[10px] text-muted-foreground">{shipment.remaining_jb} JB · {shipment.remaining_sb} SB</p>
                                 </div>
-                                <div onClick={(e) => e.stopPropagation()}>
+                                <div onClick={e => e.stopPropagation()}>
                                     <DropdownMenu>
-                                        <DropdownMenuTrigger 
-                                            render={
-                                                <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground" />
-                                            }
-                                        >
+                                        <DropdownMenuTrigger render={<Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground" />}>
                                             <MoreVertical className="w-4 h-4" />
                                         </DropdownMenuTrigger>
                                         <DropdownMenuContent align="end">
                                             <DropdownMenuItem onClick={() => openEditDialog(shipment)}>
-                                                <Edit className="w-4 h-4 mr-2" /> Rename / Edit
+                                                <Edit2 className="w-4 h-4 mr-2" /> Rename / Edit
+                                            </DropdownMenuItem>
+                                            <DropdownMenuItem onClick={() => openOverrideDialog(shipment)}>
+                                                <Pencil className="w-4 h-4 mr-2" /> Adjust Remaining
                                             </DropdownMenuItem>
                                             <DropdownMenuItem onClick={() => handleDeleteBatch(shipment.id)} className="text-destructive focus:text-destructive">
                                                 <Trash2 className="w-4 h-4 mr-2" /> Delete Batch
@@ -210,148 +244,180 @@ export function ShipmentsTab({ shipments, loading, onReload }: { shipments: Ship
                             </div>
                         </div>
 
+                        {/* Expanded Ledger */}
                         {expandedBatch === shipment.id && (
                             <div className="border-t border-border bg-muted/10 p-4 space-y-4">
-                                {/* Manual Entry Row */}
-                                <div className="bg-card p-3 rounded-lg border border-border shadow-sm flex flex-col sm:flex-row items-stretch sm:items-end gap-3">
-                                    <div className="grid grid-cols-2 sm:flex sm:flex-row gap-3 flex-1">
-                                        <div className="space-y-1.5 flex-1 sm:max-w-[120px]">
-                                            <Label className="text-[10px] uppercase text-muted-foreground">Date</Label>
-                                            <Input type="date" className="h-8 text-xs" defaultValue={new Date().toISOString().split('T')[0]} />
+                                {/* Remaining Stock + Add Entry */}
+                                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-card p-3 rounded-lg border">
+                                    <div className="flex items-center gap-4">
+                                        <div className="px-3 py-1.5 rounded-md bg-[var(--color-industrial-blue)]/10 border border-[var(--color-industrial-blue)]/20">
+                                            <p className="text-[10px] uppercase font-bold text-[var(--color-industrial-blue)] tracking-wider">Remaining</p>
+                                            <p className="text-lg font-bold text-[var(--color-industrial-blue)]">{totalRemaining}</p>
                                         </div>
-                                        <div className="space-y-1.5 flex-1 sm:max-w-[120px]">
-                                            <Label className="text-[10px] uppercase text-muted-foreground">DR #</Label>
-                                            <Input className="h-8 text-xs" value={manualEntry.dr_number} onChange={e => setManualEntry({...manualEntry, dr_number: e.target.value})} placeholder="DR-XXXX" />
+                                        <div className="text-xs text-muted-foreground space-y-0.5">
+                                            <p>JB: <span className="font-bold text-foreground">{shipment.remaining_jb}</span></p>
+                                            <p>SB: <span className="font-bold text-foreground">{shipment.remaining_sb}</span></p>
                                         </div>
-                                        <div className="space-y-1.5 flex-1 sm:max-w-[120px]">
-                                            <Label className="text-[10px] uppercase text-muted-foreground">PO #</Label>
-                                            <Input className="h-8 text-xs" value={manualEntry.po_number} onChange={e => setManualEntry({...manualEntry, po_number: e.target.value})} placeholder="PO-XXXX" />
-                                        </div>
-                                        <div className="space-y-1.5 flex-1 sm:flex-[2]">
-                                            <Label className="text-[10px] uppercase text-muted-foreground">Client Name</Label>
-                                            <Input className="h-8 text-xs" value={manualEntry.client_name} onChange={e => setManualEntry({...manualEntry, client_name: e.target.value})} placeholder="Client name" />
-                                        </div>
-                                    </div>
-                                    <div className="flex items-end gap-3">
-                                        <div className="space-y-1.5 flex-1 sm:max-w-[80px]">
-                                            <Label className="text-[10px] uppercase text-muted-foreground">Out JB</Label>
-                                            <Input type="number" className="h-8 text-xs" value={manualEntry.jb} onChange={e => setManualEntry({...manualEntry, jb: parseInt(e.target.value) || 0})} />
-                                        </div>
-                                        <div className="space-y-1.5 flex-1 sm:max-w-[80px]">
-                                            <Label className="text-[10px] uppercase text-muted-foreground">Out SB</Label>
-                                            <Input type="number" className="h-8 text-xs" value={manualEntry.sb} onChange={e => setManualEntry({...manualEntry, sb: parseInt(e.target.value) || 0})} />
-                                        </div>
-                                        <Button size="sm" onClick={() => handleAddManualEntry(shipment.id)} className="h-8 px-3 bg-[var(--color-industrial-blue)] flex-1 sm:flex-none">
-                                            <Plus className="w-3.5 h-3.5 mr-1" /> Add
+                                        <Button variant="outline" size="sm" className="text-xs h-7" onClick={() => openOverrideDialog(shipment)}>
+                                            <Pencil className="w-3 h-3 mr-1" /> Adjust
                                         </Button>
                                     </div>
+                                    <Button size="sm" onClick={() => openAddEntry(shipment.id)} className="bg-[var(--color-industrial-blue)]">
+                                        <Plus className="w-3.5 h-3.5 mr-1" /> Add Entry
+                                    </Button>
                                 </div>
-                                {/* Ledger View */}
-                                <div className="bg-card rounded-lg border border-border overflow-hidden">
-                                    {/* Mobile Ledger: Cards */}
-                                    <div className="lg:hidden divide-y divide-border">
-                                        {!ledgerData[shipment.id] ? (
-                                            <div className="p-4 text-center text-xs text-muted-foreground">Loading ledger...</div>
-                                        ) : ledgerData[shipment.id].length === 0 ? (
-                                            <div className="p-4 text-center text-xs text-muted-foreground">No ledger entries.</div>
-                                        ) : ledgerData[shipment.id].map(entry => (
-                                            <div key={entry.id} className="p-3 flex items-center justify-between gap-4">
-                                                <div className="min-w-0 flex-1">
-                                                    <div className="flex items-center gap-2 mb-1">
-                                                        <span className="text-[10px] font-mono text-muted-foreground">{new Date(entry.date).toLocaleDateString()}</span>
-                                                        <span className="text-[10px] font-bold text-foreground bg-muted px-1.5 rounded">{entry.dr_number || "No DR"}</span>
-                                                    </div>
-                                                    <p className="text-sm font-bold truncate">{entry.client_name || "Unknown Client"}</p>
-                                                    <p className="text-xs text-muted-foreground">PO: {entry.po_number || "—"}</p>
-                                                </div>
-                                                <div className="text-right flex flex-col items-end gap-1">
-                                                    <p className="text-xs font-bold text-red-500">-{entry.jb} JB / -{entry.sb} SB</p>
-                                                    <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => handleDeleteEntry(entry.id, shipment.id)}>
-                                                        <Trash2 className="w-3.5 h-3.5" />
-                                                    </Button>
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
 
-                                    {/* Desktop Ledger: Table */}
-                                    <div className="hidden lg:block">
-                                        <Table>
-                                            <TableHeader className="bg-muted/50">
-                                                <TableRow>
-                                                    <TableHead className="text-xs w-[100px]">Date</TableHead>
-                                                    <TableHead className="text-xs">DR #</TableHead>
-                                                    <TableHead className="text-xs">PO #</TableHead>
-                                                    <TableHead className="text-xs">Client Name</TableHead>
-                                                    <TableHead className="text-xs text-right text-red-500">Out JB</TableHead>
-                                                    <TableHead className="text-xs text-right text-red-500">Out SB</TableHead>
-                                                    <TableHead className="text-right w-[60px]"></TableHead>
+                                {/* Ledger Table */}
+                                <div className="bg-card rounded-lg border border-border overflow-x-auto">
+                                    <Table>
+                                        <TableHeader className="bg-muted/50">
+                                            <TableRow>
+                                                <TableHead className="text-[10px] w-[80px]">Date</TableHead>
+                                                <TableHead className="text-[10px]">PO #</TableHead>
+                                                <TableHead className="text-[10px]">DR #</TableHead>
+                                                <TableHead className="text-[10px]">Client</TableHead>
+                                                <TableHead className="text-[10px]">Driver</TableHead>
+                                                <TableHead className="text-[10px]">Plate</TableHead>
+                                                <TableHead className="text-[10px]">Destination</TableHead>
+                                                <TableHead className="text-[10px]">Service</TableHead>
+                                                <TableHead className="text-[10px] text-right">JB</TableHead>
+                                                <TableHead className="text-[10px] text-right">SB</TableHead>
+                                                <TableHead className="text-[10px] text-right">Total</TableHead>
+                                                <TableHead className="text-[10px]">Payment</TableHead>
+                                                <TableHead className="text-[10px]">Check No.</TableHead>
+                                                <TableHead className="text-[10px] text-right">Amount</TableHead>
+                                                <TableHead className="text-[10px] text-right text-emerald-600">Returns</TableHead>
+                                                <TableHead className="text-[10px]">Ret. Type</TableHead>
+                                                <TableHead className="text-right w-[70px]"></TableHead>
+                                            </TableRow>
+                                        </TableHeader>
+                                        <TableBody>
+                                            {!ledgerData[shipment.id] ? (
+                                                <TableRow><TableCell colSpan={17} className="text-center py-4 text-xs text-muted-foreground">Loading...</TableCell></TableRow>
+                                            ) : ledgerData[shipment.id].length === 0 ? (
+                                                <TableRow><TableCell colSpan={17} className="text-center py-4 text-xs text-muted-foreground">No ledger entries yet.</TableCell></TableRow>
+                                            ) : ledgerData[shipment.id].map(e => (
+                                                <TableRow key={e.id}>
+                                                    <TableCell className="text-[11px] whitespace-nowrap">{new Date(e.date).toLocaleDateString()}</TableCell>
+                                                    <TableCell className="text-[11px] font-medium">{e.po_number || "—"}</TableCell>
+                                                    <TableCell className="text-[11px] font-medium">{e.dr_number || "—"}</TableCell>
+                                                    <TableCell className="text-[11px] max-w-[100px] truncate">{e.client_name || "—"}</TableCell>
+                                                    <TableCell className="text-[11px]">{e.driver_name || "—"}</TableCell>
+                                                    <TableCell className="text-[11px]">{e.plate_number || "—"}</TableCell>
+                                                    <TableCell className="text-[11px] max-w-[100px] truncate" title={e.destination || ""}>{e.destination || "—"}</TableCell>
+                                                    <TableCell className="text-[10px] uppercase">{e.service_type === "deliver" ? "Delivery" : e.service_type === "pickup" ? "Pick-up" : "—"}</TableCell>
+                                                    <TableCell className="text-[11px] text-right text-red-500 font-medium">{e.jb > 0 ? `-${e.jb}` : "—"}</TableCell>
+                                                    <TableCell className="text-[11px] text-right text-red-500 font-medium">{e.sb > 0 ? `-${e.sb}` : "—"}</TableCell>
+                                                    <TableCell className="text-[11px] text-right font-bold">{e.jb + e.sb > 0 ? e.jb + e.sb : "—"}</TableCell>
+                                                    <TableCell className="text-[10px] uppercase">{e.payment_method || "—"}</TableCell>
+                                                    <TableCell className="text-[11px]">{e.check_number || "—"}</TableCell>
+                                                    <TableCell className="text-[11px] text-right">{e.amount ? `₱${Number(e.amount).toLocaleString()}` : "—"}</TableCell>
+                                                    <TableCell className="text-[11px] text-right font-bold text-emerald-600">{e.bags_returned > 0 ? `+${e.bags_returned}` : "—"}</TableCell>
+                                                    <TableCell className="text-[10px]">{e.bag_returned_type || "—"}</TableCell>
+                                                    <TableCell className="text-right whitespace-nowrap">
+                                                        <Button variant="ghost" size="icon" className="h-6 w-6 text-blue-600" onClick={() => openEditEntry(e, shipment.id)}><Edit2 className="w-3 h-3" /></Button>
+                                                        <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive" onClick={() => setDeleteTarget({ entry: e, shipmentId: shipment.id })}><Trash2 className="w-3 h-3" /></Button>
+                                                    </TableCell>
                                                 </TableRow>
-                                            </TableHeader>
-                                            <TableBody>
-                                                {!ledgerData[shipment.id] ? (
-                                                    <TableRow><TableCell colSpan={7} className="text-center py-4 text-xs text-muted-foreground">Loading ledger...</TableCell></TableRow>
-                                                ) : ledgerData[shipment.id].length === 0 ? (
-                                                    <TableRow><TableCell colSpan={7} className="text-center py-4 text-xs text-muted-foreground">No ledger entries.</TableCell></TableRow>
-                                                ) : ledgerData[shipment.id].map(entry => (
-                                                    <TableRow key={entry.id}>
-                                                        <TableCell className="text-xs">{new Date(entry.date).toLocaleDateString()}</TableCell>
-                                                        <TableCell className="text-xs font-medium">{entry.dr_number || "—"}</TableCell>
-                                                        <TableCell className="text-xs font-medium">{entry.po_number || "—"}</TableCell>
-                                                        <TableCell className="text-xs">{entry.client_name || "—"}</TableCell>
-                                                        <TableCell className="text-xs text-right text-red-500 font-medium">-{entry.jb}</TableCell>
-                                                        <TableCell className="text-xs text-right text-red-500 font-medium">-{entry.sb}</TableCell>
-                                                        <TableCell className="text-right">
-                                                            <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:bg-destructive/10" onClick={() => handleDeleteEntry(entry.id, shipment.id)}>
-                                                                <Trash2 className="w-3.5 h-3.5" />
-                                                            </Button>
-                                                        </TableCell>
-                                                    </TableRow>
-                                                ))}
-                                            </TableBody>
-                                        </Table>
-                                    </div>
+                                            ))}
+                                        </TableBody>
+                                    </Table>
                                 </div>
                             </div>
                         )}
                     </Card>
-                ))}
+                    );
+                })}
             </div>
 
             {/* Edit Shipment Dialog */}
-            <Dialog open={!!editingShipment} onOpenChange={(open) => !open && setEditingShipment(null)}>
+            <Dialog open={!!editingShipment} onOpenChange={open => !open && setEditingShipment(null)}>
                 <DialogContent>
-                    <DialogHeader>
-                        <DialogTitle>Edit Shipment Batch</DialogTitle>
-                    </DialogHeader>
+                    <DialogHeader><DialogTitle>Edit Shipment Batch</DialogTitle></DialogHeader>
                     <div className="space-y-4 py-4">
                         <div className="space-y-2">
-                            <Label>Batch Name / Vessel <span className="text-red-500">*</span></Label>
-                            <Input value={editForm.batch_name} onChange={e => setEditForm({ ...editForm, batch_name: e.target.value })} placeholder="e.g. Vessel Alpha - Nov 2023" />
+                            <Label>Batch Name <span className="text-red-500">*</span></Label>
+                            <Input value={editForm.batch_name} onChange={e => setEditForm({ ...editForm, batch_name: e.target.value })} />
                         </div>
                         <div className="space-y-2">
                             <Label>Arrival Date</Label>
                             <Input type="date" value={editForm.arrival_date} onChange={e => setEditForm({ ...editForm, arrival_date: e.target.value })} />
                         </div>
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="space-y-2">
-                                <Label>Total JB</Label>
-                                <Input type="number" min="0" value={editForm.total_jb} onChange={e => setEditForm({ ...editForm, total_jb: parseInt(e.target.value) || 0 })} />
-                            </div>
-                            <div className="space-y-2">
-                                <Label>Total SB</Label>
-                                <Input type="number" min="0" value={editForm.total_sb} onChange={e => setEditForm({ ...editForm, total_sb: parseInt(e.target.value) || 0 })} />
-                            </div>
-                        </div>
-                        <div className="bg-amber-500/10 p-3 rounded-lg border border-amber-500/20 text-xs text-amber-500">
-                            <p className="font-semibold mb-1">Warning: Changing Total Counts</p>
-                            <p>Changing total counts will NOT automatically update remaining counts. Only use this to fix accidental entry errors.</p>
+                        <div className="space-y-2">
+                            <Label>Initial Total Bags</Label>
+                            <Input type="number" min={0} value={editForm.total_jb} onChange={e => setEditForm({ ...editForm, total_jb: parseInt(e.target.value) || 0 })} />
                         </div>
                     </div>
                     <DialogFooter>
                         <Button variant="ghost" onClick={() => setEditingShipment(null)}>Cancel</Button>
-                        <Button onClick={handleUpdateShipment} disabled={isUpdating || !editForm.batch_name} className="bg-[var(--color-industrial-blue)]">
-                            {isUpdating ? "Saving..." : "Save Changes"}
+                        <Button onClick={handleUpdateShipment} disabled={isUpdating} className="bg-[var(--color-industrial-blue)]">
+                            {isUpdating ? "Saving..." : "Save"}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Manual Remaining Override Dialog */}
+            <Dialog open={!!overrideShipment} onOpenChange={open => !open && setOverrideShipment(null)}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Adjust Remaining Stock</DialogTitle>
+                        <DialogDescription>
+                            Manually override the remaining bag counts for <strong>{overrideShipment?.batch_name}</strong>.
+                            Use this for damage, spoilage, or inventory corrections.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                        <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
+                            <p className="font-semibold flex items-center gap-1.5"><AlertTriangle className="w-4 h-4" /> Manual Override</p>
+                            <p className="mt-1">Changes here instantly affect the Dashboard&apos;s &quot;Total Good Stock&quot; counter.</p>
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <Label>Remaining JB</Label>
+                                <Input type="number" min={0} value={overrideRemJb} onChange={e => setOverrideRemJb(parseInt(e.target.value) || 0)} />
+                            </div>
+                            <div className="space-y-2">
+                                <Label>Remaining SB</Label>
+                                <Input type="number" min={0} value={overrideRemSb} onChange={e => setOverrideRemSb(parseInt(e.target.value) || 0)} />
+                            </div>
+                        </div>
+                        <div className="bg-muted p-3 rounded-lg text-sm">
+                            <p className="text-muted-foreground">New Total: <span className="font-bold text-foreground">{overrideRemJb + overrideRemSb} bags</span></p>
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setOverrideShipment(null)}>Cancel</Button>
+                        <Button onClick={handleSaveOverride} disabled={isSavingOverride} className="bg-[var(--color-industrial-blue)]">
+                            <Save className="w-4 h-4 mr-2" /> {isSavingOverride ? "Saving..." : "Save Override"}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Ledger Entry Add/Edit Dialog */}
+            <LedgerEntryDialog
+                open={ledgerDialogOpen}
+                onOpenChange={setLedgerDialogOpen}
+                entry={editingEntry}
+                onSubmit={handleLedgerSubmit}
+            />
+
+            {/* Delete Entry Confirmation */}
+            <Dialog open={!!deleteTarget} onOpenChange={open => { if (!open) setDeleteTarget(null); }}>
+                <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2 text-destructive">
+                            <AlertTriangle className="w-5 h-5" /> Delete Ledger Entry
+                        </DialogTitle>
+                        <DialogDescription>
+                            Are you sure? Stock will NOT be automatically reverted. You may need to manually adjust the remaining count.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter className="gap-2">
+                        <Button variant="outline" onClick={() => setDeleteTarget(null)}>Cancel</Button>
+                        <Button variant="destructive" onClick={confirmDeleteEntry}>
+                            <Trash2 className="w-4 h-4 mr-2" /> Delete
                         </Button>
                     </DialogFooter>
                 </DialogContent>
