@@ -95,8 +95,7 @@ const WAREHOUSE_NAV_ITEMS = [
         subItems: [
             { href: "/admin/inventory?tab=shipments", label: "Shipments" },
             { href: "/admin/inventory?tab=po", label: "P.O. List" },
-            { href: "/admin/inventory?tab=dr", label: "D.R. List" },
-            { href: "/admin/inventory?tab=reports", label: "Reports" }
+            { href: "/admin/inventory?tab=dr", label: "D.R. List" }
         ]
     },
     {
