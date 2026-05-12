@@ -133,6 +133,8 @@ function SidebarContent({ pathname, onNavigate }: { pathname: string; onNavigate
   );
 }
 
+import { GlobalSearch } from "@/components/global-search";
+
 function ClientLayoutInner({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { kycStatus } = useClientKyc();
@@ -251,6 +253,10 @@ function ClientLayoutInner({ children }: { children: React.ReactNode }) {
                 {navItems.find((item) => pathname.startsWith(item.href))?.label ?? "Dashboard"}
               </h1>
             </div>
+          </div>
+
+          <div className="flex-1 flex justify-center px-2 sm:px-4">
+            <GlobalSearch />
           </div>
 
           <div className="flex items-center gap-2">
