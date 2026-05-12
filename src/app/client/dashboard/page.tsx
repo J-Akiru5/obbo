@@ -6,6 +6,8 @@ import { AlertCircle, Bell, Clock, Package, PackageSearch, Truck, Info, ShieldAl
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 
+import { Order, Product, Notification, OrderItem } from "@/lib/types/database";
+
 export const metadata = {
     title: "Client Dashboard | OBBO iManage",
 };
@@ -26,7 +28,7 @@ export default async function ClientDashboardPage() {
         : { data: null };
     const isVerified = profile?.kyc_status === "verified";
 
-    const unreadNotifications = notifications.filter((n: any) => !n.is_read);
+    const unreadNotifications = notifications.filter((n: Notification) => !n.is_read);
     const popularProducts = products.slice(0, 2);
 
     return (
@@ -140,7 +142,7 @@ export default async function ClientDashboardPage() {
             {/* Notification Alerts */}
             {unreadNotifications.length > 0 && (
                 <div className="space-y-2">
-                    {unreadNotifications.slice(0, 3).map((notif: any) => (
+                    {unreadNotifications.slice(0, 3).map((notif: Notification) => (
                         <Link key={notif.id} href={notif.href || "/client/orders"}>
                                 <div className={`rounded-xl p-4 flex items-start gap-3 cursor-pointer transition-colors ${
                                     notif.severity === "warning"
@@ -199,11 +201,11 @@ export default async function ClientDashboardPage() {
                             </div>
                         ) : (
                             <div className="space-y-4">
-                                {recentOrders.map((order: any) => {
-                                    const totalBags = order.items.reduce((acc: number, item: any) => acc + item.requested_qty, 0);
+                                {recentOrders.map((order: Order) => {
+                                    const totalBags = order.items.reduce((acc: number, item: OrderItem) => acc + (item.requested_qty || 0), 0);
                                     
                                     let statusVariant: "default" | "secondary" | "destructive" | "outline" = "outline";
-                                    let statusLabel = order.status;
+                                    let statusLabel: string = order.status;
                                     
                                     if (order.status === "pending") {
                                         statusVariant = "secondary";
@@ -265,7 +267,7 @@ export default async function ClientDashboardPage() {
                     <CardContent className="space-y-4">
                         {popularProducts.length > 0 ? (
                             <div className="space-y-3">
-                                {popularProducts.map((p: any) => (
+                                {popularProducts.map((p: Product) => (
                                     <div key={p.id} className="p-3 bg-muted/20 border border-border rounded-lg flex justify-between items-center">
                                         <div>
                                             <p className="text-sm font-medium text-foreground">{p.name}</p>

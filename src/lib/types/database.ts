@@ -183,6 +183,10 @@ export interface CustomerBalance {
     bag_type: BagType;
     remaining_qty: number;
     status: BalanceStatus;
+    order?: {
+        po_number: string | null;
+        po_image_url: string | null;
+    } | null;
     created_at: string;
 }
 

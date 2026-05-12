@@ -18,6 +18,8 @@ import {
     Clock, CircleDot, Package, ArrowRight
 } from "lucide-react";
 
+import { Order, OrderItem } from "@/lib/types/database";
+
 // ─── Tracking progress steps ─────────────────────────────────
 const TRACKING_STEPS = [
     { key: "approved", label: "Approved", icon: CheckCircle2 },
@@ -27,7 +29,7 @@ const TRACKING_STEPS = [
     { key: "delivered", label: "Delivered", icon: CircleDot },
 ];
 
-function getActiveStep(order: any): number {
+function getActiveStep(order: Order): number {
     if (order.status === "completed" || order.tracking_status === "delivered") return 4;
     if (order.tracking_status === "in_transit") return 3;
     if (order.status === "dispatched") return 2;
@@ -36,7 +38,7 @@ function getActiveStep(order: any): number {
     return -1;
 }
 
-function TrackingProgressBar({ order }: { order: any }) {
+function TrackingProgressBar({ order }: { order: Order }) {
     const activeStep = getActiveStep(order);
     if (activeStep < 0) return null;
 
@@ -74,8 +76,8 @@ function TrackingProgressBar({ order }: { order: any }) {
     );
 }
 
-export default function OrdersClient({ orders }: { orders: any[] }) {
-    const [selectedOrder, setSelectedOrder] = useState<any | null>(null);
+export default function OrdersClient({ orders }: { orders: Order[] }) {
+    const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
     const [isPaymentOpen, setIsPaymentOpen] = useState(false);
     const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null);
     
@@ -112,7 +114,7 @@ export default function OrdersClient({ orders }: { orders: any[] }) {
         return filtered;
     }, [orders, searchQuery, dateFrom, dateTo]);
 
-    const handleOpenPayment = (order: any) => {
+    const handleOpenPayment = (order: Order) => {
         setSelectedOrder(order);
         setCheckNumber("");
         setCheckFile(null);
@@ -148,7 +150,9 @@ export default function OrdersClient({ orders }: { orders: any[] }) {
         try {
             const supabase = createClient();
             const fileExt = checkFile.name.split('.').pop();
-            const fileName = `check_${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
+            const timestamp = Date.now();
+            const random = Math.random().toString(36).substring(7);
+            const fileName = `check_${timestamp}_${random}.${fileExt}`;
             const { error: uploadError } = await supabase.storage
                 .from('order-attachments')
                 .upload(fileName, checkFile);
@@ -172,8 +176,8 @@ export default function OrdersClient({ orders }: { orders: any[] }) {
         setExpandedOrderId(expandedOrderId === orderId ? null : orderId);
     };
 
-    const renderOrderCard = (order: any, type: "pending" | "active" | "history") => {
-        const totalBags = order.items.reduce((acc: number, item: any) => acc + item.requested_qty, 0);
+    const renderOrderCard = (order: Order, type: "pending" | "active" | "history") => {
+        const totalBags = order.items.reduce((acc: number, item: OrderItem) => acc + (item.requested_qty || 0), 0);
         const grandTotal = order.total_amount + (order.shipping_fee || 0);
         const isExpanded = expandedOrderId === order.id;
         const isRedelivery = order.order_type === "redelivery";
@@ -417,7 +421,7 @@ export default function OrdersClient({ orders }: { orders: any[] }) {
                     <DialogHeader>
                         <DialogTitle>Submit Payment Details</DialogTitle>
                         <DialogDescription>
-                            Your order requires a {selectedOrder?.payment_method} payment of ₱{(selectedOrder?.total_amount + (selectedOrder?.shipping_fee || 0)).toLocaleString()}.
+                            Please submit the {selectedOrder?.payment_method} payment of ₱{((selectedOrder?.total_amount || 0) + (selectedOrder?.shipping_fee || 0)).toLocaleString()} to process your order.
                         </DialogDescription>
                     </DialogHeader>
 

@@ -66,7 +66,9 @@ export function FulfillmentTab({ orders, shipments, onDispatch, onConfirmCheck, 
                     const { data: { user } } = await supabase.auth.getUser();
                     if (!user) throw new Error("Not authenticated");
                     const ext = drImageFile.name.split(".").pop();
-                    const fileName = `${user.id}/dr_${drNumber.replace(/\//g, "-")}_${Date.now()}.${ext}`;
+                    const timestamp = Date.now();
+                    const sanitizedDrNumber = drNumber.replace(/\//g, "-");
+                    const fileName = `${user.id}/dr_${sanitizedDrNumber}_${timestamp}.${ext}`;
                     const { error: uploadError } = await supabase.storage
                         .from("order-attachments")
                         .upload(fileName, drImageFile, { upsert: true, contentType: drImageFile.type });

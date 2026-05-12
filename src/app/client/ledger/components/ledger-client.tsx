@@ -14,14 +14,16 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 
 import { Package, Truck, Info, History, ShoppingBag, TrendingDown, Split } from "lucide-react";
 
+import { CustomerBalance, Order } from "@/lib/types/database";
+
 interface BalanceSummary {
     totalPurchased: number;
     totalDelivered: number;
     remainingBalance: number;
 }
 
-export default function LedgerClient({ balances, summary }: { balances: any[]; summary: BalanceSummary }) {
-    const [selectedBalance, setSelectedBalance] = useState<any | null>(null);
+export default function LedgerClient({ balances, summary }: { balances: CustomerBalance[]; summary: BalanceSummary }) {
+    const [selectedBalance, setSelectedBalance] = useState<CustomerBalance | null>(null);
     const [isRedeliveryOpen, setIsRedeliveryOpen] = useState(false);
     
     // Form state
@@ -45,7 +47,7 @@ export default function LedgerClient({ balances, summary }: { balances: any[]; s
     const pendingBalances = balances.filter(b => b.status === "pending");
     const fulfilledBalances = balances.filter(b => b.status === "fulfilled");
 
-    const handleOpenRedelivery = (balance: any) => {
+    const handleOpenRedelivery = (balance: CustomerBalance) => {
         setSelectedBalance(balance);
         setPoNumber(balance.order?.po_number || "");
         setDeliverNowQty(balance.remaining_qty);
@@ -100,7 +102,9 @@ export default function LedgerClient({ balances, summary }: { balances: any[]; s
 
             if (poFile) {
                 const fileExt = poFile.name.split('.').pop();
-                const fileName = `${user.id}/redelivery_${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
+                const timestamp = Date.now();
+                const random = Math.random().toString(36).substring(7);
+                const fileName = `${user.id}/redelivery_${timestamp}_${random}.${fileExt}`;
                 const { error: uploadError } = await supabase.storage
                     .from('order-attachments')
                     .upload(fileName, poFile, { upsert: true, contentType: poFile.type });
@@ -115,7 +119,7 @@ export default function LedgerClient({ balances, summary }: { balances: any[]; s
                 service_type: serviceType,
                 payment_method: paymentMethod,
                 po_number: linkedPoNumber,
-                po_image_url: publicUrl || undefined,
+                po_image_url: publicUrl,
                 driver_name: serviceType === "pickup" ? driverName.trim() : null,
                 plate_number: serviceType === "pickup" ? plateNumber.trim() : null,
                 notes: serviceType === "pickup" && pickupDate ? `Preferred Pick-up Date: ${pickupDate}` : "",
@@ -378,6 +382,7 @@ export default function LedgerClient({ balances, summary }: { balances: any[]; s
                                             max={selectedBalance.remaining_qty} 
                                             value={deliverNowQty || ""} 
                                             placeholder="0"
+                                            onFocus={(e) => e.target.select()}
                                             onChange={(e) => setDeliverNowQty(parseInt(e.target.value) || 0)} 
                                         />
                                         <p className="text-[10px] text-blue-600">
