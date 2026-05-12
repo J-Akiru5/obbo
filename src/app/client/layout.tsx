@@ -139,6 +139,7 @@ function SidebarContent({ pathname, onNavigate }: { pathname: string; onNavigate
 }
 
 import { GlobalSearch } from "@/components/global-search";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 function ClientLayoutInner({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -265,6 +266,7 @@ function ClientLayoutInner({ children }: { children: React.ReactNode }) {
           </div>
 
           <div className="flex items-center gap-2">
+            <ThemeToggle />
             <Popover open={notifOpen} onOpenChange={(open) => { setNotifOpen(open); if (open && unreadCount > 0) markAllRead(); }}>
               <PopoverTrigger className="relative inline-flex h-8 w-8 items-center justify-center rounded-md hover:bg-muted">
                 <Bell className="h-4 w-4" />

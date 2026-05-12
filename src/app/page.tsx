@@ -22,6 +22,7 @@ import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import { ScrollReveal } from "@/components/scroll-reveal";
 import { CountUp } from "@/components/count-up";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 // ─── Navbar ──────────────────────────────────────────────
 function Navbar() {
@@ -40,6 +41,7 @@ function Navbar() {
         <div className="hidden md:flex items-center gap-6">
           <a href="#features" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors relative after:absolute after:bottom-0 after:left-0 after:w-0 after:h-0.5 after:bg-[var(--color-industrial-yellow)] after:transition-all after:duration-300 hover:after:w-full">Features</a>
           <a href="#how-it-works" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors relative after:absolute after:bottom-0 after:left-0 after:w-0 after:h-0.5 after:bg-[var(--color-industrial-yellow)] after:transition-all after:duration-300 hover:after:w-full">How It Works</a>
+          <ThemeToggle />
           <Link href="/login">
             <Button variant="ghost" className="font-semibold">Sign In</Button>
           </Link>
@@ -49,9 +51,12 @@ function Navbar() {
             </Button>
           </Link>
         </div>
-        <button className="md:hidden p-2" onClick={() => setMobileOpen(!mobileOpen)}>
-          {mobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-        </button>
+        <div className="flex md:hidden items-center gap-2">
+          <ThemeToggle />
+          <button className="p-2" onClick={() => setMobileOpen(!mobileOpen)}>
+            {mobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+          </button>
+        </div>
       </div>
       {mobileOpen && (
         <div className="md:hidden bg-background border-b border-border px-4 py-4 space-y-3 animate-in slide-in-from-top-2">
