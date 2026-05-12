@@ -326,7 +326,7 @@ export default function CatalogClient({ products }: { products: any[] }) {
                         <ShoppingCart className="w-4 h-4 mr-2" />
                         Create New Order
                     </DialogTrigger>
-                    <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                    <DialogContent className="max-w-[100vw] w-[100vw] h-[100dvh] !rounded-none border-0 p-4 sm:p-6 sm:max-w-4xl sm:w-full sm:h-auto sm:max-h-[90vh] sm:!rounded-xl overflow-y-auto sm:border">
                         <DialogHeader>
                             <DialogTitle>New Order Placement</DialogTitle>
                             <DialogDescription>Fill out the details below to submit a new PO.</DialogDescription>
@@ -334,7 +334,7 @@ export default function CatalogClient({ products }: { products: any[] }) {
 
                         <form onSubmit={handleSubmit} className="space-y-6 py-4">
                             {/* Source & Service */}
-                            <div className="grid grid-cols-2 gap-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <div className="space-y-2">
                                     <Label>Source <span className="text-red-500">*</span></Label>
                                     <Select value={source} onValueChange={(v) => setSource(v || "warehouse")}>
@@ -360,7 +360,7 @@ export default function CatalogClient({ products }: { products: any[] }) {
                             {/* Quantities */}
                             <div className="p-4 bg-slate-50 border rounded-lg space-y-4">
                                 <h4 className="text-sm font-semibold text-slate-800">Quantity Selection</h4>
-                                <div className="grid grid-cols-2 gap-4">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                     <div className="space-y-2">
                                         <Label>Number of JB (Optional)</Label>
                                         <Input type="number" min="0" value={qtyJB || ""} placeholder="0" onChange={(e) => setQtyJB(parseInt(e.target.value) || 0)} />
@@ -379,7 +379,7 @@ export default function CatalogClient({ products }: { products: any[] }) {
                             </div>
 
                             {/* Order Details */}
-                            <div className="grid grid-cols-2 gap-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <div className="space-y-2">
                                     <Label>PO Number <span className="text-red-500">*</span></Label>
                                     <Input required value={poNumber} onChange={(e) => setPoNumber(e.target.value)} placeholder="e.g. PO-2026-001" />
@@ -402,7 +402,7 @@ export default function CatalogClient({ products }: { products: any[] }) {
                                         </SelectContent>
                                     </Select>
                                 </div>
-                                <div className="space-y-2 col-span-2">
+                                <div className="space-y-2 sm:col-span-2">
                                     <Label>PO Picture Upload <span className="text-red-500">*</span></Label>
                                     <Input type="file" accept="image/*,.pdf" onChange={handleFileChange} required className="cursor-pointer" />
                                 </div>
@@ -412,7 +412,7 @@ export default function CatalogClient({ products }: { products: any[] }) {
                             {serviceType === "pickup" && (
                                 <div className="p-4 border border-amber-200 bg-amber-50 rounded-lg space-y-4">
                                     <h4 className="text-sm font-semibold text-amber-900">Pick-up Details</h4>
-                                    <div className="grid grid-cols-2 gap-4">
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                         <div className="space-y-2">
                                             <Label>Driver Name <span className="text-red-500">*</span></Label>
                                             <Input required value={driverName} onChange={(e) => setDriverName(e.target.value)} placeholder="Name of driver" />
@@ -421,7 +421,7 @@ export default function CatalogClient({ products }: { products: any[] }) {
                                             <Label>Plate Number <span className="text-red-500">*</span></Label>
                                             <Input required value={plateNumber} onChange={(e) => setPlateNumber(e.target.value)} placeholder="Vehicle plate" />
                                         </div>
-                                        <div className="space-y-2 col-span-2">
+                                        <div className="space-y-2 sm:col-span-2">
                                             <Label>Preferred Date of Pick-up</Label>
                                             <Input type="date" value={pickupDate} onChange={(e) => setPickupDate(e.target.value)} />
                                         </div>
@@ -485,7 +485,7 @@ export default function CatalogClient({ products }: { products: any[] }) {
                                 )}
                             </div>
 
-                            <DialogFooter className="gap-2 sm:gap-0">
+                            <DialogFooter className="gap-3 sm:gap-2 flex-col sm:flex-row mt-6 pb-6 sm:pb-0">
                                 <Button type="button" variant="outline" onClick={() => { setIsOrderOpen(false); resetForm(); }} disabled={isSubmitting || isSavingDraft}>Cancel</Button>
                                 <Button type="button" variant="secondary" onClick={handleSaveDraft} disabled={isSubmitting || isSavingDraft || totalIndividualBags === 0}>
                                     <Save className="w-4 h-4 mr-2" />

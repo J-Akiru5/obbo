@@ -19,7 +19,7 @@ import {
     UserCheck,
     XCircle,
 } from "lucide-react";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -146,6 +146,7 @@ function KycDialog({
                 <div className="space-y-4">
                     <div className="flex items-center gap-3 rounded-xl border border-border/70 bg-muted/30 p-4">
                         <Avatar className="h-12 w-12">
+                            <AvatarImage src={profile.avatar_url || ""} alt={profile.full_name} />
                             <AvatarFallback className="bg-[var(--color-industrial-blue)] text-sm font-bold text-white">{initials}</AvatarFallback>
                         </Avatar>
                         <div className="min-w-0 flex-1">
@@ -452,6 +453,7 @@ function ClientDetailDialog({
                 <div className="space-y-4">
                     <div className="flex items-center gap-3 rounded-xl border border-border/70 bg-muted/30 p-4">
                         <Avatar className="h-12 w-12">
+                            <AvatarImage src={profile.avatar_url || ""} alt={profile.full_name} />
                             <AvatarFallback className="bg-[var(--color-industrial-blue)] text-sm font-bold text-white">{getInitials(profile.full_name)}</AvatarFallback>
                         </Avatar>
                         <div className="min-w-0 flex-1">
@@ -676,6 +678,7 @@ function ClientsContent() {
                                                 <CardContent className="p-4">
                                                     <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
                                                         <Avatar className="h-10 w-10 flex-shrink-0">
+                                                            <AvatarImage src={profile.avatar_url || ""} alt={profile.full_name} />
                                                             <AvatarFallback className="bg-amber-200 text-xs font-bold text-amber-900">{getInitials(profile.full_name)}</AvatarFallback>
                                                         </Avatar>
                                                         <div className="min-w-0 flex-1">
@@ -719,6 +722,7 @@ function ClientsContent() {
                                                 <CardContent className="p-4">
                                                     <div className="flex items-start gap-3">
                                                         <Avatar className="h-10 w-10 flex-shrink-0">
+                                                            <AvatarImage src={profile.avatar_url || ""} alt={profile.full_name} />
                                                             <AvatarFallback className="bg-[var(--color-industrial-blue)] text-xs font-bold text-white">{getInitials(profile.full_name)}</AvatarFallback>
                                                         </Avatar>
                                                         <div className="min-w-0 flex-1">
