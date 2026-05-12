@@ -142,26 +142,26 @@ export default async function ClientDashboardPage() {
                 <div className="space-y-2">
                     {unreadNotifications.slice(0, 3).map((notif: any) => (
                         <Link key={notif.id} href={notif.href || "/client/orders"}>
-                            <div className={`rounded-xl p-4 flex items-start gap-3 cursor-pointer transition-colors ${
-                                notif.severity === "warning"
-                                    ? "bg-amber-50 border border-amber-200 hover:bg-amber-100"
-                                    : notif.severity === "success"
-                                        ? "bg-emerald-50 border border-emerald-200 hover:bg-emerald-100"
-                                        : "bg-blue-50 border border-blue-200 hover:bg-blue-100"
-                            }`}>
-                                {notif.severity === "warning" ? (
-                                    <AlertCircle className="w-5 h-5 text-amber-600 mt-0.5 shrink-0" />
-                                ) : notif.severity === "success" ? (
-                                    <Bell className="w-5 h-5 text-emerald-600 mt-0.5 shrink-0" />
-                                ) : (
-                                    <Info className="w-5 h-5 text-blue-600 mt-0.5 shrink-0" />
-                                )}
-                                <div>
-                                    <h4 className="text-sm font-semibold text-gray-900">{notif.title}</h4>
-                                    <p className="text-sm text-gray-600 mt-0.5">{notif.message}</p>
-                                    <p className="text-[10px] text-gray-400 mt-1">{new Date(notif.created_at).toLocaleString()}</p>
+                                <div className={`rounded-xl p-4 flex items-start gap-3 cursor-pointer transition-colors ${
+                                    notif.severity === "warning"
+                                        ? "bg-status-pending-bg/20 border border-status-pending-border/30 hover:bg-status-pending-bg/30"
+                                        : notif.severity === "success"
+                                            ? "bg-status-success-bg/20 border border-status-success-border/30 hover:bg-status-success-bg/30"
+                                            : "bg-status-info-bg/20 border border-status-info-border/30 hover:bg-status-info-bg/30"
+                                }`}>
+                                    {notif.severity === "warning" ? (
+                                        <AlertCircle className="w-5 h-5 text-status-pending-text mt-0.5 shrink-0" />
+                                    ) : notif.severity === "success" ? (
+                                        <Bell className="w-5 h-5 text-status-success-text mt-0.5 shrink-0" />
+                                    ) : (
+                                        <Info className="w-5 h-5 text-status-info-text mt-0.5 shrink-0" />
+                                    )}
+                                    <div>
+                                        <h4 className="text-sm font-semibold text-foreground">{notif.title}</h4>
+                                        <p className="text-sm text-muted-foreground mt-0.5">{notif.message}</p>
+                                        <p className="text-[10px] text-muted-foreground/60 mt-1">{new Date(notif.created_at).toLocaleString()}</p>
+                                    </div>
                                 </div>
-                            </div>
                         </Link>
                     ))}
                 </div>
@@ -169,15 +169,15 @@ export default async function ClientDashboardPage() {
 
             {/* Pending orders banner (fallback when no notifications) */}
             {unreadNotifications.length === 0 && kpis.pendingOrders > 0 && (
-                <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-start gap-3">
-                    <AlertCircle className="w-5 h-5 text-amber-600 mt-0.5 shrink-0" />
+                <div className="bg-status-pending-bg/20 border border-status-pending-border/30 rounded-xl p-4 flex items-start gap-3">
+                    <AlertCircle className="w-5 h-5 text-status-pending-text mt-0.5 shrink-0" />
                     <div>
-                        <h4 className="text-sm font-semibold text-amber-900">You have orders awaiting action</h4>
-                        <p className="text-sm text-amber-700 mt-1">
+                        <h4 className="text-sm font-semibold text-foreground">You have orders awaiting action</h4>
+                        <p className="text-sm text-muted-foreground mt-1">
                             Please check your pending orders. If an order has been approved, you may need to submit payment details before it can be dispatched.
                         </p>
                         <Link href="/client/orders">
-                            <Button variant="link" className="px-0 text-amber-800 hover:text-amber-900 h-auto py-1 font-semibold mt-1">
+                            <Button variant="link" className="px-0 text-[var(--color-industrial-blue)] hover:underline h-auto py-1 font-semibold mt-1">
                                 View Pending Orders &rarr;
                             </Button>
                         </Link>
@@ -226,22 +226,22 @@ export default async function ClientDashboardPage() {
 
                                     return (
                                         <Link key={order.id} href="/client/orders">
-                                            <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-lg border bg-gray-50/50 hover:bg-gray-50 transition-colors cursor-pointer">
+                                            <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-lg border border-border bg-muted/20 hover:bg-muted/40 transition-colors cursor-pointer">
                                                 <div>
                                                     <div className="flex items-center gap-2 mb-1">
-                                                        <span className="font-semibold text-gray-900">PO: {order.po_number}</span>
+                                                        <span className="font-semibold text-foreground">PO: {order.po_number}</span>
                                                         <Badge variant={statusVariant} className="text-[10px] uppercase tracking-wider">{statusLabel}</Badge>
                                                         {order.order_type === "redelivery" && (
-                                                            <Badge variant="outline" className="text-[10px] border-blue-200 text-blue-600">Re-delivery</Badge>
+                                                            <Badge variant="outline" className="text-[10px] border-status-info-border text-status-info-text">Re-delivery</Badge>
                                                         )}
                                                     </div>
-                                                    <div className="text-sm text-gray-500">
+                                                    <div className="text-sm text-muted-foreground">
                                                         {new Date(order.created_at).toLocaleDateString()} • {totalBags} bags • {order.service_type === 'pickup' ? 'Pick-up' : 'Delivery'}
                                                     </div>
                                                 </div>
                                                 <div className="mt-3 sm:mt-0 text-left sm:text-right">
-                                                    <div className="font-medium text-gray-900">₱{order.total_amount.toLocaleString()}</div>
-                                                    <div className="text-xs text-gray-500 capitalize">{order.payment_method}</div>
+                                                    <div className="font-medium text-foreground">₱{order.total_amount.toLocaleString()}</div>
+                                                    <div className="text-xs text-muted-foreground capitalize">{order.payment_method}</div>
                                                 </div>
                                             </div>
                                         </Link>
@@ -257,19 +257,19 @@ export default async function ClientDashboardPage() {
                     </CardContent>
                 </Card>
 
-                <Card className="shadow-sm bg-gradient-to-br from-slate-50 to-white">
+                <Card className="shadow-sm border-border">
                     <CardHeader>
-                        <CardTitle>Quick Order</CardTitle>
-                        <CardDescription>Need more cement?</CardDescription>
+                        <CardTitle className="text-foreground">Quick Order</CardTitle>
+                        <CardDescription className="text-muted-foreground">Need more cement?</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
                         {popularProducts.length > 0 ? (
                             <div className="space-y-3">
                                 {popularProducts.map((p: any) => (
-                                    <div key={p.id} className="p-3 bg-white border rounded-lg flex justify-between items-center">
+                                    <div key={p.id} className="p-3 bg-muted/20 border border-border rounded-lg flex justify-between items-center">
                                         <div>
-                                            <p className="text-sm font-medium text-gray-900">{p.name}</p>
-                                            <p className="text-xs text-gray-500">{p.bag_type === "JB" ? "Jumbo" : "Sling"} • From ₱{(p.price_warehouse || p.price_per_bag).toLocaleString()}/bag</p>
+                                            <p className="text-sm font-medium text-foreground">{p.name}</p>
+                                            <p className="text-xs text-muted-foreground">{p.bag_type === "JB" ? "Jumbo" : "Sling"} • From ₱{(p.price_warehouse || p.price_per_bag).toLocaleString()}/bag</p>
                                         </div>
                                         <Badge className="bg-[var(--color-industrial-blue)] text-white text-[10px]">{p.bag_type}</Badge>
                                     </div>
@@ -282,9 +282,9 @@ export default async function ClientDashboardPage() {
                             <Button className="w-full bg-[var(--color-industrial-blue)]">Browse Catalog</Button>
                         </Link>
                         
-                        <div className="mt-6 pt-6 border-t">
-                            <h4 className="text-sm font-semibold mb-2">Have a balance?</h4>
-                            <p className="text-xs text-gray-500 mb-3">If you have remaining bags from a previous order, you can request a re-delivery without placing a new PO.</p>
+                        <div className="mt-6 pt-6 border-t border-border">
+                            <h4 className="text-sm font-semibold mb-2 text-foreground">Have a balance?</h4>
+                            <p className="text-xs text-muted-foreground mb-3">If you have remaining bags from a previous order, you can request a re-delivery without placing a new PO.</p>
                             {isVerified ? (
                                 <Link href="/client/ledger" className="block">
                                     <Button variant="secondary" className="w-full">View Ledger</Button>
