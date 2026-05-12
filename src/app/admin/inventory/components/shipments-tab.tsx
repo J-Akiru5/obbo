@@ -21,12 +21,13 @@ export function ShipmentsTab({ shipments, loading, onReload }: { shipments: Ship
 
     // New batch form
     const [newBatchName, setNewBatchName] = useState("");
-    const [newTotalBags, setNewTotalBags] = useState(0);
+    const [newJbBags, setNewJbBags] = useState(0);
+    const [newSbBags, setNewSbBags] = useState(0);
     const [newArrivalDate, setNewArrivalDate] = useState(new Date().toISOString().split("T")[0]);
 
     // Edit batch dialog
     const [editingShipment, setEditingShipment] = useState<Shipment | null>(null);
-    const [editForm, setEditForm] = useState({ batch_name: "", total_jb: 0, arrival_date: "" });
+    const [editForm, setEditForm] = useState({ batch_name: "", total_jb: 0, total_sb: 0, arrival_date: "" });
     const [isUpdating, setIsUpdating] = useState(false);
 
     // Manual remaining override
@@ -56,12 +57,13 @@ export function ShipmentsTab({ shipments, loading, onReload }: { shipments: Ship
 
     const handleCreateBatch = async () => {
         if (!newBatchName) return toast.error("Batch name is required.");
-        if (newTotalBags <= 0) return toast.error("Total bags must be greater than 0.");
+        const totalBags = newJbBags + newSbBags;
+        if (totalBags <= 0) return toast.error("Total bags must be greater than 0.");
         setIsCreating(true);
         try {
-            await createShipment(newBatchName, newTotalBags, newArrivalDate);
+            await createShipment(newBatchName, newJbBags, newSbBags, newArrivalDate);
             toast.success("Shipment batch created.");
-            setNewBatchName(""); setNewTotalBags(0);
+            setNewBatchName(""); setNewJbBags(0); setNewSbBags(0);
             setNewArrivalDate(new Date().toISOString().split("T")[0]);
             onReload();
         } catch (e: any) { toast.error(e.message || "Failed to create batch."); }
@@ -88,7 +90,12 @@ export function ShipmentsTab({ shipments, loading, onReload }: { shipments: Ship
 
     const openEditDialog = (s: Shipment) => {
         setEditingShipment(s);
-        setEditForm({ batch_name: s.batch_name, total_jb: s.total_jb, arrival_date: s.arrival_date.split("T")[0] });
+        setEditForm({ 
+            batch_name: s.batch_name, 
+            total_jb: s.total_jb, 
+            total_sb: s.total_sb, 
+            arrival_date: s.arrival_date.split("T")[0] 
+        });
     };
 
     const openOverrideDialog = (s: Shipment) => {
@@ -178,10 +185,21 @@ export function ShipmentsTab({ shipments, loading, onReload }: { shipments: Ship
                                 <Label>Batch Name / Vessel <span className="text-red-500">*</span></Label>
                                 <Input value={newBatchName} onChange={e => setNewBatchName(e.target.value)} placeholder="e.g. MV Alpha - May 2026" />
                             </div>
-                            <div className="space-y-2">
-                                <Label>Total Bags <span className="text-red-500">*</span></Label>
-                                <Input type="number" min={1} value={newTotalBags} onChange={e => setNewTotalBags(parseInt(e.target.value) || 0)} placeholder="Combined JB + SB total" />
-                                <p className="text-xs text-muted-foreground">This is the combined grand total of all bag types in this shipment.</p>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <Label>JB Bags <span className="text-red-500">*</span></Label>
+                                    <Input type="number" min={0} value={newJbBags} onChange={e => setNewJbBags(parseInt(e.target.value) || 0)} placeholder="Jumbo Bags" />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>SB Bags <span className="text-red-500">*</span></Label>
+                                    <Input type="number" min={0} value={newSbBags} onChange={e => setNewSbBags(parseInt(e.target.value) || 0)} placeholder="Standard Bags" />
+                                </div>
+                            </div>
+                            <div className="bg-muted p-3 rounded-lg border border-dashed border-border">
+                                <div className="flex justify-between items-center text-sm font-medium">
+                                    <span className="text-muted-foreground">Calculated Total:</span>
+                                    <span className="text-foreground">{newJbBags + newSbBags} bags</span>
+                                </div>
                             </div>
                             <div className="space-y-2">
                                 <Label>Arrival Date</Label>
@@ -189,7 +207,7 @@ export function ShipmentsTab({ shipments, loading, onReload }: { shipments: Ship
                             </div>
                         </div>
                         <DialogFooter>
-                            <Button onClick={handleCreateBatch} disabled={isCreating || !newBatchName || newTotalBags <= 0} className="bg-[var(--color-industrial-blue)]">
+                            <Button onClick={handleCreateBatch} disabled={isCreating || !newBatchName || (newJbBags + newSbBags) <= 0} className="bg-[var(--color-industrial-blue)]">
                                 {isCreating ? "Creating..." : "Create Batch"}
                             </Button>
                         </DialogFooter>
@@ -343,9 +361,21 @@ export function ShipmentsTab({ shipments, loading, onReload }: { shipments: Ship
                             <Label>Arrival Date</Label>
                             <Input type="date" value={editForm.arrival_date} onChange={e => setEditForm({ ...editForm, arrival_date: e.target.value })} />
                         </div>
-                        <div className="space-y-2">
-                            <Label>Initial Total Bags</Label>
-                            <Input type="number" min={0} value={editForm.total_jb} onChange={e => setEditForm({ ...editForm, total_jb: parseInt(e.target.value) || 0 })} />
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <Label>Initial JB</Label>
+                                <Input type="number" min={0} value={editForm.total_jb} onChange={e => setEditForm({ ...editForm, total_jb: parseInt(e.target.value) || 0 })} />
+                            </div>
+                            <div className="space-y-2">
+                                <Label>Initial SB</Label>
+                                <Input type="number" min={0} value={editForm.total_sb} onChange={e => setEditForm({ ...editForm, total_sb: parseInt(e.target.value) || 0 })} />
+                            </div>
+                        </div>
+                        <div className="bg-muted p-3 rounded-lg border border-dashed border-border">
+                            <div className="flex justify-between items-center text-sm font-medium">
+                                <span className="text-muted-foreground">Total Initial Stock:</span>
+                                <span className="text-foreground">{editForm.total_jb + editForm.total_sb} bags</span>
+                            </div>
                         </div>
                     </div>
                     <DialogFooter>

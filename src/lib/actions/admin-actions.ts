@@ -378,24 +378,23 @@ export async function fetchShipments() {
     return data ?? [];
 }
 
-export async function createShipment(batchName: string, totalBags: number, arrivalDate?: string) {
+export async function createShipment(batchName: string, totalJb: number, totalSb: number, arrivalDate?: string) {
     const { supabase, userId } = await requireAdmin();
-    // New flow: total bags is a combined grand total; JB/SB split is tracked per-ledger-entry.
-    // We store the full total in both total_jb (as combined) and remaining_jb for simplicity,
-    // keeping total_sb / remaining_sb at 0 until the ledger is used.
+    const totalBags = totalJb + totalSb;
+    
     const { data, error } = await supabase.from("shipments").insert({
         batch_name: batchName,
-        total_jb: totalBags,     // grand total stored here
-        total_sb: 0,
-        remaining_jb: totalBags, // mirrors total on creation
-        remaining_sb: 0,
+        total_jb: totalJb,
+        total_sb: totalSb,
+        remaining_jb: totalJb,
+        remaining_sb: totalSb,
         initial_quantity: totalBags,
         good_stock: totalBags,
         damaged_stock: 0,
         arrival_date: arrivalDate ?? new Date().toISOString().split("T")[0],
     }).select().single();
     if (error) throw new Error(error.message);
-    await logActivity(supabase, userId, "shipment_created", "shipment", data.id, { batchName, totalBags });
+    await logActivity(supabase, userId, "shipment_created", "shipment", data.id, { batchName, totalJb, totalSb });
     return data;
 }
 
