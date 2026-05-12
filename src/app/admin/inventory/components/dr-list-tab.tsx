@@ -11,9 +11,26 @@ import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Check, ChevronsUpDown } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { PurchaseOrder } from "@/lib/types/database";
 
-export function DrListTab({ deliveryReceipts, shipments, loading, onReload }: { deliveryReceipts: DeliveryReceipt[], shipments: Shipment[], loading: boolean, onReload: () => void }) {
+export function DrListTab({ 
+    deliveryReceipts, 
+    shipments, 
+    purchaseOrders, 
+    loading, 
+    onReload 
+}: { 
+    deliveryReceipts: DeliveryReceipt[], 
+    shipments: Shipment[], 
+    purchaseOrders: PurchaseOrder[], 
+    loading: boolean, 
+    onReload: () => void 
+}) {
+    const [poSearch, setPoSearch] = useState("");
+    const [isPoOpen, setIsPoOpen] = useState(false);
     const [searchQuery, setSearchQuery] = useState("");
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [editingDr, setEditingDr] = useState<DeliveryReceipt | null>(null);
@@ -227,7 +244,70 @@ export function DrListTab({ deliveryReceipts, shipments, loading, onReload }: { 
                             </div>
                             <div className="space-y-2">
                                 <Label>PO# Link <span className="text-red-500">*</span></Label>
-                                <Input value={poNumber} onChange={e => setPoNumber(e.target.value)} placeholder="Must match PO List" />
+                                <Popover open={isPoOpen} onOpenChange={setIsPoOpen}>
+                                    <PopoverTrigger asChild>
+                                        <Button
+                                            variant="outline"
+                                            role="combobox"
+                                            aria-expanded={isPoOpen}
+                                            className="w-full justify-between font-normal"
+                                        >
+                                            {poNumber || "Select PO Number..."}
+                                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                        </Button>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-[200px] p-0" align="start">
+                                        <div className="flex flex-col">
+                                            <div className="p-2 border-b">
+                                                <Input 
+                                                    placeholder="Search PO..." 
+                                                    className="h-8"
+                                                    value={poSearch}
+                                                    onChange={(e) => setPoSearch(e.target.value)}
+                                                />
+                                            </div>
+                                            <div className="max-h-[200px] overflow-y-auto p-1">
+                                                {purchaseOrders
+                                                    .filter(po => po.po_number.toLowerCase().includes(poSearch.toLowerCase()))
+                                                    .map(po => (
+                                                        <div
+                                                            key={po.id}
+                                                            className="flex items-center justify-between px-2 py-1.5 text-sm rounded-sm hover:bg-accent cursor-pointer"
+                                                            onClick={() => {
+                                                                setPoNumber(po.po_number);
+                                                                setClientName(po.client_name || "");
+                                                                setIsPoOpen(false);
+                                                                setPoSearch("");
+                                                            }}
+                                                        >
+                                                            <div className="flex flex-col">
+                                                                <span>{po.po_number}</span>
+                                                                <span className="text-[10px] text-muted-foreground">{po.client_name}</span>
+                                                            </div>
+                                                            {poNumber === po.po_number && <Check className="h-4 w-4" />}
+                                                        </div>
+                                                    ))}
+                                                {purchaseOrders.filter(po => po.po_number.toLowerCase().includes(poSearch.toLowerCase())).length === 0 && (
+                                                    <div className="p-2 text-xs text-center text-muted-foreground">No PO found</div>
+                                                )}
+                                                
+                                                {/* Allow manual entry if not found */}
+                                                {poSearch && !purchaseOrders.some(po => po.po_number === poSearch) && (
+                                                    <div
+                                                        className="mt-1 p-2 text-xs border-t cursor-pointer hover:bg-accent text-blue-600 font-medium"
+                                                        onClick={() => {
+                                                            setPoNumber(poSearch);
+                                                            setIsPoOpen(false);
+                                                            setPoSearch("");
+                                                        }}
+                                                    >
+                                                        Use manual: "{poSearch}"
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </PopoverContent>
+                                </Popover>
                                 {!editingDr && <p className="text-[10px] text-emerald-600 leading-tight">Linking a PO automatically syncs its payment data into the Shipment Ledger.</p>}
                             </div>
                         </div>

@@ -93,7 +93,7 @@ function InventoryContent() {
                     </TabsContent>
 
                     <TabsContent value="dr">
-                        <DrListTab deliveryReceipts={deliveryReceipts} shipments={shipments} loading={loading} onReload={loadData} />
+                        <DrListTab deliveryReceipts={deliveryReceipts} shipments={shipments} purchaseOrders={purchaseOrders} loading={loading} onReload={loadData} />
                     </TabsContent>
                 </div>
             </Tabs>
