@@ -47,6 +47,15 @@
   --radius-3xl: calc(var(--radius) * 2.2);
   --radius-4xl: calc(var(--radius) * 2.6);
 
+  /* Status Colors */
+  --color-status-pending-bg: var(--status-pending-bg);
+  --color-status-pending-text: var(--status-pending-text);
+  --color-status-pending-border: var(--status-pending-border);
+  --color-status-success-bg: var(--status-success-bg);
+  --color-status-success-text: var(--status-success-text);
+  --color-status-info-bg: var(--status-info-bg);
+  --color-status-info-text: var(--status-info-text);
+
   /* Industrial palette custom colors */
   --color-industrial-blue: #1e3a5f;
   --color-industrial-blue-light: #2563eb;
@@ -91,6 +100,17 @@
   --sidebar-accent-foreground: oklch(0.90 0.005 250);
   --sidebar-border: oklch(0.28 0.04 250);
   --sidebar-ring: oklch(0.50 0.10 250);
+
+  /* Semantic Status Colors - Light */
+  --status-pending-bg: oklch(0.97 0.05 85); /* amber-50 equivalent */
+  --status-pending-text: oklch(0.45 0.15 85); /* amber-700 equivalent */
+  --status-pending-border: oklch(0.90 0.08 85); /* amber-200 equivalent */
+  
+  --status-success-bg: oklch(0.97 0.05 150); /* emerald-50 equivalent */
+  --status-success-text: oklch(0.40 0.12 150); /* emerald-700 equivalent */
+  
+  --status-info-bg: oklch(0.96 0.03 250); /* blue-50 equivalent */
+  --status-info-text: oklch(0.35 0.08 250); /* blue-700 equivalent */
 }
 
 .dark {
@@ -105,7 +125,7 @@
   --secondary: oklch(0.25 0.03 250);
   --secondary-foreground: oklch(0.90 0.005 250);
   --muted: oklch(0.25 0.03 250);
-  --muted-foreground: oklch(0.65 0.02 250);
+  --muted-foreground: oklch(0.75 0.02 250);
   --accent: oklch(0.75 0.16 85);
   --accent-foreground: oklch(0.18 0.03 85);
   --destructive: oklch(0.704 0.191 22.216);
@@ -125,6 +145,17 @@
   --sidebar-accent-foreground: oklch(0.18 0.03 250);
   --sidebar-border: oklch(0.88 0.01 250);
   --sidebar-ring: oklch(0.45 0.10 250);
+
+  /* Semantic Status Colors - Dark */
+  --status-pending-bg: oklch(0.25 0.08 85);
+  --status-pending-text: oklch(0.85 0.15 85);
+  --status-pending-border: oklch(0.35 0.10 85);
+  
+  --status-success-bg: oklch(0.20 0.08 150);
+  --status-success-text: oklch(0.85 0.12 150);
+  
+  --status-info-bg: oklch(0.20 0.05 250);
+  --status-info-text: oklch(0.85 0.08 250);
 }
 
 @layer base {

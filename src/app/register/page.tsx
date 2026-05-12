@@ -217,7 +217,7 @@ export default function RegisterPage() {
         >
             <div className="space-y-8">
                 <div className="space-y-3">
-                    <div className="inline-flex items-center rounded-full border border-[var(--color-industrial-yellow)]/25 bg-[var(--color-industrial-yellow)]/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.28em] text-[var(--color-industrial-blue)]">
+                    <div className="inline-flex items-center rounded-full border border-[var(--color-industrial-yellow)]/25 bg-[var(--color-industrial-yellow)]/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.28em] text-[var(--color-industrial-blue)] dark:text-amber-400">
                         Sign up
                     </div>
                     <div className="space-y-2">

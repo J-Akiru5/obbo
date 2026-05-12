@@ -33,19 +33,19 @@ export default async function ClientDashboardPage() {
         <div className="space-y-6">
             {/* KYC Pending Banner — shown for unverified users */}
             {!isVerified && (
-                <div className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4">
-                    <ShieldAlert className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+                <div className="flex items-start gap-3 rounded-xl border border-status-pending-border bg-status-pending-bg p-4">
+                    <ShieldAlert className="w-5 h-5 text-status-pending-text shrink-0 mt-0.5" />
                     <div className="flex-1 min-w-0">
-                        <h4 className="text-sm font-semibold text-amber-900">
+                        <h4 className="text-sm font-semibold text-foreground">
                             Account pending KYC verification
                         </h4>
-                        <p className="text-sm text-amber-700 mt-0.5">
+                        <p className="text-sm text-muted-foreground mt-0.5">
                             You can browse the catalog, but placing orders and accessing your ledger require a verified account.
                             Our team will review your documents shortly.
                         </p>
                     </div>
                     <Link href="/client/contact-admin" className="shrink-0">
-                        <Button size="sm" variant="outline" className="border-amber-300 text-amber-800 hover:bg-amber-100 h-8 text-xs">
+                        <Button size="sm" variant="outline" className="border-status-pending-border text-foreground hover:bg-muted h-8 text-xs">
                             Contact Admin
                         </Button>
                     </Link>
@@ -54,8 +54,8 @@ export default async function ClientDashboardPage() {
 
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
-                    <h2 className="text-2xl font-bold text-gray-900 tracking-tight">Welcome back, {kpis.clientName}</h2>
-                    <p className="text-sm text-gray-500">Here&apos;s an overview of your account.</p>
+                    <h2 className="text-2xl font-bold text-foreground tracking-tight">Welcome back, {kpis.clientName}</h2>
+                    <p className="text-sm text-muted-foreground">Here&apos;s an overview of your account.</p>
                 </div>
                 <div className="flex gap-2">
                     {isVerified ? (
@@ -81,27 +81,27 @@ export default async function ClientDashboardPage() {
             {/* KPI Cards — now clickable */}
             <div className="grid gap-4 md:grid-cols-3">
                 <Link href="/client/orders">
-                    <Card className="bg-white border-blue-100 shadow-sm hover:shadow-md transition-shadow cursor-pointer">
+                    <Card className="bg-card border-border shadow-sm hover:shadow-md transition-shadow cursor-pointer">
                         <CardHeader className="flex flex-row items-center justify-between pb-2">
-                            <CardTitle className="text-sm font-medium text-gray-600">Pending Orders</CardTitle>
-                            <Clock className="w-4 h-4 text-amber-500" />
+                            <CardTitle className="text-sm font-medium text-muted-foreground">Pending Orders</CardTitle>
+                            <Clock className="w-4 h-4 text-status-pending-text" />
                         </CardHeader>
                         <CardContent>
-                            <div className="text-2xl font-bold text-gray-900">{kpis.pendingOrders}</div>
-                            <p className="text-xs text-gray-500 mt-1">Awaiting approval or payment</p>
+                            <div className="text-2xl font-bold text-foreground">{kpis.pendingOrders}</div>
+                            <p className="text-xs text-muted-foreground mt-1">Awaiting approval or payment</p>
                         </CardContent>
                     </Card>
                 </Link>
 
                 <Link href="/client/orders">
-                    <Card className="bg-white border-blue-100 shadow-sm hover:shadow-md transition-shadow cursor-pointer">
+                    <Card className="bg-card border-border shadow-sm hover:shadow-md transition-shadow cursor-pointer">
                         <CardHeader className="flex flex-row items-center justify-between pb-2">
-                            <CardTitle className="text-sm font-medium text-gray-600">Active Shipments</CardTitle>
-                            <Truck className="w-4 h-4 text-emerald-500" />
+                            <CardTitle className="text-sm font-medium text-muted-foreground">Active Shipments</CardTitle>
+                            <Truck className="w-4 h-4 text-status-success-text" />
                         </CardHeader>
                         <CardContent>
-                            <div className="text-2xl font-bold text-gray-900">{kpis.activeShipments}</div>
-                            <p className="text-xs text-gray-500 mt-1">Dispatched or In Transit</p>
+                            <div className="text-2xl font-bold text-foreground">{kpis.activeShipments}</div>
+                            <p className="text-xs text-muted-foreground mt-1">Dispatched or In Transit</p>
                         </CardContent>
                     </Card>
                 </Link>
@@ -123,14 +123,14 @@ export default async function ClientDashboardPage() {
                     </Link>
                 ) : (
                     <div className="cursor-not-allowed" title="Requires verified account">
-                        <Card className="bg-gray-100 text-gray-400 shadow-sm opacity-60 select-none">
+                        <Card className="bg-muted text-muted-foreground shadow-sm opacity-60 select-none">
                             <CardHeader className="flex flex-row items-center justify-between pb-2">
-                                <CardTitle className="text-sm font-medium text-gray-400">Remaining Balance</CardTitle>
-                                <Lock className="w-4 h-4 text-gray-400" />
+                                <CardTitle className="text-sm font-medium text-muted-foreground">Remaining Balance</CardTitle>
+                                <Lock className="w-4 h-4 text-muted-foreground" />
                             </CardHeader>
                             <CardContent>
-                                <div className="text-2xl font-bold text-gray-400">—</div>
-                                <p className="text-xs text-gray-400 mt-1">Available after KYC approval</p>
+                                <div className="text-2xl font-bold text-muted-foreground">—</div>
+                                <p className="text-xs text-muted-foreground mt-1">Available after KYC approval</p>
                             </CardContent>
                         </Card>
                     </div>
