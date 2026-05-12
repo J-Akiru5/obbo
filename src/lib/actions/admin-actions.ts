@@ -2,6 +2,7 @@
 
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+import { generateGlobalNextPoNumber } from "./po-utils";
 
 // ─── Helper: ensure caller is admin or warehouse manager ─────
 async function requireAdmin() {
@@ -556,12 +557,26 @@ export async function fetchPurchaseOrders() {
     return data ?? [];
 }
 
+export async function generateAdminPoNumber() {
+    return generateGlobalNextPoNumber();
+}
+
 export async function createPurchaseOrder(po: {
-    po_number: string; client_name?: string; jb?: number; sb?: number;
+    po_number?: string; client_name?: string; jb?: number; sb?: number;
     status?: string; source?: string; service_type?: string; shipment_id?: string;
 }) {
     const { supabase, userId } = await requireAdmin();
-    const { data, error } = await supabase.from("purchase_orders").insert(po).select().single();
+    
+    // Auto-generate if blank
+    let finalPoNumber = po.po_number?.trim();
+    if (!finalPoNumber) {
+        finalPoNumber = await generateGlobalNextPoNumber();
+    }
+
+    const { data, error } = await supabase.from("purchase_orders").insert({
+        ...po,
+        po_number: finalPoNumber
+    }).select().single();
     if (error) throw new Error(error.message);
     await logActivity(supabase, userId, "po_created", "purchase_order", data.id, po);
     return data;

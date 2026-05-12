@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Plus, Search, Edit2, Trash2, MapPin, Truck, UploadCloud, CheckCircle2, X, FileImage, AlertTriangle } from "lucide-react";
-import { createPurchaseOrder, updatePurchaseOrder, deletePurchaseOrder } from "@/lib/actions/admin-actions";
+import { createPurchaseOrder, updatePurchaseOrder, deletePurchaseOrder, generateAdminPoNumber } from "@/lib/actions/admin-actions";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
@@ -32,13 +32,17 @@ export function PoListTab({ purchaseOrders, loading, onReload }: { purchaseOrder
     const [cashAmount, setCashAmount] = useState(0);
     const [photoFile, setPhotoFile] = useState<File | null>(null);
 
-    const openCreate = () => {
+     const openCreate = async () => {
         setEditingPo(null);
         setPoNumber(""); setClientName(""); setJb(0); setSb(0);
         setSource("warehouse"); setServiceType("pickup");
         setCheckNumber(""); setCheckAmount(0); setCashAmount(0);
         setPhotoFile(null);
         setIsDialogOpen(true);
+        
+        // Fetch next PO number as a suggestion
+        const nextPo = await generateAdminPoNumber();
+        setPoNumber(nextPo);
     };
 
     const openEdit = (po: PurchaseOrder) => {
@@ -57,7 +61,7 @@ export function PoListTab({ purchaseOrders, loading, onReload }: { purchaseOrder
     };
 
     const handleSubmit = async () => {
-        if (!poNumber) return toast.error("PO Number is required");
+        // PO Number is now optional in frontend as well, handled in backend
         setIsSubmitting(true);
         try {
             // Upload photo if provided
@@ -213,8 +217,9 @@ export function PoListTab({ purchaseOrders, loading, onReload }: { purchaseOrder
                     </DialogHeader>
                     <div className="space-y-4 py-4">
                         <div className="space-y-2">
-                            <Label>PO Number <span className="text-red-500">*</span></Label>
+                            <Label>PO Number <span className="text-muted-foreground text-xs">(Optional)</span></Label>
                             <Input value={poNumber} onChange={e => setPoNumber(e.target.value)} placeholder="e.g. PO-2026-001" />
+                            <p className="text-[10px] text-muted-foreground">System will auto-generate if left blank.</p>
                         </div>
                         <div className="space-y-2">
                             <Label>Client Name</Label>

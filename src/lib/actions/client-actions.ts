@@ -2,6 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
+import { generateGlobalNextPoNumber } from "./po-utils";
 
 // Helper to ensure the user is an authenticated client
 async function requireClient() {
@@ -103,12 +104,16 @@ export async function fetchActiveProducts() {
     return data ?? [];
 }
 
+export async function generateNextPoNumber() {
+    return generateGlobalNextPoNumber();
+}
+
 export async function submitOrder(
     orderData: {
         source: string;
         service_type: string;
         payment_method: string;
-        po_number: string;
+        po_number?: string;
         po_image_url: string;
         supplier_name?: string;
         driver_name?: string | null;
@@ -121,7 +126,13 @@ export async function submitOrder(
     splitDetails?: { wantsSplit: boolean; deliverNowQty: number; splitNote: string }
 ) {
     const { supabase, user } = await requireClient();
-    if (!orderData.po_number?.trim()) throw new Error("PO number is required.");
+    
+    // Auto-generate PO number if missing
+    let finalPoNumber = orderData.po_number?.trim();
+    if (!finalPoNumber) {
+        finalPoNumber = await generateNextPoNumber();
+    }
+
     if (!orderData.po_image_url?.trim()) throw new Error("PO image is required.");
     if (orderData.service_type === "pickup") {
         if (!orderData.driver_name?.trim()) throw new Error("Driver name is required for pick-up orders.");
@@ -139,7 +150,7 @@ export async function submitOrder(
         status: "pending",
         total_amount: orderData.total_amount,
         payment_method: orderData.payment_method,
-        po_number: orderData.po_number,
+        po_number: finalPoNumber,
         po_image_url: orderData.po_image_url,
         source: orderData.source,
         service_type: orderData.service_type,
@@ -178,7 +189,7 @@ export async function saveOrderDraft(
         source: string;
         service_type: string;
         payment_method: string;
-        po_number: string;
+        po_number?: string;
         po_image_url?: string;
         supplier_name?: string;
         driver_name?: string | null;
@@ -192,12 +203,15 @@ export async function saveOrderDraft(
 ) {
     const { supabase, user } = await requireClient();
 
+    // Auto-generate PO number for draft if blank
+    const finalPoNumber = orderData.po_number?.trim() || await generateNextPoNumber();
+
     const { data: order, error } = await supabase.from("orders").insert({
         client_id: user.id,
         status: "pending",
         total_amount: orderData.total_amount,
         payment_method: orderData.payment_method,
-        po_number: orderData.po_number || "DRAFT",
+        po_number: finalPoNumber,
         po_image_url: orderData.po_image_url || null,
         source: orderData.source,
         service_type: orderData.service_type,

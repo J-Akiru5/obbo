@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { toast } from "sonner";
-import { submitOrder, saveOrderDraft } from "@/lib/actions/client-actions";
+import { submitOrder, saveOrderDraft, generateNextPoNumber } from "@/lib/actions/client-actions";
 import { createClient } from "@/lib/supabase/client";
 import { useClientKyc } from "@/lib/context/client-kyc-context";
 
@@ -277,7 +277,15 @@ export default function CatalogClient({ products }: { products: Product[] }) {
                         <Link href="/client/pending-kyc" className="font-semibold underline underline-offset-2 hover:brightness-75">Learn more</Link>
                     </div>
                 ) : (
-                    <Button onClick={() => setIsOrderOpen(true)} className="bg-[var(--color-industrial-blue)] hover:bg-[var(--color-industrial-blue)]/90" size="lg">
+                    <Button 
+                        onClick={async () => { 
+                            const nextPo = await generateNextPoNumber();
+                            setPoNumber(nextPo);
+                            setIsOrderOpen(true); 
+                        }} 
+                        className="bg-[var(--color-industrial-blue)] hover:bg-[var(--color-industrial-blue)]/90" 
+                        size="lg"
+                    >
                         <ShoppingCart className="w-4 h-4 mr-2" />
                         Create New Order
                     </Button>
@@ -341,7 +349,11 @@ export default function CatalogClient({ products }: { products: Product[] }) {
                             <Button 
                                 className="w-full bg-[var(--color-industrial-blue)] hover:bg-[var(--color-industrial-blue)]/90" 
                                 disabled={!isVerified}
-                                onClick={() => setIsOrderOpen(true)}
+                                onClick={async () => {
+                                    const nextPo = await generateNextPoNumber();
+                                    setPoNumber(nextPo);
+                                    setIsOrderOpen(true);
+                                }}
                             >
                                 <ShoppingCart className="w-4 h-4 mr-2" />
                                 {isVerified ? "Place Order" : "Verification Required"}
@@ -408,8 +420,9 @@ export default function CatalogClient({ products }: { products: Product[] }) {
                             {/* Order Details */}
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <div className="space-y-2">
-                                    <Label>PO Number <span className="text-red-500">*</span></Label>
-                                    <Input required value={poNumber} onChange={(e) => setPoNumber(e.target.value)} placeholder="e.g. PO-2026-001" />
+                                    <Label>PO Number <span className="text-muted-foreground text-xs">(Optional)</span></Label>
+                                    <Input value={poNumber} onChange={(e) => setPoNumber(e.target.value)} placeholder="e.g. PO-2026-001" />
+                                    <p className="text-[10px] text-muted-foreground">System will auto-generate if left blank.</p>
                                 </div>
                                 <div className="space-y-2">
                                     <Label>Supplier Name (Optional)</Label>
