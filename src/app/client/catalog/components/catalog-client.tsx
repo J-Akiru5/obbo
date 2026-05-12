@@ -252,18 +252,18 @@ export default function CatalogClient({ products }: { products: any[] }) {
     return (
         <div className="space-y-6">
             <div>
-                <h2 className="text-2xl font-bold text-gray-900 tracking-tight">Product Catalog</h2>
-                <p className="text-sm text-gray-500">Browse our available Portland Cement configurations and place your orders.</p>
+                <h2 className="text-2xl font-bold text-foreground tracking-tight">Product Catalog</h2>
+                <p className="text-sm text-muted-foreground">Browse our available Portland Cement configurations and place your orders.</p>
             </div>
 
             <div className="grid gap-6 md:grid-cols-2">
                 {products.map(product => (
-                    <Card key={product.id} className="overflow-hidden border-blue-100 shadow-sm flex flex-col">
-                        <div className="aspect-video w-full bg-slate-100 flex items-center justify-center border-b">
+                    <Card key={product.id} className="overflow-hidden shadow-sm flex flex-col bg-card border-border">
+                        <div className="aspect-video w-full bg-muted flex items-center justify-center border-b">
                             {product.image_url ? (
                                 <img src={product.image_url} alt={product.name} className="w-full h-full object-cover" />
                             ) : (
-                                <PackageSearch className="w-16 h-16 text-slate-300" />
+                                <PackageSearch className="w-16 h-16 text-muted-foreground/50" />
                             )}
                         </div>
                         <CardHeader>
@@ -278,26 +278,26 @@ export default function CatalogClient({ products }: { products: any[] }) {
                             </div>
                         </CardHeader>
                         <CardContent className="flex-1">
-                            <p className="text-sm text-gray-600 mb-4">{product.description}</p>
+                            <p className="text-sm text-muted-foreground mb-4">{product.description}</p>
                             
                             <div className="space-y-3">
-                                <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg border border-slate-100">
-                                    <div className="flex items-center gap-2 text-sm font-medium text-slate-700">
-                                        <Anchor className="w-4 h-4 text-slate-400" />
+                                <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg border border-border">
+                                    <div className="flex items-center gap-2 text-sm font-medium text-foreground/80">
+                                        <Anchor className="w-4 h-4 text-muted-foreground" />
                                         PORT Price
                                     </div>
-                                    <div className="font-bold text-slate-900">
-                                        ₱{(product.price_port || product.price_per_bag).toLocaleString()}<span className="text-xs font-normal text-slate-500"> / indiv. bag</span>
+                                    <div className="font-bold text-foreground">
+                                        ₱{(product.price_port || product.price_per_bag).toLocaleString()}<span className="text-xs font-normal text-muted-foreground"> / indiv. bag</span>
                                     </div>
                                 </div>
                                 
-                                <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg border border-slate-100">
-                                    <div className="flex items-center gap-2 text-sm font-medium text-slate-700">
-                                        <Building2 className="w-4 h-4 text-slate-400" />
+                                <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg border border-border">
+                                    <div className="flex items-center gap-2 text-sm font-medium text-foreground/80">
+                                        <Building2 className="w-4 h-4 text-muted-foreground" />
                                         WAREHOUSE Price
                                     </div>
-                                    <div className="font-bold text-slate-900">
-                                        ₱{(product.price_warehouse || product.price_per_bag).toLocaleString()}<span className="text-xs font-normal text-slate-500"> / indiv. bag</span>
+                                    <div className="font-bold text-foreground">
+                                        ₱{(product.price_warehouse || product.price_per_bag).toLocaleString()}<span className="text-xs font-normal text-muted-foreground"> / indiv. bag</span>
                                     </div>
                                 </div>
                             </div>
@@ -308,15 +308,15 @@ export default function CatalogClient({ products }: { products: any[] }) {
                 ))}
             </div>
 
-            <div className="bg-white border p-6 rounded-xl shadow-sm text-center">
-                <h3 className="text-lg font-bold mb-2">Ready to place an order?</h3>
-                <p className="text-sm text-gray-500 mb-6 max-w-lg mx-auto">Select your desired quantities and source to generate your PO. You can split your delivery if you don&apos;t need the entire stock immediately.</p>
+            <div className="bg-card border-border border p-6 rounded-xl shadow-sm text-center">
+                <h3 className="text-lg font-bold mb-2 text-foreground">Ready to place an order?</h3>
+                <p className="text-sm text-muted-foreground mb-6 max-w-lg mx-auto">Select your desired quantities and source to generate your PO. You can split your delivery if you don&apos;t need the entire stock immediately.</p>
 
                 {!isVerified && (
-                    <div className="mb-4 flex items-center justify-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-2.5 text-sm text-amber-800">
-                        <ShieldAlert className="w-4 h-4 text-amber-500 shrink-0" />
+                    <div className="mb-4 flex items-center justify-center gap-2 rounded-lg border border-status-pending-border bg-status-pending-bg px-4 py-2.5 text-sm text-status-pending-text">
+                        <ShieldAlert className="w-4 h-4 text-status-pending-text shrink-0" />
                         KYC verification required to place orders.
-                        <Link href="/client/pending-kyc" className="font-semibold underline underline-offset-2 hover:text-amber-900">Learn more</Link>
+                        <Link href="/client/pending-kyc" className="font-semibold underline underline-offset-2 hover:brightness-75">Learn more</Link>
                     </div>
                 )}
 
@@ -501,7 +501,7 @@ export default function CatalogClient({ products }: { products: any[] }) {
                 </Dialog>
                 ) : (
                     <Link href="/client/pending-kyc">
-                        <Button size="lg" className="gap-2 bg-gray-200 text-gray-500 hover:bg-gray-300 cursor-not-allowed">
+                        <Button size="lg" className="gap-2 bg-muted text-muted-foreground hover:bg-muted/80 cursor-not-allowed">
                             <Lock className="w-4 h-4" />
                             Verify Account to Order
                         </Button>

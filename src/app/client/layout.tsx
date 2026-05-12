@@ -215,10 +215,10 @@ function ClientLayoutInner({ children }: { children: React.ReactNode }) {
 
   // Derive header badge content from kycStatus
   const kycBadge = kycStatus === "verified"
-    ? { label: "Verified Account", className: "border-emerald-200 bg-emerald-50 text-emerald-700" }
+    ? { label: "Verified Account", className: "border-status-success-border bg-status-success-bg text-status-success-text" }
     : kycStatus === "rejected"
-    ? { label: "KYC Rejected", className: "border-red-200 bg-red-50 text-red-700" }
-    : { label: "Pending KYC", className: "border-amber-200 bg-amber-50 text-amber-700" };
+    ? { label: "KYC Rejected", className: "border-red-200 bg-red-50 text-red-700 dark:border-red-900/50 dark:bg-red-900/20 dark:text-red-400" }
+    : { label: "Pending KYC", className: "border-status-pending-border bg-status-pending-bg text-status-pending-text" };
 
   return (
     <div className="min-h-screen bg-muted/30 lg:flex">
@@ -227,7 +227,7 @@ function ClientLayoutInner({ children }: { children: React.ReactNode }) {
       </aside>
 
       <div className="flex min-h-screen flex-1 flex-col lg:ml-72">
-        <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-border bg-white/95 px-4 backdrop-blur-sm lg:px-6">
+        <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-border bg-background/95 px-4 backdrop-blur-sm lg:px-6">
           <div className="flex items-center gap-3">
             <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
               <SheetTrigger className="inline-flex h-8 w-8 items-center justify-center rounded-md hover:bg-muted lg:hidden">
