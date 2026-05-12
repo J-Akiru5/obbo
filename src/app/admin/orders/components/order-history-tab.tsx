@@ -64,7 +64,7 @@ export function OrderHistoryTab({ orders, loading }: { orders: Order[], loading:
                 </div>
             </div>
 
-            <div className="bg-card rounded-xl border border-border shadow-sm overflow-hidden">
+            <div className="bg-card rounded-xl border border-border shadow-sm overflow-x-auto">
                 <Table>
                     <TableHeader className="bg-muted/50">
                         <TableRow>

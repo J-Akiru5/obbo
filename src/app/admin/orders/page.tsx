@@ -126,8 +126,8 @@ function OrdersContent() {
             </div>
 
             <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-                <TabsList className="grid w-full grid-cols-4 h-auto">
-                    <TabsTrigger value="new" className="py-2.5">
+                <TabsList className="flex w-full overflow-x-auto h-auto justify-start md:grid md:grid-cols-4 no-scrollbar border-b md:border-b-0 rounded-none md:rounded-md pb-1 md:pb-0 mb-4 md:mb-0">
+                    <TabsTrigger value="new" className="py-2.5 whitespace-nowrap shrink-0">
                         New Requests
                         {orders.filter(o => o.status === "pending").length > 0 && (
                             <span className="ml-2 bg-[var(--color-industrial-yellow)] text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">
@@ -135,9 +135,9 @@ function OrdersContent() {
                             </span>
                         )}
                     </TabsTrigger>
-                    <TabsTrigger value="fulfillment" className="py-2.5">Fulfillment</TabsTrigger>
-                    <TabsTrigger value="tracking" className="py-2.5">Tracking</TabsTrigger>
-                    <TabsTrigger value="history" className="py-2.5">History</TabsTrigger>
+                    <TabsTrigger value="fulfillment" className="py-2.5 whitespace-nowrap shrink-0">Fulfillment</TabsTrigger>
+                    <TabsTrigger value="tracking" className="py-2.5 whitespace-nowrap shrink-0">Tracking</TabsTrigger>
+                    <TabsTrigger value="history" className="py-2.5 whitespace-nowrap shrink-0">History</TabsTrigger>
                 </TabsList>
 
                 <div className="mt-6">
