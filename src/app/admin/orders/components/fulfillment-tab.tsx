@@ -7,7 +7,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { AlertCircle, CheckCircle2, ExternalLink, Truck, UploadCloud, User, X } from "lucide-react";
+import { AlertCircle, CheckCircle2, ExternalLink, Truck, UploadCloud, X } from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 export function FulfillmentTab({ orders, shipments, onDispatch, onConfirmCheck, loading }: { 
     orders: Order[]; 
@@ -119,10 +120,20 @@ export function FulfillmentTab({ orders, shipments, onDispatch, onConfirmCheck, 
                         <Card key={order.id} className="border-l-4 border-l-amber-500">
                             <CardContent className="p-4 flex items-center justify-between">
                                 <div>
-                                    <h4 className="font-bold flex items-center gap-2">
-                                        <User className="w-4 h-4 text-muted-foreground" />
-                                        {order.client?.company_name || order.client?.full_name}
-                                    </h4>
+                                    <div className="flex items-center gap-3">
+                                        <Avatar className="w-8 h-8 border border-border/50">
+                                            {order.client?.avatar_url ? (
+                                                <AvatarImage src={order.client.avatar_url} alt="Client" className="object-cover" />
+                                            ) : (
+                                                <AvatarFallback className="bg-amber-100 text-amber-700 text-[10px] font-bold">
+                                                    {(order.client?.full_name || "CL").split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2)}
+                                                </AvatarFallback>
+                                            )}
+                                        </Avatar>
+                                        <h4 className="font-bold">
+                                            {order.client?.company_name || order.client?.full_name}
+                                        </h4>
+                                    </div>
                                     <p className="text-sm text-muted-foreground mt-1">
                                         Check Number: <span className="font-mono font-medium text-foreground">{order.check_number || "Not uploaded yet"}</span>
                                     </p>
@@ -170,10 +181,20 @@ export function FulfillmentTab({ orders, shipments, onDispatch, onConfirmCheck, 
                                             </Badge>
                                             <span className="text-xs text-muted-foreground">ID: {order.id.slice(0,8)}</span>
                                         </div>
-                                        <h4 className="text-lg font-bold flex items-center gap-2">
-                                            <User className="w-4 h-4 text-muted-foreground" />
-                                            {order.client?.company_name || order.client?.full_name}
-                                        </h4>
+                                        <div className="flex items-center gap-3">
+                                            <Avatar className="w-8 h-8 border border-border/50">
+                                                {order.client?.avatar_url ? (
+                                                    <AvatarImage src={order.client.avatar_url} alt="Client" className="object-cover" />
+                                                ) : (
+                                                    <AvatarFallback className="bg-[var(--color-industrial-blue)] text-white text-[10px] font-bold">
+                                                        {(order.client?.full_name || "CL").split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2)}
+                                                    </AvatarFallback>
+                                                )}
+                                            </Avatar>
+                                            <h4 className="text-lg font-bold">
+                                                {order.client?.company_name || order.client?.full_name}
+                                            </h4>
+                                        </div>
                                         <div className="flex gap-4 text-sm mt-2">
                                             <div className="bg-muted px-3 py-1.5 rounded-md">
                                                 <span className="text-muted-foreground text-xs uppercase tracking-wider block mb-0.5">Approved JB</span>

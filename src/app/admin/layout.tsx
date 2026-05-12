@@ -281,36 +281,40 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             ? WAREHOUSE_NAV_ITEMS
             : [];
 
-    useEffect(() => {
+    const fetchProfile = useCallback(async () => {
         const supabase = createClient();
-        supabase.auth.getUser().then(({ data }) => {
-            if (data.user) {
-                supabase
-                    .from("profiles")
-                    .select("full_name, role, avatar_url")
-                    .eq("id", data.user.id)
-                    .single()
-                    .then(({ data: profile }) => {
-                        const name = profile?.full_name || data.user?.email?.split("@")[0] || "Admin";
-                        setAdminName(name);
-                        if (profile?.role === "admin" || profile?.role === "warehouse_manager") {
-                            setAdminRole(profile.role);
-                        } else {
-                            setAdminRole(null);
-                        }
-                        setAvatarUrl(profile?.avatar_url || null);
-                        setAdminInitials(
-                            name.split(" ").map((n: string) => n[0]).join("").toUpperCase().slice(0, 2)
-                        );
-                    });
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+            const { data: profile } = await supabase
+                .from("profiles")
+                .select("full_name, role, avatar_url")
+                .eq("id", user.id)
+                .single();
+            
+            const name = profile?.full_name || user.email?.split("@")[0] || "Admin";
+            setAdminName(name);
+            if (profile?.role === "admin" || profile?.role === "warehouse_manager") {
+                setAdminRole(profile.role);
             } else {
                 setAdminRole(null);
             }
-        });
+            setAvatarUrl(profile?.avatar_url || null);
+            setAdminInitials(
+                name.split(" ").map((n: string) => n[0]).join("").toUpperCase().slice(0, 2)
+            );
+        } else {
+            setAdminRole(null);
+        }
+    }, []);
 
+    useEffect(() => {
+        fetchProfile();
         loadNotifications();
 
+        window.addEventListener("profile-updated", fetchProfile);
+
         let channel: any;
+        const supabase = createClient();
         const setupSubscription = async () => {
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) return;
@@ -333,8 +337,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         };
 
         setupSubscription();
-        return () => { if (channel) supabase.removeChannel(channel); };
-    }, [loadNotifications]);
+        return () => { 
+            if (channel) supabase.removeChannel(channel); 
+            window.removeEventListener("profile-updated", fetchProfile);
+        };
+    }, [loadNotifications, fetchProfile]);
 
     const markAllRead = async () => {
         try {

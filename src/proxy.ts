@@ -43,13 +43,8 @@ export async function proxy(request: NextRequest) {
             return NextResponse.redirect(new URL('/client/dashboard', request.url));
         }
 
-        if (profile?.role === 'admin' && (pathname.startsWith('/admin/orders') || pathname.startsWith('/admin/inventory'))) {
-            return NextResponse.redirect(new URL('/admin/dashboard', request.url));
-        }
-
-        if (profile?.role === 'warehouse_manager' && pathname.startsWith('/admin/reports')) {
-            return NextResponse.redirect(new URL('/admin/inventory', request.url));
-        }
+        // No restrictive redirects between admin/wm for specific sub-routes anymore
+        // Both roles are allowed to access their respective nav item destinations
     }
 
     // ── Protect client routes ───────────────────────────────

@@ -578,6 +578,18 @@ function ClientsContent() {
 
     useEffect(() => {
         void fetchProfiles();
+
+        const supabase = createClient();
+        const channel = supabase
+            .channel('admin-profiles-sync')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, () => {
+                void fetchProfiles();
+            })
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 

@@ -4,6 +4,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Search, MapPin, Truck, CheckCircle2, XCircle } from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 export function OrderHistoryTab({ orders, loading }: { orders: Order[], loading: boolean }) {
     const [searchQuery, setSearchQuery] = useState("");
@@ -91,10 +92,23 @@ export function OrderHistoryTab({ orders, loading }: { orders: Order[], loading:
                                         <p className="text-xs text-muted-foreground mt-1">{new Date(order.updated_at).toLocaleDateString()}</p>
                                     </TableCell>
                                     <TableCell>
-                                        <p className="font-semibold text-sm">{order.client?.company_name || order.client?.full_name}</p>
-                                        <div className="flex items-center gap-1 mt-1 text-[10px] text-muted-foreground uppercase font-bold">
-                                            {order.service_type === 'deliver' ? <Truck className="w-3 h-3" /> : <MapPin className="w-3 h-3" />}
-                                            {order.service_type}
+                                        <div className="flex items-center gap-2">
+                                            <Avatar className="w-7 h-7 border border-border/50 shrink-0">
+                                                {order.client?.avatar_url ? (
+                                                    <AvatarImage src={order.client.avatar_url} alt="Client" className="object-cover" />
+                                                ) : (
+                                                    <AvatarFallback className="bg-muted text-muted-foreground text-[9px] font-bold">
+                                                        {(order.client?.full_name || "CL").split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2)}
+                                                    </AvatarFallback>
+                                                )}
+                                            </Avatar>
+                                            <div>
+                                                <p className="font-semibold text-sm">{order.client?.company_name || order.client?.full_name}</p>
+                                                <div className="flex items-center gap-1 mt-0.5 text-[10px] text-muted-foreground uppercase font-bold">
+                                                    {order.service_type === 'deliver' ? <Truck className="w-3 h-3" /> : <MapPin className="w-3 h-3" />}
+                                                    {order.service_type}
+                                                </div>
+                                            </div>
                                         </div>
                                     </TableCell>
                                     <TableCell>

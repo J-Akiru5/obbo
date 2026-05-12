@@ -7,8 +7,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Check, X, FileText, User, Truck, MapPin, ExternalLink, Car } from "lucide-react";
+import { Check, X, FileText, Truck, MapPin, ExternalLink, Car } from "lucide-react";
 import { toast } from "sonner";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 export function NewRequestsTab({ orders, onApprove, onReject, loading }: { 
     orders: Order[]; 
@@ -83,10 +84,20 @@ export function NewRequestsTab({ orders, onApprove, onReject, loading }: {
                                                 <span className="text-xs text-muted-foreground">ID: {order.id.slice(0,8)}</span>
                                                 <span className="text-xs text-muted-foreground">• {new Date(order.created_at).toLocaleDateString()}</span>
                                             </div>
-                                            <h3 className="text-lg font-bold flex items-center gap-2">
-                                                <User className="w-4 h-4 text-muted-foreground" />
-                                                {order.client?.company_name || order.client?.full_name}
-                                            </h3>
+                                            <div className="flex items-center gap-3">
+                                                <Avatar className="w-8 h-8 border border-border/50">
+                                                    {order.client?.avatar_url ? (
+                                                        <AvatarImage src={order.client.avatar_url} alt="Client" className="object-cover" />
+                                                    ) : (
+                                                        <AvatarFallback className="bg-[var(--color-industrial-blue)] text-white text-[10px] font-bold">
+                                                            {(order.client?.full_name || "CL").split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2)}
+                                                        </AvatarFallback>
+                                                    )}
+                                                </Avatar>
+                                                <h3 className="text-lg font-bold">
+                                                    {order.client?.company_name || order.client?.full_name}
+                                                </h3>
+                                            </div>
                                         </div>
                                         <div className="text-right">
                                             <p className="text-xs text-muted-foreground uppercase font-semibold tracking-wider">Payment Method</p>

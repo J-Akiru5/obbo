@@ -80,6 +80,7 @@ export function AvatarUpload({ uid, url, fullName, onUpload, className }: Avatar
 
             setAvatarUrl(publicUrl);
             onUpload?.(publicUrl);
+            window.dispatchEvent(new CustomEvent("profile-updated"));
             toast.success("Profile picture updated successfully!");
         } catch (error: any) {
             toast.error(error.message || "Error uploading avatar");

@@ -211,6 +211,8 @@ function ClientLayoutInner({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     loadNotifications();
     
+    window.addEventListener("profile-updated", loadNotifications);
+
     let channel: any;
     const supabase = createClient();
 
@@ -236,7 +238,10 @@ function ClientLayoutInner({ children }: { children: React.ReactNode }) {
     };
 
     setupSubscription();
-    return () => { if (channel) supabase.removeChannel(channel); };
+    return () => { 
+      if (channel) supabase.removeChannel(channel); 
+      window.removeEventListener("profile-updated", loadNotifications);
+    };
   }, [loadNotifications]);
 
   const markAllRead = async () => {

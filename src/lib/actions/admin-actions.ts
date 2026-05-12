@@ -144,7 +144,7 @@ export async function fetchOrders(status?: string) {
     const { supabase } = await requireAdmin();
     let query = supabase
         .from("orders")
-        .select("*, client:profiles!orders_client_id_fkey(id, full_name, company_name, email, phone), items:order_items(*, product:products(name, bag_type, price_per_bag))")
+        .select("*, client:profiles!orders_client_id_fkey(id, full_name, company_name, email, phone, avatar_url), items:order_items(*, product:products(name, bag_type, price_per_bag))")
         .order("created_at", { ascending: false });
     if (status) query = query.eq("status", status);
     const { data } = await query;
@@ -237,7 +237,7 @@ export async function dispatchOrder(
 
     // Get order with items and full client profile
     const { data: order } = await supabase.from("orders")
-        .select("*, items:order_items(*), client:profiles!orders_client_id_fkey(id, full_name, company_name, address_street, address_city, address_province)")
+        .select("*, items:order_items(*), client:profiles!orders_client_id_fkey(id, full_name, company_name, address_street, address_city, address_province, avatar_url)")
         .eq("id", orderId).single();
     if (!order) throw new Error("Order not found");
 

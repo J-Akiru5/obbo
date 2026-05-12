@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { MapPin, Truck, Check, CornerDownLeft, Edit2 } from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 export function TrackingTab({ orders, onUpdateTracking, loading }: { 
     orders: Order[]; 
@@ -78,10 +79,23 @@ export function TrackingTab({ orders, onUpdateTracking, loading }: {
                             <TableRow key={order.id}>
                                 <TableCell className="font-mono text-xs">{order.id.slice(0, 8)}</TableCell>
                                 <TableCell>
-                                    <p className="font-medium">{order.client?.company_name || order.client?.full_name}</p>
-                                    <div className="flex items-center gap-1 mt-1 text-[10px] text-muted-foreground uppercase font-bold">
-                                        {order.service_type === 'deliver' ? <Truck className="w-3 h-3" /> : <MapPin className="w-3 h-3" />}
-                                        {order.service_type}
+                                    <div className="flex items-center gap-3">
+                                        <Avatar className="w-8 h-8 border border-border/50 shrink-0">
+                                            {order.client?.avatar_url ? (
+                                                <AvatarImage src={order.client.avatar_url} alt="Client" className="object-cover" />
+                                            ) : (
+                                                <AvatarFallback className="bg-[var(--color-industrial-blue)] text-white text-[10px] font-bold">
+                                                    {(order.client?.full_name || "CL").split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2)}
+                                                </AvatarFallback>
+                                            )}
+                                        </Avatar>
+                                        <div>
+                                            <p className="font-medium">{order.client?.company_name || order.client?.full_name}</p>
+                                            <div className="flex items-center gap-1 mt-1 text-[10px] text-muted-foreground uppercase font-bold">
+                                                {order.service_type === 'deliver' ? <Truck className="w-3 h-3" /> : <MapPin className="w-3 h-3" />}
+                                                {order.service_type}
+                                            </div>
+                                        </div>
                                     </div>
                                 </TableCell>
                                 <TableCell>
