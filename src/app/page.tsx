@@ -293,6 +293,59 @@ function HowItWorks() {
   );
 }
 
+// ─── FAQ ──────────────────────────────────────────────
+const faqs = [
+  {
+    question: "How long does the KYC verification process take?",
+    answer: "Typically, our admin team reviews and approves KYC documents within 24-48 business hours. You will receive an email notification once your account is activated."
+  },
+  {
+    question: "What payment methods are supported?",
+    answer: "We support both Cash and Check payment methods. You can select your preferred method during the checkout process. For check payments, additional verification might be required."
+  },
+  {
+    question: "Can I track my delivery in real-time?",
+    answer: "Yes, once your order is dispatched from our warehouse, you can track the status of your delivery directly from your dashboard."
+  },
+  {
+    question: "What happens if a partial delivery is made?",
+    answer: "Our system automatically tracks partial deliveries. Any remaining balance will be recorded and scheduled for a subsequent dispatch."
+  }
+];
+
+function FAQ() {
+  return (
+    <section id="faq" className="py-20 sm:py-28 bg-background">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+        <ScrollReveal className="text-center mb-16">
+          <span className="text-sm font-bold uppercase tracking-widest text-[var(--color-industrial-yellow)]">FAQ</span>
+          <h2 className="mt-3 text-3xl sm:text-4xl font-bold text-foreground">Frequently Asked Questions</h2>
+          <p className="mt-4 text-muted-foreground text-lg">
+            Got questions? We've got answers.
+          </p>
+        </ScrollReveal>
+        <div className="space-y-4">
+          {faqs.map((faq, i) => (
+            <ScrollReveal key={i} delay={i * 100}>
+              <details className="group bg-card border border-border rounded-xl [&_summary::-webkit-details-marker]:hidden">
+                <summary className="flex items-center justify-between p-6 cursor-pointer font-bold text-lg">
+                  {faq.question}
+                  <span className="transition-transform duration-300 group-open:-rotate-180 text-[var(--color-industrial-blue)]">
+                    <svg fill="none" height="24" shapeRendering="geometricPrecision" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" width="24"><path d="M6 9l6 6 6-6"></path></svg>
+                  </span>
+                </summary>
+                <div className="px-6 pb-6 text-muted-foreground leading-relaxed">
+                  {faq.answer}
+                </div>
+              </details>
+            </ScrollReveal>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
 // ─── CTA ──────────────────────────────────────────────
 function CTA() {
   return (
@@ -355,6 +408,7 @@ export default function LandingPage() {
       <Stats />
       <Features />
       <HowItWorks />
+      <FAQ />
       <CTA />
       <Footer />
     </main>
