@@ -185,11 +185,9 @@ export default function RegisterPage() {
                     .eq("id", userId);
             }
 
-            // 4. Sign out immediately — user must wait for admin approval
-            await supabase.auth.signOut();
-
-            toast.success("Account created! Awaiting admin verification.");
-            router.push("/pending");
+            // 4. Redirect to the limited client portal (user stays signed in)
+            toast.success("Account created! Browse the portal while your KYC is reviewed.");
+            router.push("/client/dashboard");
         } catch {
             toast.error("An unexpected error occurred. Please try again.");
         } finally {

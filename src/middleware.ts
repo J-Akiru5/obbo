@@ -67,13 +67,21 @@ export async function middleware(request: NextRequest) {
         if (profile?.role === 'admin' || profile?.role === 'warehouse_manager') {
             return NextResponse.redirect(new URL('/admin/dashboard', request.url));
         }
-        // Gate unverified clients to /pending
-        if (profile?.kyc_status !== 'verified') {
-            return NextResponse.redirect(new URL('/pending', request.url));
+
+        // For unverified clients: gate high-value action routes to the in-portal interstitial.
+        // All other /client/* routes (dashboard, catalog, orders list, profile, contact)
+        // are open so they can browse and reach out to admin while waiting.
+        const isUnverified = profile?.kyc_status !== 'verified';
+        const RESTRICTED_PATHS = ['/client/orders/new', '/client/ledger'];
+        const isRestricted = RESTRICTED_PATHS.some(p => pathname.startsWith(p));
+
+        if (isUnverified && isRestricted) {
+            return NextResponse.redirect(new URL('/client/pending-kyc', request.url));
         }
     }
 
     // ── Block /pending for verified users ──────────────────
+    // /pending is now only used as a fallback for unauthenticated edge cases.
     if (pathname === '/pending') {
         if (user) {
             const { data: profile } = await supabase
@@ -84,9 +92,8 @@ export async function middleware(request: NextRequest) {
             if (profile?.role === 'admin' || profile?.role === 'warehouse_manager') {
                 return NextResponse.redirect(new URL('/admin/dashboard', request.url));
             }
-            if (profile?.kyc_status === 'verified') {
-                return NextResponse.redirect(new URL('/client/dashboard', request.url));
-            }
+            // All authenticated clients (verified or not) now use the client portal
+            return NextResponse.redirect(new URL('/client/dashboard', request.url));
         }
     }
 

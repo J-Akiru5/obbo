@@ -1,7 +1,8 @@
 import { fetchClientDashboardKPIs, fetchRecentOrders, fetchClientNotifications, fetchActiveProducts } from "@/lib/actions/client-actions";
+import { createClient } from "@/lib/supabase/server";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { AlertCircle, Bell, Clock, Package, PackageSearch, Truck, Info } from "lucide-react";
+import { AlertCircle, Bell, Clock, Package, PackageSearch, Truck, Info, ShieldAlert, Lock } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 
@@ -17,23 +18,63 @@ export default async function ClientDashboardPage() {
         fetchActiveProducts(),
     ]);
 
+    // Fetch kyc_status server-side for conditional rendering
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    const { data: profile } = user
+        ? await supabase.from("profiles").select("kyc_status").eq("id", user.id).single()
+        : { data: null };
+    const isVerified = profile?.kyc_status === "verified";
+
     const unreadNotifications = notifications.filter((n: any) => !n.is_read);
     const popularProducts = products.slice(0, 2);
 
     return (
         <div className="space-y-6">
+            {/* KYC Pending Banner — shown for unverified users */}
+            {!isVerified && (
+                <div className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4">
+                    <ShieldAlert className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+                    <div className="flex-1 min-w-0">
+                        <h4 className="text-sm font-semibold text-amber-900">
+                            Account pending KYC verification
+                        </h4>
+                        <p className="text-sm text-amber-700 mt-0.5">
+                            You can browse the catalog, but placing orders and accessing your ledger require a verified account.
+                            Our team will review your documents shortly.
+                        </p>
+                    </div>
+                    <Link href="/client/contact-admin" className="shrink-0">
+                        <Button size="sm" variant="outline" className="border-amber-300 text-amber-800 hover:bg-amber-100 h-8 text-xs">
+                            Contact Admin
+                        </Button>
+                    </Link>
+                </div>
+            )}
+
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
                     <h2 className="text-2xl font-bold text-gray-900 tracking-tight">Welcome back, {kpis.clientName}</h2>
                     <p className="text-sm text-gray-500">Here&apos;s an overview of your account.</p>
                 </div>
                 <div className="flex gap-2">
-                    <Link href="/client/catalog">
-                        <Button className="bg-[var(--color-industrial-blue)] text-white shadow-sm hover:bg-[var(--color-industrial-blue)]/90">
-                            <PackageSearch className="w-4 h-4 mr-2" />
+                    {isVerified ? (
+                        <Link href="/client/catalog">
+                            <Button className="bg-[var(--color-industrial-blue)] text-white shadow-sm hover:bg-[var(--color-industrial-blue)]/90">
+                                <PackageSearch className="w-4 h-4 mr-2" />
+                                New Order
+                            </Button>
+                        </Link>
+                    ) : (
+                        <Button
+                            disabled
+                            className="bg-[var(--color-industrial-blue)]/40 text-white cursor-not-allowed gap-2"
+                            title="Complete KYC verification to place orders"
+                        >
+                            <Lock className="w-4 h-4" />
                             New Order
                         </Button>
-                    </Link>
+                    )}
                 </div>
             </div>
 
@@ -65,20 +106,35 @@ export default async function ClientDashboardPage() {
                     </Card>
                 </Link>
 
-                <Link href="/client/ledger">
-                    <Card className="bg-[var(--color-industrial-blue)] text-white shadow-md hover:shadow-lg transition-shadow cursor-pointer">
-                        <CardHeader className="flex flex-row items-center justify-between pb-2">
-                            <CardTitle className="text-sm font-medium text-blue-100">Remaining Balance</CardTitle>
-                            <Package className="w-4 h-4 text-blue-200" />
-                        </CardHeader>
-                        <CardContent>
-                            <div className="text-2xl font-bold text-white">
-                                {kpis.remainingBags.toLocaleString()} <span className="text-sm font-normal text-blue-200">indiv. bags</span>
-                            </div>
-                            <p className="text-xs text-blue-200 mt-1">Available for re-delivery</p>
-                        </CardContent>
-                    </Card>
-                </Link>
+                {isVerified ? (
+                    <Link href="/client/ledger">
+                        <Card className="bg-[var(--color-industrial-blue)] text-white shadow-md hover:shadow-lg transition-shadow cursor-pointer">
+                            <CardHeader className="flex flex-row items-center justify-between pb-2">
+                                <CardTitle className="text-sm font-medium text-blue-100">Remaining Balance</CardTitle>
+                                <Package className="w-4 h-4 text-blue-200" />
+                            </CardHeader>
+                            <CardContent>
+                                <div className="text-2xl font-bold text-white">
+                                    {kpis.remainingBags.toLocaleString()} <span className="text-sm font-normal text-blue-200">indiv. bags</span>
+                                </div>
+                                <p className="text-xs text-blue-200 mt-1">Available for re-delivery</p>
+                            </CardContent>
+                        </Card>
+                    </Link>
+                ) : (
+                    <div className="cursor-not-allowed" title="Requires verified account">
+                        <Card className="bg-gray-100 text-gray-400 shadow-sm opacity-60 select-none">
+                            <CardHeader className="flex flex-row items-center justify-between pb-2">
+                                <CardTitle className="text-sm font-medium text-gray-400">Remaining Balance</CardTitle>
+                                <Lock className="w-4 h-4 text-gray-400" />
+                            </CardHeader>
+                            <CardContent>
+                                <div className="text-2xl font-bold text-gray-400">—</div>
+                                <p className="text-xs text-gray-400 mt-1">Available after KYC approval</p>
+                            </CardContent>
+                        </Card>
+                    </div>
+                )}
             </div>
 
             {/* Notification Alerts */}
@@ -146,7 +202,6 @@ export default async function ClientDashboardPage() {
                                 {recentOrders.map((order: any) => {
                                     const totalBags = order.items.reduce((acc: number, item: any) => acc + item.requested_qty, 0);
                                     
-                                    // Map status to badge
                                     let statusVariant: "default" | "secondary" | "destructive" | "outline" = "outline";
                                     let statusLabel = order.status;
                                     
@@ -230,9 +285,16 @@ export default async function ClientDashboardPage() {
                         <div className="mt-6 pt-6 border-t">
                             <h4 className="text-sm font-semibold mb-2">Have a balance?</h4>
                             <p className="text-xs text-gray-500 mb-3">If you have remaining bags from a previous order, you can request a re-delivery without placing a new PO.</p>
-                            <Link href="/client/ledger" className="block">
-                                <Button variant="secondary" className="w-full">View Ledger</Button>
-                            </Link>
+                            {isVerified ? (
+                                <Link href="/client/ledger" className="block">
+                                    <Button variant="secondary" className="w-full">View Ledger</Button>
+                                </Link>
+                            ) : (
+                                <Button variant="secondary" disabled className="w-full gap-2 opacity-60 cursor-not-allowed">
+                                    <Lock className="w-3.5 h-3.5" />
+                                    View Ledger
+                                </Button>
+                            )}
                         </div>
                     </CardContent>
                 </Card>

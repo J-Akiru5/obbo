@@ -18,6 +18,8 @@ import {
   AlertCircle,
   CheckCircle2,
   Info,
+  Lock,
+  Clock,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import type { Notification } from "@/lib/types/database";
@@ -26,17 +28,67 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
+import { ClientKycProvider, useClientKyc, type KycStatus } from "@/lib/context/client-kyc-context";
+
+// Routes that require KYC verification to use
+const LOCKED_HREFS = ["/client/ledger", "/client/orders/new"];
 
 const navItems = [
   { href: "/client/dashboard", label: "Dashboard", icon: Gauge },
   { href: "/client/catalog", label: "Product Catalog", icon: PackageSearch },
-  { href: "/client/orders", label: "My Orders", icon: ClipboardList },
-  { href: "/client/ledger", label: "Balance Ledger", icon: WalletCards },
+  { href: "/client/orders", label: "My Orders", icon: ClipboardList, lockHref: "/client/orders/new" },
+  { href: "/client/ledger", label: "Balance Ledger", icon: WalletCards, locked: true },
   { href: "/client/profile", label: "Profile & Settings", icon: CircleUserRound },
   { href: "/client/contact-admin", label: "Contact Admin", icon: Contact },
 ];
 
+function KycStatusBox({ kycStatus }: { kycStatus: KycStatus }) {
+  if (kycStatus === "verified") {
+    return (
+      <div className="rounded-lg bg-sidebar-accent/55 p-3">
+        <div className="mb-2 flex items-center gap-2 text-sidebar-accent-foreground">
+          <ShieldCheck className="h-4 w-4" />
+          <span className="text-xs font-semibold uppercase tracking-wide">KYC Verified</span>
+        </div>
+        <p className="text-xs text-sidebar-foreground/70">
+          You can now place orders and request re-delivery anytime.
+        </p>
+      </div>
+    );
+  }
+
+  if (kycStatus === "rejected") {
+    return (
+      <div className="rounded-lg bg-red-500/10 border border-red-500/20 p-3">
+        <div className="mb-2 flex items-center gap-2 text-red-400">
+          <AlertCircle className="h-4 w-4" />
+          <span className="text-xs font-semibold uppercase tracking-wide">KYC Rejected</span>
+        </div>
+        <p className="text-xs text-sidebar-foreground/70">
+          Your verification was rejected. Please contact admin for assistance.
+        </p>
+      </div>
+    );
+  }
+
+  // pending_verification (default)
+  return (
+    <div className="rounded-lg bg-amber-500/10 border border-amber-500/20 p-3">
+      <div className="mb-2 flex items-center gap-2 text-amber-400">
+        <Clock className="h-4 w-4 animate-pulse" />
+        <span className="text-xs font-semibold uppercase tracking-wide">Under Review</span>
+      </div>
+      <p className="text-xs text-sidebar-foreground/70">
+        Your account is pending KYC approval. Some features are limited.
+      </p>
+    </div>
+  );
+}
+
 function SidebarContent({ pathname, onNavigate }: { pathname: string; onNavigate?: () => void }) {
+  const { kycStatus } = useClientKyc();
+  const isUnverified = kycStatus !== "verified";
+
   return (
     <div className="flex h-full flex-col">
       <div className="flex h-16 items-center gap-2.5 border-b border-sidebar-border px-5">
@@ -52,6 +104,7 @@ function SidebarContent({ pathname, onNavigate }: { pathname: string; onNavigate
       <nav className="flex-1 space-y-1 p-3">
         {navItems.map((item) => {
           const isActive = pathname.startsWith(item.href);
+          const showLock = isUnverified && item.locked;
           return (
             <Link
               key={item.href}
@@ -64,29 +117,25 @@ function SidebarContent({ pathname, onNavigate }: { pathname: string; onNavigate
               }`}
             >
               <item.icon className="h-4 w-4 shrink-0" />
-              <span>{item.label}</span>
+              <span className="flex-1">{item.label}</span>
+              {showLock && (
+                <Lock className="h-3 w-3 shrink-0 text-amber-400 opacity-80" />
+              )}
             </Link>
           );
         })}
       </nav>
 
       <div className="border-t border-sidebar-border px-4 py-4">
-        <div className="rounded-lg bg-sidebar-accent/55 p-3">
-          <div className="mb-2 flex items-center gap-2 text-sidebar-accent-foreground">
-            <ShieldCheck className="h-4 w-4" />
-            <span className="text-xs font-semibold uppercase tracking-wide">KYC Verified</span>
-          </div>
-          <p className="text-xs text-sidebar-foreground/70">
-            You can now place orders and request re-delivery anytime.
-          </p>
-        </div>
+        <KycStatusBox kycStatus={kycStatus} />
       </div>
     </div>
   );
 }
 
-export default function ClientLayout({ children }: { children: React.ReactNode }) {
+function ClientLayoutInner({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const { kycStatus } = useClientKyc();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const [notifications, setNotifications] = useState<Notification[]>([]);
@@ -163,6 +212,13 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
       toast.error("Failed to mark notifications as read.");
     }
   };
+
+  // Derive header badge content from kycStatus
+  const kycBadge = kycStatus === "verified"
+    ? { label: "Verified Account", className: "border-emerald-200 bg-emerald-50 text-emerald-700" }
+    : kycStatus === "rejected"
+    ? { label: "KYC Rejected", className: "border-red-200 bg-red-50 text-red-700" }
+    : { label: "Pending KYC", className: "border-amber-200 bg-amber-50 text-amber-700" };
 
   return (
     <div className="min-h-screen bg-muted/30 lg:flex">
@@ -249,12 +305,15 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
                 </div>
               </PopoverContent>
             </Popover>
+
+            {/* Dynamic KYC badge */}
             <Badge
               variant="outline"
-              className="hidden border-emerald-200 bg-emerald-50 text-emerald-700 sm:inline-flex"
+              className={`hidden sm:inline-flex ${kycBadge.className}`}
             >
-              Verified Account
+              {kycBadge.label}
             </Badge>
+
             <button
               type="button"
               onClick={async () => {
@@ -275,5 +334,13 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
         </main>
       </div>
     </div>
+  );
+}
+
+export default function ClientLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <ClientKycProvider>
+      <ClientLayoutInner>{children}</ClientLayoutInner>
+    </ClientKycProvider>
   );
 }

@@ -2,9 +2,11 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { toast } from "sonner";
 import { submitOrder, saveOrderDraft } from "@/lib/actions/client-actions";
 import { createClient } from "@/lib/supabase/client";
+import { useClientKyc } from "@/lib/context/client-kyc-context";
 
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -13,10 +15,12 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 
-import { PackageSearch, ShoppingCart, Building2, Anchor, Save, CheckCircle2, Split } from "lucide-react";
+import { PackageSearch, ShoppingCart, Building2, Anchor, Save, CheckCircle2, Split, Lock, ShieldAlert } from "lucide-react";
 
 export default function CatalogClient({ products }: { products: any[] }) {
     const router = useRouter();
+    const { kycStatus } = useClientKyc();
+    const isVerified = kycStatus === "verified";
     const [isOrderOpen, setIsOrderOpen] = useState(false);
     const [clientName, setClientName] = useState<string>("");
     
@@ -307,6 +311,16 @@ export default function CatalogClient({ products }: { products: any[] }) {
             <div className="bg-white border p-6 rounded-xl shadow-sm text-center">
                 <h3 className="text-lg font-bold mb-2">Ready to place an order?</h3>
                 <p className="text-sm text-gray-500 mb-6 max-w-lg mx-auto">Select your desired quantities and source to generate your PO. You can split your delivery if you don&apos;t need the entire stock immediately.</p>
+
+                {!isVerified && (
+                    <div className="mb-4 flex items-center justify-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-2.5 text-sm text-amber-800">
+                        <ShieldAlert className="w-4 h-4 text-amber-500 shrink-0" />
+                        KYC verification required to place orders.
+                        <Link href="/client/pending-kyc" className="font-semibold underline underline-offset-2 hover:text-amber-900">Learn more</Link>
+                    </div>
+                )}
+
+                {isVerified ? (
                 <Dialog open={isOrderOpen} onOpenChange={setIsOrderOpen}>
                     <DialogTrigger render={<Button className="bg-[var(--color-industrial-blue)] hover:bg-[var(--color-industrial-blue)]/90" size="lg" />}>
                         <ShoppingCart className="w-4 h-4 mr-2" />
@@ -485,6 +499,14 @@ export default function CatalogClient({ products }: { products: any[] }) {
                         </form>
                     </DialogContent>
                 </Dialog>
+                ) : (
+                    <Link href="/client/pending-kyc">
+                        <Button size="lg" className="gap-2 bg-gray-200 text-gray-500 hover:bg-gray-300 cursor-not-allowed">
+                            <Lock className="w-4 h-4" />
+                            Verify Account to Order
+                        </Button>
+                    </Link>
+                )}
             </div>
         </div>
     );
