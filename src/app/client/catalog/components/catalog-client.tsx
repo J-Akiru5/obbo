@@ -8,16 +8,24 @@ import { submitOrder, saveOrderDraft } from "@/lib/actions/client-actions";
 import { createClient } from "@/lib/supabase/client";
 import { useClientKyc } from "@/lib/context/client-kyc-context";
 
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
-import { PackageSearch, ShoppingCart, Building2, Anchor, Save, CheckCircle2, Split, Lock, ShieldAlert, Car } from "lucide-react";
+import { PackageSearch, ShoppingCart, Building2, Anchor, Save, CheckCircle2, Split, ShieldAlert, Car } from "lucide-react";
+import type { Product } from "@/lib/types/database";
+import Image from "next/image";
 
-export default function CatalogClient({ products }: { products: any[] }) {
+const generateFileName = (userId: string, prefix: string, fileExt: string) => {
+    const timestamp = Date.now();
+    const randomId = Math.random().toString(36).substring(7);
+    return `${userId}/${prefix}_${timestamp}_${randomId}.${fileExt}`;
+};
+
+export default function CatalogClient({ products }: { products: Product[] }) {
     const router = useRouter();
     const { kycStatus } = useClientKyc();
     const isVerified = kycStatus === "verified";
@@ -159,8 +167,8 @@ export default function CatalogClient({ products }: { products: any[] }) {
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) throw new Error("Not authenticated");
 
-            const fileExt = poFile.name.split('.').pop();
-            const fileName = `${user.id}/po_${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
+            const fileExt = poFile.name.split('.').pop() || "jpg";
+            const fileName = generateFileName(user.id, "po", fileExt);
             const { error: uploadError } = await supabase.storage
                 .from('order-attachments')
                 .upload(fileName, poFile, { upsert: true, contentType: poFile.type });
@@ -206,8 +214,8 @@ export default function CatalogClient({ products }: { products: any[] }) {
                 const supabase = createClient();
                 const { data: { user } } = await supabase.auth.getUser();
                 if (!user) throw new Error("Not authenticated");
-                const fileExt = poFile.name.split('.').pop();
-                const fileName = `${user.id}/draft_${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
+                const fileExt = poFile.name.split('.').pop() || "jpg";
+                const fileName = generateFileName(user.id, "draft", fileExt);
                 const { error: uploadError } = await supabase.storage.from('order-attachments').upload(fileName, poFile, { upsert: true, contentType: poFile.type });
                 if (!uploadError) {
                     const { data: { publicUrl } } = supabase.storage.from('order-attachments').getPublicUrl(fileName);
@@ -281,7 +289,12 @@ export default function CatalogClient({ products }: { products: any[] }) {
                     <Card key={product.id} className="overflow-hidden shadow-sm flex flex-col bg-card border-border">
                         <div className="h-48 sm:h-64 w-full bg-muted flex shrink-0 items-center justify-center border-b overflow-hidden relative">
                             {product.image_url ? (
-                                <img src={product.image_url} alt={product.name} className="absolute inset-0 w-full h-full object-cover" />
+                                <Image 
+                                    src={product.image_url} 
+                                    alt={product.name} 
+                                    fill
+                                    className="object-cover" 
+                                />
                             ) : (
                                 <PackageSearch className="w-16 h-16 text-muted-foreground/50 z-10" />
                             )}
@@ -377,12 +390,12 @@ export default function CatalogClient({ products }: { products: any[] }) {
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                     <div className="space-y-2">
                                         <Label className="text-xs font-semibold uppercase text-muted-foreground">Number of JB (Optional)</Label>
-                                        <Input type="number" min="0" value={qtyJB || ""} placeholder="0" onChange={(e) => setQtyJB(parseInt(e.target.value) || 0)} className="bg-background" />
+                                        <Input type="number" min="0" value={qtyJB || ""} placeholder="0" onFocus={(e) => e.target.select()} onChange={(e) => setQtyJB(parseInt(e.target.value) || 0)} className="bg-background" />
                                         <p className="text-[10px] text-muted-foreground/70 font-medium">= {qtyJB * 25} individual bags</p>
                                     </div>
                                     <div className="space-y-2">
                                         <Label className="text-xs font-semibold uppercase text-muted-foreground">Number of SB (Optional)</Label>
-                                        <Input type="number" min="0" value={qtySB || ""} placeholder="0" onChange={(e) => setQtySB(parseInt(e.target.value) || 0)} className="bg-background" />
+                                        <Input type="number" min="0" value={qtySB || ""} placeholder="0" onFocus={(e) => e.target.select()} onChange={(e) => setQtySB(parseInt(e.target.value) || 0)} className="bg-background" />
                                         <p className="text-[10px] text-muted-foreground/70 font-medium">= {qtySB * 50} individual bags</p>
                                     </div>
                                 </div>
