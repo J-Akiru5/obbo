@@ -62,7 +62,7 @@ export async function fetchClientDashboardKPIs() {
         activeShipments: activeShipments || 0,
         remainingBags,
         rawBalances: balances || [],
-        clientName: profile.company_name || profile.full_name || "Client",
+        clientName: profile.account_type === "individual" ? profile.full_name : (profile.company_name || profile.full_name || "Client"),
     };
 }
 
@@ -488,6 +488,17 @@ export async function updateNotificationPreferences(prefs: {
     const { error } = await supabase
         .from("profiles")
         .update({ notification_preferences: prefs, updated_at: new Date().toISOString() })
+        .eq("id", user.id);
+    if (error) throw new Error(error.message);
+    revalidatePath("/client/profile");
+    return { success: true };
+}
+
+export async function updateTinNo(tinNo: string) {
+    const { supabase, user } = await requireClient();
+    const { error } = await supabase
+        .from("profiles")
+        .update({ tin_no: tinNo, updated_at: new Date().toISOString() })
         .eq("id", user.id);
     if (error) throw new Error(error.message);
     revalidatePath("/client/profile");

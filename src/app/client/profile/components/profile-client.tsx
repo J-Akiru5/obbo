@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { updateNotificationPreferences } from "@/lib/actions/client-actions";
+import { updateNotificationPreferences, updateTinNo } from "@/lib/actions/client-actions";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -28,6 +28,10 @@ export default function ProfileClient({ profile, email }: { profile: any; email:
     };
     const [prefs, setPrefs] = useState(defaultPrefs);
     const [isSavingPrefs, setIsSavingPrefs] = useState(false);
+
+    // TIN state
+    const [tinNo, setTinNo] = useState(profile?.tin_no || "");
+    const [isSavingTin, setIsSavingTin] = useState(false);
 
     const handleUpdatePassword = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -67,6 +71,19 @@ export default function ProfileClient({ profile, email }: { profile: any; email:
         }
     };
 
+    const handleSaveTin = async () => {
+        setIsSavingTin(true);
+        try {
+            await updateTinNo(tinNo);
+            toast.success("TIN No. updated successfully.");
+        } catch (e: unknown) {
+            const msg = e instanceof Error ? e.message : "Failed to update TIN No.";
+            toast.error(msg);
+        } finally {
+            setIsSavingTin(false);
+        }
+    };
+
     const togglePref = (key: string) => {
         setPrefs((prev: typeof prefs) => ({ ...prev, [key]: !prev[key as keyof typeof prev] }));
     };
@@ -98,13 +115,17 @@ export default function ProfileClient({ profile, email }: { profile: any; email:
                             />
                         </div>
                         <div className="space-y-1">
-                            <Label className="text-xs text-muted-foreground uppercase tracking-wide">Company Name</Label>
-                            <div className="font-medium text-foreground">{profile.company_name || profile.full_name}</div>
+                            <Label className="text-xs text-muted-foreground uppercase tracking-wide">
+                                {profile.account_type === "individual" ? "Full Name" : "Company Name"}
+                            </Label>
+                            <div className="font-medium text-foreground">{profile.account_type === "individual" ? profile.full_name : (profile.company_name || profile.full_name)}</div>
                         </div>
-                        <div className="space-y-1">
-                            <Label className="text-xs text-muted-foreground uppercase tracking-wide">Contact Person</Label>
-                            <div className="font-medium text-foreground">{profile.full_name}</div>
-                        </div>
+                        {profile.account_type !== "individual" && (
+                            <div className="space-y-1">
+                                <Label className="text-xs text-muted-foreground uppercase tracking-wide">Contact Person</Label>
+                                <div className="font-medium text-foreground">{profile.full_name}</div>
+                            </div>
+                        )}
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-1">
                                 <Label className="text-xs text-muted-foreground uppercase tracking-wide">Email</Label>
@@ -119,6 +140,26 @@ export default function ProfileClient({ profile, email }: { profile: any; email:
                             <Label className="text-xs text-muted-foreground uppercase tracking-wide">Business Address</Label>
                             <div className="font-medium text-foreground text-sm">
                                 {[profile.address_street, profile.address_city, profile.address_province].filter(Boolean).join(", ") || "Not provided"}
+                            </div>
+                        </div>
+
+                        <div className="space-y-2 pt-2">
+                            <Label className="text-xs text-muted-foreground uppercase tracking-wide">TIN No.</Label>
+                            <div className="flex gap-2">
+                                <Input 
+                                    value={tinNo} 
+                                    onChange={e => setTinNo(e.target.value)} 
+                                    placeholder="Enter TIN No."
+                                    className="h-9 text-sm"
+                                />
+                                <Button 
+                                    onClick={handleSaveTin} 
+                                    disabled={isSavingTin || tinNo === profile.tin_no}
+                                    size="sm"
+                                    className="bg-[var(--color-industrial-blue)]"
+                                >
+                                    {isSavingTin ? "..." : "Save"}
+                                </Button>
                             </div>
                         </div>
                         <div className="pt-4 border-t flex items-center gap-2 text-sm">
