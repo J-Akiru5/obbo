@@ -77,11 +77,10 @@ function InventoryContent() {
             </div>
 
             <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-                <TabsList className="grid w-full grid-cols-4 h-auto">
+                <TabsList className="grid w-full grid-cols-3 h-auto">
                     <TabsTrigger value="shipments" className="py-2.5">Shipment Batches</TabsTrigger>
                     <TabsTrigger value="po" className="py-2.5">PO List</TabsTrigger>
                     <TabsTrigger value="dr" className="py-2.5">DR List</TabsTrigger>
-                    <TabsTrigger value="reports" className="py-2.5">Warehouse Reports</TabsTrigger>
                 </TabsList>
 
                 <div className="mt-6">
@@ -97,9 +96,7 @@ function InventoryContent() {
                         <DrListTab deliveryReceipts={deliveryReceipts} shipments={shipments} loading={loading} onReload={loadData} />
                     </TabsContent>
 
-                    <TabsContent value="reports">
-                        <ReportsTab />
-                    </TabsContent>
+
                 </div>
             </Tabs>
         </div>
