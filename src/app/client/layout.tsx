@@ -85,6 +85,8 @@ function KycStatusBox({ kycStatus }: { kycStatus: KycStatus }) {
   );
 }
 
+import { RealTimeClock } from "@/components/real-time-clock";
+
 function SidebarContent({ pathname, onNavigate }: { pathname: string; onNavigate?: () => void }) {
   const { kycStatus } = useClientKyc();
   const isUnverified = kycStatus !== "verified";
@@ -126,8 +128,11 @@ function SidebarContent({ pathname, onNavigate }: { pathname: string; onNavigate
         })}
       </nav>
 
-      <div className="border-t border-sidebar-border px-4 py-4">
-        <KycStatusBox kycStatus={kycStatus} />
+      <div className="px-4 py-4 space-y-4">
+        <RealTimeClock />
+        <div className="border-t border-sidebar-border pt-4">
+          <KycStatusBox kycStatus={kycStatus} />
+        </div>
       </div>
     </div>
   );

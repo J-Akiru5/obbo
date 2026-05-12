@@ -113,6 +113,8 @@ const WAREHOUSE_NAV_ITEMS = [
     },
 ];
 
+import { RealTimeClock } from "@/components/real-time-clock";
+
 function SidebarContent({ pathname, navItems, onNavigate, adminName, adminInitials }: { pathname: string; navItems: typeof ADMIN_NAV_ITEMS; onNavigate?: () => void; adminName?: string; adminInitials?: string }) {
     const [expanded, setExpanded] = useState<Record<string, boolean>>(() => {
         const initial: Record<string, boolean> = {};
@@ -209,9 +211,11 @@ function SidebarContent({ pathname, navItems, onNavigate, adminName, adminInitia
                 })}
             </nav>
 
-            {/* User info */}
-            <div className="px-3 py-4 border-t border-sidebar-border">
-                <div className="flex items-center gap-3 px-3 py-2">
+            <div className="mt-auto px-4 py-4 space-y-4">
+                <RealTimeClock />
+                
+                <div className="pt-4 border-t border-sidebar-border">
+                    <div className="flex items-center gap-3 px-3 py-2">
                     <div className="w-8 h-8 rounded-full bg-sidebar-accent flex items-center justify-center">
                         <span className="text-xs font-bold text-sidebar-accent-foreground">{adminInitials ?? "AD"}</span>
                     </div>
@@ -222,6 +226,7 @@ function SidebarContent({ pathname, navItems, onNavigate, adminName, adminInitia
                 </div>
             </div>
         </div>
+    </div>
     );
 }
 
