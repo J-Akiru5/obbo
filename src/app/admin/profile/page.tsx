@@ -12,6 +12,7 @@ import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
+import { AvatarUpload } from "@/components/avatar-upload";
 
 interface AdminProfile {
     id: string;
@@ -20,6 +21,7 @@ interface AdminProfile {
     phone: string | null;
     role: string;
     kyc_status: string;
+    avatar_url: string | null;
     created_at: string;
     updated_at: string;
 }
@@ -93,9 +95,13 @@ export default function AdminProfilePage() {
             <Card>
                 <CardContent className="pt-6">
                     <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-                        <Avatar className="w-16 h-16">
-                            <AvatarFallback className="text-lg font-bold bg-[var(--color-industrial-blue)] text-white">{initials}</AvatarFallback>
-                        </Avatar>
+                        <AvatarUpload
+                            uid={profile.id}
+                            url={profile.avatar_url}
+                            fullName={profile.full_name}
+                            onUpload={(url) => setProfile({ ...profile, avatar_url: url })}
+                            className="w-20 h-20"
+                        />
                         <div className="flex-1">
                             <h3 className="text-xl font-bold">{profile.full_name}</h3>
                             <p className="text-sm text-muted-foreground">{profile.email}</p>

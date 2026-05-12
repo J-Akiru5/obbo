@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { CircleUserRound, Lock, ShieldCheck, Bell, Eye, EyeOff, Monitor, Globe } from "lucide-react";
+import { AvatarUpload } from "@/components/avatar-upload";
 
 export default function ProfileClient({ profile, email }: { profile: any; email: string }) {
     // Password state
@@ -84,12 +85,18 @@ export default function ProfileClient({ profile, email }: { profile: any; email:
                 <Card className="shadow-sm bg-card border-border">
                     <CardHeader>
                         <CardTitle className="flex items-center gap-2 text-foreground">
-                            <CircleUserRound className="w-5 h-5 text-muted-foreground" />
                             Business Information
                         </CardTitle>
                         <CardDescription className="text-muted-foreground">Your verified details. Contact admin to update.</CardDescription>
                     </CardHeader>
-                    <CardContent className="space-y-4">
+                    <CardContent className="space-y-6">
+                        <div className="flex justify-center sm:justify-start mb-6">
+                            <AvatarUpload
+                                uid={profile.id}
+                                url={profile.avatar_url}
+                                fullName={profile.full_name}
+                            />
+                        </div>
                         <div className="space-y-1">
                             <Label className="text-xs text-muted-foreground uppercase tracking-wide">Company Name</Label>
                             <div className="font-medium text-foreground">{profile.company_name || profile.full_name}</div>

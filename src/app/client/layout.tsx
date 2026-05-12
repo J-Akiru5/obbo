@@ -24,6 +24,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import type { Notification } from "@/lib/types/database";
 import { Button } from "@/components/ui/button";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { createClient } from "@/lib/supabase/client";
@@ -145,6 +146,8 @@ function ClientLayoutInner({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { kycStatus } = useClientKyc();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [initials, setInitials] = useState<string>("CL");
   const [unreadCount, setUnreadCount] = useState(0);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [notifOpen, setNotifOpen] = useState(false);
@@ -154,6 +157,20 @@ function ClientLayoutInner({ children }: { children: React.ReactNode }) {
       const supabase = createClient();
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
+
+      // Fetch profile to get avatar
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("avatar_url, full_name")
+        .eq("id", user.id)
+        .single();
+        
+      if (profile) {
+        setAvatarUrl(profile.avatar_url);
+        if (profile.full_name) {
+          setInitials(profile.full_name.split(" ").map((n: string) => n[0]).join("").toUpperCase().slice(0, 2));
+        }
+      }
 
       // Fetch last 20 notifications
       const { data: notifs } = await supabase
@@ -326,6 +343,16 @@ function ClientLayoutInner({ children }: { children: React.ReactNode }) {
             >
               {kycBadge.label}
             </Badge>
+
+            <Link href="/client/profile">
+                <Avatar className="w-8 h-8 cursor-pointer hover:ring-2 ring-[var(--color-industrial-blue)] transition-all">
+                    {avatarUrl ? (
+                        <AvatarImage src={avatarUrl} alt="Avatar" className="object-cover" />
+                    ) : (
+                        <AvatarFallback className="bg-[var(--color-industrial-blue)] text-white text-xs font-bold">{initials}</AvatarFallback>
+                    )}
+                </Avatar>
+            </Link>
 
             <button
               type="button"

@@ -23,7 +23,7 @@ import {
     FileText,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -115,7 +115,7 @@ const WAREHOUSE_NAV_ITEMS = [
 
 import { RealTimeClock } from "@/components/real-time-clock";
 
-function SidebarContent({ pathname, navItems, onNavigate, adminName, adminInitials }: { pathname: string; navItems: typeof ADMIN_NAV_ITEMS; onNavigate?: () => void; adminName?: string; adminInitials?: string }) {
+function SidebarContent({ pathname, navItems, onNavigate, adminName, adminInitials, avatarUrl }: { pathname: string; navItems: typeof ADMIN_NAV_ITEMS; onNavigate?: () => void; adminName?: string; adminInitials?: string; avatarUrl?: string | null }) {
     const [expanded, setExpanded] = useState<Record<string, boolean>>(() => {
         const initial: Record<string, boolean> = {};
         navItems.forEach(item => {
@@ -216,9 +216,13 @@ function SidebarContent({ pathname, navItems, onNavigate, adminName, adminInitia
                 
                 <div className="pt-4 border-t border-sidebar-border">
                     <div className="flex items-center gap-3 px-3 py-2">
-                    <div className="w-8 h-8 rounded-full bg-sidebar-accent flex items-center justify-center">
-                        <span className="text-xs font-bold text-sidebar-accent-foreground">{adminInitials ?? "AD"}</span>
-                    </div>
+                    <Avatar className="w-8 h-8 border border-border">
+                        {avatarUrl ? (
+                            <AvatarImage src={avatarUrl} alt="Avatar" className="object-cover" />
+                        ) : (
+                            <AvatarFallback className="bg-sidebar-accent text-sidebar-accent-foreground text-xs font-bold">{adminInitials ?? "AD"}</AvatarFallback>
+                        )}
+                    </Avatar>
                     <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium text-sidebar-foreground truncate">{adminName ?? "Administrator"}</p>
                         <p className="text-xs text-sidebar-foreground/50 truncate">Administrator</p>
@@ -236,6 +240,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     const [mobileOpen, setMobileOpen] = useState(false);
     const [adminName, setAdminName] = useState("Administrator");
     const [adminInitials, setAdminInitials] = useState("AD");
+    const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
     const [adminRole, setAdminRole] = useState<"admin" | "warehouse_manager" | null>(null);
     const [unreadCount, setUnreadCount] = useState(0);
     const [notifications, setNotifications] = useState<Notification[]>([]);
@@ -280,7 +285,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             if (data.user) {
                 supabase
                     .from("profiles")
-                    .select("full_name, role")
+                    .select("full_name, role, avatar_url")
                     .eq("id", data.user.id)
                     .single()
                     .then(({ data: profile }) => {
@@ -291,6 +296,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                         } else {
                             setAdminRole(null);
                         }
+                        setAvatarUrl(profile?.avatar_url || null);
                         setAdminInitials(
                             name.split(" ").map((n: string) => n[0]).join("").toUpperCase().slice(0, 2)
                         );
@@ -353,7 +359,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         <div className="min-h-screen flex bg-background">
             {/* Desktop Sidebar */}
             <aside className="hidden lg:flex lg:w-64 flex-col bg-sidebar border-r border-sidebar-border fixed inset-y-0 left-0 z-40">
-                <SidebarContent pathname={pathname} navItems={navItems} adminName={adminName} adminInitials={adminInitials} />
+                <SidebarContent pathname={pathname} navItems={navItems} adminName={adminName} adminInitials={adminInitials} avatarUrl={avatarUrl} />
             </aside>
 
             {/* Main Content */}
@@ -369,7 +375,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                                 <Menu className="w-5 h-5" />
                             </SheetTrigger>
                             <SheetContent side="left" className="w-64 p-0 bg-sidebar">
-                                <SidebarContent pathname={pathname} navItems={navItems} onNavigate={() => setMobileOpen(false)} />
+                                <SidebarContent pathname={pathname} navItems={navItems} onNavigate={() => setMobileOpen(false)} adminName={adminName} adminInitials={adminInitials} avatarUrl={avatarUrl} />
                             </SheetContent>
                         </Sheet>
 
@@ -447,7 +453,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                                 className="inline-flex items-center gap-2 px-2 rounded-md hover:bg-accent hover:text-accent-foreground transition-colors"
                             >
                                 <Avatar className="w-8 h-8">
-                                    <AvatarFallback className="bg-[var(--color-industrial-blue)] text-white text-xs font-bold">{adminInitials}</AvatarFallback>
+                                    {avatarUrl ? (
+                                        <AvatarImage src={avatarUrl} alt="Avatar" className="object-cover" />
+                                    ) : (
+                                        <AvatarFallback className="bg-[var(--color-industrial-blue)] text-white text-xs font-bold">{adminInitials}</AvatarFallback>
+                                    )}
                                 </Avatar>
                                 <span className="hidden sm:block text-sm font-medium">{adminName.split(" ")[0]}</span>
                                 <ChevronDown className="w-4 h-4 text-muted-foreground" />
