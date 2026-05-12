@@ -249,9 +249,10 @@ export function FulfillmentTab({ orders, shipments, onDispatch, onConfirmCheck, 
                                             const jbNeed = selectedOrder.items.find(i => i.bag_type === "JB")?.approved_qty || 0;
                                             const sbNeed = selectedOrder.items.find(i => i.bag_type === "SB")?.approved_qty || 0;
                                             const hasEnough = s.remaining_jb >= jbNeed && s.remaining_sb >= sbNeed;
+                                            const labelText = `${s.batch_name} (Avail: ${s.remaining_jb} JB, ${s.remaining_sb} SB)${!hasEnough ? " - Insufficient" : ""}`;
                                             return (
-                                                <SelectItem key={s.id} value={s.id} disabled={!hasEnough}>
-                                                    {s.batch_name} (Avail: {s.remaining_jb} JB, {s.remaining_sb} SB) {!hasEnough && "- Insufficient"}
+                                                <SelectItem key={s.id} value={s.id} disabled={!hasEnough} label={labelText}>
+                                                    {labelText}
                                                 </SelectItem>
                                             );
                                         })}
