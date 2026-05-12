@@ -60,7 +60,7 @@ function KycStatusBox({ kycStatus }: { kycStatus: KycStatus }) {
   if (kycStatus === "rejected") {
     return (
       <div className="rounded-lg bg-red-500/10 border border-red-500/20 p-3">
-        <div className="mb-2 flex items-center gap-2 text-red-400">
+        <div className="mb-2 flex items-center gap-2 text-red-500 dark:text-red-400">
           <AlertCircle className="h-4 w-4" />
           <span className="text-xs font-semibold uppercase tracking-wide">KYC Rejected</span>
         </div>
@@ -73,8 +73,8 @@ function KycStatusBox({ kycStatus }: { kycStatus: KycStatus }) {
 
   // pending_verification (default)
   return (
-    <div className="rounded-lg bg-amber-500/10 border border-amber-500/20 p-3">
-      <div className="mb-2 flex items-center gap-2 text-amber-400">
+    <div className="rounded-lg bg-status-pending-bg/20 border border-status-pending-border/30 p-3">
+      <div className="mb-2 flex items-center gap-2 text-status-pending-text">
         <Clock className="h-4 w-4 animate-pulse" />
         <span className="text-xs font-semibold uppercase tracking-wide">Under Review</span>
       </div>
@@ -119,7 +119,7 @@ function SidebarContent({ pathname, onNavigate }: { pathname: string; onNavigate
               <item.icon className="h-4 w-4 shrink-0" />
               <span className="flex-1">{item.label}</span>
               {showLock && (
-                <Lock className="h-3 w-3 shrink-0 text-amber-400 opacity-80" />
+                <Lock className="h-3 w-3 shrink-0 text-status-pending-text opacity-90" />
               )}
             </Link>
           );
@@ -274,23 +274,23 @@ function ClientLayoutInner({ children }: { children: React.ReactNode }) {
                 </div>
                 <div className="max-h-80 overflow-y-auto">
                   {notifications.length === 0 ? (
-                    <div className="p-6 text-center text-sm text-gray-500">No notifications yet</div>
+                    <div className="p-6 text-center text-sm text-muted-foreground">No notifications yet</div>
                   ) : (
                     notifications.map((n: any) => (
                       <Link key={n.id} href={n.href || "/client/orders"} onClick={() => setNotifOpen(false)}>
-                        <div className={`px-3 py-2.5 border-b border-gray-50 hover:bg-gray-50 transition-colors ${!n.is_read ? 'bg-blue-50/50' : ''}`}>
+                        <div className={`px-3 py-2.5 border-b border-border hover:bg-muted/50 transition-colors ${!n.is_read ? 'bg-status-info-bg/30' : ''}`}>
                           <div className="flex items-start gap-2">
                             {n.severity === 'warning' ? (
-                              <AlertCircle className="w-3.5 h-3.5 text-amber-500 mt-0.5 shrink-0" />
+                              <AlertCircle className="w-3.5 h-3.5 text-status-pending-text mt-0.5 shrink-0" />
                             ) : n.severity === 'success' ? (
-                              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 mt-0.5 shrink-0" />
+                              <CheckCircle2 className="w-3.5 h-3.5 text-status-success-text mt-0.5 shrink-0" />
                             ) : (
-                              <Info className="w-3.5 h-3.5 text-blue-500 mt-0.5 shrink-0" />
+                              <Info className="w-3.5 h-3.5 text-status-info-text mt-0.5 shrink-0" />
                             )}
                             <div>
-                              <p className={`text-xs font-medium ${!n.is_read ? 'text-gray-900' : 'text-gray-600'}`}>{n.title}</p>
-                              <p className="text-[10px] text-gray-500 mt-0.5">{n.message}</p>
-                              <p className="text-[9px] text-gray-400 mt-1">{new Date(n.created_at).toLocaleString()}</p>
+                              <p className={`text-xs font-medium ${!n.is_read ? 'text-foreground' : 'text-muted-foreground'}`}>{n.title}</p>
+                              <p className="text-[10px] text-muted-foreground mt-0.5">{n.message}</p>
+                              <p className="text-[9px] text-muted-foreground/80 mt-1">{new Date(n.created_at).toLocaleString()}</p>
                             </div>
                           </div>
                         </div>

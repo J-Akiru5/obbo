@@ -179,72 +179,72 @@ export default function OrdersClient({ orders }: { orders: any[] }) {
         const isRedelivery = order.order_type === "redelivery";
 
         return (
-            <Card key={order.id} className="mb-4 shadow-sm overflow-hidden">
-                <CardHeader className="bg-slate-50 border-b pb-3 pt-4 cursor-pointer" onClick={() => toggleExpanded(order.id)}>
+            <Card key={order.id} className="mb-4 shadow-sm overflow-hidden bg-card border-border">
+                <CardHeader className="bg-muted/30 border-b pb-3 pt-4 cursor-pointer" onClick={() => toggleExpanded(order.id)}>
                     <div className="flex justify-between items-start">
                         <div>
                             <div className="flex items-center gap-2">
-                                <CardTitle className="text-base">PO: {order.po_number}</CardTitle>
+                                <CardTitle className="text-base text-foreground">PO: {order.po_number}</CardTitle>
                                 {isRedelivery && (
-                                    <Badge variant="outline" className="text-[10px] border-blue-300 text-blue-700 bg-blue-50">
+                                    <Badge variant="outline" className="text-[10px] border-status-info-text/30 text-status-info-text bg-status-info-bg/50">
                                         Re-delivery
                                     </Badge>
                                 )}
                             </div>
-                            <CardDescription className="mt-1 flex items-center gap-2 text-xs">
+                            <CardDescription className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
                                 {new Date(order.created_at).toLocaleDateString()}
                                 <span>•</span>
                                 <span className="capitalize">{order.service_type === 'pickup' ? 'Pick-up' : 'Deliver'}</span>
                                 {isRedelivery && order.linked_po_number && (
                                     <>
                                         <span>•</span>
-                                        <span className="text-blue-600">Linked to {order.linked_po_number}</span>
+                                        <span className="text-primary">Linked to {order.linked_po_number}</span>
                                     </>
                                 )}
                             </CardDescription>
                         </div>
                         <div className="flex items-center gap-3">
                             <div className="text-right">
-                                <div className="font-bold text-slate-900">₱{grandTotal.toLocaleString()}</div>
-                                <div className="text-xs text-slate-500 capitalize">{order.payment_method}</div>
+                                <div className="font-bold text-foreground">₱{grandTotal.toLocaleString()}</div>
+                                <div className="text-xs text-muted-foreground capitalize">{order.payment_method}</div>
                             </div>
-                            {isExpanded ? <ChevronUp className="w-4 h-4 text-gray-400" /> : <ChevronDown className="w-4 h-4 text-gray-400" />}
+                            {isExpanded ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
                         </div>
                     </div>
                 </CardHeader>
                 <CardContent className="pt-4 space-y-4">
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                         <div>
-                            <p className="text-gray-500 text-xs">Items</p>
-                            <p className="font-medium text-gray-900">{totalBags} <span className="text-gray-500 font-normal">indiv. bags</span></p>
+                            <p className="text-muted-foreground text-xs">Items</p>
+                            <p className="font-medium text-foreground">{totalBags} <span className="text-muted-foreground font-normal">indiv. bags</span></p>
                         </div>
                         <div>
-                            <p className="text-gray-500 text-xs">Shipping Fee</p>
-                            <p className="font-medium text-gray-900">₱{(order.shipping_fee || 0).toLocaleString()}</p>
+                            <p className="text-muted-foreground text-xs">Shipping Fee</p>
+                            <p className="font-medium text-foreground">₱{(order.shipping_fee || 0).toLocaleString()}</p>
                         </div>
                         <div>
-                            <p className="text-gray-500 text-xs">Source</p>
-                            <p className="font-medium text-gray-900 uppercase">{order.source}</p>
+                            <p className="text-muted-foreground text-xs">Source</p>
+                            <p className="font-medium text-foreground uppercase">{order.source}</p>
                         </div>
                         <div>
-                            <p className="text-gray-500 text-xs">Status</p>
+                            <p className="text-muted-foreground text-xs">Status</p>
                             {order.status === "pending" && <Badge variant="secondary">Awaiting Approval</Badge>}
-                            {order.status === "partially_approved" && <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100 border-blue-200">Partially Approved</Badge>}
-                            {order.status === "approved" && <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-100 border-amber-200">Payment Required</Badge>}
+                            {order.status === "partially_approved" && <Badge className="bg-status-info-bg text-status-info-text border-status-info-text/20">Partially Approved</Badge>}
+                            {order.status === "approved" && <Badge className="bg-status-pending-bg text-status-pending-text border-status-pending-border">Payment Required</Badge>}
                             {order.status === "awaiting_check" && <Badge variant="secondary">Check Verifying</Badge>}
                             {order.status === "dispatched" && (
-                                <Badge className="bg-emerald-100 text-emerald-800 hover:bg-emerald-100 border-emerald-200">
+                                <Badge className="bg-status-success-bg text-status-success-text border-status-success-border/20">
                                     {order.tracking_status === "in_transit" ? "In Transit" : "Dispatched"}
                                 </Badge>
                             )}
-                            {order.status === "completed" && <Badge variant="outline" className="border-emerald-200 text-emerald-700">Completed</Badge>}
+                            {order.status === "completed" && <Badge variant="outline" className="border-status-success-border text-status-success-text">Completed</Badge>}
                             {order.status === "rejected" && <Badge variant="destructive">Rejected</Badge>}
                         </div>
                     </div>
 
                     {/* Split delivery badge */}
                     {order.is_split_delivery && (
-                        <div className="flex items-center gap-2 text-xs text-blue-700 bg-blue-50 border border-blue-100 rounded-lg px-3 py-2">
+                        <div className="flex items-center gap-2 text-xs text-status-info-text bg-status-info-bg border border-status-info-text/20 rounded-lg px-3 py-2">
                             <ArrowRight className="w-3 h-3" />
                             <span>Split delivery: {order.deliver_now_qty} bags now, rest saved to balance</span>
                         </div>
@@ -252,18 +252,18 @@ export default function OrdersClient({ orders }: { orders: any[] }) {
 
                     {/* Approval Banner with Shipping Fee (Active orders) */}
                     {type === "active" && order.status === "approved" && (
-                        <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg space-y-3">
+                        <div className="p-3 bg-status-pending-bg border border-status-pending-border rounded-lg space-y-3">
                             <div className="flex items-start gap-2">
-                                <AlertCircle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+                                <AlertCircle className="w-5 h-5 text-status-pending-text shrink-0 mt-0.5" />
                                 <div>
-                                    <span className="text-sm text-amber-900 font-medium">Your order has been approved.</span>
+                                    <span className="text-sm text-foreground font-medium">Your order has been approved.</span>
                                     {order.shipping_fee > 0 && (
-                                        <span className="text-sm text-amber-900"> Shipping Fee: <strong>₱{order.shipping_fee.toLocaleString()}</strong>.</span>
+                                        <span className="text-sm text-foreground"> Shipping Fee: <strong>₱{order.shipping_fee.toLocaleString()}</strong>.</span>
                                     )}
-                                    <p className="text-xs text-amber-700 mt-1">Please complete your payment below.</p>
+                                    <p className="text-xs text-muted-foreground mt-1">Please complete your payment below.</p>
                                 </div>
                             </div>
-                            <Button size="sm" className="bg-amber-600 hover:bg-amber-700 w-full sm:w-auto" onClick={() => handleOpenPayment(order)}>
+                            <Button size="sm" className="bg-status-pending-text hover:bg-status-pending-text/80 text-background w-full sm:w-auto" onClick={() => handleOpenPayment(order)}>
                                 <CreditCard className="w-4 h-4 mr-2" />
                                 Submit Payment
                             </Button>
@@ -272,8 +272,8 @@ export default function OrdersClient({ orders }: { orders: any[] }) {
 
                     {/* Awaiting check verification */}
                     {type === "active" && order.status === "awaiting_check" && (
-                        <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-900 flex items-center gap-2">
-                            <Clock className="w-4 h-4 text-blue-600" />
+                        <div className="p-3 bg-status-info-bg border border-status-info-text/20 rounded-lg text-sm text-status-info-text flex items-center gap-2">
+                            <Clock className="w-4 h-4 text-status-info-text" />
                             <span>Payment Submitted – Awaiting admin check verification.</span>
                         </div>
                     )}
@@ -284,7 +284,7 @@ export default function OrdersClient({ orders }: { orders: any[] }) {
                     )}
 
                     {type === "active" && order.status === "dispatched" && (
-                        <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-lg text-sm text-emerald-900 flex flex-col sm:flex-row justify-between sm:items-center gap-2">
+                        <div className="p-3 bg-status-success-bg border border-status-success-border/20 rounded-lg text-sm text-status-success-text flex flex-col sm:flex-row justify-between sm:items-center gap-2">
                             <div className="flex items-center gap-2">
                                 <Truck className="w-4 h-4" />
                                 <span className="font-semibold">Tracking:</span> {order.tracking_status === "in_transit" ? "Currently in transit" : "Prepared for dispatch"}
@@ -341,8 +341,8 @@ export default function OrdersClient({ orders }: { orders: any[] }) {
     return (
         <div className="space-y-6">
             <div>
-                <h2 className="text-2xl font-bold text-gray-900 tracking-tight">My Orders</h2>
-                <p className="text-sm text-gray-500">Track and manage all your cement orders and re-delivery requests.</p>
+                <h2 className="text-2xl font-bold text-foreground tracking-tight">My Orders</h2>
+                <p className="text-sm text-muted-foreground">Track and manage all your cement orders and re-delivery requests.</p>
             </div>
 
             <Tabs defaultValue="active" className="w-full">
@@ -360,8 +360,8 @@ export default function OrdersClient({ orders }: { orders: any[] }) {
 
                 <TabsContent value="active" className="mt-0">
                     {activeOrders.length === 0 ? (
-                        <div className="p-12 text-center text-gray-500 border rounded-xl bg-white border-dashed">
-                            <Truck className="w-8 h-8 mx-auto mb-3 text-gray-300" />
+                        <div className="p-12 text-center text-muted-foreground border border-border rounded-xl bg-card border-dashed">
+                            <Truck className="w-8 h-8 mx-auto mb-3 text-muted-foreground/30" />
                             <p>No active shipments at the moment.</p>
                         </div>
                     ) : (
@@ -371,8 +371,8 @@ export default function OrdersClient({ orders }: { orders: any[] }) {
 
                 <TabsContent value="pending" className="mt-0">
                     {pendingOrders.length === 0 ? (
-                        <div className="p-12 text-center text-gray-500 border rounded-xl bg-white border-dashed">
-                            <PackageSearch className="w-8 h-8 mx-auto mb-3 text-gray-300" />
+                        <div className="p-12 text-center text-muted-foreground border border-border rounded-xl bg-card border-dashed">
+                            <PackageSearch className="w-8 h-8 mx-auto mb-3 text-muted-foreground/30" />
                             <p>No pending orders.</p>
                         </div>
                     ) : (
@@ -382,9 +382,9 @@ export default function OrdersClient({ orders }: { orders: any[] }) {
 
                 <TabsContent value="history" className="mt-0 space-y-4">
                     {/* History Filters */}
-                    <div className="flex flex-col sm:flex-row gap-3 p-4 bg-white border rounded-lg">
+                    <div className="flex flex-col sm:flex-row gap-3 p-4 bg-card border border-border rounded-lg">
                         <div className="flex-1 relative">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                             <Input
                                 placeholder="Search by PO # or DR #..."
                                 value={searchQuery}
@@ -401,8 +401,8 @@ export default function OrdersClient({ orders }: { orders: any[] }) {
                     </div>
 
                     {historyOrders.length === 0 ? (
-                        <div className="p-12 text-center text-gray-500 border rounded-xl bg-white border-dashed">
-                            <History className="w-8 h-8 mx-auto mb-3 text-gray-300" />
+                        <div className="p-12 text-center text-muted-foreground border border-border rounded-xl bg-card border-dashed">
+                            <History className="w-8 h-8 mx-auto mb-3 text-muted-foreground/30" />
                             <p>{searchQuery || dateFrom || dateTo ? "No orders match your filters." : "No completed or rejected orders yet."}</p>
                         </div>
                     ) : (
@@ -423,9 +423,9 @@ export default function OrdersClient({ orders }: { orders: any[] }) {
 
                     {selectedOrder?.payment_method === "cash" ? (
                         <div className="space-y-6 py-4">
-                            <div className="p-4 bg-blue-50 border border-blue-100 rounded-lg flex items-start gap-3">
-                                <Info className="w-5 h-5 text-blue-600 shrink-0" />
-                                <p className="text-sm text-blue-800">You have selected <strong>Cash</strong>. By confirming, you agree to pay the total amount upon pick-up or delivery. Your order will be queued for dispatch immediately.</p>
+                            <div className="p-4 bg-status-info-bg border border-status-info-text/20 rounded-lg flex items-start gap-3">
+                                <Info className="w-5 h-5 text-status-info-text shrink-0" />
+                                <p className="text-sm text-status-info-text">You have selected <strong>Cash</strong>. By confirming, you agree to pay the total amount upon pick-up or delivery. Your order will be queued for dispatch immediately.</p>
                             </div>
                             <DialogFooter>
                                 <Button variant="outline" onClick={() => setIsPaymentOpen(false)} disabled={isSubmitting}>Cancel</Button>
