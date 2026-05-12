@@ -79,7 +79,8 @@ const WAREHOUSE_NAV_ITEMS = [
         subItems: [
             { href: "/admin/orders?tab=new", label: "New Requests" },
             { href: "/admin/orders?tab=fulfillment", label: "Fulfillment" },
-            { href: "/admin/orders?tab=tracking", label: "Tracking" }
+            { href: "/admin/orders?tab=tracking", label: "Tracking" },
+            { href: "/admin/orders?tab=history", label: "History" }
         ]
     },
     {
