@@ -6,7 +6,7 @@ export async function sendOtpEmail(email: string, code: string) {
     const resend = new Resend(process.env.RESEND_API_KEY);
 
     const { error } = await resend.emails.send({
-        from: 'OBBO iManage <noreply@obbo.com>',
+        from: 'OBBO iManage <noreply@jeffdev.studio>',
         to: [email],
         subject: `Your OBBO verification code: ${code}`,
         html: `

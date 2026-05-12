@@ -43,7 +43,17 @@ export function AuthShell({
             className="absolute -bottom-20 left-0 h-64 w-64 rounded-full bg-sky-400/10 blur-3xl"
           />
 
-          <div className="relative z-10 space-y-8">
+          <div className="absolute left-6 top-6 z-20 lg:left-8 lg:top-8">
+            <Link
+              href={backHref}
+              className="inline-flex items-center gap-2 rounded-full border border-white/12 bg-white/6 px-4 py-2 text-sm font-medium text-white shadow-sm hover:border-white/20 hover:bg-white/10 transition-colors backdrop-blur"
+            >
+              <ArrowLeft className="size-4" />
+              {backLabel}
+            </Link>
+          </div>
+
+          <div className="relative z-10 space-y-8 mt-12">
             <div className="flex items-center gap-3">
               <div className="flex size-12 items-center justify-center">
                 <Image src="/logo.png" alt="OBBO Logo" width={48} height={48} className="object-contain" />
@@ -95,16 +105,7 @@ export function AuthShell({
           </div>
         </section>
 
-        <section className="relative flex flex-col justify-center px-6 pt-20 pb-12 sm:px-8 lg:px-20 lg:pt-12">
-          <div className="absolute left-6 top-6 z-20 lg:left-8 lg:top-8">
-            <Link
-              href={backHref}
-              className="inline-flex items-center gap-2 rounded-full border border-border/70 bg-background px-4 py-2 text-sm font-medium text-foreground shadow-sm hover:border-[var(--color-industrial-blue)]/30 hover:bg-muted hover:text-[var(--color-industrial-blue)] transition-colors"
-            >
-              <ArrowLeft className="size-4" />
-              {backLabel}
-            </Link>
-          </div>
+        <section className="relative flex flex-col justify-center px-6 pt-12 pb-12 sm:px-8 lg:px-20 lg:pt-12">
 
           <div className="mx-auto w-full max-w-md">
             {children}
