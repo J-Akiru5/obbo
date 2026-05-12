@@ -5,7 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Search, Edit2, Trash2, MapPin, Truck, UploadCloud, CheckCircle2, X, FileImage, AlertTriangle } from "lucide-react";
+import { Plus, Search, Edit2, Trash2, MapPin, Truck, UploadCloud, CheckCircle2, X, FileImage, AlertTriangle, Eye } from "lucide-react";
 import { createPurchaseOrder, updatePurchaseOrder, deletePurchaseOrder, generateAdminPoNumber } from "@/lib/actions/admin-actions";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
@@ -16,6 +16,8 @@ import { createClient } from "@/lib/supabase/client";
 export function PoListTab({ purchaseOrders, loading, onReload }: { purchaseOrders: PurchaseOrder[], loading: boolean, onReload: () => void }) {
     const [searchQuery, setSearchQuery] = useState("");
     const [isDialogOpen, setIsDialogOpen] = useState(false);
+    const [isViewOpen, setIsViewOpen] = useState(false);
+    const [viewingPo, setViewingPo] = useState<PurchaseOrder | null>(null);
     const [editingPo, setEditingPo] = useState<PurchaseOrder | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [deleteTarget, setDeleteTarget] = useState<PurchaseOrder | null>(null);
@@ -152,6 +154,7 @@ export function PoListTab({ purchaseOrders, loading, onReload }: { purchaseOrder
                                 <TableHead className="text-right">SB Qty</TableHead>
                                 <TableHead>Check No.</TableHead>
                                 <TableHead>Cash</TableHead>
+                                <TableHead>Image</TableHead>
                                 <TableHead className="text-right">Actions</TableHead>
                             </TableRow>
                         </TableHeader>
@@ -195,7 +198,24 @@ export function PoListTab({ purchaseOrders, loading, onReload }: { purchaseOrder
                                             <span className="text-muted-foreground">—</span>
                                         )}
                                     </TableCell>
+                                    <TableCell className="text-sm">
+                                        {po.photo_url ? (
+                                            <a href={po.photo_url} target="_blank" rel="noreferrer" className="inline-flex items-center justify-center h-8 w-8 text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-md">
+                                                <FileImage className="w-4 h-4" />
+                                            </a>
+                                        ) : (
+                                            <span className="text-muted-foreground">—</span>
+                                        )}
+                                    </TableCell>
                                     <TableCell className="text-right whitespace-nowrap">
+                                        <Button 
+                                            variant="ghost" 
+                                            size="icon" 
+                                            onClick={() => { setViewingPo(po); setIsViewOpen(true); }} 
+                                            className="h-8 w-8 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50"
+                                        >
+                                            <Eye className="w-4 h-4" />
+                                        </Button>
                                         <Button variant="ghost" size="icon" onClick={() => openEdit(po)} className="h-8 w-8 text-blue-600 hover:text-blue-700 hover:bg-blue-50"><Edit2 className="w-4 h-4" /></Button>
                                         <Button variant="ghost" size="icon" onClick={() => setDeleteTarget(po)} className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"><Trash2 className="w-4 h-4" /></Button>
                                     </TableCell>
@@ -320,8 +340,104 @@ export function PoListTab({ purchaseOrders, loading, onReload }: { purchaseOrder
                     <DialogFooter>
                         <Button variant="outline" onClick={() => setIsDialogOpen(false)} disabled={isSubmitting}>Cancel</Button>
                         <Button onClick={handleSubmit} disabled={isSubmitting} className="bg-[var(--color-industrial-blue)]">
-                            {isSubmitting ? "Saving..." : "Save PO"}
+                            {isSubmitting ? "Saving..." : editingPo ? "Update PO" : "Create PO"}
                         </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* View Details Dialog */}
+            <Dialog open={isViewOpen} onOpenChange={setIsViewOpen}>
+                <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
+                    <DialogHeader>
+                        <DialogTitle>Purchase Order Details</DialogTitle>
+                        <DialogDescription>Full details for PO {viewingPo?.po_number}</DialogDescription>
+                    </DialogHeader>
+                    {viewingPo && (
+                        <div className="space-y-6 py-4">
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-1">
+                                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold">PO Number</p>
+                                    <p className="text-sm font-semibold">{viewingPo.po_number}</p>
+                                </div>
+                                <div className="space-y-1">
+                                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold">Date</p>
+                                    <p className="text-sm">{new Date(viewingPo.date).toLocaleDateString()}</p>
+                                </div>
+                                <div className="space-y-1">
+                                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold">Client</p>
+                                    <p className="text-sm font-medium">{viewingPo.client_name || "—"}</p>
+                                </div>
+                                <div className="space-y-1">
+                                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold">Status</p>
+                                    <Badge variant="outline" className="capitalize">{viewingPo.status}</Badge>
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4 border-t pt-4">
+                                <div className="space-y-1">
+                                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold">JB Quantity</p>
+                                    <p className="text-sm font-bold">{viewingPo.jb} bags</p>
+                                </div>
+                                <div className="space-y-1">
+                                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold">SB Quantity</p>
+                                    <p className="text-sm font-bold">{viewingPo.sb} bags</p>
+                                </div>
+                                <div className="space-y-1">
+                                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold">Service Type</p>
+                                    <p className="text-sm capitalize">{viewingPo.service_type || "—"}</p>
+                                </div>
+                                <div className="space-y-1">
+                                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold">Source</p>
+                                    <p className="text-sm capitalize">{viewingPo.source || "—"}</p>
+                                </div>
+                            </div>
+
+                            <div className="space-y-3 border-t pt-4">
+                                <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold">Payment Information</p>
+                                <div className="grid grid-cols-2 gap-4">
+                                    {viewingPo.check_number ? (
+                                        <>
+                                            <div className="space-y-1">
+                                                <p className="text-xs text-muted-foreground">Check No.</p>
+                                                <p className="text-sm font-medium">{viewingPo.check_number}</p>
+                                            </div>
+                                            <div className="space-y-1">
+                                                <p className="text-xs text-muted-foreground">Amount</p>
+                                                <p className="text-sm font-bold">₱{Number(viewingPo.check_amount).toLocaleString()}</p>
+                                            </div>
+                                        </>
+                                    ) : viewingPo.cash_amount ? (
+                                        <div className="space-y-1">
+                                            <p className="text-xs text-muted-foreground">Cash Amount</p>
+                                            <p className="text-sm font-bold">₱{Number(viewingPo.cash_amount).toLocaleString()}</p>
+                                        </div>
+                                    ) : (
+                                        <p className="text-xs text-muted-foreground italic">No payment data recorded</p>
+                                    )}
+                                </div>
+                            </div>
+
+                            {viewingPo.photo_url && (
+                                <div className="space-y-2 border-t pt-4">
+                                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold">PO Document</p>
+                                    <div className="relative aspect-[4/3] rounded-lg border overflow-hidden bg-muted group">
+                                        <img src={viewingPo.photo_url} alt="PO Document" className="w-full h-full object-contain" />
+                                        <a 
+                                            href={viewingPo.photo_url} 
+                                            target="_blank" 
+                                            rel="noreferrer"
+                                            className="absolute inset-0 flex items-center justify-center bg-black/0 group-hover:bg-black/20 transition-all opacity-0 group-hover:opacity-100"
+                                        >
+                                            <Button variant="secondary" size="sm">Open Original</Button>
+                                        </a>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    )}
+                    <DialogFooter>
+                        <Button onClick={() => setIsViewOpen(false)}>Close</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>

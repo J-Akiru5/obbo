@@ -324,6 +324,7 @@ export async function dispatchOrder(
         check_number: checkNumber,
         check_amount: checkAmount,
         cash_amount: cashAmount,
+        photo_url: order.po_image_url,
     }, { onConflict: "po_number" });
 
     // ── AUTO-GENERATE DR RECORD ──────────────────────────────
