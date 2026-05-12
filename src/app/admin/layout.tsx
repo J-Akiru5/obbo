@@ -97,6 +97,15 @@ const WAREHOUSE_NAV_ITEMS = [
             { href: "/admin/inventory?tab=reports", label: "Reports" }
         ]
     },
+    { 
+        href: "/admin/clients", 
+        label: "Clients", 
+        icon: Users,
+        subItems: [
+            { href: "/admin/clients?tab=directory", label: "Directory" },
+            { href: "/admin/clients?tab=kyc", label: "KYC Approvals" }
+        ]
+    },
 ];
 
 function SidebarContent({ pathname, navItems, onNavigate, adminName, adminInitials }: { pathname: string; navItems: typeof ADMIN_NAV_ITEMS; onNavigate?: () => void; adminName?: string; adminInitials?: string }) {
