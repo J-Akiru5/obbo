@@ -113,6 +113,8 @@ export interface DeliveryReceipt {
     plate_number: string | null;
     shipping_fee: number | null;
     dr_image_url: string | null;
+    destination: string | null;
+    order_id: string | null;
     created_at: string;
 }
 
@@ -189,6 +191,10 @@ export interface PurchaseOrder {
     service_type: ServiceType | null;
     shipment_id: string | null;
     order_id: string | null;
+    check_number: string | null;
+    check_amount: number | null;
+    cash_amount: number | null;
+    photo_url: string | null;
     created_at: string;
     updated_at: string;
 }

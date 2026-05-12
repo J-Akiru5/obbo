@@ -5,10 +5,10 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Search, Edit2, Trash2, UploadCloud, CheckCircle2, X, FileImage } from "lucide-react";
+import { Plus, Search, Edit2, Trash2, UploadCloud, CheckCircle2, X, FileImage, AlertTriangle } from "lucide-react";
 import { createDeliveryReceipt, updateDeliveryReceipt, deleteDeliveryReceipt } from "@/lib/actions/admin-actions";
 import { toast } from "sonner";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { createClient } from "@/lib/supabase/client";
@@ -18,6 +18,7 @@ export function DrListTab({ deliveryReceipts, shipments, loading, onReload }: { 
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [editingDr, setEditingDr] = useState<DeliveryReceipt | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [deleteTarget, setDeleteTarget] = useState<DeliveryReceipt | null>(null);
 
     // Form state
     const [drNumber, setDrNumber] = useState("");
@@ -28,20 +29,23 @@ export function DrListTab({ deliveryReceipts, shipments, loading, onReload }: { 
     const [sb, setSb] = useState(0);
     const [driver, setDriver] = useState("");
     const [plateNumber, setPlateNumber] = useState("");
+    const [destination, setDestination] = useState("");
     const [shippingFee, setShippingFee] = useState(0);
     const [photoFile, setPhotoFile] = useState<File | null>(null);
 
     const openCreate = () => {
         setEditingDr(null);
         setDrNumber(""); setShipmentId(""); setClientName(""); setPoNumber("");
-        setJb(0); setSb(0); setDriver(""); setPlateNumber(""); setShippingFee(0); setPhotoFile(null);
+        setJb(0); setSb(0); setDriver(""); setPlateNumber(""); setDestination("");
+        setShippingFee(0); setPhotoFile(null);
         setIsDialogOpen(true);
     };
 
     const openEdit = (dr: DeliveryReceipt) => {
         setEditingDr(dr);
         setDrNumber(dr.dr_number); setShipmentId(dr.shipment_id); setClientName(dr.client_name || ""); setPoNumber(dr.po_number || "");
-        setJb(dr.jb); setSb(dr.sb); setDriver(dr.driver || ""); setPlateNumber(dr.plate_number || ""); setShippingFee(dr.shipping_fee || 0);
+        setJb(dr.jb); setSb(dr.sb); setDriver(dr.driver || ""); setPlateNumber(dr.plate_number || "");
+        setDestination(dr.destination || ""); setShippingFee(dr.shipping_fee || 0);
         setPhotoFile(null);
         setIsDialogOpen(true);
     };
@@ -71,14 +75,16 @@ export function DrListTab({ deliveryReceipts, shipments, loading, onReload }: { 
             if (editingDr) {
                 await updateDeliveryReceipt(editingDr.id, {
                     dr_number: drNumber, shipment_id: shipmentId, client_name: clientName,
-                    po_number: poNumber, jb, sb, driver, plate_number: plateNumber, shipping_fee: shippingFee,
+                    po_number: poNumber, jb, sb, driver, plate_number: plateNumber,
+                    shipping_fee: shippingFee, destination: destination || null,
                     ...(drImageUrl ? { dr_image_url: drImageUrl } : {}),
                 });
                 toast.success("DR updated");
             } else {
                 await createDeliveryReceipt({
                     dr_number: drNumber, shipment_id: shipmentId, client_name: clientName,
-                    po_number: poNumber, jb, sb, driver, plate_number: plateNumber, shipping_fee: shippingFee,
+                    po_number: poNumber, jb, sb, driver, plate_number: plateNumber,
+                    shipping_fee: shippingFee,
                     ...(drImageUrl ? { dr_image_url: drImageUrl } as any : {}),
                 });
                 toast.success("DR created and ledger updated");
@@ -93,14 +99,16 @@ export function DrListTab({ deliveryReceipts, shipments, loading, onReload }: { 
         }
     };
 
-    const handleDelete = async (id: string) => {
-        if (!confirm("Delete this DR record?")) return;
+    const confirmDelete = async () => {
+        if (!deleteTarget) return;
         try {
-            await deleteDeliveryReceipt(id);
+            await deleteDeliveryReceipt(deleteTarget.id);
             toast.success("DR deleted");
             onReload();
         } catch (e: any) {
             toast.error("Failed to delete");
+        } finally {
+            setDeleteTarget(null);
         }
     };
 
@@ -115,64 +123,69 @@ export function DrListTab({ deliveryReceipts, shipments, loading, onReload }: { 
     return (
         <Card>
             <CardContent className="p-4 space-y-4">
-                <div className="flex justify-between items-center">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
                     <div className="relative w-full max-w-sm">
                         <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                         <Input type="search" placeholder="Search DR, PO, or Client..." className="pl-8" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
                     </div>
-                    <Button onClick={openCreate} className="bg-[var(--color-industrial-blue)]"><Plus className="w-4 h-4 mr-2" /> Add DR</Button>
+                    <Button onClick={openCreate} className="bg-[var(--color-industrial-blue)] shrink-0"><Plus className="w-4 h-4 mr-2" /> Add Manual DR</Button>
                 </div>
 
-                <div className="border rounded-lg overflow-hidden">
+                <div className="border rounded-lg overflow-x-auto">
                     <Table>
                         <TableHeader className="bg-muted/50">
                             <TableRow>
                                 <TableHead>Date</TableHead>
                                 <TableHead>DR #</TableHead>
-                                <TableHead>Batch</TableHead>
-                                <TableHead>Client / PO</TableHead>
-                                <TableHead>Driver Info</TableHead>
-                                <TableHead>Quantities</TableHead>
-                                <TableHead>Photo</TableHead>
+                                <TableHead>Client Name</TableHead>
+                                <TableHead>PO# Link</TableHead>
+                                <TableHead>Driver Name</TableHead>
+                                <TableHead>Plate #</TableHead>
+                                <TableHead>Destination</TableHead>
+                                <TableHead className="text-right">Total Bags</TableHead>
                                 <TableHead className="text-right">Actions</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
                             {filtered.length === 0 ? (
-                                <TableRow><TableCell colSpan={8} className="text-center py-6 text-muted-foreground">No delivery receipts found.</TableCell></TableRow>
+                                <TableRow><TableCell colSpan={9} className="text-center py-6 text-muted-foreground">No delivery receipts found.</TableCell></TableRow>
                             ) : filtered.map(dr => (
-                                <TableRow key={dr.id}>
-                                    <TableCell className="text-sm">{new Date(dr.received_date).toLocaleDateString()}</TableCell>
-                                    <TableCell className="font-semibold text-sm">{dr.dr_number}</TableCell>
-                                    <TableCell className="text-xs text-muted-foreground max-w-[120px] truncate" title={(dr as any).shipment?.batch_name}>
-                                        {(dr as any).shipment?.batch_name || "—"}
-                                    </TableCell>
+                                <TableRow key={dr.id} className={dr.order_id ? "bg-blue-50/30 dark:bg-blue-950/10" : ""}>
+                                    <TableCell className="text-sm whitespace-nowrap">{new Date(dr.received_date).toLocaleDateString()}</TableCell>
                                     <TableCell>
-                                        <p className="text-sm">{dr.client_name || "—"}</p>
-                                        <p className="text-xs text-muted-foreground mt-0.5">{dr.po_number ? `PO: ${dr.po_number}` : ""}</p>
+                                        <span className="font-semibold text-sm">{dr.dr_number}</span>
+                                        {dr.order_id && (
+                                            <Badge variant="outline" className="ml-2 text-[9px] border-blue-200 text-blue-600 bg-blue-50">AUTO</Badge>
+                                        )}
                                     </TableCell>
+                                    <TableCell className="text-sm">{dr.client_name || "—"}</TableCell>
                                     <TableCell>
-                                        <p className="text-sm">{dr.driver || "—"}</p>
-                                        <p className="text-xs text-muted-foreground mt-0.5">{dr.plate_number || ""}</p>
-                                    </TableCell>
-                                    <TableCell>
-                                        <div className="flex gap-2">
-                                            <Badge variant="outline" className="text-xs">{dr.jb} JB</Badge>
-                                            <Badge variant="outline" className="text-xs">{dr.sb} SB</Badge>
-                                        </div>
-                                    </TableCell>
-                                    <TableCell>
-                                        {dr.dr_image_url ? (
-                                            <a href={dr.dr_image_url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs text-blue-600 hover:underline">
-                                                <FileImage className="w-3.5 h-3.5" /> View
-                                            </a>
+                                        {dr.po_number ? (
+                                            <Badge variant="outline" className="text-xs font-mono cursor-default">{dr.po_number}</Badge>
                                         ) : (
                                             <span className="text-xs text-muted-foreground">—</span>
                                         )}
                                     </TableCell>
+                                    <TableCell className="text-sm">{dr.driver || "—"}</TableCell>
+                                    <TableCell className="text-sm">{dr.plate_number || "—"}</TableCell>
+                                    <TableCell className="text-sm max-w-[160px] truncate" title={dr.destination || ""}>
+                                        {dr.destination || "—"}
+                                    </TableCell>
                                     <TableCell className="text-right">
+                                        <div className="flex items-center justify-end gap-1.5">
+                                            <Badge variant="outline" className="text-xs">{dr.jb} JB</Badge>
+                                            <Badge variant="outline" className="text-xs">{dr.sb} SB</Badge>
+                                            <span className="text-xs font-bold text-foreground ml-1">= {dr.jb + dr.sb}</span>
+                                        </div>
+                                    </TableCell>
+                                    <TableCell className="text-right whitespace-nowrap">
+                                        {dr.dr_image_url && (
+                                            <a href={dr.dr_image_url} target="_blank" rel="noreferrer" className="inline-flex items-center justify-center h-8 w-8 text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-md">
+                                                <FileImage className="w-4 h-4" />
+                                            </a>
+                                        )}
                                         <Button variant="ghost" size="icon" onClick={() => openEdit(dr)} className="h-8 w-8 text-blue-600 hover:text-blue-700 hover:bg-blue-50"><Edit2 className="w-4 h-4" /></Button>
-                                        <Button variant="ghost" size="icon" onClick={() => handleDelete(dr.id)} className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"><Trash2 className="w-4 h-4" /></Button>
+                                        <Button variant="ghost" size="icon" onClick={() => setDeleteTarget(dr)} className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"><Trash2 className="w-4 h-4" /></Button>
                                     </TableCell>
                                 </TableRow>
                             ))}
@@ -181,15 +194,19 @@ export function DrListTab({ deliveryReceipts, shipments, loading, onReload }: { 
                 </div>
             </CardContent>
 
+            {/* Create / Edit Dialog */}
             <Dialog open={isDialogOpen} onOpenChange={(open) => { setIsDialogOpen(open); if (!open) setPhotoFile(null); }}>
-                <DialogContent className="max-w-md">
+                <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
                     <DialogHeader>
-                        <DialogTitle>{editingDr ? "Edit Delivery Receipt" : "Add Delivery Receipt"}</DialogTitle>
+                        <DialogTitle>{editingDr ? "Edit Delivery Receipt" : "Add Manual Delivery Receipt"}</DialogTitle>
+                        <DialogDescription>
+                            {editingDr ? "Update the details of this delivery receipt." : "Create a manual DR entry for walk-in or offline transactions."}
+                        </DialogDescription>
                     </DialogHeader>
-                    <div className="space-y-4 py-4 max-h-[60vh] overflow-y-auto px-1">
+                    <div className="space-y-4 py-4">
                         <div className="space-y-2">
                             <Label>DR Number <span className="text-red-500">*</span></Label>
-                            <Input value={drNumber} onChange={e => setDrNumber(e.target.value)} />
+                            <Input value={drNumber} onChange={e => setDrNumber(e.target.value)} placeholder="e.g. DR-2026-001" />
                         </div>
                         <div className="space-y-2">
                             <Label>Source Shipment Batch <span className="text-red-500">*</span></Label>
@@ -225,13 +242,17 @@ export function DrListTab({ deliveryReceipts, shipments, loading, onReload }: { 
                         </div>
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
-                                <Label>Driver</Label>
+                                <Label>Driver Name</Label>
                                 <Input value={driver} onChange={e => setDriver(e.target.value)} />
                             </div>
                             <div className="space-y-2">
                                 <Label>Plate Number</Label>
                                 <Input value={plateNumber} onChange={e => setPlateNumber(e.target.value)} />
                             </div>
+                        </div>
+                        <div className="space-y-2">
+                            <Label>Destination</Label>
+                            <Input value={destination} onChange={e => setDestination(e.target.value)} placeholder="Delivery address or location" />
                         </div>
                         <div className="space-y-2">
                             <Label>Shipping Fee (₱)</Label>
@@ -283,6 +304,32 @@ export function DrListTab({ deliveryReceipts, shipments, loading, onReload }: { 
                         <Button variant="outline" onClick={() => setIsDialogOpen(false)} disabled={isSubmitting}>Cancel</Button>
                         <Button onClick={handleSubmit} disabled={isSubmitting} className="bg-[var(--color-industrial-blue)]">
                             {isSubmitting ? "Saving..." : "Save DR"}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Delete Confirmation Dialog */}
+            <Dialog open={!!deleteTarget} onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}>
+                <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2 text-destructive">
+                            <AlertTriangle className="w-5 h-5" /> Delete Delivery Receipt
+                        </DialogTitle>
+                        <DialogDescription>
+                            Are you sure you want to delete <strong>{deleteTarget?.dr_number}</strong>?
+                        </DialogDescription>
+                    </DialogHeader>
+                    {deleteTarget?.order_id && (
+                        <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+                            <p className="font-semibold flex items-center gap-1.5"><AlertTriangle className="w-4 h-4" /> System-generated record</p>
+                            <p className="mt-1 text-xs text-amber-800">This DR was automatically created from a dispatched order. Deleting it will affect the Shipment Ledger and may cause data inconsistency.</p>
+                        </div>
+                    )}
+                    <DialogFooter className="gap-2">
+                        <Button variant="outline" onClick={() => setDeleteTarget(null)}>Cancel</Button>
+                        <Button variant="destructive" onClick={confirmDelete}>
+                            <Trash2 className="w-4 h-4 mr-2" /> Delete
                         </Button>
                     </DialogFooter>
                 </DialogContent>

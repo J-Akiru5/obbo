@@ -235,9 +235,9 @@ export async function dispatchOrder(
 ) {
     const { supabase, userId } = await requireAdmin();
 
-    // Get order with items
+    // Get order with items and full client profile
     const { data: order } = await supabase.from("orders")
-        .select("*, items:order_items(*), client:profiles!orders_client_id_fkey(full_name)")
+        .select("*, items:order_items(*), client:profiles!orders_client_id_fkey(id, full_name, company_name, address_street, address_city, address_province)")
         .eq("id", orderId).single();
     if (!order) throw new Error("Order not found");
 
@@ -285,6 +285,63 @@ export async function dispatchOrder(
         shipment_id: shipmentId,
         updated_at: new Date().toISOString(),
     }).eq("id", orderId);
+
+    // ── AUTO-GENERATE PO RECORD ──────────────────────────────
+    const clientName = order.client?.company_name || order.client?.full_name || "Unknown";
+    const poNumber = order.po_number || `SYS-${orderId.slice(0, 8).toUpperCase()}`;
+
+    // Determine payment columns
+    let checkNumber: string | null = null;
+    let checkAmount: number | null = null;
+    let cashAmount: number | null = null;
+    if (order.payment_method === "check") {
+        checkNumber = order.check_number || null;
+        checkAmount = Number(order.total_amount) || null;
+    } else {
+        cashAmount = Number(order.total_amount) || null;
+    }
+
+    await supabase.from("purchase_orders").upsert({
+        po_number: poNumber,
+        client_id: order.client_id,
+        client_name: clientName,
+        jb: jbQty,
+        sb: sbQty,
+        status: "dispatched",
+        source: order.source,
+        service_type: order.service_type,
+        shipment_id: shipmentId,
+        order_id: orderId,
+        check_number: checkNumber,
+        check_amount: checkAmount,
+        cash_amount: cashAmount,
+    }, { onConflict: "po_number" });
+
+    // ── AUTO-GENERATE DR RECORD ──────────────────────────────
+    const destination = [
+        order.client?.address_street,
+        order.client?.address_city,
+        order.client?.address_province,
+    ].filter(Boolean).join(", ") || null;
+
+    await supabase.from("delivery_receipts").upsert({
+        dr_number: drNumber,
+        shipment_id: shipmentId,
+        client_name: clientName,
+        client_id: order.client_id,
+        po_number: poNumber,
+        jb: jbQty,
+        sb: sbQty,
+        quantity: jbQty + sbQty,
+        bag_type: jbQty > 0 ? "JB" : "SB",
+        received_date: new Date().toISOString().split("T")[0],
+        driver: driverName,
+        plate_number: plateNumber,
+        shipping_fee: Number(order.shipping_fee) || 0,
+        dr_image_url: drImageUrl,
+        destination: destination,
+        order_id: orderId,
+    }, { onConflict: "dr_number" });
 
     await logActivity(supabase, userId, "order_dispatched", "order", orderId, {
         shipment: shipment.batch_name, dr: drNumber, jb: jbQty, sb: sbQty,

@@ -174,6 +174,8 @@ alter table public.delivery_receipts add column if not exists driver       text;
 alter table public.delivery_receipts add column if not exists plate_number text;
 alter table public.delivery_receipts add column if not exists shipping_fee numeric(12, 2);
 alter table public.delivery_receipts add column if not exists dr_image_url text;
+alter table public.delivery_receipts add column if not exists destination  text;
+alter table public.delivery_receipts add column if not exists order_id     uuid references public.orders(id) on delete set null;
 
 -- ── ORDERS ───────────────────────────────────────────────────
 create table if not exists public.orders (
@@ -275,9 +277,18 @@ create table if not exists public.purchase_orders (
   service_type text check (service_type in ('pickup', 'deliver')),
   shipment_id  uuid references public.shipments(id) on delete set null,
   order_id     uuid references public.orders(id) on delete set null,
+  check_number text,
+  check_amount numeric(12, 2),
+  cash_amount  numeric(12, 2),
+  photo_url    text,
   created_at   timestamptz not null default now(),
   updated_at   timestamptz not null default now()
 );
+-- For existing DBs
+alter table public.purchase_orders add column if not exists check_number text;
+alter table public.purchase_orders add column if not exists check_amount numeric(12, 2);
+alter table public.purchase_orders add column if not exists cash_amount  numeric(12, 2);
+alter table public.purchase_orders add column if not exists photo_url    text;
 
 -- ── WAREHOUSE REPORTS ────────────────────────────────────────
 create table if not exists public.warehouse_reports (
