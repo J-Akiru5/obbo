@@ -317,7 +317,7 @@ export function DrListTab({
 
             {/* View Details Dialog */}
             <Dialog open={isViewOpen} onOpenChange={setIsViewOpen}>
-                <DialogContent className="sm:max-w-2xl p-0 overflow-hidden rounded-xl border-none max-h-[90vh] overflow-y-auto">
+                <DialogContent showCloseButton={false} className="sm:max-w-2xl p-0 overflow-hidden rounded-xl border-none max-h-[90vh] overflow-y-auto">
                     <div className="bg-[var(--color-industrial-blue)] p-6 text-white">
                         <div className="flex justify-between items-start">
                             <div>
