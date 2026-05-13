@@ -453,7 +453,7 @@ export default function AdminDashboard() {
                                             <span>SB: <span className="font-bold text-foreground">{sb}</span></span>
                                             <span>Total: <span className="font-bold text-foreground">{jb + sb}</span></span>
                                         </div>
-                                        <Link href={`/admin/orders#${order.id}`} className="block w-full text-center py-2 text-xs font-bold text-[var(--color-industrial-blue)] bg-[var(--color-industrial-blue)]/5 rounded-lg">
+                                        <Link href={`/admin/orders#${order.id}`} className="block w-full text-center py-2 text-xs font-bold text-primary bg-primary/5 rounded-lg">
                                             Review Details
                                         </Link>
                                     </div>

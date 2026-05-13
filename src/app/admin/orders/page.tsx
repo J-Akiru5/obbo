@@ -130,7 +130,7 @@ function OrdersContent() {
                     <TabsTrigger value="new" className="py-2.5 whitespace-nowrap shrink-0">
                         New Requests
                         {orders.filter(o => o.status === "pending").length > 0 && (
-                            <span className="ml-2 bg-[var(--color-industrial-yellow)] text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">
+                            <span className="ml-2 bg-accent text-accent-foreground text-[10px] font-bold px-1.5 py-0.5 rounded-full">
                                 {orders.filter(o => o.status === "pending").length}
                             </span>
                         )}

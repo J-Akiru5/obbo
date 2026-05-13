@@ -49,9 +49,9 @@ export function TrackingTab({ orders, onUpdateTracking, loading }: {
 
     const renderStatusBadge = (status: string) => {
         switch (status) {
-            case "pending_dispatch": return <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-200">Pending Dispatch</Badge>;
-            case "in_transit": return <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-200">In Transit</Badge>;
-            case "delivered": return <Badge className="bg-emerald-100 text-emerald-800 hover:bg-emerald-200">Delivered</Badge>;
+            case "pending_dispatch": return <Badge className="bg-accent/10 text-accent hover:bg-accent/20 border-accent/20">Pending Dispatch</Badge>;
+            case "in_transit": return <Badge className="bg-primary/10 text-primary hover:bg-primary/20 border-primary/10">In Transit</Badge>;
+            case "delivered": return <Badge className="bg-primary text-primary-foreground">Delivered</Badge>;
             case "bags_returned": return <Badge className="bg-purple-100 text-purple-800 hover:bg-purple-200">Bags Returned</Badge>;
             default: return <Badge variant="outline">{status}</Badge>;
         }
@@ -156,8 +156,8 @@ export function TrackingTab({ orders, onUpdateTracking, loading }: {
                         </div>
 
                         {status === "bags_returned" && (
-                            <div className="bg-purple-50 p-4 rounded-lg border border-purple-100 space-y-4">
-                                <p className="text-sm text-purple-800 font-medium flex items-center gap-2">
+                            <div className="bg-primary/5 p-4 rounded-lg border border-primary/10 space-y-4">
+                                <p className="text-sm text-primary font-medium flex items-center gap-2">
                                     <CornerDownLeft className="w-4 h-4" /> Record Returned Bags
                                 </p>
                                 <div className="grid grid-cols-2 gap-4">
@@ -170,12 +170,12 @@ export function TrackingTab({ orders, onUpdateTracking, loading }: {
                                         <Input type="number" min="0" value={sbReturned || ""} placeholder="0" onChange={(e) => setSbReturned(parseInt(e.target.value) || 0)} />
                                     </div>
                                 </div>
-                                <p className="text-xs text-purple-700">These will be added back to the warehouse physical count in reports.</p>
+                                <p className="text-xs text-primary/70">These will be added back to the warehouse physical count in reports.</p>
                             </div>
                         )}
 
                         {status === "delivered" && (
-                            <div className="bg-emerald-50 p-3 rounded-lg border border-emerald-100 flex items-center gap-2 text-sm text-emerald-800">
+                            <div className="bg-primary/5 p-3 rounded-lg border border-primary/10 flex items-center gap-2 text-sm text-primary">
                                 <Check className="w-4 h-4" />
                                 This will mark the order as Completed.
                             </div>

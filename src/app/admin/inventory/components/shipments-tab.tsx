@@ -333,7 +333,7 @@ export function ShipmentsTab({ shipments, loading, onReload }: { shipments: Ship
                                                     <TableCell className="text-[11px] text-right font-bold text-emerald-600">{e.bags_returned > 0 ? `+${e.bags_returned}` : "—"}</TableCell>
                                                     <TableCell className="text-[10px]">{e.bag_returned_type || "—"}</TableCell>
                                                     <TableCell className="text-right whitespace-nowrap">
-                                                        <Button variant="ghost" size="icon" className="h-6 w-6 text-blue-600" onClick={() => openEditEntry(e, shipment.id)}><Edit2 className="w-3 h-3" /></Button>
+                                                        <Button variant="ghost" size="icon" className="h-6 w-6 text-primary" onClick={() => openEditEntry(e, shipment.id)}><Edit2 className="w-3 h-3" /></Button>
                                                         <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive" onClick={() => setDeleteTarget({ entry: e, shipmentId: shipment.id })}><Trash2 className="w-3 h-3" /></Button>
                                                     </TableCell>
                                                 </TableRow>

@@ -165,7 +165,7 @@ export function NewRequestsTab({ orders, onApprove, onReject, loading }: {
                                             </div>
                                             <div className="text-right">
                                                 <p className="text-xs text-muted-foreground uppercase font-semibold tracking-wider">Payment Method</p>
-                                                <Badge variant="outline" className={`mt-1 font-mono uppercase ${order.payment_method === 'check' ? 'border-amber-500 text-amber-700' : 'border-emerald-500 text-emerald-700'}`}>
+                                                <Badge variant="outline" className={`mt-1 font-mono uppercase ${order.payment_method === 'check' ? 'border-accent text-accent' : 'border-primary text-primary'}`}>
                                                     {order.payment_method}
                                                 </Badge>
                                             </div>
@@ -207,26 +207,26 @@ export function NewRequestsTab({ orders, onApprove, onReject, loading }: {
                                                 <span className="font-bold text-primary">₱{order.total_amount.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
                                             </div>
                                             {order.po_image_url && (
-                                                <a href={order.po_image_url} target="_blank" rel="noreferrer" className="flex items-center gap-1.5 text-xs font-medium text-blue-600 hover:text-blue-800 hover:underline bg-blue-50 border border-blue-200 px-2 py-1 rounded">
+                                                <a href={order.po_image_url} target="_blank" rel="noreferrer" className="flex items-center gap-1.5 text-xs font-medium text-primary hover:text-primary/80 bg-primary/5 border border-primary/10 px-2 py-1 rounded">
                                                     <ExternalLink className="w-3 h-3" />
                                                     View PO Document
                                                 </a>
                                             )}
                                         </div>
                                         {order.service_type === "pickup" && (
-                                            <div className="rounded-md border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-                                                <p className="font-semibold text-amber-800 mb-2 flex items-center gap-1.5">
+                                            <div className="rounded-md border border-accent/20 bg-accent/5 px-4 py-3 text-sm text-accent">
+                                                <p className="font-semibold text-accent mb-2 flex items-center gap-1.5">
                                                     <Car className="w-4 h-4" />
                                                     Pick-up Details
                                                 </p>
                                                 <div className="grid grid-cols-2 gap-2">
                                                     <div>
-                                                        <p className="text-xs text-amber-600 font-medium uppercase tracking-wider">Driver</p>
-                                                        <p className="font-semibold text-amber-900">{order.driver_name || <span className="text-red-500 font-normal italic">Not provided</span>}</p>
+                                                        <p className="text-xs text-accent/60 font-medium uppercase tracking-wider">Driver</p>
+                                                        <p className="font-semibold text-accent">{order.driver_name || <span className="text-destructive font-normal italic">Not provided</span>}</p>
                                                     </div>
                                                     <div>
-                                                        <p className="text-xs text-amber-600 font-medium uppercase tracking-wider">Plate No.</p>
-                                                        <p className="font-semibold text-amber-900 font-mono">{order.plate_number || <span className="text-red-500 font-normal italic">Not provided</span>}</p>
+                                                        <p className="text-xs text-accent/60 font-medium uppercase tracking-wider">Plate No.</p>
+                                                        <p className="font-semibold text-accent font-mono">{order.plate_number || <span className="text-destructive font-normal italic">Not provided</span>}</p>
                                                     </div>
                                                 </div>
                                             </div>
@@ -260,7 +260,7 @@ export function NewRequestsTab({ orders, onApprove, onReject, loading }: {
 
                     {selectedOrder && actionType === "approve" && (
                         <div className="space-y-5 py-4">
-                            <div className="bg-amber-50 text-amber-800 p-3 rounded-lg text-sm border border-amber-200">
+                            <div className="bg-accent/10 text-accent p-3 rounded-lg text-sm border border-accent/20">
                                 <p className="font-semibold mb-1">Approval Workflow</p>
                                 <ul className="list-disc pl-5 space-y-0.5 text-xs">
                                     {selectedOrder.payment_method === 'check' 
@@ -308,17 +308,17 @@ export function NewRequestsTab({ orders, onApprove, onReject, loading }: {
                                 </div>
                             )}
                             {selectedOrder.po_image_url && (
-                                <div className="flex items-center justify-between p-2 bg-slate-50 rounded-lg border text-sm mt-3">
+                                <div className="flex items-center justify-between p-2 bg-muted/50 rounded-lg border text-sm mt-3">
                                     <span className="text-muted-foreground">PO Document</span>
-                                    <a href={selectedOrder.po_image_url} target="_blank" rel="noreferrer" className="flex items-center gap-1 text-blue-600 hover:underline font-medium">
+                                    <a href={selectedOrder.po_image_url} target="_blank" rel="noreferrer" className="flex items-center gap-1 text-primary hover:underline font-medium">
                                         <ExternalLink className="w-3.5 h-3.5" />
                                         View
                                     </a>
                                 </div>
                             )}
                             {selectedOrder.service_type === "pickup" && (
-                                <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm mt-3">
-                                    <p className="font-semibold text-amber-800 mb-1.5 flex items-center gap-1.5"><Car className="w-4 h-4" />Pick-up Details</p>
+                                <div className="p-3 bg-accent/5 border border-accent/20 rounded-lg text-sm mt-3">
+                                    <p className="font-semibold text-accent mb-1.5 flex items-center gap-1.5"><Car className="w-4 h-4" />Pick-up Details</p>
                                     <div className="grid grid-cols-2 gap-2 text-amber-900">
                                         <div><p className="text-xs text-amber-600 font-medium">Driver</p><p className="font-semibold">{selectedOrder.driver_name || <span className="text-red-500 italic font-normal">Missing</span>}</p></div>
                                         <div><p className="text-xs text-amber-600 font-medium">Plate</p><p className="font-semibold font-mono">{selectedOrder.plate_number || <span className="text-red-500 italic font-normal">Missing</span>}</p></div>

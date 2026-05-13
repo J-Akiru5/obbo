@@ -226,7 +226,7 @@ export function ProductCatalogTab({ products, onUpdate, onCreate, onDelete, load
                         )}
                     </div>
                 </div>
-                <div className="p-3 bg-blue-50 dark:bg-blue-950/30 border border-blue-100 dark:border-blue-900/30 rounded-lg text-xs text-blue-700 dark:text-blue-400 mt-3">
+                <div className="p-3 bg-primary/5 border border-primary/10 rounded-lg text-xs text-primary mt-3">
                     Product catalog is restricted to <span className="font-semibold">Portland Cement Type 1</span> (SB &amp; JB).
                 </div>
             </CardHeader>
@@ -284,7 +284,7 @@ export function ProductCatalogTab({ products, onUpdate, onCreate, onDelete, load
                                             ₱{(p.price_warehouse ?? p.price_per_bag).toLocaleString(undefined, { minimumFractionDigits: 2 })}
                                         </TableCell>
                                         <TableCell className="text-center">
-                                            <Badge variant={p.is_active ? "default" : "secondary"} className={p.is_active ? "bg-emerald-100 text-emerald-800 hover:bg-emerald-200 border-none h-5 text-[10px]" : "h-5 text-[10px]"}>
+                                            <Badge variant={p.is_active ? "default" : "secondary"} className={p.is_active ? "bg-primary/10 text-primary hover:bg-primary/20 border-none h-5 text-[10px]" : "h-5 text-[10px]"}>
                                                 {p.is_active ? "Active" : "Inactive"}
                                             </Badge>
                                         </TableCell>
@@ -301,7 +301,7 @@ export function ProductCatalogTab({ products, onUpdate, onCreate, onDelete, load
                                                 <Button variant="ghost" size="icon" onClick={() => toggleActive(p)} className="h-8 w-8">
                                                     {p.is_active ? <Package className="w-4 h-4 text-emerald-600" /> : <Package className="w-4 h-4 text-muted-foreground" />}
                                                 </Button>
-                                                <Button variant="ghost" size="icon" onClick={() => openEdit(p)} className="h-8 w-8 text-blue-600 hover:text-blue-700 hover:bg-blue-50">
+                                                <Button variant="ghost" size="icon" onClick={() => openEdit(p)} className="h-8 w-8 text-primary hover:text-primary hover:bg-primary/10">
                                                     <Edit className="w-4 h-4" />
                                                 </Button>
                                                 {onDelete && (
@@ -335,7 +335,7 @@ export function ProductCatalogTab({ products, onUpdate, onCreate, onDelete, load
                                             </div>
                                         )}
                                         <div className="absolute top-2 left-2">
-                                            <Badge variant={p.is_active ? "default" : "secondary"} className={p.is_active ? "bg-emerald-500/90 text-white border-none shadow-sm backdrop-blur-sm" : "backdrop-blur-sm"}>
+                                            <Badge variant={p.is_active ? "default" : "secondary"} className={p.is_active ? "bg-primary text-primary-foreground border-none shadow-sm backdrop-blur-sm" : "backdrop-blur-sm"}>
                                                 {p.is_active ? "Active" : "Inactive"}
                                             </Badge>
                                         </div>
@@ -370,7 +370,7 @@ export function ProductCatalogTab({ products, onUpdate, onCreate, onDelete, load
                                                 <Eye className="w-3.5 h-3.5" /> View
                                             </Button>
                                             <div className="flex gap-1 ml-2">
-                                                <Button variant="outline" size="icon" onClick={() => openEdit(p)} className="h-8 w-8 text-blue-600 border-blue-100 hover:bg-blue-50"><Edit className="w-3.5 h-3.5" /></Button>
+                                                <Button variant="outline" size="icon" onClick={() => openEdit(p)} className="h-8 w-8 text-primary border-primary/10 hover:bg-primary/10"><Edit className="w-3.5 h-3.5" /></Button>
                                                 {onDelete && (
                                                     <Button variant="outline" size="icon" onClick={() => setProductToDelete(p)} className="h-8 w-8 text-destructive border-red-100 hover:bg-red-50"><Trash2 className="w-3.5 h-3.5" /></Button>
                                                 )}
@@ -420,7 +420,7 @@ export function ProductCatalogTab({ products, onUpdate, onCreate, onDelete, load
                                 </div>
                             )}
                             <div className="absolute top-4 left-4">
-                                <Badge variant={viewingProduct?.is_active ? "default" : "secondary"} className={viewingProduct?.is_active ? "bg-emerald-500 text-white border-none" : ""}>
+                                <Badge variant={viewingProduct?.is_active ? "default" : "secondary"} className={viewingProduct?.is_active ? "bg-primary text-primary-foreground border-none" : ""}>
                                     {viewingProduct?.is_active ? "ACTIVE CATALOG ITEM" : "INACTIVE"}
                                 </Badge>
                             </div>

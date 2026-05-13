@@ -209,7 +209,7 @@ export function LedgerEntryDialog({ open, onOpenChange, entry, onSubmit }: Ledge
 
                 <DialogFooter>
                     <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>Cancel</Button>
-                    <Button onClick={handleSave} disabled={saving} className="bg-[var(--color-industrial-blue)]">
+                    <Button onClick={handleSave} disabled={saving} className="bg-primary">
                         {saving ? "Saving..." : entry ? "Update Entry" : "Add Entry"}
                     </Button>
                 </DialogFooter>

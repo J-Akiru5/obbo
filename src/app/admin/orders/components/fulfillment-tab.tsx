@@ -125,7 +125,7 @@ export function FulfillmentTab({ orders, shipments, onDispatch, onConfirmCheck, 
                                             {order.client?.avatar_url ? (
                                                 <AvatarImage src={order.client.avatar_url} alt="Client" className="object-cover" />
                                             ) : (
-                                                <AvatarFallback className="bg-amber-100 text-amber-700 text-[10px] font-bold">
+                                                <AvatarFallback className="bg-accent/10 text-accent text-[10px] font-bold">
                                                     {(order.client?.full_name || "CL").split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2)}
                                                 </AvatarFallback>
                                             )}
@@ -140,11 +140,11 @@ export function FulfillmentTab({ orders, shipments, onDispatch, onConfirmCheck, 
                                 </div>
                                 <div className="flex items-center gap-4">
                                     {order.check_image_url ? (
-                                        <a href={order.check_image_url} target="_blank" rel="noreferrer" className="text-sm text-blue-600 hover:underline flex items-center gap-1">
+                                        <a href={order.check_image_url} target="_blank" rel="noreferrer" className="text-sm text-primary hover:underline flex items-center gap-1">
                                             View Image
                                         </a>
                                     ) : (
-                                        <span className="text-sm text-amber-600 italic">Waiting for client upload...</span>
+                                        <span className="text-sm text-accent italic">Waiting for client upload...</span>
                                     )}
                                     <Button 
                                         onClick={() => openAction(order, "check")} 
@@ -161,7 +161,7 @@ export function FulfillmentTab({ orders, shipments, onDispatch, onConfirmCheck, 
             )}
 
             <div className="space-y-4">
-                <h3 className="text-lg font-semibold flex items-center gap-2 text-[var(--color-industrial-blue)]">
+                <h3 className="text-lg font-semibold flex items-center gap-2 text-primary">
                     <Truck className="w-5 h-5" /> Ready for Dispatch
                 </h3>
                 {readyForDispatch.length === 0 ? (
@@ -172,11 +172,11 @@ export function FulfillmentTab({ orders, shipments, onDispatch, onConfirmCheck, 
                         const sbQty = order.items.filter(i => i.bag_type === "SB").reduce((s, i) => s + i.approved_qty, 0);
 
                         return (
-                            <Card key={order.id} className="border-l-4 border-l-[var(--color-industrial-blue)]">
+                            <Card key={order.id} className="border-l-4 border-l-primary">
                                 <CardContent className="p-5 flex flex-col md:flex-row gap-6">
                                     <div className="flex-1 space-y-2">
                                         <div className="flex items-center gap-2">
-                                            <Badge variant={order.status === "partially_approved" ? "secondary" : "default"} className={order.status === "approved" ? "bg-[var(--color-industrial-blue)]" : ""}>
+                                            <Badge variant={order.status === "partially_approved" ? "secondary" : "default"} className={order.status === "approved" ? "bg-primary" : ""}>
                                                 {order.status === "partially_approved" ? "Partial Approval" : "Approved"}
                                             </Badge>
                                             <span className="text-xs text-muted-foreground">ID: {order.id.slice(0,8)}</span>
@@ -186,7 +186,7 @@ export function FulfillmentTab({ orders, shipments, onDispatch, onConfirmCheck, 
                                                 {order.client?.avatar_url ? (
                                                     <AvatarImage src={order.client.avatar_url} alt="Client" className="object-cover" />
                                                 ) : (
-                                                    <AvatarFallback className="bg-[var(--color-industrial-blue)] text-white text-[10px] font-bold">
+                                                    <AvatarFallback className="bg-primary text-primary-foreground text-[10px] font-bold">
                                                         {(order.client?.full_name || "CL").split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2)}
                                                     </AvatarFallback>
                                                 )}
@@ -206,7 +206,7 @@ export function FulfillmentTab({ orders, shipments, onDispatch, onConfirmCheck, 
                                             </div>
                                             <div className="bg-muted px-3 py-1.5 rounded-md">
                                                 <span className="text-muted-foreground text-xs uppercase tracking-wider block mb-0.5">Service</span>
-                                                <span className="font-bold uppercase text-[var(--color-industrial-slate)]">{order.service_type}</span>
+                                                <span className="font-bold uppercase text-muted-foreground">{order.service_type}</span>
                                             </div>
                                         </div>
                                         {order.service_type === "pickup" && (
@@ -222,7 +222,7 @@ export function FulfillmentTab({ orders, shipments, onDispatch, onConfirmCheck, 
                                         )}
                                     </div>
                                     <div className="flex items-center">
-                                        <Button onClick={() => openAction(order, "dispatch")} className="bg-[var(--color-industrial-blue)] hover:bg-[var(--color-industrial-blue-light)] w-full md:w-auto h-12 px-8">
+                                        <Button onClick={() => openAction(order, "dispatch")} className="bg-primary hover:bg-primary/90 w-full md:w-auto h-12 px-8">
                                             <Truck className="w-4 h-4 mr-2" /> Dispatch Now
                                         </Button>
                                     </div>
@@ -257,7 +257,7 @@ export function FulfillmentTab({ orders, shipments, onDispatch, onConfirmCheck, 
                                 </div>
                                 <div>
                                     <p className="text-muted-foreground text-xs mb-1">Service Type</p>
-                                    <p className="font-bold uppercase text-[var(--color-industrial-blue)]">{selectedOrder.service_type}</p>
+                                    <p className="font-bold uppercase text-primary">{selectedOrder.service_type}</p>
                                 </div>
                             </div>
 
@@ -342,7 +342,7 @@ export function FulfillmentTab({ orders, shipments, onDispatch, onConfirmCheck, 
                         <Button 
                             onClick={handleSubmit} 
                             disabled={isSubmitting}
-                            className="bg-[var(--color-industrial-blue)]"
+                            className="bg-primary"
                         >
                             {isSubmitting ? "Processing..." : actionType === "check" ? "Confirm Payment" : "Dispatch & Deduct Stock"}
                         </Button>

@@ -106,7 +106,7 @@ export default function AdminProfilePage() {
                             <h3 className="text-xl font-bold">{profile.full_name}</h3>
                             <p className="text-sm text-muted-foreground">{profile.email}</p>
                             <div className="flex flex-wrap items-center gap-2 mt-2">
-                                <Badge className="bg-[var(--color-industrial-blue)] hover:bg-[var(--color-industrial-blue)] text-white text-xs capitalize">
+                                <Badge className="bg-primary hover:bg-primary text-primary-foreground text-xs capitalize">
                                     <Shield className="w-3 h-3 mr-1" /> {profile.role}
                                 </Badge>
                                 <Badge variant="outline" className="text-xs bg-emerald-100 text-emerald-800 border-emerald-200 hover:bg-emerald-100 capitalize">
@@ -154,7 +154,7 @@ export default function AdminProfilePage() {
                             <Clock className="w-3.5 h-3.5" />
                             Member since {new Date(profile.created_at).toLocaleDateString("en-PH", { year: "numeric", month: "long", day: "numeric" })}
                         </div>
-                        <Button onClick={handleSave} disabled={!hasChanges || saving} className="bg-[var(--color-industrial-blue)] hover:bg-[var(--color-industrial-blue)]/90">
+                        <Button onClick={handleSave} disabled={!hasChanges || saving} className="bg-primary hover:bg-primary/90">
                             {saving ? <Loader2 className="w-4 h-4 animate-spin mr-1.5" /> : <Save className="w-4 h-4 mr-1.5" />}
                             Save Changes
                         </Button>
