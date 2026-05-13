@@ -98,7 +98,10 @@ export function PoListTab({ purchaseOrders, loading, onReload }: { purchaseOrder
                 await createPurchaseOrder({
                     po_number: poNumber, client_name: clientName, jb, sb,
                     source, service_type: serviceType,
-                    ...(photoUrl ? { photo_url: photoUrl } as any : {}),
+                    check_number: checkNumber || null,
+                    check_amount: checkAmount || null,
+                    cash_amount: cashAmount || null,
+                    ...(photoUrl ? { photo_url: photoUrl } : {}),
                 });
                 toast.success("PO created");
             }

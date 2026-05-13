@@ -565,6 +565,8 @@ export async function generateAdminPoNumber() {
 export async function createPurchaseOrder(po: {
     po_number?: string; client_name?: string; jb?: number; sb?: number;
     status?: string; source?: string; service_type?: string; shipment_id?: string;
+    check_number?: string | null; check_amount?: number | null; cash_amount?: number | null;
+    photo_url?: string;
 }) {
     const { supabase, userId } = await requireAdmin();
     
