@@ -245,17 +245,19 @@ export function DrListTab({
                             <div className="space-y-2">
                                 <Label>PO# Link <span className="text-red-500">*</span></Label>
                                 <Popover open={isPoOpen} onOpenChange={setIsPoOpen}>
-                                    <PopoverTrigger asChild>
-                                        <Button
-                                            variant="outline"
-                                            role="combobox"
-                                            aria-expanded={isPoOpen}
-                                            className="w-full justify-between font-normal"
-                                        >
-                                            {poNumber || "Select PO Number..."}
-                                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                        </Button>
-                                    </PopoverTrigger>
+                                    <PopoverTrigger 
+                                        render={
+                                            <Button
+                                                variant="outline"
+                                                role="combobox"
+                                                aria-expanded={isPoOpen}
+                                                className="w-full justify-between font-normal"
+                                            >
+                                                {poNumber || "Select PO Number..."}
+                                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                            </Button>
+                                        }
+                                    />
                                     <PopoverContent className="w-[200px] p-0" align="start">
                                         <div className="flex flex-col">
                                             <div className="p-2 border-b">
