@@ -386,7 +386,7 @@ export function ProductCatalogTab({ products, onUpdate, onCreate, onDelete, load
 
             {/* View Details Dialog */}
             <Dialog open={isViewOpen} onOpenChange={setIsViewOpen}>
-                <DialogContent className="sm:max-w-2xl p-0 overflow-hidden rounded-xl border-none">
+                <DialogContent className="sm:max-w-2xl p-0 overflow-hidden rounded-xl border-none max-h-[90vh] overflow-y-auto">
                     <div className="bg-[var(--color-industrial-blue)] p-6 text-white">
                         <div className="flex justify-between items-start">
                             <div>
@@ -426,7 +426,7 @@ export function ProductCatalogTab({ products, onUpdate, onCreate, onDelete, load
                             </div>
                         </div>
 
-                        <div className="p-8 space-y-8">
+                        <div className="p-8 space-y-8 md:border-l border-t md:border-t-0">
                             <div className="space-y-4">
                                 <p className="text-[10px] uppercase font-black text-muted-foreground/60 tracking-widest">Current Market Pricing</p>
                                 <div className="flex items-center justify-between p-4 bg-muted/50 rounded-xl border border-border/50">

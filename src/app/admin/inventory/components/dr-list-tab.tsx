@@ -316,7 +316,7 @@ export function DrListTab({
 
             {/* View Details Dialog */}
             <Dialog open={isViewOpen} onOpenChange={setIsViewOpen}>
-                <DialogContent className="sm:max-w-2xl p-0 overflow-hidden rounded-xl border-none">
+                <DialogContent className="sm:max-w-2xl p-0 overflow-hidden rounded-xl border-none max-h-[90vh] overflow-y-auto">
                     <div className="bg-[var(--color-industrial-blue)] p-6 text-white">
                         <div className="flex justify-between items-start">
                             <div>
@@ -381,7 +381,7 @@ export function DrListTab({
                             </div>
                         </div>
 
-                        <div className="bg-muted flex items-center justify-center relative min-h-[300px] border-l">
+                        <div className="bg-muted flex items-center justify-center relative min-h-[300px] md:border-l border-t md:border-t-0">
                             {viewingDr?.dr_image_url ? (
                                 <>
                                     <Image 

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Order, OrderItem } from "@/lib/types/database";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -7,9 +7,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Check, X, FileText, Truck, MapPin, ExternalLink, Car } from "lucide-react";
+import { Check, X, FileText, Truck, MapPin, ExternalLink, Car, Search, Filter } from "lucide-react";
 import { toast } from "sonner";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export function NewRequestsTab({ orders, onApprove, onReject, loading }: { 
     orders: Order[]; 
@@ -23,6 +24,24 @@ export function NewRequestsTab({ orders, onApprove, onReject, loading }: {
     const [shippingFee, setShippingFee] = useState<number>(0);
     const [rejectionReason, setRejectionReason] = useState("");
     const [isSubmitting, setIsSubmitting] = useState(false);
+
+    // Search and Filter State
+    const [searchQuery, setSearchQuery] = useState("");
+    const [serviceFilter, setServiceFilter] = useState("all");
+    const [paymentFilter, setPaymentFilter] = useState("all");
+
+    const filteredOrders = useMemo(() => {
+        return orders.filter(order => {
+            const q = searchQuery.toLowerCase();
+            const matchesSearch = 
+                (order.po_number || "").toLowerCase().includes(q) || 
+                (order.client?.company_name || order.client?.full_name || "").toLowerCase().includes(q) ||
+                order.id.toLowerCase().includes(q);
+            const matchesService = serviceFilter === "all" || order.service_type === serviceFilter;
+            const matchesPayment = paymentFilter === "all" || order.payment_method === paymentFilter;
+            return matchesSearch && matchesService && matchesPayment;
+        });
+    }, [orders, searchQuery, serviceFilter, paymentFilter]);
 
     const openAction = (order: Order, type: "approve" | "reject") => {
         setSelectedOrder(order);
@@ -67,120 +86,166 @@ export function NewRequestsTab({ orders, onApprove, onReject, loading }: {
 
     return (
         <div className="space-y-4">
-            {orders.map(order => {
-                const jbItem = order.items.find(i => i.bag_type === "JB");
-                const sbItem = order.items.find(i => i.bag_type === "SB");
-                const totalBags = order.items.reduce((sum, item) => sum + item.requested_qty, 0);
+            <div className="flex flex-col md:flex-row gap-4 mb-6 bg-card p-4 rounded-xl border border-border shadow-sm">
+                <div className="flex-1 relative">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+                    <Input 
+                        placeholder="Search by Client Name, PO Number, or ID..." 
+                        className="pl-9 bg-background"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                    />
+                </div>
+                <div className="flex gap-4">
+                    <div className="w-40">
+                        <Select value={serviceFilter} onValueChange={setServiceFilter}>
+                            <SelectTrigger className="bg-background">
+                                <Filter className="w-4 h-4 mr-2 text-muted-foreground" />
+                                <SelectValue placeholder="Service" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all">All Services</SelectItem>
+                                <SelectItem value="deliver">Delivery</SelectItem>
+                                <SelectItem value="pickup">Pick-up</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+                    <div className="w-40">
+                        <Select value={paymentFilter} onValueChange={setPaymentFilter}>
+                            <SelectTrigger className="bg-background">
+                                <Filter className="w-4 h-4 mr-2 text-muted-foreground" />
+                                <SelectValue placeholder="Payment" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all">All Payments</SelectItem>
+                                <SelectItem value="cash">Cash</SelectItem>
+                                <SelectItem value="check">Check</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+                </div>
+            </div>
 
-                return (
-                    <Card key={order.id} className="overflow-hidden border-l-4 border-l-[var(--color-industrial-yellow)] hover:shadow-md transition-shadow">
-                        <CardContent className="p-0">
-                            <div className="flex flex-col md:flex-row">
-                                <div className="p-5 flex-1 space-y-4">
-                                    <div className="flex justify-between items-start">
-                                        <div>
-                                            <div className="flex items-center gap-2 mb-1">
-                                                <Badge className="bg-[var(--color-industrial-yellow)] text-white hover:bg-[var(--color-industrial-yellow-light)]">New Request</Badge>
-                                                <span className="text-xs text-muted-foreground">ID: {order.id.slice(0,8)}</span>
-                                                <span className="text-xs text-muted-foreground">• {new Date(order.created_at).toLocaleDateString()}</span>
-                                            </div>
-                                            <div className="flex items-center gap-3">
-                                                <Avatar className="w-8 h-8 border border-border/50">
-                                                    {order.client?.avatar_url ? (
-                                                        <AvatarImage src={order.client.avatar_url} alt="Client" className="object-cover" />
-                                                    ) : (
-                                                        <AvatarFallback className="bg-[var(--color-industrial-blue)] text-white text-[10px] font-bold">
-                                                            {(order.client?.full_name || "CL").split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2)}
-                                                        </AvatarFallback>
-                                                    )}
-                                                </Avatar>
-                                                <h3 className="text-lg font-bold">
-                                                    {order.client?.company_name || order.client?.full_name}
-                                                </h3>
-                                            </div>
-                                        </div>
-                                        <div className="text-right">
-                                            <p className="text-xs text-muted-foreground uppercase font-semibold tracking-wider">Payment Method</p>
-                                            <Badge variant="outline" className={`mt-1 font-mono uppercase ${order.payment_method === 'check' ? 'border-amber-500 text-amber-700' : 'border-emerald-500 text-emerald-700'}`}>
-                                                {order.payment_method}
-                                            </Badge>
-                                        </div>
-                                    </div>
+            {filteredOrders.length === 0 ? (
+                <div className="py-12 text-center text-muted-foreground border-2 border-dashed rounded-xl">
+                    No requests match your filters.
+                </div>
+            ) : (
+                filteredOrders.map(order => {
+                    const jbItem = order.items.find(i => i.bag_type === "JB");
+                    const sbItem = order.items.find(i => i.bag_type === "SB");
+                    const totalBags = order.items.reduce((sum, item) => sum + item.requested_qty, 0);
 
-                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 py-3 border-y border-border/50 bg-muted/20">
-                                        <div>
-                                            <p className="text-xs text-muted-foreground mb-1">PO Details</p>
-                                            {order.po_number ? (
-                                                <div className="flex items-center gap-1.5 text-sm font-medium">
-                                                    <FileText className="w-4 h-4 text-[var(--color-industrial-blue)]" />
-                                                    {order.po_number}
+                    return (
+                        <Card key={order.id} className="overflow-hidden border-l-4 border-l-[var(--color-industrial-yellow)] hover:shadow-md transition-shadow">
+                            <CardContent className="p-0">
+                                <div className="flex flex-col md:flex-row">
+                                    <div className="p-5 flex-1 space-y-4">
+                                        <div className="flex justify-between items-start">
+                                            <div>
+                                                <div className="flex items-center gap-2 mb-1">
+                                                    <Badge className="bg-[var(--color-industrial-yellow)] text-white hover:bg-[var(--color-industrial-yellow-light)]">New Request</Badge>
+                                                    <span className="text-xs text-muted-foreground">ID: {order.id.slice(0,8)}</span>
+                                                    <span className="text-xs text-muted-foreground">• {new Date(order.created_at).toLocaleDateString()}</span>
                                                 </div>
-                                            ) : <span className="text-sm text-muted-foreground italic">None</span>}
-                                        </div>
-                                        <div>
-                                            <p className="text-xs text-muted-foreground mb-1">Source & Service</p>
-                                            <div className="flex items-center gap-2">
-                                                <Badge variant="secondary" className="text-[10px] uppercase">{order.source}</Badge>
-                                                <Badge variant="secondary" className="text-[10px] uppercase flex items-center gap-1">
-                                                    {order.service_type === 'deliver' ? <Truck className="w-3 h-3" /> : <MapPin className="w-3 h-3" />}
-                                                    {order.service_type}
+                                                <div className="flex items-center gap-3">
+                                                    <Avatar className="w-8 h-8 border border-border/50">
+                                                        {order.client?.avatar_url ? (
+                                                            <AvatarImage src={order.client.avatar_url} alt="Client" className="object-cover" />
+                                                        ) : (
+                                                            <AvatarFallback className="bg-[var(--color-industrial-blue)] text-white text-[10px] font-bold">
+                                                                {(order.client?.full_name || "CL").split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2)}
+                                                            </AvatarFallback>
+                                                        )}
+                                                    </Avatar>
+                                                    <h3 className="text-lg font-bold">
+                                                        {order.client?.company_name || order.client?.full_name}
+                                                    </h3>
+                                                </div>
+                                            </div>
+                                            <div className="text-right">
+                                                <p className="text-xs text-muted-foreground uppercase font-semibold tracking-wider">Payment Method</p>
+                                                <Badge variant="outline" className={`mt-1 font-mono uppercase ${order.payment_method === 'check' ? 'border-amber-500 text-amber-700' : 'border-emerald-500 text-emerald-700'}`}>
+                                                    {order.payment_method}
                                                 </Badge>
                                             </div>
                                         </div>
-                                        <div>
-                                            <p className="text-xs text-muted-foreground mb-1">Requested JB</p>
-                                            <p className="text-lg font-bold text-[var(--color-industrial-slate)]">{jbItem?.requested_qty || 0}</p>
-                                        </div>
-                                        <div>
-                                            <p className="text-xs text-muted-foreground mb-1">Requested SB</p>
-                                            <p className="text-lg font-bold text-[var(--color-industrial-slate)]">{sbItem?.requested_qty || 0}</p>
-                                        </div>
-                                    </div>
-                                    
-                                    <div className="flex justify-between items-center pt-1">
-                                        <div className="text-sm">
-                                            <span className="text-muted-foreground">Total Value: </span>
-                                            <span className="font-bold text-[var(--color-industrial-blue)]">₱{order.total_amount.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
-                                        </div>
-                                        {order.po_image_url && (
-                                            <a href={order.po_image_url} target="_blank" rel="noreferrer" className="flex items-center gap-1.5 text-xs font-medium text-blue-600 hover:text-blue-800 hover:underline bg-blue-50 border border-blue-200 px-2 py-1 rounded">
-                                                <ExternalLink className="w-3 h-3" />
-                                                View PO Document
-                                            </a>
-                                        )}
-                                    </div>
-                                    {order.service_type === "pickup" && (
-                                        <div className="rounded-md border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-                                            <p className="font-semibold text-amber-800 mb-2 flex items-center gap-1.5">
-                                                <Car className="w-4 h-4" />
-                                                Pick-up Details
-                                            </p>
-                                            <div className="grid grid-cols-2 gap-2">
-                                                <div>
-                                                    <p className="text-xs text-amber-600 font-medium uppercase tracking-wider">Driver</p>
-                                                    <p className="font-semibold text-amber-900">{order.driver_name || <span className="text-red-500 font-normal italic">Not provided</span>}</p>
-                                                </div>
-                                                <div>
-                                                    <p className="text-xs text-amber-600 font-medium uppercase tracking-wider">Plate No.</p>
-                                                    <p className="font-semibold text-amber-900 font-mono">{order.plate_number || <span className="text-red-500 font-normal italic">Not provided</span>}</p>
+
+                                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 py-3 border-y border-border/50 bg-muted/20">
+                                            <div>
+                                                <p className="text-xs text-muted-foreground mb-1">PO Details</p>
+                                                {order.po_number ? (
+                                                    <div className="flex items-center gap-1.5 text-sm font-medium">
+                                                        <FileText className="w-4 h-4 text-[var(--color-industrial-blue)]" />
+                                                        {order.po_number}
+                                                    </div>
+                                                ) : <span className="text-sm text-muted-foreground italic">None</span>}
+                                            </div>
+                                            <div>
+                                                <p className="text-xs text-muted-foreground mb-1">Source & Service</p>
+                                                <div className="flex items-center gap-2">
+                                                    <Badge variant="secondary" className="text-[10px] uppercase">{order.source}</Badge>
+                                                    <Badge variant="secondary" className="text-[10px] uppercase flex items-center gap-1">
+                                                        {order.service_type === 'deliver' ? <Truck className="w-3 h-3" /> : <MapPin className="w-3 h-3" />}
+                                                        {order.service_type}
+                                                    </Badge>
                                                 </div>
                                             </div>
+                                            <div>
+                                                <p className="text-xs text-muted-foreground mb-1">Requested JB</p>
+                                                <p className="text-lg font-bold text-[var(--color-industrial-slate)]">{jbItem?.requested_qty || 0}</p>
+                                            </div>
+                                            <div>
+                                                <p className="text-xs text-muted-foreground mb-1">Requested SB</p>
+                                                <p className="text-lg font-bold text-[var(--color-industrial-slate)]">{sbItem?.requested_qty || 0}</p>
+                                            </div>
                                         </div>
-                                    )}
+                                        
+                                        <div className="flex justify-between items-center pt-1">
+                                            <div className="text-sm">
+                                                <span className="text-muted-foreground">Total Value: </span>
+                                                <span className="font-bold text-[var(--color-industrial-blue)]">₱{order.total_amount.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
+                                            </div>
+                                            {order.po_image_url && (
+                                                <a href={order.po_image_url} target="_blank" rel="noreferrer" className="flex items-center gap-1.5 text-xs font-medium text-blue-600 hover:text-blue-800 hover:underline bg-blue-50 border border-blue-200 px-2 py-1 rounded">
+                                                    <ExternalLink className="w-3 h-3" />
+                                                    View PO Document
+                                                </a>
+                                            )}
+                                        </div>
+                                        {order.service_type === "pickup" && (
+                                            <div className="rounded-md border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                                                <p className="font-semibold text-amber-800 mb-2 flex items-center gap-1.5">
+                                                    <Car className="w-4 h-4" />
+                                                    Pick-up Details
+                                                </p>
+                                                <div className="grid grid-cols-2 gap-2">
+                                                    <div>
+                                                        <p className="text-xs text-amber-600 font-medium uppercase tracking-wider">Driver</p>
+                                                        <p className="font-semibold text-amber-900">{order.driver_name || <span className="text-red-500 font-normal italic">Not provided</span>}</p>
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-xs text-amber-600 font-medium uppercase tracking-wider">Plate No.</p>
+                                                        <p className="font-semibold text-amber-900 font-mono">{order.plate_number || <span className="text-red-500 font-normal italic">Not provided</span>}</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                    <div className="bg-muted/40 p-5 md:w-48 flex flex-col justify-center gap-3 border-l border-border/50">
+                                        <Button onClick={() => openAction(order, "approve")} className="w-full bg-[var(--color-industrial-blue)] hover:bg-[var(--color-industrial-blue-light)]">
+                                            <Check className="w-4 h-4 mr-2" /> Approve
+                                        </Button>
+                                        <Button onClick={() => openAction(order, "reject")} variant="outline" className="w-full text-destructive hover:bg-destructive/10 hover:text-destructive border-destructive/20">
+                                            <X className="w-4 h-4 mr-2" /> Reject
+                                        </Button>
+                                    </div>
                                 </div>
-                                <div className="bg-muted/40 p-5 md:w-48 flex flex-col justify-center gap-3 border-l border-border/50">
-                                    <Button onClick={() => openAction(order, "approve")} className="w-full bg-[var(--color-industrial-blue)] hover:bg-[var(--color-industrial-blue-light)]">
-                                        <Check className="w-4 h-4 mr-2" /> Approve
-                                    </Button>
-                                    <Button onClick={() => openAction(order, "reject")} variant="outline" className="w-full text-destructive hover:bg-destructive/10 hover:text-destructive border-destructive/20">
-                                        <X className="w-4 h-4 mr-2" /> Reject
-                                    </Button>
-                                </div>
-                            </div>
-                        </CardContent>
-                    </Card>
-                );
-            })}
+                            </CardContent>
+                        </Card>
+                    );
+                })
+            )}
 
             <Dialog open={!!selectedOrder} onOpenChange={(open) => !open && setSelectedOrder(null)}>
                 <DialogContent className="sm:max-w-[500px]">
