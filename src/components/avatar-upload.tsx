@@ -98,7 +98,7 @@ export function AvatarUpload({ uid, url, fullName, onUpload, className }: Avatar
                 {avatarUrl ? (
                     <AvatarImage src={avatarUrl} alt="Avatar" className="object-cover" />
                 ) : (
-                    <AvatarFallback className="text-2xl font-bold bg-[var(--color-industrial-blue)] text-white">
+                    <AvatarFallback className="text-2xl font-bold bg-primary text-primary-foreground">
                         {initials}
                     </AvatarFallback>
                 )}

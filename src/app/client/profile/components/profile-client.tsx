@@ -156,7 +156,7 @@ export default function ProfileClient({ profile, email }: { profile: any; email:
                                     onClick={handleSaveTin} 
                                     disabled={isSavingTin || tinNo === profile.tin_no}
                                     size="sm"
-                                    className="bg-[var(--color-industrial-blue)]"
+                                    className="bg-primary"
                                 >
                                     {isSavingTin ? "..." : "Save"}
                                 </Button>
@@ -218,7 +218,7 @@ export default function ProfileClient({ profile, email }: { profile: any; email:
                                     </button>
                                 </div>
                             </div>
-                            <Button type="submit" className="w-full bg-[var(--color-industrial-blue)]" disabled={isUpdating}>
+                            <Button type="submit" className="w-full bg-primary" disabled={isUpdating}>
                                 {isUpdating ? "Updating..." : "Change Password"}
                             </Button>
                         </form>
@@ -279,7 +279,7 @@ export default function ProfileClient({ profile, email }: { profile: any; email:
                                 </button>
                             </div>
                         ))}
-                        <Button onClick={handleSavePrefs} disabled={isSavingPrefs} className="bg-[var(--color-industrial-blue)] mt-2">
+                        <Button onClick={handleSavePrefs} disabled={isSavingPrefs} className="bg-primary mt-2">
                             {isSavingPrefs ? "Saving..." : "Save Preferences"}
                         </Button>
                     </div>

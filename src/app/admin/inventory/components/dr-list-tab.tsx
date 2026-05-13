@@ -170,7 +170,7 @@ export function DrListTab({
                                 <LayoutGrid className="h-4 w-4" />
                             </Button>
                         </div>
-                        <Button onClick={openCreate} className="bg-[var(--color-industrial-blue)] shrink-0 h-9">
+                        <Button onClick={openCreate} className="bg-primary shrink-0 h-9">
                             <Plus className="w-4 h-4 mr-2" /> Add Manual DR
                         </Button>
                     </div>
@@ -196,7 +196,7 @@ export function DrListTab({
                                 {filtered.length === 0 ? (
                                     <TableRow><TableCell colSpan={9} className="text-center py-6 text-muted-foreground">No delivery receipts found.</TableCell></TableRow>
                                 ) : filtered.map(dr => (
-                                    <TableRow key={dr.id} className={dr.order_id ? "bg-blue-50/30 dark:bg-blue-950/10" : ""}>
+                                    <TableRow key={dr.id} className={dr.order_id ? "bg-primary/5" : ""}>
                                         <TableCell>
                                             <div className="w-10 h-10 rounded bg-muted flex items-center justify-center overflow-hidden border border-border/50">
                                                 {dr.dr_image_url ? (
@@ -210,7 +210,7 @@ export function DrListTab({
                                         <TableCell>
                                             <span className="font-semibold text-sm">{dr.dr_number}</span>
                                             {dr.order_id && (
-                                                <Badge variant="outline" className="ml-2 text-[9px] border-blue-200 text-blue-600 bg-blue-50">AUTO</Badge>
+                                                <Badge variant="outline" className="ml-2 text-[9px] border-primary/20 text-primary bg-primary/5">AUTO</Badge>
                                             )}
                                         </TableCell>
                                         <TableCell className="text-sm">{dr.client_name || "—"}</TableCell>
@@ -235,11 +235,11 @@ export function DrListTab({
                                                 variant="ghost" 
                                                 size="icon" 
                                                 onClick={() => { setViewingDr(dr); setIsViewOpen(true); }}
-                                                className="h-8 w-8 text-industrial-blue hover:text-industrial-blue hover:bg-industrial-blue/10"
+                                                className="h-8 w-8 text-primary hover:text-primary hover:bg-primary/10"
                                             >
                                                 <Eye className="w-4 h-4" />
                                             </Button>
-                                            <Button variant="ghost" size="icon" onClick={() => openEdit(dr)} className="h-8 w-8 text-blue-600 hover:text-blue-700 hover:bg-blue-50"><Edit2 className="w-4 h-4" /></Button>
+                                            <Button variant="ghost" size="icon" onClick={() => openEdit(dr)} className="h-8 w-8 text-primary hover:text-primary/90 hover:bg-primary/10"><Edit2 className="w-4 h-4" /></Button>
                                             <Button variant="ghost" size="icon" onClick={() => setDeleteTarget(dr)} className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"><Trash2 className="w-4 h-4" /></Button>
                                         </TableCell>
                                     </TableRow>
@@ -255,7 +255,7 @@ export function DrListTab({
                             </div>
                         ) : (
                             filtered.map(dr => (
-                                <Card key={dr.id} className={`overflow-hidden group hover:shadow-md transition-shadow ${dr.order_id ? "border-blue-100 bg-blue-50/5" : ""}`}>
+                                <Card key={dr.id} className={`overflow-hidden group hover:shadow-md transition-shadow ${dr.order_id ? "border-primary/10 bg-primary/5" : ""}`}>
                                     <div className="aspect-video bg-muted relative overflow-hidden border-b">
                                         {dr.dr_image_url ? (
                                             <Image src={dr.dr_image_url} alt="DR" fill className="object-cover group-hover:scale-105 transition-transform duration-500" unoptimized />
@@ -266,7 +266,7 @@ export function DrListTab({
                                             </div>
                                         )}
                                         <div className="absolute top-2 right-2 flex gap-1">
-                                            {dr.order_id && <Badge className="bg-blue-600 text-white border-none text-[9px]">AUTO</Badge>}
+                                            {dr.order_id && <Badge className="bg-primary text-primary-foreground border-none text-[9px]">AUTO</Badge>}
                                             <Badge variant="secondary" className="bg-white/80 backdrop-blur-sm text-foreground text-[10px] font-mono border-none">{new Date(dr.received_date).toLocaleDateString()}</Badge>
                                         </div>
                                     </div>
@@ -297,13 +297,13 @@ export function DrListTab({
                                             <Button 
                                                 variant="secondary" 
                                                 size="sm" 
-                                                className="h-8 text-[11px] font-bold gap-1.5 bg-[var(--color-industrial-blue)] text-white hover:bg-[var(--color-industrial-blue)]/90"
+                                                className="h-8 text-[11px] font-bold gap-1.5 bg-primary text-primary-foreground hover:bg-primary/90"
                                                 onClick={() => { setViewingDr(dr); setIsViewOpen(true); }}
                                             >
                                                 <Eye className="w-3.5 h-3.5" /> View Details
                                             </Button>
                                             <div className="flex gap-1">
-                                                <Button variant="ghost" size="icon" onClick={() => openEdit(dr)} className="h-8 w-8 text-blue-600 hover:text-blue-700 hover:bg-blue-50"><Edit2 className="w-3.5 h-3.5" /></Button>
+                                                <Button variant="ghost" size="icon" onClick={() => openEdit(dr)} className="h-8 w-8 text-primary hover:text-primary/90 hover:bg-primary/10"><Edit2 className="w-3.5 h-3.5" /></Button>
                                                 <Button variant="ghost" size="icon" onClick={() => setDeleteTarget(dr)} className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"><Trash2 className="w-3.5 h-3.5" /></Button>
                                             </div>
                                         </div>
@@ -318,7 +318,7 @@ export function DrListTab({
             {/* View Details Dialog */}
             <Dialog open={isViewOpen} onOpenChange={setIsViewOpen}>
                 <DialogContent showCloseButton={false} className="sm:max-w-2xl p-0 overflow-hidden rounded-xl border-none max-h-[90vh] overflow-y-auto">
-                    <div className="bg-[var(--color-industrial-blue)] p-6 text-white">
+                    <div className="bg-primary p-6 text-primary-foreground">
                         <div className="flex justify-between items-start">
                             <div>
                                 <Badge className="bg-white/20 hover:bg-white/30 text-white border-none mb-2 text-[10px]">Delivery Receipt Details</Badge>
@@ -326,7 +326,7 @@ export function DrListTab({
                                     {viewingDr?.dr_number}
                                     {viewingDr?.order_id && <Badge className="bg-amber-400 text-amber-950 border-none text-[9px] font-black uppercase">Automated</Badge>}
                                 </h2>
-                                <p className="text-blue-100/70 text-sm mt-1">Received on {viewingDr && new Date(viewingDr.received_date).toLocaleDateString(undefined, { dateStyle: 'full' })}</p>
+                                <p className="text-primary-foreground/70 text-sm mt-1">Received on {viewingDr && new Date(viewingDr.received_date).toLocaleDateString(undefined, { dateStyle: 'full' })}</p>
                             </div>
                             <Button variant="ghost" size="icon" onClick={() => setIsViewOpen(false)} className="text-white hover:bg-white/10 rounded-full h-8 w-8">
                                 <X className="w-5 h-5" />
@@ -343,7 +343,7 @@ export function DrListTab({
                                 </div>
                                 <div className="space-y-1">
                                     <p className="text-[10px] uppercase font-black text-muted-foreground/60 tracking-wider">PO Number Link</p>
-                                    <p className="font-mono text-industrial-blue font-bold">{viewingDr?.po_number || "NONE"}</p>
+                                    <p className="font-mono text-primary font-bold">{viewingDr?.po_number || "NONE"}</p>
                                 </div>
                             </div>
 
@@ -359,7 +359,7 @@ export function DrListTab({
                                 </div>
                                 <div className="pt-2 border-t flex items-center justify-between">
                                     <span className="text-xs font-bold text-foreground">Total Bags Distributed</span>
-                                    <span className="text-lg font-black text-industrial-blue">{(viewingDr?.jb || 0) + (viewingDr?.sb || 0)}</span>
+                                    <span className="text-lg font-black text-primary">{(viewingDr?.jb || 0) + (viewingDr?.sb || 0)}</span>
                                 </div>
                             </div>
 
@@ -376,7 +376,7 @@ export function DrListTab({
 
                             <div className="space-y-1">
                                 <p className="text-[10px] uppercase font-black text-muted-foreground/60 tracking-wider">Destination Address</p>
-                                <p className="text-sm font-medium text-foreground leading-relaxed italic border-l-2 border-industrial-yellow pl-3">
+                                <p className="text-sm font-medium text-foreground leading-relaxed italic border-l-2 border-accent pl-3">
                                     {viewingDr?.destination || "No destination specified."}
                                 </p>
                             </div>
@@ -396,7 +396,7 @@ export function DrListTab({
                                         href={viewingDr.dr_image_url} 
                                         target="_blank" 
                                         rel="noreferrer" 
-                                        className="absolute bottom-4 right-4 bg-white/90 backdrop-blur-sm text-industrial-blue px-3 py-1.5 rounded-lg text-[10px] font-bold shadow-lg hover:bg-white transition-colors flex items-center gap-1.5"
+                                        className="absolute bottom-4 right-4 bg-white/90 backdrop-blur-sm text-primary px-3 py-1.5 rounded-lg text-[10px] font-bold shadow-lg hover:bg-white transition-colors flex items-center gap-1.5"
                                     >
                                         <FileImage className="w-3.5 h-3.5" /> Full Resolution
                                     </a>
@@ -554,7 +554,7 @@ export function DrListTab({
                                 DR Photo <span className="text-muted-foreground text-xs">(optional)</span>
                             </Label>
                             {editingDr?.dr_image_url && !photoFile && (
-                                <div className="flex items-center gap-2 text-xs text-blue-600">
+                                <div className="flex items-center gap-2 text-xs text-primary">
                                     <FileImage className="w-3.5 h-3.5" />
                                     <a href={editingDr.dr_image_url} target="_blank" rel="noreferrer" className="hover:underline">
                                         View current photo
@@ -572,7 +572,7 @@ export function DrListTab({
                                 </div>
                             ) : (
                                 <div
-                                    className="border-2 border-dashed border-border rounded-lg p-4 text-center cursor-pointer hover:border-[var(--color-industrial-blue)]/50 hover:bg-muted/30 transition-colors"
+                                    className="border-2 border-dashed border-border rounded-lg p-4 text-center cursor-pointer hover:border-primary/50 hover:bg-muted/30 transition-colors"
                                     onClick={() => document.getElementById("dr-photo-upload")?.click()}
                                 >
                                     <UploadCloud className="w-6 h-6 mx-auto mb-1 text-muted-foreground" />
@@ -591,7 +591,7 @@ export function DrListTab({
                     </div>
                     <DialogFooter>
                         <Button variant="outline" onClick={() => setIsDialogOpen(false)} disabled={isSubmitting}>Cancel</Button>
-                        <Button onClick={handleSubmit} disabled={isSubmitting} className="bg-[var(--color-industrial-blue)]">
+                        <Button onClick={handleSubmit} disabled={isSubmitting} className="bg-primary">
                             {isSubmitting ? "Saving..." : "Save DR"}
                         </Button>
                     </DialogFooter>

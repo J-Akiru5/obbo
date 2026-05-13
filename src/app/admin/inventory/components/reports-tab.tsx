@@ -268,7 +268,7 @@ export function ReportsTab() {
                     <Button
                         onClick={handleAutoGenerate}
                         disabled={isGenerating}
-                        className="bg-[var(--color-industrial-blue)] hover:bg-[var(--color-industrial-blue)]/90 gap-2"
+                        className="bg-primary hover:bg-primary/90 gap-2"
                     >
                         {isGenerating ? (
                             <Loader2 className="w-4 h-4 animate-spin" />
@@ -329,11 +329,11 @@ export function ReportsTab() {
                         <CardHeader className="border-b border-border/50 pb-4">
                             <div className="flex justify-between items-center">
                                 <div>
-                                    <CardTitle className="text-lg text-[var(--color-industrial-blue)]">1. Physical Warehouse Inventory</CardTitle>
+                                    <CardTitle className="text-lg text-primary">1. Physical Warehouse Inventory</CardTitle>
                                     <CardDescription>Daily opening and closing physical stock count.</CardDescription>
                                 </div>
                                 <div className="flex gap-2">
-                                    <Button variant="outline" onClick={handleSavePhysical} disabled={isSaving} className="border-[var(--color-industrial-blue)] text-[var(--color-industrial-blue)]">
+                                    <Button variant="outline" onClick={handleSavePhysical} disabled={isSaving} className="border-primary text-primary">
                                         <Save className="w-4 h-4 mr-2" /> {isSaving ? "Saving..." : "Save Draft"}
                                     </Button>
                                     <Button onClick={handleSendToAdmin} disabled={isSubmitting || isSubmitted} className="bg-indigo-600">
@@ -378,8 +378,8 @@ export function ReportsTab() {
                                         <TableCell><Input type="number" value={physical.waste_jb || ""} placeholder="0" onFocus={e => e.target.select()} onChange={e => setPhysical({ ...physical, waste_jb: parseInt(e.target.value) || 0 })} className="w-32 h-8" /></TableCell>
                                         <TableCell><Input type="number" value={physical.waste_sb || ""} placeholder="0" onFocus={e => e.target.select()} onChange={e => setPhysical({ ...physical, waste_sb: parseInt(e.target.value) || 0 })} className="w-32 h-8" /></TableCell>
                                     </TableRow>
-                                    <TableRow className="bg-[var(--color-industrial-blue)]/5 hover:bg-[var(--color-industrial-blue)]/10">
-                                        <TableCell className="font-bold text-[var(--color-industrial-blue)] text-base">Today&apos;s Closing</TableCell>
+                                    <TableRow className="bg-primary/5 hover:bg-primary/10">
+                                        <TableCell className="font-bold text-primary text-base">Today&apos;s Closing</TableCell>
                                         <TableCell className="font-bold text-lg">{closingJb}</TableCell>
                                         <TableCell className="font-bold text-lg">{closingSb}</TableCell>
                                     </TableRow>
@@ -391,7 +391,7 @@ export function ReportsTab() {
                     {/* MODULE 2: CUSTOMER MOVEMENT */}
                     <Card>
                         <CardHeader className="border-b border-border/50 pb-4">
-                            <CardTitle className="text-lg text-[var(--color-industrial-blue)]">2. Customer Movement Today</CardTitle>
+                            <CardTitle className="text-lg text-primary">2. Customer Movement Today</CardTitle>
                             <CardDescription>Deliveries and pick-ups dispatched today (auto-generated from tracking).</CardDescription>
                         </CardHeader>
                         <CardContent className="p-0">
@@ -432,7 +432,7 @@ export function ReportsTab() {
                     {/* MODULE 3: OBLIGATION REPORT */}
                     <Card>
                         <CardHeader className="border-b border-border/50 pb-4">
-                            <CardTitle className="text-lg text-amber-600">3. Customer Obligation Report</CardTitle>
+                            <CardTitle className="text-lg text-accent">3. Customer Obligation Report</CardTitle>
                             <CardDescription>Current pending balances owed to clients (auto-generated).</CardDescription>
                         </CardHeader>
                         <CardContent className="p-0">
@@ -441,7 +441,7 @@ export function ReportsTab() {
                                     <TableRow>
                                         <TableHead>Client Name</TableHead>
                                         <TableHead>Product</TableHead>
-                                        <TableHead className="text-right text-amber-700">Remaining Balance</TableHead>
+                                        <TableHead className="text-right text-accent">Remaining Balance</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
@@ -452,7 +452,7 @@ export function ReportsTab() {
                                             <TableCell className="font-medium">{b.client?.company_name || b.client?.full_name}</TableCell>
                                             <TableCell className="text-muted-foreground">{b.product?.name}</TableCell>
                                             <TableCell className="text-right">
-                                                <Badge className="bg-amber-500/10 text-amber-500 hover:bg-amber-500/20 border-0">{b.remaining_qty} {b.bag_type}</Badge>
+                                                <Badge className="bg-accent/10 text-accent hover:bg-accent/20 border-0">{b.remaining_qty} {b.bag_type}</Badge>
                                             </TableCell>
                                         </TableRow>
                                     ))}

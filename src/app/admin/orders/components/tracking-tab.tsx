@@ -84,7 +84,7 @@ export function TrackingTab({ orders, onUpdateTracking, loading }: {
                                             {order.client?.avatar_url ? (
                                                 <AvatarImage src={order.client.avatar_url} alt="Client" className="object-cover" />
                                             ) : (
-                                                <AvatarFallback className="bg-[var(--color-industrial-blue)] text-white text-[10px] font-bold">
+                                                <AvatarFallback className="bg-primary text-primary-foreground text-[10px] font-bold">
                                                     {(order.client?.full_name || "CL").split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2)}
                                                 </AvatarFallback>
                                             )}
@@ -184,7 +184,7 @@ export function TrackingTab({ orders, onUpdateTracking, loading }: {
 
                     <DialogFooter>
                         <Button variant="outline" onClick={() => setSelectedOrder(null)} disabled={isSubmitting}>Cancel</Button>
-                        <Button onClick={handleSubmit} disabled={isSubmitting} className="bg-[var(--color-industrial-blue)]">
+                        <Button onClick={handleSubmit} disabled={isSubmitting} className="bg-primary">
                             {isSubmitting ? "Saving..." : "Save Status"}
                         </Button>
                     </DialogFooter>

@@ -179,7 +179,7 @@ function SidebarContent({ pathname, navItems, onNavigate, adminName, adminInitia
                                         </div>
                                         <div className="flex items-center gap-2">
                                             {item.label === "Orders" && (
-                                                <Badge className="bg-[var(--color-industrial-yellow)] text-[var(--color-industrial-blue)] text-xs px-1.5 py-0 hover:bg-[var(--color-industrial-yellow)]">
+                                                <Badge className="bg-accent text-accent-foreground text-xs px-1.5 py-0 hover:bg-accent/90">
                                                     2
                                                 </Badge>
                                             )}
@@ -406,7 +406,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                                     <Button variant="ghost" size="icon" className="relative">
                                         <Bell className="w-5 h-5" />
                                         {unreadCount > 0 && (
-                                            <span className="absolute -top-0.5 -right-0.5 w-4 h-4 rounded-full bg-[var(--color-industrial-red)] text-white text-[10px] font-bold flex items-center justify-center">
+                                            <span className="absolute -top-0.5 -right-0.5 w-4 h-4 rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold flex items-center justify-center">
                                                 {unreadCount > 9 ? "9+" : unreadCount}
                                             </span>
                                         )}
@@ -417,7 +417,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                                 <div className="flex items-center justify-between p-3 border-b">
                                     <h3 className="text-sm font-semibold">Notifications</h3>
                                     {unreadCount > 0 && (
-                                        <button onClick={markAllRead} className="text-xs text-[var(--color-industrial-blue)] hover:underline">
+                                        <button onClick={markAllRead} className="text-xs text-primary hover:underline">
                                             Mark all as read
                                         </button>
                                     )}
@@ -464,7 +464,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                                     {avatarUrl ? (
                                         <AvatarImage src={avatarUrl} alt="Avatar" className="object-cover" />
                                     ) : (
-                                        <AvatarFallback className="bg-[var(--color-industrial-blue)] text-white text-xs font-bold">{adminInitials}</AvatarFallback>
+                                        <AvatarFallback className="bg-primary text-primary-foreground text-xs font-bold">{adminInitials}</AvatarFallback>
                                     )}
                                 </Avatar>
                                 <span className="hidden sm:block text-sm font-medium">{adminName.split(" ")[0]}</span>

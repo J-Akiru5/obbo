@@ -61,7 +61,7 @@ export default function LoginPage() {
         >
             <div className="space-y-8">
                 <div className="space-y-3">
-                    <div className="inline-flex items-center rounded-full border border-[var(--color-industrial-blue)]/15 bg-[var(--color-industrial-blue)]/5 px-3 py-1 text-xs font-semibold uppercase tracking-[0.28em] text-[var(--color-industrial-blue)]">
+                    <div className="inline-flex items-center rounded-full border border-primary/20 bg-primary/5 px-3 py-1 text-xs font-semibold uppercase tracking-[0.28em] text-primary">
                         Sign in
                     </div>
                     <div className="space-y-2">
@@ -90,14 +90,14 @@ export default function LoginPage() {
                             </button>
                         </div>
                     </div>
-                    <Button type="submit" className="h-12 w-full bg-[var(--color-industrial-blue)] text-white hover:bg-[var(--color-industrial-blue)]/90 font-semibold" disabled={loading}>
+                    <Button type="submit" className="h-12 w-full bg-primary text-primary-foreground hover:bg-primary/90 font-semibold" disabled={loading}>
                         {loading ? "Signing in..." : "Sign In"}
                     </Button>
                 </form>
 
                 <p className="text-center text-sm text-muted-foreground">
                     Don&apos;t have an account?{" "}
-                    <Link href="/register" className="font-semibold text-[var(--color-industrial-blue)] hover:underline">
+                    <Link href="/register" className="font-semibold text-primary hover:underline">
                         Create one
                     </Link>
                 </p>

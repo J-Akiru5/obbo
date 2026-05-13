@@ -75,7 +75,7 @@ function SummaryCard({ title, value, description, icon: Icon }: { title: string;
                     <p className="text-sm text-muted-foreground">{description}</p>
                 </div>
                 <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-muted/70">
-                    <Icon className="h-5 w-5 text-[var(--color-industrial-blue)]" />
+                    <Icon className="h-5 w-5 text-primary" />
                 </div>
             </CardContent>
         </Card>
@@ -147,7 +147,7 @@ function KycDialog({
                     <div className="flex items-center gap-3 rounded-xl border border-border/70 bg-muted/30 p-4">
                         <Avatar className="h-12 w-12">
                             <AvatarImage src={profile.avatar_url || ""} alt={profile.full_name} />
-                            <AvatarFallback className="bg-[var(--color-industrial-blue)] text-sm font-bold text-white">{initials}</AvatarFallback>
+                            <AvatarFallback className="bg-primary text-sm font-bold text-primary-foreground">{initials}</AvatarFallback>
                         </Avatar>
                         <div className="min-w-0 flex-1">
                             <div className="flex flex-wrap items-center gap-2">
@@ -188,14 +188,14 @@ function KycDialog({
                                 {profile.kyc_documents.map((doc, index) => (
                                     <div key={`${doc}-${index}`} className="flex items-center justify-between gap-3 rounded-lg border border-border/70 bg-card px-3 py-2">
                                         <div className="flex min-w-0 items-center gap-2">
-                                            <FileText className="h-4 w-4 text-[var(--color-industrial-blue)]" />
+                                            <FileText className="h-4 w-4 text-primary" />
                                             <span className="truncate text-sm text-foreground">{doc.split("/").pop()}</span>
                                         </div>
                                         <a
                                             href={`/api/admin/kyc-document?path=${encodeURIComponent(doc)}`}
                                             target="_blank"
                                             rel="noreferrer"
-                                            className="text-xs font-medium text-[var(--color-industrial-blue)] hover:underline"
+                                            className="text-xs font-medium text-primary hover:underline"
                                         >
                                             View
                                         </a>
@@ -400,7 +400,7 @@ function ManualClientDialog({
 
                 <DialogFooter className="gap-2">
                     <Button variant="outline" onClick={onClose}>Cancel</Button>
-                    <Button onClick={handleCreate} disabled={saving} className="bg-[var(--color-industrial-blue)] hover:bg-[var(--color-industrial-blue)]/90">
+                    <Button onClick={handleCreate} disabled={saving} className="bg-primary hover:bg-primary/90">
                         {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Plus className="mr-2 h-4 w-4" />} Create client
                     </Button>
                 </DialogFooter>
@@ -454,7 +454,7 @@ function ClientDetailDialog({
                     <div className="flex items-center gap-3 rounded-xl border border-border/70 bg-muted/30 p-4">
                         <Avatar className="h-12 w-12">
                             <AvatarImage src={profile.avatar_url || ""} alt={profile.full_name} />
-                            <AvatarFallback className="bg-[var(--color-industrial-blue)] text-sm font-bold text-white">{getInitials(profile.full_name)}</AvatarFallback>
+                            <AvatarFallback className="bg-primary text-sm font-bold text-primary-foreground">{getInitials(profile.full_name)}</AvatarFallback>
                         </Avatar>
                         <div className="min-w-0 flex-1">
                             <div className="flex flex-wrap items-center gap-2">
@@ -535,7 +535,7 @@ function ClientDetailDialog({
                                         </div>
                                         <div className="flex items-center gap-2">
                                             <Badge variant="outline" className="text-xs capitalize">{order.status.replace(/_/g, " ")}</Badge>
-                                            <span className="text-sm font-semibold text-[var(--color-industrial-blue)]">₱{Number(order.total_amount).toLocaleString()}</span>
+                                            <span className="text-sm font-semibold text-primary">₱{Number(order.total_amount).toLocaleString()}</span>
                                         </div>
                                     </div>
                                 ))}
@@ -638,7 +638,7 @@ function ClientsContent() {
         <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 py-4 md:px-6 lg:px-8">
             <header className="flex flex-col gap-4 rounded-2xl border border-border/70 bg-card p-5 shadow-sm lg:flex-row lg:items-end lg:justify-between">
                 <div className="space-y-2">
-                    <div className="inline-flex items-center gap-2 rounded-full border border-[var(--color-industrial-blue)]/15 bg-[var(--color-industrial-blue)]/8 px-3 py-1 text-xs font-semibold uppercase tracking-[0.28em] text-[var(--color-industrial-blue)]">
+                    <div className="inline-flex items-center gap-2 rounded-full border border-primary/15 bg-primary/8 px-3 py-1 text-xs font-semibold uppercase tracking-[0.28em] text-primary">
                         Clients
                     </div>
                     <div>
@@ -649,7 +649,7 @@ function ClientsContent() {
                     </div>
                 </div>
                 {canManageClients && (
-                    <Button onClick={() => setManualOpen(true)} className="bg-[var(--color-industrial-blue)] hover:bg-[var(--color-industrial-blue)]/90">
+                    <Button onClick={() => setManualOpen(true)} className="bg-primary hover:bg-primary/90">
                         <Plus className="mr-2 h-4 w-4" /> Add customer
                     </Button>
                 )}
@@ -670,7 +670,7 @@ function ClientsContent() {
                             <TabsList className="grid w-full grid-cols-2 sm:w-auto">
                                 <TabsTrigger value="kyc" className="gap-2">
                                     Verification Hub
-                                    {pending.length > 0 && <span className="rounded-full bg-[var(--color-industrial-yellow)] px-2 py-0.5 text-[10px] font-bold text-white">{pending.length}</span>}
+                                    {pending.length > 0 && <span className="rounded-full bg-accent px-2 py-0.5 text-[10px] font-bold text-accent-foreground">{pending.length}</span>}
                                 </TabsTrigger>
                                 <TabsTrigger value="directory">Client Directory</TabsTrigger>
                             </TabsList>
@@ -730,12 +730,12 @@ function ClientsContent() {
                                 ) : (
                                     <div className="grid gap-3 lg:grid-cols-2">
                                         {verified.map((profile) => (
-                                            <Card key={profile.id} className="cursor-pointer border-border/70 shadow-sm transition-colors hover:border-[var(--color-industrial-blue)]/35 hover:bg-[var(--color-industrial-blue)]/5" onClick={() => { setDetailTarget(profile); setDetailOpen(true); }}>
+                                            <Card key={profile.id} className="cursor-pointer border-border/70 shadow-sm transition-colors hover:border-primary/35 hover:bg-primary/5" onClick={() => { setDetailTarget(profile); setDetailOpen(true); }}>
                                                 <CardContent className="p-4">
                                                     <div className="flex items-start gap-3">
                                                         <Avatar className="h-10 w-10 flex-shrink-0">
                                                             <AvatarImage src={profile.avatar_url || ""} alt={profile.full_name} />
-                                                            <AvatarFallback className="bg-[var(--color-industrial-blue)] text-xs font-bold text-white">{getInitials(profile.full_name)}</AvatarFallback>
+                                                            <AvatarFallback className="bg-primary text-xs font-bold text-primary-foreground">{getInitials(profile.full_name)}</AvatarFallback>
                                                         </Avatar>
                                                         <div className="min-w-0 flex-1">
                                                             <div className="flex flex-wrap items-center gap-2">

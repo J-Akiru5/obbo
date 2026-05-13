@@ -62,7 +62,7 @@ export default async function ClientDashboardPage() {
                 <div className="flex gap-2">
                     {isVerified ? (
                         <Link href="/client/catalog">
-                            <Button className="bg-[var(--color-industrial-blue)] text-white shadow-sm hover:bg-[var(--color-industrial-blue)]/90">
+                            <Button className="bg-primary text-primary-foreground shadow-sm hover:bg-primary/90">
                                 <PackageSearch className="w-4 h-4 mr-2" />
                                 New Order
                             </Button>
@@ -70,7 +70,7 @@ export default async function ClientDashboardPage() {
                     ) : (
                         <Button
                             disabled
-                            className="bg-[var(--color-industrial-blue)]/40 text-white cursor-not-allowed gap-2"
+                            className="bg-primary/40 text-primary-foreground cursor-not-allowed gap-2"
                             title="Complete KYC verification to place orders"
                         >
                             <Lock className="w-4 h-4" />
@@ -110,16 +110,16 @@ export default async function ClientDashboardPage() {
 
                 {isVerified ? (
                     <Link href="/client/ledger">
-                        <Card className="bg-[var(--color-industrial-blue)] text-white shadow-md hover:shadow-lg transition-shadow cursor-pointer">
+                        <Card className="bg-primary text-primary-foreground shadow-md hover:shadow-lg transition-shadow cursor-pointer">
                             <CardHeader className="flex flex-row items-center justify-between pb-2">
-                                <CardTitle className="text-sm font-medium text-blue-100">Remaining Balance</CardTitle>
-                                <Package className="w-4 h-4 text-blue-200" />
+                                <CardTitle className="text-sm font-medium text-primary-foreground/90">Remaining Balance</CardTitle>
+                                <Package className="w-4 h-4 text-primary-foreground/70" />
                             </CardHeader>
                             <CardContent>
                                 <div className="text-2xl font-bold text-white">
-                                    {kpis.remainingBags.toLocaleString()} <span className="text-sm font-normal text-blue-200">indiv. bags</span>
+                                    {kpis.remainingBags.toLocaleString()} <span className="text-sm font-normal text-primary-foreground/70">indiv. bags</span>
                                 </div>
-                                <p className="text-xs text-blue-200 mt-1">Available for re-delivery</p>
+                                <p className="text-xs text-primary-foreground/70 mt-1">Available for re-delivery</p>
                             </CardContent>
                         </Card>
                     </Link>
@@ -179,7 +179,7 @@ export default async function ClientDashboardPage() {
                             Please check your pending orders. If an order has been approved, you may need to submit payment details before it can be dispatched.
                         </p>
                         <Link href="/client/orders">
-                            <Button variant="link" className="px-0 text-[var(--color-industrial-blue)] hover:underline h-auto py-1 font-semibold mt-1">
+                            <Button variant="link" className="px-0 text-primary hover:underline h-auto py-1 font-semibold mt-1">
                                 View Pending Orders &rarr;
                             </Button>
                         </Link>
@@ -273,7 +273,7 @@ export default async function ClientDashboardPage() {
                                             <p className="text-sm font-medium text-foreground">{p.name}</p>
                                             <p className="text-xs text-muted-foreground">{p.bag_type === "JB" ? "Jumbo" : "Sling"} • From ₱{(p.price_warehouse || p.price_per_bag).toLocaleString()}/bag</p>
                                         </div>
-                                        <Badge className="bg-[var(--color-industrial-blue)] text-white text-[10px]">{p.bag_type}</Badge>
+                                        <Badge className="bg-primary text-primary-foreground text-[10px]">{p.bag_type}</Badge>
                                     </div>
                                 ))}
                             </div>
@@ -281,7 +281,7 @@ export default async function ClientDashboardPage() {
                             <p className="text-sm text-gray-600">Head over to the Product Catalog to browse our Portland Cement offerings in Jumbo Bags (JB) and Sling Bags (SB).</p>
                         )}
                         <Link href="/client/catalog" className="block">
-                            <Button className="w-full bg-[var(--color-industrial-blue)]">Browse Catalog</Button>
+                            <Button className="w-full bg-primary">Browse Catalog</Button>
                         </Link>
                         
                         <div className="mt-6 pt-6 border-t border-border">

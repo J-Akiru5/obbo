@@ -217,7 +217,7 @@ export default function RegisterPage() {
         >
             <div className="space-y-8">
                 <div className="space-y-3">
-                    <div className="inline-flex items-center rounded-full border border-[var(--color-industrial-yellow)]/25 bg-[var(--color-industrial-yellow)]/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.28em] text-[var(--color-industrial-blue)] dark:text-amber-400">
+                    <div className="inline-flex items-center rounded-full border border-primary/20 bg-primary/5 px-3 py-1 text-xs font-semibold uppercase tracking-[0.28em] text-primary">
                         Sign up
                     </div>
                     <div className="space-y-2">
@@ -293,7 +293,7 @@ export default function RegisterPage() {
                                                 />
                                                 <Button
                                                     type="button"
-                                                    className="h-11 bg-[var(--color-industrial-blue)] font-semibold hover:bg-[var(--color-industrial-blue)]/90"
+                                                    className="h-11 bg-primary text-primary-foreground font-semibold hover:bg-primary/90"
                                                     onClick={handleVerifyOtp}
                                                     disabled={verifyingOtp || otpCode.length !== 6}
                                                 >
@@ -351,7 +351,7 @@ export default function RegisterPage() {
                                         <div className="space-y-1.5">
                                             <Label className="text-sm font-medium">Valid ID (photo)</Label>
                                             <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-                                                <Button type="button" variant="outline" className="border-[var(--color-industrial-yellow)]/50 bg-[var(--color-industrial-yellow)] text-[var(--color-industrial-blue)] font-semibold hover:bg-[var(--color-industrial-yellow)]/90"
+                                                <Button type="button" variant="outline" className="bg-accent text-accent-foreground font-semibold hover:bg-accent/90 shadow-sm"
                                                     onClick={() => document.getElementById("valid-id-upload")?.click()}>
                                                     Choose file
                                                 </Button>
@@ -374,7 +374,7 @@ export default function RegisterPage() {
                                         <div className="space-y-1.5 pt-2">
                                             <Label className="text-sm font-medium">Contact person valid ID</Label>
                                             <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-                                                <Button type="button" variant="outline" className="border-[var(--color-industrial-yellow)]/50 bg-[var(--color-industrial-yellow)] text-[var(--color-industrial-blue)] font-semibold hover:bg-[var(--color-industrial-yellow)]/90"
+                                                <Button type="button" variant="outline" className="bg-accent text-accent-foreground font-semibold hover:bg-accent/90 shadow-sm"
                                                     onClick={() => document.getElementById("contact-valid-id-upload")?.click()}>
                                                     Choose file
                                                 </Button>
@@ -389,7 +389,7 @@ export default function RegisterPage() {
                                         <div className="space-y-1.5 pt-2">
                                             <Label className="text-sm font-medium">Business permit (photo)</Label>
                                             <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-                                                <Button type="button" variant="outline" className="border-[var(--color-industrial-yellow)]/50 bg-[var(--color-industrial-yellow)] text-[var(--color-industrial-blue)] font-semibold hover:bg-[var(--color-industrial-yellow)]/90"
+                                                <Button type="button" variant="outline" className="bg-accent text-accent-foreground font-semibold hover:bg-accent/90 shadow-sm"
                                                     onClick={() => document.getElementById("business-permit-upload")?.click()}>
                                                     Choose file
                                                 </Button>
@@ -407,12 +407,12 @@ export default function RegisterPage() {
                     </div>
 
                     <div className="mt-10 space-y-3">
-                        <Button type="submit" disabled={loading} className="h-12 w-full rounded-xl bg-[var(--color-industrial-yellow)] font-semibold text-[var(--color-industrial-blue)] shadow-sm shadow-[var(--color-industrial-yellow)]/20 hover:bg-[var(--color-industrial-yellow)]/90">
+                        <Button type="submit" disabled={loading} className="h-12 w-full rounded-xl bg-primary text-primary-foreground font-semibold shadow-sm hover:bg-primary/90">
                             {loading ? "Signing up..." : "Sign Up"}
                         </Button>
                         <p className="text-center text-sm text-muted-foreground">
                             Already have an account?{" "}
-                            <Link href="/login" className="font-semibold text-[var(--color-industrial-blue)] hover:underline">
+                            <Link href="/login" className="font-semibold text-primary hover:underline">
                                 Sign in
                             </Link>
                         </p>

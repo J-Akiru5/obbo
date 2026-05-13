@@ -283,7 +283,7 @@ export default function CatalogClient({ products }: { products: Product[] }) {
                             setPoNumber(nextPo);
                             setIsOrderOpen(true); 
                         }} 
-                        className="bg-[var(--color-industrial-blue)] hover:bg-[var(--color-industrial-blue)]/90" 
+                        className="bg-primary hover:bg-primary/90" 
                         size="lg"
                     >
                         <ShoppingCart className="w-4 h-4 mr-2" />
@@ -313,7 +313,7 @@ export default function CatalogClient({ products }: { products: Product[] }) {
                                     <CardTitle className="text-lg">{product.name}</CardTitle>
                                     <CardDescription className="mt-1">{product.bag_type === "JB" ? "Jumbo Bag" : "Sling Bag"}</CardDescription>
                                 </div>
-                                <div className="bg-[var(--color-industrial-blue)] text-white text-xs px-2 py-1 rounded font-semibold tracking-wider">
+                                <div className="bg-primary text-primary-foreground text-xs px-2 py-1 rounded font-semibold tracking-wider">
                                     {product.bag_type}
                                 </div>
                             </div>
@@ -347,7 +347,7 @@ export default function CatalogClient({ products }: { products: Product[] }) {
                         </CardContent>
                         <div className="p-6 pt-0 mt-auto">
                             <Button 
-                                className="w-full bg-[var(--color-industrial-blue)] hover:bg-[var(--color-industrial-blue)]/90" 
+                                className="w-full bg-primary hover:bg-primary/90" 
                                 disabled={!isVerified}
                                 onClick={async () => {
                                     const nextPo = await generateNextPoNumber();
@@ -413,7 +413,7 @@ export default function CatalogClient({ products }: { products: Product[] }) {
                                 </div>
                                 <div className="pt-3 flex justify-between items-center border-t border-border">
                                     <span className="text-sm font-semibold text-foreground">Total Individual Bags:</span>
-                                    <span className="text-lg font-black text-[var(--color-industrial-blue)]">{totalIndividualBags.toLocaleString()} bags</span>
+                                    <span className="text-lg font-black text-primary">{totalIndividualBags.toLocaleString()} bags</span>
                                 </div>
                             </div>
 
@@ -507,7 +507,7 @@ export default function CatalogClient({ products }: { products: Product[] }) {
                             </div>
 
                             {/* Live Price Calculation */}
-                            <div className="p-4 bg-[var(--color-industrial-blue)] text-white rounded-lg shadow-inner space-y-2">
+                            <div className="p-4 bg-primary text-primary-foreground rounded-lg shadow-inner space-y-2">
                                 <div className="flex justify-between items-center">
                                     <div>
                                         <div className="text-sm text-blue-200">Subtotal</div>
@@ -535,7 +535,7 @@ export default function CatalogClient({ products }: { products: Product[] }) {
                                     <Save className="w-4 h-4 mr-2" />
                                     {isSavingDraft ? "Saving..." : "Save as Draft"}
                                 </Button>
-                                <Button type="submit" className="bg-[var(--color-industrial-yellow)] text-[var(--color-industrial-blue)] hover:bg-amber-400" disabled={isSubmitting || isSavingDraft || totalIndividualBags === 0}>
+                                <Button type="submit" className="bg-accent text-accent-foreground hover:bg-accent/90" disabled={isSubmitting || isSavingDraft || totalIndividualBags === 0}>
                                     <CheckCircle2 className="w-4 h-4 mr-2" />
                                     {isSubmitting ? "Submitting..." : "Submit Order for Approval"}
                                 </Button>

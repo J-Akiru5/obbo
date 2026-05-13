@@ -94,7 +94,7 @@ export default function NewOrderPage() {
                     const done = idx < step; const active = idx === step;
                     return (
                         <div key={idx} className="flex items-center gap-2">
-                            <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold border-2 transition-all ${done ? "bg-emerald-500 border-emerald-500 text-white" : active ? "bg-[var(--color-industrial-blue)] border-[var(--color-industrial-blue)] text-white" : "bg-white border-border text-muted-foreground"}`}>
+                            <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold border-2 transition-all ${done ? "bg-emerald-500 border-emerald-500 text-white" : active ? "bg-primary border-primary text-primary-foreground" : "bg-white border-border text-muted-foreground"}`}>
                                 {done ? <CheckCircle2 className="w-4 h-4" /> : idx + 1}
                             </div>
                             <span className={`text-sm font-medium hidden sm:block ${active ? "text-foreground" : "text-muted-foreground"}`}>{label}</span>
@@ -108,7 +108,7 @@ export default function NewOrderPage() {
             {step === 0 && (
                 <div className="space-y-4">
                     <Card>
-                        <CardHeader className="pb-2"><CardTitle className="text-base flex items-center gap-2"><Package className="w-4 h-4 text-[var(--color-industrial-blue)]" />Select Products & Quantities</CardTitle></CardHeader>
+                        <CardHeader className="pb-2"><CardTitle className="text-base flex items-center gap-2"><Package className="w-4 h-4 text-primary" />Select Products & Quantities</CardTitle></CardHeader>
                         <CardContent className="space-y-3">
                             {loadingProducts ? <p className="text-sm text-center py-4 text-muted-foreground">Loading products...</p>
                                 : products.length === 0 ? <p className="text-sm text-center py-4 text-muted-foreground">No products available.</p>
@@ -116,36 +116,36 @@ export default function NewOrderPage() {
                                     const qty = getQty(p.id);
                                     return (
                                         <div key={p.id} className="flex flex-col sm:flex-row sm:items-center gap-3 p-3 border rounded-lg hover:bg-muted/30 transition-colors">
-                                            <div className="w-10 h-10 rounded-lg bg-[var(--color-industrial-blue)]/10 flex items-center justify-center flex-shrink-0">
-                                                <Package className="w-5 h-5 text-[var(--color-industrial-blue)]" />
+                                            <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+                                                <Package className="w-5 h-5 text-primary" />
                                             </div>
                                             <div className="flex-1 min-w-0">
                                                 <p className="text-sm font-semibold">{p.name}</p>
-                                                <p className="text-xs text-muted-foreground">{p.bag_type === "JB" ? "Jumbo Bag" : "Sling Bag"} · <span className="font-semibold text-[var(--color-industrial-blue)]">₱{Number(p.price_per_bag).toLocaleString()}</span>/bag</p>
+                                                <p className="text-xs text-muted-foreground">{p.bag_type === "JB" ? "Jumbo Bag" : "Sling Bag"} · <span className="font-semibold text-primary">₱{Number(p.price_per_bag).toLocaleString()}</span>/bag</p>
                                             </div>
                                             <div className="flex items-center gap-2">
                                                 <Button type="button" size="icon" variant="outline" className="h-8 w-8" onClick={() => setQty(p, Math.max(0, qty - 1))}>−</Button>
                                                 <Input type="number" min={0} value={qty || ""} placeholder="0" onChange={(e) => setQty(p, Math.max(0, parseInt(e.target.value) || 0))} className="h-8 w-20 text-center text-sm font-semibold" />
                                                 <Button type="button" size="icon" variant="outline" className="h-8 w-8" onClick={() => setQty(p, qty + 1)}>+</Button>
                                             </div>
-                                            {qty > 0 && <Badge className="bg-[var(--color-industrial-blue)]/10 text-[var(--color-industrial-blue)]">₱{(Number(p.price_per_bag) * qty).toLocaleString()}</Badge>}
+                                            {qty > 0 && <Badge className="bg-primary/10 text-primary">₱{(Number(p.price_per_bag) * qty).toLocaleString()}</Badge>}
                                         </div>
                                     );
                                 })}
                         </CardContent>
                     </Card>
                     {cart.length > 0 && (
-                        <Card className="border-[var(--color-industrial-blue)]/30 bg-[var(--color-industrial-blue)]/5">
+                        <Card className="border-primary/30 bg-primary/5">
                             <CardContent className="pt-4 pb-4">
-                                <p className="text-sm font-semibold text-[var(--color-industrial-blue)] mb-2">Cart Summary</p>
+                                <p className="text-sm font-semibold text-primary mb-2">Cart Summary</p>
                                 {cart.map((c) => (<div key={c.product.id} className="flex justify-between text-sm py-1"><span>{c.product.name} × {c.qty.toLocaleString()}</span><span className="font-semibold">₱{(Number(c.product.price_per_bag) * c.qty).toLocaleString()}</span></div>))}
                                 <Separator className="my-2" />
-                                <div className="flex justify-between font-bold"><span>Total</span><span className="text-[var(--color-industrial-blue)]">₱{totalAmount.toLocaleString()}</span></div>
+                                <div className="flex justify-between font-bold"><span>Total</span><span className="text-primary">₱{totalAmount.toLocaleString()}</span></div>
                             </CardContent>
                         </Card>
                     )}
                     <div className="flex justify-end">
-                        <Button className="bg-[var(--color-industrial-blue)] hover:bg-[var(--color-industrial-blue)]/90 gap-2" onClick={() => { if (!cart.length) { toast.error("Add at least one product."); return; } setStep(1); }}>
+                        <Button className="bg-primary hover:bg-primary/90 gap-2" onClick={() => { if (!cart.length) { toast.error("Add at least one product."); return; } setStep(1); }}>
                             Continue <ChevronRight className="w-4 h-4" />
                         </Button>
                     </div>
@@ -156,11 +156,11 @@ export default function NewOrderPage() {
             {step === 1 && (
                 <div className="space-y-4">
                     <Card>
-                        <CardHeader className="pb-2"><CardTitle className="text-base flex items-center gap-2"><CreditCard className="w-4 h-4 text-[var(--color-industrial-blue)]" />Payment Method</CardTitle></CardHeader>
+                        <CardHeader className="pb-2"><CardTitle className="text-base flex items-center gap-2"><CreditCard className="w-4 h-4 text-primary" />Payment Method</CardTitle></CardHeader>
                         <CardContent className="space-y-4">
                             <RadioGroup value={paymentMethod} onValueChange={(v) => setPaymentMethod(v as "cash" | "check")} className="space-y-3">
                                 {(["cash", "check"] as const).map((method) => (
-                                    <div key={method} className={`flex items-start gap-3 p-4 border rounded-lg cursor-pointer ${paymentMethod === method ? "border-[var(--color-industrial-blue)] bg-[var(--color-industrial-blue)]/5" : "hover:bg-muted/30"}`} onClick={() => setPaymentMethod(method)}>
+                                    <div key={method} className={`flex items-start gap-3 p-4 border rounded-lg cursor-pointer ${paymentMethod === method ? "border-primary bg-primary/5" : "hover:bg-muted/30"}`} onClick={() => setPaymentMethod(method)}>
                                         <RadioGroupItem value={method} id={method} />
                                         <Label htmlFor={method} className="cursor-pointer">
                                             <p className="font-semibold capitalize">{method}</p>
@@ -179,7 +179,7 @@ export default function NewOrderPage() {
                                             <Button type="button" size="icon" variant="ghost" className="h-7 w-7" onClick={() => setCheckFile(null)}><X className="w-4 h-4" /></Button>
                                         </div>
                                     ) : (
-                                        <div className="border-2 border-dashed border-border rounded-lg p-8 text-center cursor-pointer hover:border-[var(--color-industrial-blue)]/50 hover:bg-muted/30 transition-colors" onClick={() => document.getElementById("check-upload")?.click()}>
+                                        <div className="border-2 border-dashed border-border rounded-lg p-8 text-center cursor-pointer hover:border-primary/50 hover:bg-muted/30 transition-colors" onClick={() => document.getElementById("check-upload")?.click()}>
                                             <Upload className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
                                             <p className="text-sm text-muted-foreground">Click to upload check image</p>
                                             <p className="text-xs text-muted-foreground/60 mt-1">JPG, PNG, PDF · max 10MB</p>
@@ -196,7 +196,7 @@ export default function NewOrderPage() {
                     </Card>
                     <div className="flex justify-between">
                         <Button variant="outline" onClick={() => setStep(0)}>Back</Button>
-                        <Button className="bg-[var(--color-industrial-blue)] hover:bg-[var(--color-industrial-blue)]/90 gap-2" onClick={() => { if (paymentMethod === "check" && !checkFile) { toast.error("Upload a check image."); return; } setStep(2); }}>
+                        <Button className="bg-primary hover:bg-primary/90 gap-2" onClick={() => { if (paymentMethod === "check" && !checkFile) { toast.error("Upload a check image."); return; } setStep(2); }}>
                             Review Order <ChevronRight className="w-4 h-4" />
                         </Button>
                     </div>
@@ -213,12 +213,12 @@ export default function NewOrderPage() {
                                 {cart.map((c) => (
                                     <div key={c.product.id} className="flex justify-between items-center p-3 border rounded-lg">
                                         <div><p className="text-sm font-semibold">{c.product.name}</p><p className="text-xs text-muted-foreground">{c.qty.toLocaleString()} bags × ₱{Number(c.product.price_per_bag).toLocaleString()}</p></div>
-                                        <p className="text-sm font-bold text-[var(--color-industrial-blue)]">₱{(Number(c.product.price_per_bag) * c.qty).toLocaleString()}</p>
+                                        <p className="text-sm font-bold text-primary">₱{(Number(c.product.price_per_bag) * c.qty).toLocaleString()}</p>
                                     </div>
                                 ))}
                             </div>
                             <Separator />
-                            <div className="flex justify-between font-bold text-lg"><span>Total</span><span className="text-[var(--color-industrial-blue)]">₱{totalAmount.toLocaleString()}</span></div>
+                            <div className="flex justify-between font-bold text-lg"><span>Total</span><span className="text-primary">₱{totalAmount.toLocaleString()}</span></div>
                             <div className="grid grid-cols-2 gap-3 text-sm">
                                 <div className="p-3 bg-muted/50 rounded-lg"><p className="text-xs text-muted-foreground">Payment</p><p className="font-semibold capitalize mt-0.5">{paymentMethod}</p></div>
                                 {checkFile && <div className="p-3 bg-muted/50 rounded-lg"><p className="text-xs text-muted-foreground">Check File</p><p className="font-semibold mt-0.5 truncate">{checkFile.name}</p></div>}

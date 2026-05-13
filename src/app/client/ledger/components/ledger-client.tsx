@@ -165,7 +165,7 @@ export default function LedgerClient({ balances, summary }: { balances: Customer
                                 <p className="text-xs text-gray-500">individual bags</p>
                             </div>
                             <div className="h-10 w-10 rounded-xl bg-blue-50 flex items-center justify-center">
-                                <ShoppingBag className="w-5 h-5 text-[var(--color-industrial-blue)]" />
+                                <ShoppingBag className="w-5 h-5 text-primary" />
                             </div>
                         </div>
                     </CardContent>
@@ -184,7 +184,7 @@ export default function LedgerClient({ balances, summary }: { balances: Customer
                         </div>
                     </CardContent>
                 </Card>
-                <Card className="bg-[var(--color-industrial-blue)] text-white shadow-md">
+                <Card className="bg-primary text-primary-foreground shadow-md">
                     <CardContent className="p-5">
                         <div className="flex items-center justify-between">
                             <div>
@@ -202,10 +202,10 @@ export default function LedgerClient({ balances, summary }: { balances: Customer
 
             <div className="grid gap-6 md:grid-cols-2">
                 {/* Active Balances */}
-                <Card className="shadow-sm border-[var(--color-industrial-blue)]/20">
+                <Card className="shadow-sm border-primary/20">
                     <CardHeader className="pb-3 border-b border-gray-100 bg-blue-50/30 rounded-t-xl">
                         <CardTitle className="text-base flex items-center gap-2">
-                            <Package className="w-5 h-5 text-[var(--color-industrial-blue)]" />
+                            <Package className="w-5 h-5 text-primary" />
                             Outstanding Balances
                         </CardTitle>
                         <CardDescription>Bags that have been paid for but not yet delivered</CardDescription>
@@ -227,10 +227,10 @@ export default function LedgerClient({ balances, summary }: { balances: Customer
                                             </div>
                                         </div>
                                         <div className="flex flex-col items-end gap-2">
-                                            <div className="text-2xl font-bold text-[var(--color-industrial-blue)]">
+                                            <div className="text-2xl font-bold text-primary">
                                                 {b.remaining_qty} <span className="text-sm font-normal text-gray-500">bags</span>
                                             </div>
-                                            <Button size="sm" className="bg-[var(--color-industrial-yellow)] text-[var(--color-industrial-blue)] hover:bg-amber-400" onClick={() => handleOpenRedelivery(b)}>
+                                            <Button size="sm" className="bg-accent text-accent-foreground hover:bg-accent/90" onClick={() => handleOpenRedelivery(b)}>
                                                 <Truck className="w-4 h-4 mr-2" />
                                                 Request Redelivery
                                             </Button>
@@ -371,7 +371,7 @@ export default function LedgerClient({ balances, summary }: { balances: Customer
                                             <p className="text-xs text-blue-700">Don&apos;t need all {selectedBalance.remaining_qty} bags right now?</p>
                                         </div>
                                     </div>
-                                    <input type="checkbox" checked={wantsSplit} onChange={e => setWantsSplit(e.target.checked)} className="w-5 h-5 text-[var(--color-industrial-blue)] rounded border-blue-300 focus:ring-[var(--color-industrial-blue)]" />
+                                    <input type="checkbox" checked={wantsSplit} onChange={e => setWantsSplit(e.target.checked)} className="w-5 h-5 text-primary rounded border-blue-300 focus:ring-primary" />
                                 </div>
                                 {wantsSplit && (
                                     <div className="pt-2 space-y-2 border-t border-blue-100">
@@ -394,7 +394,7 @@ export default function LedgerClient({ balances, summary }: { balances: Customer
 
                             <DialogFooter className="gap-2 sm:gap-0">
                                 <Button type="button" variant="outline" onClick={() => setIsRedeliveryOpen(false)} disabled={isSubmitting}>Cancel</Button>
-                                <Button type="submit" className="bg-[var(--color-industrial-blue)]" disabled={isSubmitting}>
+                                <Button type="submit" className="bg-primary" disabled={isSubmitting}>
                                     {isSubmitting ? "Submitting..." : "Submit Re-delivery Request"}
                                 </Button>
                             </DialogFooter>

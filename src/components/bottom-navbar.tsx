@@ -64,7 +64,7 @@ export function BottomNavbar() {
                         <div 
                             className={`flex h-8 w-14 items-center justify-center rounded-full transition-all duration-200 ${
                                 isActive 
-                                    ? "bg-[var(--color-industrial-blue)] text-white" 
+                                    ? "bg-primary text-primary-foreground" 
                                     : "text-muted-foreground hover:text-foreground"
                             }`}
                         >
@@ -72,13 +72,13 @@ export function BottomNavbar() {
                         </div>
                         <span 
                             className={`text-[10px] font-medium transition-colors ${
-                                isActive ? "text-[var(--color-industrial-blue)]" : "text-muted-foreground"
+                                isActive ? "text-primary" : "text-muted-foreground"
                             }`}
                         >
                             {item.label}
                         </span>
                         {isActive && (
-                            <div className="absolute -top-1 h-1 w-1 rounded-full bg-[var(--color-industrial-blue)]" />
+                            <div className="absolute -top-1 h-1 w-1 rounded-full bg-primary" />
                         )}
                     </Link>
                 );

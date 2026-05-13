@@ -36,7 +36,7 @@ export function AuthShell({
           />
           <div
             aria-hidden="true"
-            className="absolute -right-24 top-10 h-72 w-72 rounded-full bg-[var(--color-industrial-yellow)]/12 blur-3xl"
+            className="absolute -right-24 top-10 h-72 w-72 rounded-full bg-accent/12 blur-3xl"
           />
           <div
             aria-hidden="true"
@@ -68,7 +68,7 @@ export function AuthShell({
 
             <div className="max-w-xl space-y-4">
               <span className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/8 px-3 py-1 text-[0.72rem] font-semibold uppercase tracking-[0.3em] text-white/75 backdrop-blur">
-                <Sparkles className="size-3.5 text-[var(--color-industrial-yellow)]" />
+                <Sparkles className="size-3.5 text-accent" />
                 {eyebrow}
               </span>
               <h1 className="max-w-lg text-4xl font-semibold tracking-tight text-balance text-white sm:text-5xl lg:text-6xl">
@@ -100,7 +100,7 @@ export function AuthShell({
           </div>
 
           <div className="relative z-10 mt-8 inline-flex items-center gap-2 rounded-full border border-white/12 bg-white/6 px-4 py-2 text-sm text-white/75 backdrop-blur">
-            <ShieldCheck className="size-4 text-[var(--color-industrial-yellow)]" />
+            <ShieldCheck className="size-4 text-accent" />
             Secure access with a consistent industrial workflow
           </div>
         </section>

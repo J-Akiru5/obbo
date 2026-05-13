@@ -170,7 +170,7 @@ export default function AdminSettingsPage() {
     return (
         <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 py-4 md:px-6 lg:px-8">
             <header className="space-y-2">
-                <div className="inline-flex items-center gap-2 rounded-full border border-[var(--color-industrial-blue)]/15 bg-[var(--color-industrial-blue)]/8 px-3 py-1 text-xs font-semibold uppercase tracking-[0.28em] text-[var(--color-industrial-blue)]">
+                <div className="inline-flex items-center gap-2 rounded-full border border-primary/15 bg-primary/8 px-3 py-1 text-xs font-semibold uppercase tracking-[0.28em] text-primary">
                     Settings
                 </div>
                 <div>
@@ -246,7 +246,7 @@ export default function AdminSettingsPage() {
                     <Card className="border-border/70 shadow-sm">
                         <CardHeader>
                             <CardTitle className="flex items-center gap-2 text-base">
-                                <Globe className="h-5 w-5 text-[var(--color-industrial-blue)]" /> Public contact information
+                                <Globe className="h-5 w-5 text-primary" /> Public contact information
                             </CardTitle>
                             <CardDescription>This data is synced to the client portal whenever it is saved.</CardDescription>
                         </CardHeader>
@@ -269,7 +269,7 @@ export default function AdminSettingsPage() {
                                 <Label>Business hours</Label>
                                 <Input value={contactInfo.businessHours} onChange={(event) => setContactInfo({ ...contactInfo, businessHours: event.target.value })} placeholder="Mon - Fri, 8:00 AM - 5:00 PM" />
                             </div>
-                            <Button onClick={handleSaveContact} disabled={isSavingContact} className="bg-[var(--color-industrial-blue)] hover:bg-[var(--color-industrial-blue)]/90">
+                            <Button onClick={handleSaveContact} disabled={isSavingContact} className="bg-primary hover:bg-primary/90">
                                 <Save className="mr-2 h-4 w-4" /> {isSavingContact ? "Saving..." : "Save contact info"}
                             </Button>
                         </CardContent>
@@ -280,7 +280,7 @@ export default function AdminSettingsPage() {
                     <Card className="border-border/70 shadow-sm">
                         <CardHeader>
                             <CardTitle className="flex items-center gap-2 text-base">
-                                <ShieldAlert className="h-5 w-5 text-[var(--color-industrial-blue)]" /> Login security
+                                <ShieldAlert className="h-5 w-5 text-primary" /> Login security
                             </CardTitle>
                             <CardDescription>Recent auth-related and high-risk administrative events surfaced from the audit trail.</CardDescription>
                         </CardHeader>
@@ -315,7 +315,7 @@ export default function AdminSettingsPage() {
                         <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                             <div>
                                 <CardTitle className="flex items-center gap-2 text-base">
-                                    <Activity className="h-5 w-5 text-[var(--color-industrial-blue)]" /> System audit log
+                                    <Activity className="h-5 w-5 text-primary" /> System audit log
                                 </CardTitle>
                                 <CardDescription>Immutable record of administrative actions taken in the system.</CardDescription>
                             </div>
@@ -381,7 +381,7 @@ export default function AdminSettingsPage() {
                     <Card className="border-border/70 shadow-sm">
                         <CardHeader>
                             <CardTitle className="flex items-center gap-2 text-base">
-                                <KeyRound className="h-5 w-5 text-[var(--color-industrial-blue)]" /> Admin account
+                                <KeyRound className="h-5 w-5 text-primary" /> Admin account
                             </CardTitle>
                             <CardDescription>Update your display name, contact phone, and password.</CardDescription>
                         </CardHeader>
@@ -411,7 +411,7 @@ export default function AdminSettingsPage() {
                                         <div className="text-xs text-muted-foreground">
                                             Role: <span className="font-medium text-foreground capitalize">{profile.role.replace(/_/g, " ")}</span>
                                         </div>
-                                        <Button onClick={handleSaveAccount} disabled={savingAccount} className="bg-[var(--color-industrial-blue)] hover:bg-[var(--color-industrial-blue)]/90">
+                                        <Button onClick={handleSaveAccount} disabled={savingAccount} className="bg-primary hover:bg-primary/90">
                                             <Save className="mr-2 h-4 w-4" /> {savingAccount ? "Saving..." : "Save account details"}
                                         </Button>
                                     </div>
@@ -421,7 +421,7 @@ export default function AdminSettingsPage() {
                                     <div className="space-y-3 rounded-xl border border-border/70 bg-muted/20 p-4">
                                         <div>
                                             <p className="flex items-center gap-2 text-sm font-semibold text-foreground">
-                                                <Lock className="h-4 w-4 text-[var(--color-industrial-blue)]" /> Change password
+                                                <Lock className="h-4 w-4 text-primary" /> Change password
                                             </p>
                                             <p className="mt-1 text-xs text-muted-foreground">Enter a new password for your admin account.</p>
                                         </div>

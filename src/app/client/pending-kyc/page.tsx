@@ -68,7 +68,7 @@ export default function ClientPendingKycPage() {
                 <div className="flex flex-col sm:flex-row gap-3">
                     <Link href="/client/catalog" className="flex-1">
                         <Button
-                            className="w-full bg-[var(--color-industrial-blue)] hover:bg-[var(--color-industrial-blue)]/90 gap-2"
+                            className="w-full bg-primary hover:bg-primary/90 gap-2"
                         >
                             <PackageSearch className="w-4 h-4" />
                             Browse Catalog
@@ -85,7 +85,7 @@ export default function ClientPendingKycPage() {
 
                 <p className="text-center text-xs text-muted-foreground">
                     Questions?{" "}
-                    <Link href="/client/contact-admin" className="text-[var(--color-industrial-blue)] hover:underline font-medium">
+                    <Link href="/client/contact-admin" className="text-primary hover:underline font-medium">
                         Message our team
                     </Link>{" "}
                     and we&apos;ll get back to you.

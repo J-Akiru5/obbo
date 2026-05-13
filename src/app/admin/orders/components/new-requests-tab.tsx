@@ -137,14 +137,14 @@ export function NewRequestsTab({ orders, onApprove, onReject, loading }: {
                     const totalBags = order.items.reduce((sum, item) => sum + item.requested_qty, 0);
 
                     return (
-                        <Card key={order.id} className="overflow-hidden border-l-4 border-l-[var(--color-industrial-yellow)] hover:shadow-md transition-shadow">
+                        <Card key={order.id} className="overflow-hidden border-l-4 border-l-accent hover:shadow-md transition-shadow">
                             <CardContent className="p-0">
                                 <div className="flex flex-col md:flex-row">
                                     <div className="p-5 flex-1 space-y-4">
                                         <div className="flex justify-between items-start">
                                             <div>
                                                 <div className="flex items-center gap-2 mb-1">
-                                                    <Badge className="bg-[var(--color-industrial-yellow)] text-white hover:bg-[var(--color-industrial-yellow-light)]">New Request</Badge>
+                                                    <Badge className="bg-accent text-accent-foreground hover:bg-accent/90">New Request</Badge>
                                                     <span className="text-xs text-muted-foreground">ID: {order.id.slice(0,8)}</span>
                                                     <span className="text-xs text-muted-foreground">• {new Date(order.created_at).toLocaleDateString()}</span>
                                                 </div>
@@ -153,7 +153,7 @@ export function NewRequestsTab({ orders, onApprove, onReject, loading }: {
                                                         {order.client?.avatar_url ? (
                                                             <AvatarImage src={order.client.avatar_url} alt="Client" className="object-cover" />
                                                         ) : (
-                                                            <AvatarFallback className="bg-[var(--color-industrial-blue)] text-white text-[10px] font-bold">
+                                                            <AvatarFallback className="bg-primary text-primary-foreground text-[10px] font-bold">
                                                                 {(order.client?.full_name || "CL").split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2)}
                                                             </AvatarFallback>
                                                         )}
@@ -176,7 +176,7 @@ export function NewRequestsTab({ orders, onApprove, onReject, loading }: {
                                                 <p className="text-xs text-muted-foreground mb-1">PO Details</p>
                                                 {order.po_number ? (
                                                     <div className="flex items-center gap-1.5 text-sm font-medium">
-                                                        <FileText className="w-4 h-4 text-[var(--color-industrial-blue)]" />
+                                                        <FileText className="w-4 h-4 text-primary" />
                                                         {order.po_number}
                                                     </div>
                                                 ) : <span className="text-sm text-muted-foreground italic">None</span>}
@@ -193,18 +193,18 @@ export function NewRequestsTab({ orders, onApprove, onReject, loading }: {
                                             </div>
                                             <div>
                                                 <p className="text-xs text-muted-foreground mb-1">Requested JB</p>
-                                                <p className="text-lg font-bold text-[var(--color-industrial-slate)]">{jbItem?.requested_qty || 0}</p>
+                                                <p className="text-lg font-bold text-foreground">{jbItem?.requested_qty || 0}</p>
                                             </div>
                                             <div>
                                                 <p className="text-xs text-muted-foreground mb-1">Requested SB</p>
-                                                <p className="text-lg font-bold text-[var(--color-industrial-slate)]">{sbItem?.requested_qty || 0}</p>
+                                                <p className="text-lg font-bold text-foreground">{sbItem?.requested_qty || 0}</p>
                                             </div>
                                         </div>
                                         
                                         <div className="flex justify-between items-center pt-1">
                                             <div className="text-sm">
                                                 <span className="text-muted-foreground">Total Value: </span>
-                                                <span className="font-bold text-[var(--color-industrial-blue)]">₱{order.total_amount.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
+                                                <span className="font-bold text-primary">₱{order.total_amount.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
                                             </div>
                                             {order.po_image_url && (
                                                 <a href={order.po_image_url} target="_blank" rel="noreferrer" className="flex items-center gap-1.5 text-xs font-medium text-blue-600 hover:text-blue-800 hover:underline bg-blue-50 border border-blue-200 px-2 py-1 rounded">
@@ -233,7 +233,7 @@ export function NewRequestsTab({ orders, onApprove, onReject, loading }: {
                                         )}
                                     </div>
                                     <div className="bg-muted/40 p-5 md:w-48 flex flex-col justify-center gap-3 border-l border-border/50">
-                                        <Button onClick={() => openAction(order, "approve")} className="w-full bg-[var(--color-industrial-blue)] hover:bg-[var(--color-industrial-blue-light)]">
+                                        <Button onClick={() => openAction(order, "approve")} className="w-full bg-primary hover:bg-primary/90">
                                             <Check className="w-4 h-4 mr-2" /> Approve
                                         </Button>
                                         <Button onClick={() => openAction(order, "reject")} variant="outline" className="w-full text-destructive hover:bg-destructive/10 hover:text-destructive border-destructive/20">

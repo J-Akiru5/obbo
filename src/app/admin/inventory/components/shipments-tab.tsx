@@ -172,7 +172,7 @@ export function ShipmentsTab({ shipments, loading, onReload }: { shipments: Ship
                     <p className="text-sm text-muted-foreground">Each batch tracks a shipment of Portland Cement Type 1.</p>
                 </div>
                 <Dialog>
-                    <DialogTrigger render={<Button className="bg-[var(--color-industrial-blue)]" />}>
+                    <DialogTrigger render={<Button className="bg-primary" />}>
                         <PackagePlus className="w-4 h-4 mr-2" /> New Batch
                     </DialogTrigger>
                     <DialogContent>
@@ -207,7 +207,7 @@ export function ShipmentsTab({ shipments, loading, onReload }: { shipments: Ship
                             </div>
                         </div>
                         <DialogFooter>
-                            <Button onClick={handleCreateBatch} disabled={isCreating || !newBatchName || (newJbBags + newSbBags) <= 0} className="bg-[var(--color-industrial-blue)]">
+                            <Button onClick={handleCreateBatch} disabled={isCreating || !newBatchName || (newJbBags + newSbBags) <= 0} className="bg-primary">
                                 {isCreating ? "Creating..." : "Create Batch"}
                             </Button>
                         </DialogFooter>
@@ -237,8 +237,8 @@ export function ShipmentsTab({ shipments, loading, onReload }: { shipments: Ship
                                     <p className="text-sm font-semibold">{totalInitial} bags</p>
                                 </div>
                                 <div className="text-right">
-                                    <p className="text-[10px] uppercase font-bold text-[var(--color-industrial-blue)] tracking-wider mb-0.5">Remaining</p>
-                                    <p className="text-base font-bold text-[var(--color-industrial-blue)]">{totalRemaining} bags</p>
+                                    <p className="text-[10px] uppercase font-bold text-primary tracking-wider mb-0.5">Remaining</p>
+                                    <p className="text-base font-bold text-primary">{totalRemaining} bags</p>
                                     <p className="text-[10px] text-muted-foreground">{shipment.remaining_jb} JB · {shipment.remaining_sb} SB</p>
                                 </div>
                                 <div onClick={e => e.stopPropagation()}>
@@ -268,9 +268,9 @@ export function ShipmentsTab({ shipments, loading, onReload }: { shipments: Ship
                                 {/* Remaining Stock + Add Entry */}
                                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-card p-3 rounded-lg border">
                                     <div className="flex items-center gap-4">
-                                        <div className="px-3 py-1.5 rounded-md bg-[var(--color-industrial-blue)]/10 border border-[var(--color-industrial-blue)]/20">
-                                            <p className="text-[10px] uppercase font-bold text-[var(--color-industrial-blue)] tracking-wider">Remaining</p>
-                                            <p className="text-lg font-bold text-[var(--color-industrial-blue)]">{totalRemaining}</p>
+                                        <div className="px-3 py-1.5 rounded-md bg-primary/10 border border-primary/20">
+                                            <p className="text-[10px] uppercase font-bold text-primary tracking-wider">Remaining</p>
+                                            <p className="text-lg font-bold text-primary">{totalRemaining}</p>
                                         </div>
                                         <div className="text-xs text-muted-foreground space-y-0.5">
                                             <p>JB: <span className="font-bold text-foreground">{shipment.remaining_jb}</span></p>
@@ -280,7 +280,7 @@ export function ShipmentsTab({ shipments, loading, onReload }: { shipments: Ship
                                             <Pencil className="w-3 h-3 mr-1" /> Adjust
                                         </Button>
                                     </div>
-                                    <Button size="sm" onClick={() => openAddEntry(shipment.id)} className="bg-[var(--color-industrial-blue)]">
+                                    <Button size="sm" onClick={() => openAddEntry(shipment.id)} className="bg-primary">
                                         <Plus className="w-3.5 h-3.5 mr-1" /> Add Entry
                                     </Button>
                                 </div>
@@ -380,7 +380,7 @@ export function ShipmentsTab({ shipments, loading, onReload }: { shipments: Ship
                     </div>
                     <DialogFooter>
                         <Button variant="ghost" onClick={() => setEditingShipment(null)}>Cancel</Button>
-                        <Button onClick={handleUpdateShipment} disabled={isUpdating} className="bg-[var(--color-industrial-blue)]">
+                        <Button onClick={handleUpdateShipment} disabled={isUpdating} className="bg-primary">
                             {isUpdating ? "Saving..." : "Save"}
                         </Button>
                     </DialogFooter>
@@ -398,9 +398,9 @@ export function ShipmentsTab({ shipments, loading, onReload }: { shipments: Ship
                         </DialogDescription>
                     </DialogHeader>
                     <div className="space-y-4 py-4">
-                        <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
-                            <p className="font-semibold flex items-center gap-1.5"><AlertTriangle className="w-4 h-4" /> Manual Override</p>
-                            <p className="mt-1">Changes here instantly affect the Dashboard&apos;s &quot;Total Good Stock&quot; counter.</p>
+                        <div className="rounded-lg border border-accent/20 bg-accent/5 p-3 text-xs text-foreground">
+                            <p className="font-semibold flex items-center gap-1.5 text-accent-foreground"><AlertTriangle className="w-4 h-4 text-accent" /> Manual Override</p>
+                            <p className="mt-1 text-muted-foreground">Changes here instantly affect the Dashboard&apos;s &quot;Total Good Stock&quot; counter.</p>
                         </div>
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
@@ -418,7 +418,7 @@ export function ShipmentsTab({ shipments, loading, onReload }: { shipments: Ship
                     </div>
                     <DialogFooter>
                         <Button variant="outline" onClick={() => setOverrideShipment(null)}>Cancel</Button>
-                        <Button onClick={handleSaveOverride} disabled={isSavingOverride} className="bg-[var(--color-industrial-blue)]">
+                        <Button onClick={handleSaveOverride} disabled={isSavingOverride} className="bg-primary">
                             <Save className="w-4 h-4 mr-2" /> {isSavingOverride ? "Saving..." : "Save Override"}
                         </Button>
                     </DialogFooter>

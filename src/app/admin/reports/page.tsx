@@ -31,7 +31,7 @@ function MetricCard({ title, value, icon: Icon, description }: { title: string; 
                     <p className="text-xs text-muted-foreground">{description}</p>
                 </div>
                 <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-muted/70">
-                    <Icon className="h-5 w-5 text-[var(--color-industrial-blue)]" />
+                    <Icon className="h-5 w-5 text-primary" />
                 </div>
             </CardContent>
         </Card>
@@ -101,7 +101,7 @@ export default function AdminReportsPage() {
         <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 py-4 md:px-6 lg:px-8">
             <header className="flex flex-col gap-4 rounded-2xl border border-border/70 bg-card p-5 shadow-sm lg:flex-row lg:items-end lg:justify-between">
                 <div className="space-y-2">
-                    <div className="inline-flex items-center gap-2 rounded-full border border-[var(--color-industrial-blue)]/15 bg-[var(--color-industrial-blue)]/8 px-3 py-1 text-xs font-semibold uppercase tracking-[0.28em] text-[var(--color-industrial-blue)]">
+                    <div className="inline-flex items-center gap-2 rounded-full border border-primary/15 bg-primary/8 px-3 py-1 text-xs font-semibold uppercase tracking-[0.28em] text-primary">
                         Reports
                     </div>
                     <div>
@@ -174,8 +174,8 @@ export default function AdminReportsPage() {
                                             <TableCell>{report?.waste_jb ?? 0}</TableCell>
                                             <TableCell>{report?.waste_sb ?? 0}</TableCell>
                                         </TableRow>
-                                        <TableRow className="bg-[var(--color-industrial-blue)]/5">
-                                            <TableCell className="font-semibold text-[var(--color-industrial-blue)]">Today's closing</TableCell>
+                                        <TableRow className="bg-primary/5">
+                                            <TableCell className="font-semibold text-primary">Today's closing</TableCell>
                                             <TableCell className="font-semibold">{closingJb}</TableCell>
                                             <TableCell className="font-semibold">{closingSb}</TableCell>
                                         </TableRow>

@@ -164,7 +164,7 @@ export function PoListTab({ purchaseOrders, loading, onReload }: { purchaseOrder
                                 <LayoutGrid className="h-4 w-4" />
                             </Button>
                         </div>
-                        <Button onClick={openCreate} className="bg-[var(--color-industrial-blue)] shrink-0 flex-1 sm:flex-none"><Plus className="w-4 h-4 mr-2" /> Add Manual PO</Button>
+                        <Button onClick={openCreate} className="bg-primary shrink-0 flex-1 sm:flex-none"><Plus className="w-4 h-4 mr-2" /> Add Manual PO</Button>
                     </div>
                 </div>
 
@@ -189,12 +189,12 @@ export function PoListTab({ purchaseOrders, loading, onReload }: { purchaseOrder
                                 {filtered.length === 0 ? (
                                     <TableRow><TableCell colSpan={10} className="text-center py-6 text-muted-foreground">No purchase orders found.</TableCell></TableRow>
                                 ) : filtered.map(po => (
-                                    <TableRow key={po.id} className={po.order_id ? "bg-blue-50/30 dark:bg-blue-950/10" : ""}>
+                                    <TableRow key={po.id} className={po.order_id ? "bg-primary/5" : ""}>
                                         <TableCell className="text-sm whitespace-nowrap">{new Date(po.date).toLocaleDateString()}</TableCell>
                                         <TableCell>
                                             <span className="font-semibold text-sm">{po.po_number}</span>
                                             {po.order_id && (
-                                                <Badge variant="outline" className="ml-2 text-[9px] border-blue-200 text-blue-600 bg-blue-50">AUTO</Badge>
+                                                <Badge variant="outline" className="ml-2 text-[9px] border-primary/20 text-primary bg-primary/5">AUTO</Badge>
                                             )}
                                         </TableCell>
                                         <TableCell className="text-sm">{po.client_name || "—"}</TableCell>
@@ -227,7 +227,7 @@ export function PoListTab({ purchaseOrders, loading, onReload }: { purchaseOrder
                                         </TableCell>
                                         <TableCell className="text-sm">
                                             {po.photo_url ? (
-                                                <a href={po.photo_url} target="_blank" rel="noreferrer" className="inline-flex items-center justify-center h-8 w-8 text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-md">
+                                                <a href={po.photo_url} target="_blank" rel="noreferrer" className="inline-flex items-center justify-center h-8 w-8 text-primary hover:text-primary/90 hover:bg-primary/10 rounded-md">
                                                     <FileImage className="w-4 h-4" />
                                                 </a>
                                             ) : (
@@ -243,7 +243,7 @@ export function PoListTab({ purchaseOrders, loading, onReload }: { purchaseOrder
                                             >
                                                 <Eye className="w-4 h-4" />
                                             </Button>
-                                            <Button variant="ghost" size="icon" onClick={() => openEdit(po)} className="h-8 w-8 text-blue-600 hover:text-blue-700 hover:bg-blue-50"><Edit2 className="w-4 h-4" /></Button>
+                                            <Button variant="ghost" size="icon" onClick={() => openEdit(po)} className="h-8 w-8 text-primary hover:text-primary/90 hover:bg-primary/10"><Edit2 className="w-4 h-4" /></Button>
                                             <Button variant="ghost" size="icon" onClick={() => setDeleteTarget(po)} className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"><Trash2 className="w-4 h-4" /></Button>
                                         </TableCell>
                                     </TableRow>
@@ -270,7 +270,7 @@ export function PoListTab({ purchaseOrders, loading, onReload }: { purchaseOrder
                                     )}
                                     <div className="absolute top-2 right-2 flex gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
                                         <Button size="icon" variant="secondary" className="h-8 w-8 shadow-sm" onClick={() => { setViewingPo(po); setIsViewOpen(true); }}><Eye className="h-4 w-4 text-emerald-600" /></Button>
-                                        <Button size="icon" variant="secondary" className="h-8 w-8 shadow-sm" onClick={() => openEdit(po)}><Edit2 className="h-4 w-4 text-blue-600" /></Button>
+                                        <Button size="icon" variant="secondary" className="h-8 w-8 shadow-sm" onClick={() => openEdit(po)}><Edit2 className="h-4 w-4 text-primary" /></Button>
                                     </div>
                                     <div className="absolute top-2 left-2">
                                         <Badge variant="secondary" className="bg-white/90 backdrop-blur-sm text-foreground border-none text-[10px] shadow-sm">
@@ -284,7 +284,7 @@ export function PoListTab({ purchaseOrders, loading, onReload }: { purchaseOrder
                                             <p className="text-sm font-bold truncate text-foreground">{po.po_number}</p>
                                             <p className="text-xs text-muted-foreground truncate">{po.client_name || "Unknown Client"}</p>
                                         </div>
-                                        {po.order_id && <Badge variant="outline" className="text-[9px] bg-blue-50 text-blue-600 border-blue-100 h-5 shrink-0">AUTO</Badge>}
+                                        {po.order_id && <Badge variant="outline" className="text-[9px] bg-primary/5 text-primary border-primary/10 h-5 shrink-0">AUTO</Badge>}
                                     </div>
                                     
                                     <div className="flex items-center gap-3 py-2 border-y border-muted/50">
@@ -419,7 +419,7 @@ export function PoListTab({ purchaseOrders, loading, onReload }: { purchaseOrder
                                 </div>
                             ) : (
                                 <div
-                                    className="border-2 border-dashed border-border rounded-lg p-4 text-center cursor-pointer hover:border-[var(--color-industrial-blue)]/50 hover:bg-muted/30 transition-colors"
+                                    className="border-2 border-dashed border-border rounded-lg p-4 text-center cursor-pointer hover:border-primary/50 hover:bg-muted/30 transition-colors"
                                     onClick={() => document.getElementById("po-photo-upload")?.click()}
                                 >
                                     <UploadCloud className="w-6 h-6 mx-auto mb-1 text-muted-foreground" />
@@ -438,7 +438,7 @@ export function PoListTab({ purchaseOrders, loading, onReload }: { purchaseOrder
                     </div>
                     <DialogFooter>
                         <Button variant="outline" onClick={() => setIsDialogOpen(false)} disabled={isSubmitting}>Cancel</Button>
-                        <Button onClick={handleSubmit} disabled={isSubmitting} className="bg-[var(--color-industrial-blue)]">
+                        <Button onClick={handleSubmit} disabled={isSubmitting} className="bg-primary">
                             {isSubmitting ? "Saving..." : editingPo ? "Update PO" : "Create PO"}
                         </Button>
                     </DialogFooter>

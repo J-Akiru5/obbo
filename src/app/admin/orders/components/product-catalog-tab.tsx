@@ -220,7 +220,7 @@ export function ProductCatalogTab({ products, onUpdate, onCreate, onDelete, load
                             </Button>
                         </div>
                         {onCreate && (
-                            <Button onClick={openCreate} className="bg-[var(--color-industrial-blue)] gap-2 h-9">
+                            <Button onClick={openCreate} className="bg-primary gap-2 h-9">
                                 <Plus className="w-4 h-4" /> Create Product
                             </Button>
                         )}
@@ -280,7 +280,7 @@ export function ProductCatalogTab({ products, onUpdate, onCreate, onDelete, load
                                         <TableCell className="text-right font-medium">
                                             ₱{(p.price_port ?? p.price_per_bag).toLocaleString(undefined, { minimumFractionDigits: 2 })}
                                         </TableCell>
-                                        <TableCell className="text-right font-medium text-[var(--color-industrial-blue)]">
+                                        <TableCell className="text-right font-medium text-primary">
                                             ₱{(p.price_warehouse ?? p.price_per_bag).toLocaleString(undefined, { minimumFractionDigits: 2 })}
                                         </TableCell>
                                         <TableCell className="text-center">
@@ -294,7 +294,7 @@ export function ProductCatalogTab({ products, onUpdate, onCreate, onDelete, load
                                                     variant="ghost" 
                                                     size="icon" 
                                                     onClick={() => { setViewingProduct(p); setIsViewOpen(true); }}
-                                                    className="h-8 w-8 text-industrial-blue hover:text-industrial-blue hover:bg-industrial-blue/10"
+                                                    className="h-8 w-8 text-primary hover:text-primary hover:bg-primary/10"
                                                 >
                                                     <Eye className="w-4 h-4" />
                                                 </Button>
@@ -355,8 +355,8 @@ export function ProductCatalogTab({ products, onUpdate, onCreate, onDelete, load
                                                 <p className="text-xs font-bold text-foreground">₱{(p.price_port ?? p.price_per_bag).toLocaleString()}</p>
                                             </div>
                                             <div className="text-right">
-                                                <div className="text-[9px] uppercase font-black text-[var(--color-industrial-blue)]/60 mb-0.5">Warehouse</div>
-                                                <p className="text-xs font-bold text-[var(--color-industrial-blue)]">₱{(p.price_warehouse ?? p.price_per_bag).toLocaleString()}</p>
+                                                <div className="text-[9px] uppercase font-black text-primary/60 mb-0.5">Warehouse</div>
+                                                <p className="text-xs font-bold text-primary">₱{(p.price_warehouse ?? p.price_per_bag).toLocaleString()}</p>
                                             </div>
                                         </div>
 
@@ -364,7 +364,7 @@ export function ProductCatalogTab({ products, onUpdate, onCreate, onDelete, load
                                             <Button 
                                                 variant="secondary" 
                                                 size="sm" 
-                                                className="h-8 text-[11px] font-bold gap-1.5 bg-[var(--color-industrial-blue)] text-white hover:bg-[var(--color-industrial-blue)]/90 flex-1"
+                                                className="h-8 text-[11px] font-bold gap-1.5 bg-primary text-primary-foreground hover:bg-primary/90 flex-1"
                                                 onClick={() => { setViewingProduct(p); setIsViewOpen(true); }}
                                             >
                                                 <Eye className="w-3.5 h-3.5" /> View
@@ -387,15 +387,15 @@ export function ProductCatalogTab({ products, onUpdate, onCreate, onDelete, load
             {/* View Details Dialog */}
             <Dialog open={isViewOpen} onOpenChange={setIsViewOpen}>
                 <DialogContent showCloseButton={false} className="sm:max-w-2xl p-0 overflow-hidden rounded-xl border-none max-h-[90vh] overflow-y-auto">
-                    <div className="bg-[var(--color-industrial-blue)] p-6 text-white">
+                    <div className="bg-primary p-6 text-primary-foreground">
                         <div className="flex justify-between items-start">
                             <div>
                                 <Badge className="bg-white/20 hover:bg-white/30 text-white border-none mb-2 text-[10px]">Product Information</Badge>
-                                <h2 className="text-2xl font-bold tracking-tight flex items-center gap-2">
+                                <h2 className="text-2xl font-bold tracking-tight flex items-center gap-2 text-white">
                                     {viewingProduct?.name}
                                     <Badge variant="outline" className="border-white/40 text-white font-mono text-[10px] ml-2">{viewingProduct?.bag_type}</Badge>
                                 </h2>
-                                <p className="text-blue-100/70 text-sm mt-1">{viewingProduct?.description || "High-quality industrial cement product."}</p>
+                                <p className="text-primary-foreground/70 text-sm mt-1">{viewingProduct?.description || "High-quality industrial cement product."}</p>
                             </div>
                             <Button variant="ghost" size="icon" onClick={() => setIsViewOpen(false)} className="text-white hover:bg-white/10 rounded-full h-8 w-8">
                                 <X className="w-5 h-5" />
@@ -432,17 +432,17 @@ export function ProductCatalogTab({ products, onUpdate, onCreate, onDelete, load
                                 <div className="flex items-center justify-between p-4 bg-muted/50 rounded-xl border border-border/50">
                                     <div>
                                         <p className="text-xs font-bold text-muted-foreground mb-1 flex items-center gap-2">
-                                            <div className="w-2 h-2 rounded-full bg-industrial-yellow" />
+                                            <div className="w-2 h-2 rounded-full bg-accent" />
                                             PORT PRICE
                                         </p>
                                         <p className="text-2xl font-black text-foreground">₱{viewingProduct?.price_port?.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
                                     </div>
                                     <div className="text-right">
-                                        <p className="text-xs font-bold text-[var(--color-industrial-blue)] mb-1 flex items-center justify-end gap-2">
+                                        <p className="text-xs font-bold text-primary mb-1 flex items-center justify-end gap-2">
                                             WAREHOUSE
-                                            <div className="w-2 h-2 rounded-full bg-[var(--color-industrial-blue)]" />
+                                            <div className="w-2 h-2 rounded-full bg-primary" />
                                         </p>
-                                        <p className="text-2xl font-black text-[var(--color-industrial-blue)]">₱{viewingProduct?.price_warehouse?.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
+                                        <p className="text-2xl font-black text-primary">₱{viewingProduct?.price_warehouse?.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
                                     </div>
                                 </div>
                             </div>
@@ -462,7 +462,7 @@ export function ProductCatalogTab({ products, onUpdate, onCreate, onDelete, load
                             </div>
 
                             <div className="pt-4 border-t flex gap-3">
-                                <Button className="flex-1 bg-[var(--color-industrial-blue)] font-bold text-xs uppercase" onClick={() => { setIsViewOpen(false); openEdit(viewingProduct!); }}>
+                                <Button className="flex-1 bg-primary font-bold text-xs uppercase" onClick={() => { setIsViewOpen(false); openEdit(viewingProduct!); }}>
                                     Modify Product Details
                                 </Button>
                             </div>
@@ -569,7 +569,7 @@ export function ProductCatalogTab({ products, onUpdate, onCreate, onDelete, load
                     </div>
                     <DialogFooter>
                         <Button variant="outline" onClick={() => { setEditingProduct(null); setIsCreating(false); }} disabled={isSaving}>Cancel</Button>
-                        <Button onClick={handleSave} disabled={isSaving} className="bg-[var(--color-industrial-blue)] gap-2">
+                        <Button onClick={handleSave} disabled={isSaving} className="bg-primary gap-2">
                             {isSaving ? (
                                 <><Loader2 className="h-4 w-4 animate-spin" />{isUploadingImage ? "Uploading..." : "Saving..."}</>
                             ) : "Save Product"}

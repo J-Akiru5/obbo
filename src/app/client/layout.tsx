@@ -286,7 +286,7 @@ function ClientLayoutInner({ children }: { children: React.ReactNode }) {
               <div className="flex h-8 w-8 items-center justify-center">
                 <Image src="/logo.png" alt="OBBO Logo" width={32} height={32} className="object-contain" />
               </div>
-              <span className="text-sm font-bold text-[var(--color-industrial-blue)]">OBBO</span>
+              <span className="text-sm font-bold text-primary">OBBO</span>
             </Link>
 
             <div className="hidden sm:block">
@@ -307,7 +307,7 @@ function ClientLayoutInner({ children }: { children: React.ReactNode }) {
               <PopoverTrigger className="relative inline-flex h-8 w-8 items-center justify-center rounded-md hover:bg-muted">
                 <Bell className="h-4 w-4" />
                 {unreadCount > 0 && (
-                  <span className="absolute -right-0.5 -top-0.5 h-4 w-4 rounded-full bg-[var(--color-industrial-yellow)] text-[10px] font-bold text-[var(--color-industrial-blue)] flex items-center justify-center">
+                  <span className="absolute -right-0.5 -top-0.5 h-4 w-4 rounded-full bg-accent text-[10px] font-bold text-accent-foreground flex items-center justify-center">
                     {unreadCount > 9 ? "9+" : unreadCount}
                   </span>
                 )}
@@ -316,7 +316,7 @@ function ClientLayoutInner({ children }: { children: React.ReactNode }) {
                 <div className="flex items-center justify-between p-3 border-b">
                   <h3 className="text-sm font-semibold">Notifications</h3>
                   {unreadCount > 0 && (
-                    <button onClick={markAllRead} className="text-xs text-[var(--color-industrial-blue)] hover:underline">
+                    <button onClick={markAllRead} className="text-xs text-primary hover:underline">
                       Mark all as read
                     </button>
                   )}
@@ -364,11 +364,11 @@ function ClientLayoutInner({ children }: { children: React.ReactNode }) {
             </Badge>
 
             <Link href="/client/profile">
-                <Avatar className="w-8 h-8 cursor-pointer hover:ring-2 ring-[var(--color-industrial-blue)] transition-all">
+                <Avatar className="w-8 h-8 cursor-pointer hover:ring-2 ring-primary transition-all">
                     {avatarUrl ? (
                         <AvatarImage src={avatarUrl} alt="Avatar" className="object-cover" />
                     ) : (
-                        <AvatarFallback className="bg-[var(--color-industrial-blue)] text-white text-xs font-bold">{initials}</AvatarFallback>
+                        <AvatarFallback className="bg-primary text-primary-foreground text-xs font-bold">{initials}</AvatarFallback>
                     )}
                 </Avatar>
             </Link>
@@ -388,7 +388,7 @@ function ClientLayoutInner({ children }: { children: React.ReactNode }) {
         </header>
 
         <main className="relative flex-1 p-4 sm:p-6">
-          <div className="pointer-events-none absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-[var(--color-industrial-blue)]/5 to-transparent" />
+          <div className="pointer-events-none absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-primary/5 to-transparent" />
           <div className="relative">{children}</div>
         </main>
       </div>

@@ -53,14 +53,14 @@ function StatusTimeline({ status }: { status: string }) {
                 const active = idx === currentIdx;
                 const Icon = icons[idx];
                 return (
-                    <div key={s} className={`flex items-center gap-3 p-3 rounded-lg border transition-colors ${done ? "border-[var(--color-industrial-blue)]/30 bg-[var(--color-industrial-blue)]/5" : "border-border bg-muted/30"}`}>
-                        <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${done ? "bg-[var(--color-industrial-blue)] text-white" : "bg-muted text-muted-foreground"}`}>
+                    <div key={s} className={`flex items-center gap-3 p-3 rounded-lg border transition-colors ${done ? "border-primary/30 bg-primary/5" : "border-border bg-muted/30"}`}>
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${done ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}>
                             <Icon className="w-4 h-4" />
                         </div>
                         <div className="flex-1">
                             <p className={`text-sm font-semibold capitalize ${done ? "text-foreground" : "text-muted-foreground"}`}>{s.replace(/_/g, " ")}</p>
                         </div>
-                        {active && <span className="text-xs font-medium text-[var(--color-industrial-blue)] bg-[var(--color-industrial-blue)]/10 px-2 py-0.5 rounded-full">Current</span>}
+                        {active && <span className="text-xs font-medium text-primary bg-primary/10 px-2 py-0.5 rounded-full">Current</span>}
                         {done && !active && <CheckCircle2 className="w-4 h-4 text-emerald-500" />}
                     </div>
                 );
@@ -142,7 +142,7 @@ export default function OrderDetailPage() {
                                             {item.dispatched_qty > 0 && <span>Dispatched: <strong className="text-indigo-600">{item.dispatched_qty.toLocaleString()}</strong></span>}
                                         </div>
                                     </div>
-                                    <p className="text-sm font-bold text-[var(--color-industrial-blue)]">
+                                    <p className="text-sm font-bold text-primary">
                                         ₱{(Number(item.product?.price_per_bag ?? 0) * item.requested_qty).toLocaleString()}
                                     </p>
                                 </div>
@@ -150,7 +150,7 @@ export default function OrderDetailPage() {
                             <Separator />
                             <div className="flex justify-between font-bold">
                                 <span>Total</span>
-                                <span className="text-[var(--color-industrial-blue)]">₱{Number(order.total_amount).toLocaleString()}</span>
+                                <span className="text-primary">₱{Number(order.total_amount).toLocaleString()}</span>
                             </div>
                         </CardContent>
                     </Card>

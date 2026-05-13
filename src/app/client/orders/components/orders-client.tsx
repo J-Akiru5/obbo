@@ -56,8 +56,8 @@ function TrackingProgressBar({ order }: { order: Order }) {
                                     isCompleted
                                         ? "bg-emerald-500 border-emerald-500 text-white"
                                         : isCurrent
-                                            ? "border-[var(--color-industrial-blue)] text-[var(--color-industrial-blue)] bg-blue-50"
-                                            : "border-gray-200 text-gray-300 bg-white"
+                                        ? "border-primary text-primary bg-primary/10"
+                                        : "border-gray-200 text-gray-300 bg-white"
                                 }`}>
                                     <StepIcon className="w-4 h-4" />
                                 </div>
@@ -351,13 +351,13 @@ export default function OrdersClient({ orders }: { orders: Order[] }) {
 
             <Tabs defaultValue="active" className="w-full">
                 <TabsList className="w-full justify-start border-b rounded-none h-auto p-0 bg-transparent mb-6 space-x-6">
-                    <TabsTrigger value="active" className="data-[state=active]:border-b-2 data-[state=active]:border-[var(--color-industrial-blue)] data-[state=active]:text-[var(--color-industrial-blue)] rounded-none px-0 py-3 shadow-none">
+                    <TabsTrigger value="active" className="data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-primary rounded-none px-0 py-3 shadow-none">
                         Active & Tracking ({activeOrders.length})
                     </TabsTrigger>
-                    <TabsTrigger value="pending" className="data-[state=active]:border-b-2 data-[state=active]:border-[var(--color-industrial-blue)] data-[state=active]:text-[var(--color-industrial-blue)] rounded-none px-0 py-3 shadow-none">
+                    <TabsTrigger value="pending" className="data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-primary rounded-none px-0 py-3 shadow-none">
                         Pending Approval ({pendingOrders.length})
                     </TabsTrigger>
-                    <TabsTrigger value="history" className="data-[state=active]:border-b-2 data-[state=active]:border-[var(--color-industrial-blue)] data-[state=active]:text-[var(--color-industrial-blue)] rounded-none px-0 py-3 shadow-none">
+                    <TabsTrigger value="history" className="data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-primary rounded-none px-0 py-3 shadow-none">
                         Order History
                     </TabsTrigger>
                 </TabsList>
@@ -452,7 +452,7 @@ export default function OrdersClient({ orders }: { orders: Order[] }) {
                             </div>
                             <DialogFooter className="pt-4">
                                 <Button type="button" variant="outline" onClick={() => setIsPaymentOpen(false)} disabled={isSubmitting}>Cancel</Button>
-                                <Button type="submit" className="bg-[var(--color-industrial-blue)]" disabled={isSubmitting}>
+                                <Button type="submit" className="bg-primary" disabled={isSubmitting}>
                                     <UploadCloud className="w-4 h-4 mr-2" />
                                     {isSubmitting ? "Uploading..." : "Submit Check"}
                                 </Button>
