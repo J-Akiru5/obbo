@@ -1,47 +1,18 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Calendar, CircleCheckBig, FileText, Package, Truck, Users } from "lucide-react";
+import { Calendar } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { fetchCustomerBalances, fetchOrders, fetchWarehouseReport, fetchWarehouseReports } from "@/lib/actions/admin-actions";
+import { fetchCustomerBalances, fetchOrders, fetchWarehouseReport, fetchDashboardKPIs } from "@/lib/actions/admin-actions";
 import type { WarehouseReport } from "@/lib/types/database";
-
-function reportStatusFor(report: WarehouseReport | null, reportDate: string) {
-    if (!report) {
-        return { label: "Draft", tone: "bg-muted text-muted-foreground border-border" };
-    }
-
-    if (reportDate === new Date().toISOString().split("T")[0]) {
-        return { label: "Submitted", tone: "bg-amber-500/10 text-amber-500 border-amber-500/20" };
-    }
-
-    return { label: "Reviewed", tone: "bg-emerald-500/10 text-emerald-500 border-emerald-500/20" };
-}
-
-function MetricCard({ title, value, icon: Icon, description }: { title: string; value: string; icon: React.ComponentType<{ className?: string }>; description: string; }) {
-    return (
-        <Card className="border-border/70 shadow-sm">
-            <CardContent className="flex items-start justify-between gap-4 p-5">
-                <div className="space-y-2">
-                    <p className="text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">{title}</p>
-                    <p className="text-2xl font-semibold tracking-tight text-foreground">{value}</p>
-                    <p className="text-xs text-muted-foreground">{description}</p>
-                </div>
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-muted/70">
-                    <Icon className="h-5 w-5 text-primary" />
-                </div>
-            </CardContent>
-        </Card>
-    );
-}
 
 export default function AdminReportsPage() {
     const [reportDate, setReportDate] = useState(new Date().toISOString().split("T")[0]);
     const [report, setReport] = useState<WarehouseReport | null>(null);
-    const [recentReports, setRecentReports] = useState<WarehouseReport[]>([]);
+    const [currentInventory, setCurrentInventory] = useState({ jb: 0, sb: 0 });
     const [todayDispatches, setTodayDispatches] = useState<Array<{ client: string; dr: string | null; service: string; jb: number; sb: number }>>([]);
     const [balances, setBalances] = useState<Array<{ id: string; remaining_qty: number; bag_type: string; client?: { full_name: string; company_name: string | null }; product?: { name: string } }>>([]);
     const [loading, setLoading] = useState(true);
@@ -49,16 +20,16 @@ export default function AdminReportsPage() {
     const loadReportData = useCallback(async () => {
         setLoading(true);
         try {
-            const [reportRow, reportRows, dispatchedOrders, completedOrders, balanceRows] = await Promise.all([
+            const [reportRow, dispatchedOrders, completedOrders, balanceRows, dashboardKpis] = await Promise.all([
                 fetchWarehouseReport(reportDate),
-                fetchWarehouseReports(6),
                 fetchOrders("dispatched"),
                 fetchOrders("completed"),
                 fetchCustomerBalances(),
+                fetchDashboardKPIs(),
             ]);
 
             setReport((reportRow ?? null) as WarehouseReport | null);
-            setRecentReports(reportRows as WarehouseReport[]);
+            setCurrentInventory({ jb: dashboardKpis.jbGood, sb: dashboardKpis.sbGood });
 
             const dayOrders = [...(dispatchedOrders as any[]), ...(completedOrders as any[])].filter((order) =>
                 typeof order.updated_at === "string" && order.updated_at.startsWith(reportDate) &&
@@ -85,17 +56,18 @@ export default function AdminReportsPage() {
         loadReportData();
     }, [loadReportData]);
 
-    const closingJb = useMemo(() => {
-        if (!report) return 0;
-        return report.closing_jb;
-    }, [report]);
-
-    const closingSb = useMemo(() => {
-        if (!report) return 0;
-        return report.closing_sb;
-    }, [report]);
-
-    const selectedStatus = reportStatusFor(report, reportDate);
+    const clientObligations = useMemo(() => {
+        const obligations: Record<string, { clientName: string; jb: number; sb: number }> = {};
+        for (const balance of balances) {
+            const clientName = balance.client?.company_name || balance.client?.full_name || "Unknown Client";
+            if (!obligations[clientName]) {
+                obligations[clientName] = { clientName, jb: 0, sb: 0 };
+            }
+            if (balance.bag_type === "JB") obligations[clientName].jb += balance.remaining_qty;
+            if (balance.bag_type === "SB") obligations[clientName].sb += balance.remaining_qty;
+        }
+        return Object.values(obligations);
+    }, [balances]);
 
     return (
         <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 py-4 md:px-6 lg:px-8">
@@ -116,7 +88,6 @@ export default function AdminReportsPage() {
                         <Calendar className="h-4 w-4" />
                         <Input type="date" value={reportDate} onChange={(event) => setReportDate(event.target.value)} className="w-full sm:w-44" />
                     </div>
-                    <Badge className={selectedStatus.tone}>{selectedStatus.label}</Badge>
                 </div>
             </header>
 
@@ -125,19 +96,12 @@ export default function AdminReportsPage() {
                     <CardContent className="py-12 text-center text-sm text-muted-foreground">Loading report data...</CardContent>
                 </Card>
             ) : (
-                <>
-                    <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-                        <MetricCard title="Opening stock" value={`${(report?.yesterday_jb ?? 0) + (report?.yesterday_sb ?? 0)}`} icon={Package} description="Previous closing stock carried into the day." />
-                        <MetricCard title="Received today" value={`${(report?.received_jb ?? 0) + (report?.received_sb ?? 0)}`} icon={CircleCheckBig} description="Stock received into the warehouse." />
-                        <MetricCard title="Dispatched today" value={`${(report?.dispatched_jb ?? 0) + (report?.dispatched_sb ?? 0)}`} icon={Truck} description="Confirmed movement out of stock." />
-                        <MetricCard title="Closing stock" value={`${closingJb + closingSb}`} icon={Users} description="Final reconciled stock total for the selected day." />
-                    </section>
-
-                    <section className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
+                <div className="flex flex-col gap-6">
+                    <section>
                         <Card className="border-border/70 shadow-sm">
                             <CardHeader className="border-b border-border/60 pb-4">
                                 <CardTitle className="text-base font-semibold">Physical warehouse inventory</CardTitle>
-                                <CardDescription>Daily opening, movement, and closing totals for the selected date.</CardDescription>
+                                <CardDescription>Simplified daily snapshot of warehouse stock.</CardDescription>
                             </CardHeader>
                             <CardContent className="p-0">
                                 <Table>
@@ -154,69 +118,13 @@ export default function AdminReportsPage() {
                                             <TableCell>{report?.yesterday_jb ?? 0}</TableCell>
                                             <TableCell>{report?.yesterday_sb ?? 0}</TableCell>
                                         </TableRow>
-                                        <TableRow>
-                                            <TableCell className="font-medium">Stock received</TableCell>
-                                            <TableCell>{report?.received_jb ?? 0}</TableCell>
-                                            <TableCell>{report?.received_sb ?? 0}</TableCell>
-                                        </TableRow>
-                                        <TableRow>
-                                            <TableCell className="font-medium">Total dispatched</TableCell>
-                                            <TableCell>{report?.dispatched_jb ?? 0}</TableCell>
-                                            <TableCell>{report?.dispatched_sb ?? 0}</TableCell>
-                                        </TableRow>
-                                        <TableRow>
-                                            <TableCell className="font-medium">Customer returns</TableCell>
-                                            <TableCell>{report?.returned_jb ?? 0}</TableCell>
-                                            <TableCell>{report?.returned_sb ?? 0}</TableCell>
-                                        </TableRow>
-                                        <TableRow>
-                                            <TableCell className="font-medium">Waste / damaged</TableCell>
-                                            <TableCell>{report?.waste_jb ?? 0}</TableCell>
-                                            <TableCell>{report?.waste_sb ?? 0}</TableCell>
-                                        </TableRow>
                                         <TableRow className="bg-primary/5">
-                                            <TableCell className="font-semibold text-primary">Today's closing</TableCell>
-                                            <TableCell className="font-semibold">{closingJb}</TableCell>
-                                            <TableCell className="font-semibold">{closingSb}</TableCell>
+                                            <TableCell className="font-semibold text-primary">Today's closing (Current)</TableCell>
+                                            <TableCell className="font-semibold">{currentInventory.jb}</TableCell>
+                                            <TableCell className="font-semibold">{currentInventory.sb}</TableCell>
                                         </TableRow>
                                     </TableBody>
                                 </Table>
-                            </CardContent>
-                        </Card>
-
-                        <Card className="border-border/70 shadow-sm">
-                            <CardHeader className="border-b border-border/60 pb-4">
-                                <CardTitle className="text-base font-semibold">Report status timeline</CardTitle>
-                                <CardDescription>Draft, submitted, and reviewed states as a read-only reference.</CardDescription>
-                            </CardHeader>
-                            <CardContent className="space-y-4 p-5">
-                                {recentReports.length === 0 ? (
-                                    <div className="rounded-xl border border-dashed border-border/70 px-4 py-10 text-center text-sm text-muted-foreground">
-                                        No report history available.
-                                    </div>
-                                ) : (
-                                    recentReports.map((entry) => {
-                                        const entryStatus = reportStatusFor(entry, entry.report_date);
-                                        return (
-                                            <div key={entry.id} className="rounded-xl border border-border/70 p-4 shadow-sm">
-                                                <div className="flex items-start justify-between gap-4">
-                                                    <div>
-                                                        <p className="text-sm font-semibold text-foreground">{entry.report_date}</p>
-                                                        <p className="mt-1 text-xs text-muted-foreground">
-                                                            Closing JB {entry.closing_jb} · Closing SB {entry.closing_sb}
-                                                        </p>
-                                                    </div>
-                                                    <Badge className={entryStatus.tone}>{entryStatus.label}</Badge>
-                                                </div>
-                                                {entry.notes ? (
-                                                    <p className="mt-3 text-xs leading-5 text-muted-foreground">{entry.notes}</p>
-                                                ) : (
-                                                    <p className="mt-3 text-xs leading-5 text-muted-foreground">No additional notes recorded.</p>
-                                                )}
-                                            </div>
-                                        );
-                                    })
-                                )}
                             </CardContent>
                         </Card>
                     </section>
@@ -271,26 +179,34 @@ export default function AdminReportsPage() {
                                     <TableHeader className="bg-muted/30">
                                         <TableRow>
                                             <TableHead>Client</TableHead>
-                                            <TableHead>Product</TableHead>
-                                            <TableHead className="text-right">Remaining</TableHead>
+                                            <TableHead className="text-right">Remaining JB</TableHead>
+                                            <TableHead className="text-right">Remaining SB</TableHead>
+                                            <TableHead className="text-right">Total Bags</TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
-                                        {balances.length === 0 ? (
+                                        {clientObligations.length === 0 ? (
                                             <TableRow>
-                                                <TableCell colSpan={3} className="py-8 text-center text-muted-foreground">
+                                                <TableCell colSpan={4} className="py-8 text-center text-muted-foreground">
                                                     No pending obligations.
                                                 </TableCell>
                                             </TableRow>
                                         ) : (
-                                            balances.map((balance) => (
-                                                <TableRow key={balance.id}>
-                                                    <TableCell className="font-medium">{balance.client?.company_name || balance.client?.full_name || "Client"}</TableCell>
-                                                    <TableCell className="text-muted-foreground">{balance.product?.name ?? "Product"}</TableCell>
+                                            clientObligations.map((obl, idx) => (
+                                                <TableRow key={idx}>
+                                                    <TableCell className="font-medium">{obl.clientName}</TableCell>
                                                     <TableCell className="text-right">
-                                                    <Badge className="bg-amber-500/10 text-amber-500 hover:bg-amber-500/20 border-0">
-                                                            {balance.remaining_qty} {balance.bag_type}
+                                                        <Badge className="bg-amber-500/10 text-amber-500 hover:bg-amber-500/20 border-0">
+                                                            {obl.jb} JB
                                                         </Badge>
+                                                    </TableCell>
+                                                    <TableCell className="text-right">
+                                                        <Badge className="bg-amber-500/10 text-amber-500 hover:bg-amber-500/20 border-0">
+                                                            {obl.sb} SB
+                                                        </Badge>
+                                                    </TableCell>
+                                                    <TableCell className="text-right font-semibold">
+                                                        {obl.jb + obl.sb}
                                                     </TableCell>
                                                 </TableRow>
                                             ))
@@ -300,8 +216,9 @@ export default function AdminReportsPage() {
                             </CardContent>
                         </Card>
                     </section>
-                </>
+                </div>
             )}
         </div>
     );
 }
+
