@@ -12,7 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Check, ChevronsUpDown } from "lucide-react";
+import { Check, ChevronsUpDown, Eye, LayoutGrid, List } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { PurchaseOrder } from "@/lib/types/database";
 
@@ -29,6 +29,9 @@ export function DrListTab({
     loading: boolean, 
     onReload: () => void 
 }) {
+    const [viewMode, setViewMode] = useState<"list" | "grid">("list");
+    const [isViewOpen, setIsViewOpen] = useState(false);
+    const [viewingDr, setViewingDr] = useState<DeliveryReceipt | null>(null);
     const [poSearch, setPoSearch] = useState("");
     const [isPoOpen, setIsPoOpen] = useState(false);
     const [searchQuery, setSearchQuery] = useState("");
@@ -145,70 +148,273 @@ export function DrListTab({
                         <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                         <Input type="search" placeholder="Search DR, PO, or Client..." className="pl-8" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
                     </div>
-                    <Button onClick={openCreate} className="bg-[var(--color-industrial-blue)] shrink-0"><Plus className="w-4 h-4 mr-2" /> Add Manual DR</Button>
+                    <div className="flex items-center gap-2 w-full sm:w-auto">
+                        <div className="flex items-center border rounded-md p-1 bg-muted/30">
+                            <Button 
+                                variant={viewMode === "list" ? "secondary" : "ghost"} 
+                                size="sm" 
+                                className="h-7 w-7 p-0"
+                                onClick={() => setViewMode("list")}
+                                title="List View"
+                            >
+                                <List className="h-4 w-4" />
+                            </Button>
+                            <Button 
+                                variant={viewMode === "grid" ? "secondary" : "ghost"} 
+                                size="sm" 
+                                className="h-7 w-7 p-0"
+                                onClick={() => setViewMode("grid")}
+                                title="Grid View"
+                            >
+                                <LayoutGrid className="h-4 w-4" />
+                            </Button>
+                        </div>
+                        <Button onClick={openCreate} className="bg-[var(--color-industrial-blue)] shrink-0 h-9">
+                            <Plus className="w-4 h-4 mr-2" /> Add Manual DR
+                        </Button>
+                    </div>
                 </div>
 
-                <div className="border rounded-lg overflow-x-auto">
-                    <Table>
-                        <TableHeader className="bg-muted/50">
-                            <TableRow>
-                                <TableHead>Date</TableHead>
-                                <TableHead>DR #</TableHead>
-                                <TableHead>Client Name</TableHead>
-                                <TableHead>PO# Link</TableHead>
-                                <TableHead>Driver Name</TableHead>
-                                <TableHead>Plate #</TableHead>
-                                <TableHead>Destination</TableHead>
-                                <TableHead className="text-right">Total Bags</TableHead>
-                                <TableHead className="text-right">Actions</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {filtered.length === 0 ? (
-                                <TableRow><TableCell colSpan={9} className="text-center py-6 text-muted-foreground">No delivery receipts found.</TableCell></TableRow>
-                            ) : filtered.map(dr => (
-                                <TableRow key={dr.id} className={dr.order_id ? "bg-blue-50/30 dark:bg-blue-950/10" : ""}>
-                                    <TableCell className="text-sm whitespace-nowrap">{new Date(dr.received_date).toLocaleDateString()}</TableCell>
-                                    <TableCell>
-                                        <span className="font-semibold text-sm">{dr.dr_number}</span>
-                                        {dr.order_id && (
-                                            <Badge variant="outline" className="ml-2 text-[9px] border-blue-200 text-blue-600 bg-blue-50">AUTO</Badge>
-                                        )}
-                                    </TableCell>
-                                    <TableCell className="text-sm">{dr.client_name || "—"}</TableCell>
-                                    <TableCell>
-                                        {dr.po_number ? (
-                                            <Badge variant="outline" className="text-xs font-mono cursor-default">{dr.po_number}</Badge>
-                                        ) : (
-                                            <span className="text-xs text-muted-foreground">—</span>
-                                        )}
-                                    </TableCell>
-                                    <TableCell className="text-sm">{dr.driver || "—"}</TableCell>
-                                    <TableCell className="text-sm">{dr.plate_number || "—"}</TableCell>
-                                    <TableCell className="text-sm max-w-[160px] truncate" title={dr.destination || ""}>
-                                        {dr.destination || "—"}
-                                    </TableCell>
-                                    <TableCell className="text-right">
-                                        <div className="flex items-center justify-end gap-1.5">
-                                            <Badge variant="outline" className="text-xs">{dr.jb} JB</Badge>
-                                            <Badge variant="outline" className="text-xs">{dr.sb} SB</Badge>
-                                            <span className="text-xs font-bold text-foreground ml-1">= {dr.jb + dr.sb}</span>
-                                        </div>
-                                    </TableCell>
-                                    <TableCell className="text-right whitespace-nowrap">
-                                        {dr.dr_image_url && (
-                                            <a href={dr.dr_image_url} target="_blank" rel="noreferrer" className="inline-flex items-center justify-center h-8 w-8 text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-md">
-                                                <FileImage className="w-4 h-4" />
-                                            </a>
-                                        )}
-                                        <Button variant="ghost" size="icon" onClick={() => openEdit(dr)} className="h-8 w-8 text-blue-600 hover:text-blue-700 hover:bg-blue-50"><Edit2 className="w-4 h-4" /></Button>
-                                        <Button variant="ghost" size="icon" onClick={() => setDeleteTarget(dr)} className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"><Trash2 className="w-4 h-4" /></Button>
-                                    </TableCell>
+                {viewMode === "list" ? (
+                    <div className="border rounded-lg overflow-x-auto">
+                        <Table>
+                            <TableHeader className="bg-muted/50">
+                                <TableRow>
+                                    <TableHead>Image</TableHead>
+                                    <TableHead>Date</TableHead>
+                                    <TableHead>DR #</TableHead>
+                                    <TableHead>Client Name</TableHead>
+                                    <TableHead>PO# Link</TableHead>
+                                    <TableHead>Driver Name</TableHead>
+                                    <TableHead>Plate #</TableHead>
+                                    <TableHead className="text-right">Total Bags</TableHead>
+                                    <TableHead className="text-right">Actions</TableHead>
                                 </TableRow>
-                            ))}
-                        </TableBody>
-                    </Table>
-                </div>
+                            </TableHeader>
+                            <TableBody>
+                                {filtered.length === 0 ? (
+                                    <TableRow><TableCell colSpan={9} className="text-center py-6 text-muted-foreground">No delivery receipts found.</TableCell></TableRow>
+                                ) : filtered.map(dr => (
+                                    <TableRow key={dr.id} className={dr.order_id ? "bg-blue-50/30 dark:bg-blue-950/10" : ""}>
+                                        <TableCell>
+                                            <div className="w-10 h-10 rounded bg-muted flex items-center justify-center overflow-hidden border border-border/50">
+                                                {dr.dr_image_url ? (
+                                                    <Image src={dr.dr_image_url} alt="DR" width={40} height={40} className="w-full h-full object-cover" unoptimized />
+                                                ) : (
+                                                    <FileImage className="w-5 h-5 text-muted-foreground/40" />
+                                                )}
+                                            </div>
+                                        </TableCell>
+                                        <TableCell className="text-sm whitespace-nowrap">{new Date(dr.received_date).toLocaleDateString()}</TableCell>
+                                        <TableCell>
+                                            <span className="font-semibold text-sm">{dr.dr_number}</span>
+                                            {dr.order_id && (
+                                                <Badge variant="outline" className="ml-2 text-[9px] border-blue-200 text-blue-600 bg-blue-50">AUTO</Badge>
+                                            )}
+                                        </TableCell>
+                                        <TableCell className="text-sm">{dr.client_name || "—"}</TableCell>
+                                        <TableCell>
+                                            {dr.po_number ? (
+                                                <Badge variant="outline" className="text-xs font-mono cursor-default">{dr.po_number}</Badge>
+                                            ) : (
+                                                <span className="text-xs text-muted-foreground">—</span>
+                                            )}
+                                        </TableCell>
+                                        <TableCell className="text-sm">{dr.driver || "—"}</TableCell>
+                                        <TableCell className="text-sm">{dr.plate_number || "—"}</TableCell>
+                                        <TableCell className="text-right">
+                                            <div className="flex items-center justify-end gap-1.5">
+                                                <Badge variant="outline" className="text-xs">{dr.jb} JB</Badge>
+                                                <Badge variant="outline" className="text-xs">{dr.sb} SB</Badge>
+                                                <span className="text-xs font-bold text-foreground ml-1">= {dr.jb + dr.sb}</span>
+                                            </div>
+                                        </TableCell>
+                                        <TableCell className="text-right whitespace-nowrap">
+                                            <Button 
+                                                variant="ghost" 
+                                                size="icon" 
+                                                onClick={() => { setViewingDr(dr); setIsViewOpen(true); }}
+                                                className="h-8 w-8 text-industrial-blue hover:text-industrial-blue hover:bg-industrial-blue/10"
+                                            >
+                                                <Eye className="w-4 h-4" />
+                                            </Button>
+                                            <Button variant="ghost" size="icon" onClick={() => openEdit(dr)} className="h-8 w-8 text-blue-600 hover:text-blue-700 hover:bg-blue-50"><Edit2 className="w-4 h-4" /></Button>
+                                            <Button variant="ghost" size="icon" onClick={() => setDeleteTarget(dr)} className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"><Trash2 className="w-4 h-4" /></Button>
+                                        </TableCell>
+                                    </TableRow>
+                                ))}
+                            </TableBody>
+                        </Table>
+                    </div>
+                ) : (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {filtered.length === 0 ? (
+                            <div className="col-span-full py-12 text-center text-muted-foreground border-2 border-dashed rounded-xl">
+                                No delivery receipts found matching your search.
+                            </div>
+                        ) : (
+                            filtered.map(dr => (
+                                <Card key={dr.id} className={`overflow-hidden group hover:shadow-md transition-shadow ${dr.order_id ? "border-blue-100 bg-blue-50/5" : ""}`}>
+                                    <div className="aspect-video bg-muted relative overflow-hidden border-b">
+                                        {dr.dr_image_url ? (
+                                            <Image src={dr.dr_image_url} alt="DR" fill className="object-cover group-hover:scale-105 transition-transform duration-500" unoptimized />
+                                        ) : (
+                                            <div className="absolute inset-0 flex flex-col items-center justify-center text-muted-foreground/30">
+                                                <FileImage className="w-12 h-12 mb-2" />
+                                                <span className="text-[10px] uppercase font-bold tracking-widest">No Document Preview</span>
+                                            </div>
+                                        )}
+                                        <div className="absolute top-2 right-2 flex gap-1">
+                                            {dr.order_id && <Badge className="bg-blue-600 text-white border-none text-[9px]">AUTO</Badge>}
+                                            <Badge variant="secondary" className="bg-white/80 backdrop-blur-sm text-foreground text-[10px] font-mono border-none">{new Date(dr.received_date).toLocaleDateString()}</Badge>
+                                        </div>
+                                    </div>
+                                    <CardContent className="p-4 space-y-3">
+                                        <div className="flex justify-between items-start">
+                                            <div>
+                                                <h4 className="font-bold text-sm text-foreground">{dr.dr_number}</h4>
+                                                <p className="text-xs text-muted-foreground truncate max-w-[150px]">{dr.client_name || "Unknown Client"}</p>
+                                            </div>
+                                            <div className="text-right">
+                                                <div className="text-[10px] uppercase font-bold text-muted-foreground mb-0.5">PO Link</div>
+                                                <Badge variant="outline" className="text-[10px] font-mono">{dr.po_number || "NONE"}</Badge>
+                                            </div>
+                                        </div>
+
+                                        <div className="grid grid-cols-2 gap-2 py-2 border-y border-border/50">
+                                            <div>
+                                                <div className="text-[9px] uppercase font-bold text-muted-foreground mb-1">Driver / Plate</div>
+                                                <p className="text-[11px] font-medium truncate">{dr.driver || "—"} • {dr.plate_number || "—"}</p>
+                                            </div>
+                                            <div className="text-right">
+                                                <div className="text-[9px] uppercase font-bold text-muted-foreground mb-1">Total Quantity</div>
+                                                <p className="text-[11px] font-bold text-foreground">{dr.jb} JB + {dr.sb} SB</p>
+                                            </div>
+                                        </div>
+
+                                        <div className="flex items-center justify-between pt-1">
+                                            <Button 
+                                                variant="secondary" 
+                                                size="sm" 
+                                                className="h-8 text-[11px] font-bold gap-1.5 bg-[var(--color-industrial-blue)] text-white hover:bg-[var(--color-industrial-blue)]/90"
+                                                onClick={() => { setViewingDr(dr); setIsViewOpen(true); }}
+                                            >
+                                                <Eye className="w-3.5 h-3.5" /> View Details
+                                            </Button>
+                                            <div className="flex gap-1">
+                                                <Button variant="ghost" size="icon" onClick={() => openEdit(dr)} className="h-8 w-8 text-blue-600 hover:text-blue-700 hover:bg-blue-50"><Edit2 className="w-3.5 h-3.5" /></Button>
+                                                <Button variant="ghost" size="icon" onClick={() => setDeleteTarget(dr)} className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"><Trash2 className="w-3.5 h-3.5" /></Button>
+                                            </div>
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                            ))
+                        )}
+                    </div>
+                )}
+            </CardContent>
+
+            {/* View Details Dialog */}
+            <Dialog open={isViewOpen} onOpenChange={setIsViewOpen}>
+                <DialogContent className="sm:max-w-2xl p-0 overflow-hidden rounded-xl border-none">
+                    <div className="bg-[var(--color-industrial-blue)] p-6 text-white">
+                        <div className="flex justify-between items-start">
+                            <div>
+                                <Badge className="bg-white/20 hover:bg-white/30 text-white border-none mb-2 text-[10px]">Delivery Receipt Details</Badge>
+                                <h2 className="text-2xl font-bold tracking-tight flex items-center gap-2">
+                                    {viewingDr?.dr_number}
+                                    {viewingDr?.order_id && <Badge className="bg-amber-400 text-amber-950 border-none text-[9px] font-black uppercase">Automated</Badge>}
+                                </h2>
+                                <p className="text-blue-100/70 text-sm mt-1">Received on {viewingDr && new Date(viewingDr.received_date).toLocaleDateString(undefined, { dateStyle: 'full' })}</p>
+                            </div>
+                            <Button variant="ghost" size="icon" onClick={() => setIsViewOpen(false)} className="text-white hover:bg-white/10 rounded-full h-8 w-8">
+                                <X className="w-5 h-5" />
+                            </Button>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-0">
+                        <div className="p-6 space-y-6">
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-1">
+                                    <p className="text-[10px] uppercase font-black text-muted-foreground/60 tracking-wider">Client Name</p>
+                                    <p className="font-bold text-foreground">{viewingDr?.client_name || "N/A"}</p>
+                                </div>
+                                <div className="space-y-1">
+                                    <p className="text-[10px] uppercase font-black text-muted-foreground/60 tracking-wider">PO Number Link</p>
+                                    <p className="font-mono text-industrial-blue font-bold">{viewingDr?.po_number || "NONE"}</p>
+                                </div>
+                            </div>
+
+                            <div className="p-4 bg-muted/30 rounded-lg border border-border/50 space-y-3">
+                                <p className="text-[10px] uppercase font-black text-muted-foreground/60 tracking-wider">Shipment Composition</p>
+                                <div className="flex items-center justify-between text-sm">
+                                    <span className="flex items-center gap-2 font-medium text-muted-foreground"><Package className="w-4 h-4" /> Jumbo Bags (JB)</span>
+                                    <span className="font-black text-foreground">{viewingDr?.jb}</span>
+                                </div>
+                                <div className="flex items-center justify-between text-sm">
+                                    <span className="flex items-center gap-2 font-medium text-muted-foreground"><Package className="w-4 h-4" /> Sling Bags (SB)</span>
+                                    <span className="font-black text-foreground">{viewingDr?.sb}</span>
+                                </div>
+                                <div className="pt-2 border-t flex items-center justify-between">
+                                    <span className="text-xs font-bold text-foreground">Total Bags Distributed</span>
+                                    <span className="text-lg font-black text-industrial-blue">{(viewingDr?.jb || 0) + (viewingDr?.sb || 0)}</span>
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-1">
+                                    <p className="text-[10px] uppercase font-black text-muted-foreground/60 tracking-wider">Driver / Plate</p>
+                                    <p className="text-sm font-bold text-foreground">{viewingDr?.driver || "—"} / {viewingDr?.plate_number || "—"}</p>
+                                </div>
+                                <div className="space-y-1">
+                                    <p className="text-[10px] uppercase font-black text-muted-foreground/60 tracking-wider">Shipping Fee</p>
+                                    <p className="text-sm font-bold text-emerald-600">₱{viewingDr?.shipping_fee?.toLocaleString() || "0.00"}</p>
+                                </div>
+                            </div>
+
+                            <div className="space-y-1">
+                                <p className="text-[10px] uppercase font-black text-muted-foreground/60 tracking-wider">Destination Address</p>
+                                <p className="text-sm font-medium text-foreground leading-relaxed italic border-l-2 border-industrial-yellow pl-3">
+                                    {viewingDr?.destination || "No destination specified."}
+                                </p>
+                            </div>
+                        </div>
+
+                        <div className="bg-muted flex items-center justify-center relative min-h-[300px] border-l">
+                            {viewingDr?.dr_image_url ? (
+                                <>
+                                    <Image 
+                                        src={viewingDr.dr_image_url} 
+                                        alt="DR Document" 
+                                        fill 
+                                        className="object-contain p-2"
+                                        unoptimized
+                                    />
+                                    <a 
+                                        href={viewingDr.dr_image_url} 
+                                        target="_blank" 
+                                        rel="noreferrer" 
+                                        className="absolute bottom-4 right-4 bg-white/90 backdrop-blur-sm text-industrial-blue px-3 py-1.5 rounded-lg text-[10px] font-bold shadow-lg hover:bg-white transition-colors flex items-center gap-1.5"
+                                    >
+                                        <FileImage className="w-3.5 h-3.5" /> Full Resolution
+                                    </a>
+                                </>
+                            ) : (
+                                <div className="flex flex-col items-center justify-center text-muted-foreground/40 text-center p-8">
+                                    <FileImage className="w-16 h-16 mb-4" />
+                                    <p className="text-xs font-bold uppercase tracking-widest">No Document Uploaded</p>
+                                    <p className="text-[10px] mt-2">Manual entries without photos do not show previews.</p>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                    
+                    <div className="p-4 bg-muted/20 border-t flex justify-end">
+                        <Button variant="outline" onClick={() => setIsViewOpen(false)} className="rounded-lg font-bold text-xs uppercase tracking-widest">Close Record</Button>
+                    </div>
+                </DialogContent>
+            </Dialog>
             </CardContent>
 
             {/* Create / Edit Dialog */}
