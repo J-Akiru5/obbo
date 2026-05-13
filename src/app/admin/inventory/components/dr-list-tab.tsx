@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { DeliveryReceipt, Shipment } from "@/lib/types/database";
+import Image from "next/image";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -12,7 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Check, ChevronsUpDown, Eye, LayoutGrid, List } from "lucide-react";
+import { Check, ChevronsUpDown, Eye, LayoutGrid, List, Package } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { PurchaseOrder } from "@/lib/types/database";
 
@@ -415,7 +416,6 @@ export function DrListTab({
                     </div>
                 </DialogContent>
             </Dialog>
-            </CardContent>
 
             {/* Create / Edit Dialog */}
             <Dialog open={isDialogOpen} onOpenChange={(open) => { setIsDialogOpen(open); if (!open) setPhotoFile(null); }}>

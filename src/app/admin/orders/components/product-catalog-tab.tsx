@@ -475,7 +475,6 @@ export function ProductCatalogTab({ products, onUpdate, onCreate, onDelete, load
                     </div>
                 </DialogContent>
             </Dialog>
-            </CardContent>
 
             <Dialog open={modalOpen} onOpenChange={(open) => {
                 if (!open) {

@@ -98,7 +98,7 @@ export function NewRequestsTab({ orders, onApprove, onReject, loading }: {
                 </div>
                 <div className="flex gap-4">
                     <div className="w-40">
-                        <Select value={serviceFilter} onValueChange={setServiceFilter}>
+                        <Select value={serviceFilter} onValueChange={(val) => setServiceFilter(val || "all")}>
                             <SelectTrigger className="bg-background">
                                 <Filter className="w-4 h-4 mr-2 text-muted-foreground" />
                                 <SelectValue placeholder="Service" />
@@ -111,7 +111,7 @@ export function NewRequestsTab({ orders, onApprove, onReject, loading }: {
                         </Select>
                     </div>
                     <div className="w-40">
-                        <Select value={paymentFilter} onValueChange={setPaymentFilter}>
+                        <Select value={paymentFilter} onValueChange={(val) => setPaymentFilter(val || "all")}>
                             <SelectTrigger className="bg-background">
                                 <Filter className="w-4 h-4 mr-2 text-muted-foreground" />
                                 <SelectValue placeholder="Payment" />
