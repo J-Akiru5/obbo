@@ -196,6 +196,7 @@ export async function approveOrder(orderId: string, approvedItems: { itemId: str
                     order_id: orderId,
                     product_id: original.product_id,
                     bag_type: original.bag_type,
+                    total_purchase: original.requested_qty,
                     remaining_qty: remaining,
                     status: "pending",
                 });
@@ -728,7 +729,7 @@ export async function generateDailyReportData(date: string) {
     // 5. Get pending balances for Module 3
     const { data: customerBalances } = await supabase
         .from("customer_balances")
-        .select("*, client:profiles!customer_balances_client_id_fkey(full_name, company_name), product:products!customer_balances_product_id_fkey(name)")
+        .select("*, client:profiles!customer_balances_client_id_fkey(full_name, company_name), product:products!customer_balances_product_id_fkey(name), order:orders(po_number)")
         .eq("status", "pending");
         
     const balances = (customerBalances || []).map(b => ({
@@ -817,7 +818,7 @@ export async function submitWarehouseReport(date: string) {
 export async function fetchCustomerBalances() {
     const { supabase } = await requireAdmin();
     const { data } = await supabase.from("customer_balances")
-        .select("*, client:profiles!customer_balances_client_id_fkey(full_name, company_name), product:products!customer_balances_product_id_fkey(name)")
+        .select("*, client:profiles!customer_balances_client_id_fkey(full_name, company_name), product:products!customer_balances_product_id_fkey(name), order:orders(po_number)")
         .eq("status", "pending");
     return data ?? [];
 }

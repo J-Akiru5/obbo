@@ -181,6 +181,7 @@ export interface CustomerBalance {
     product_id: string;
     product?: Product;
     bag_type: BagType;
+    total_purchase: number;
     remaining_qty: number;
     status: BalanceStatus;
     order?: {

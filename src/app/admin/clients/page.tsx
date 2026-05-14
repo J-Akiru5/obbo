@@ -34,6 +34,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
@@ -430,7 +431,7 @@ function ClientDetailDialog({
             const supabase = createClient();
             const [ordersResult, balancesResult] = await Promise.all([
                 supabase.from("orders").select("id,total_amount,status,created_at").eq("client_id", profile.id).order("created_at", { ascending: false }),
-                supabase.from("customer_balances").select("id,remaining_qty,bag_type,status,product:products(name)").eq("client_id", profile.id).eq("status", "pending"),
+                supabase.from("customer_balances").select("id,remaining_qty,total_purchase,bag_type,status,product:products(name),order:orders(po_number)").eq("client_id", profile.id).eq("status", "pending"),
             ]);
             setOrders(ordersResult.data ?? []);
             setBalances((balancesResult.data as unknown as typeof balances) ?? []);
@@ -502,16 +503,29 @@ function ClientDetailDialog({
                             <p className="mb-2 flex items-center gap-2 text-sm font-semibold text-foreground">
                                 <ShieldAlert className="h-4 w-4 text-amber-500" /> Outstanding balances
                             </p>
-                            <div className="space-y-2">
-                                {balances.map((balance) => (
-                                    <div key={balance.id} className="flex items-center justify-between gap-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm">
-                                        <div>
-                                            <p className="font-medium text-amber-950">{balance.product?.name ?? "Product"}</p>
-                                            <p className="text-xs text-amber-800">{balance.remaining_qty} {balance.bag_type} remaining</p>
-                                        </div>
-                                        <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-100">{balance.status}</Badge>
-                                    </div>
-                                ))}
+                            <div className="rounded-lg border border-border/70 overflow-hidden">
+                                <Table>
+                                    <TableHeader className="bg-muted/30">
+                                        <TableRow className="hover:bg-transparent">
+                                            <TableHead className="h-9 py-0 text-[11px] uppercase tracking-wider font-bold text-muted-foreground">PO #</TableHead>
+                                            <TableHead className="h-9 py-0 text-[11px] uppercase tracking-wider font-bold text-muted-foreground">Type</TableHead>
+                                            <TableHead className="h-9 py-0 text-[11px] uppercase tracking-wider font-bold text-muted-foreground text-right">Purchase</TableHead>
+                                            <TableHead className="h-9 py-0 text-[11px] uppercase tracking-wider font-bold text-amber-600 text-right">Balance</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {balances.map((balance) => (
+                                            <TableRow key={balance.id} className="hover:bg-muted/30 border-border/50">
+                                                <TableCell className="py-2.5 font-mono text-[11px] font-bold">{(balance as any).order?.po_number || "—"}</TableCell>
+                                                <TableCell className="py-2.5 text-xs">{balance.bag_type}</TableCell>
+                                                <TableCell className="py-2.5 text-xs text-right">{(balance as any).total_purchase || 0}</TableCell>
+                                                <TableCell className="py-2.5 text-xs text-right font-bold text-amber-600">
+                                                    {balance.remaining_qty}
+                                                </TableCell>
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
                             </div>
                         </div>
                     )}

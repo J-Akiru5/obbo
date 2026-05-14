@@ -523,7 +523,7 @@ export function ProductCatalogTab({ products, onUpdate, onDelete, loading }: Pro
                         </div>
                     </div>
                     <DialogFooter>
-                        <Button variant="outline" onClick={() => { setEditingProduct(null); setIsCreating(false); }} disabled={isSaving}>Cancel</Button>
+                        <Button variant="outline" onClick={() => { setEditingProduct(null); }} disabled={isSaving}>Cancel</Button>
                         <Button onClick={handleSave} disabled={isSaving} className="bg-primary gap-2">
                             {isSaving ? (
                                 <><Loader2 className="h-4 w-4 animate-spin" />{isUploadingImage ? "Uploading..." : "Saving..."}</>
