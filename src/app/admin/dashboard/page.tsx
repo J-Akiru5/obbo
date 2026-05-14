@@ -9,8 +9,8 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { createClient } from "@/lib/supabase/client";
-import { fetchDashboardKPIs, fetchActivityFeed, fetchShipments, fetchOrders } from "@/lib/actions/admin-actions";
-import type { ActivityLog, Order } from "@/lib/types/database";
+import { fetchDashboardKPIs, fetchActivityFeed, fetchShipments } from "@/lib/actions/admin-actions";
+import type { ActivityLog } from "@/lib/types/database";
 import Link from "next/link";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 
@@ -69,21 +69,18 @@ export default function AdminDashboard() {
         pendingOrders: 0, pendingKyc: 0, activeClients: 0, pendingFulfillment: 0,
     });
     const [activityFeed, setActivityFeed] = useState<ActivityLog[]>([]);
-    const [recentOrders, setRecentOrders] = useState<Order[]>([]);
     const [shipments, setShipments] = useState<Array<{ batch_name: string; remaining_jb: number; remaining_sb: number; total_jb: number; total_sb: number }>>([]);
 
     const loadData = useCallback(async () => {
         try {
-            const [kpiData, feed, ships, pOrders] = await Promise.all([
+            const [kpiData, feed, ships] = await Promise.all([
                 fetchDashboardKPIs(),
                 fetchActivityFeed(20),
-                fetchShipments(),
-                fetchOrders("pending")
+                fetchShipments()
             ]);
             setKpis(kpiData as any);
             setActivityFeed(feed as ActivityLog[]);
             setShipments(ships as typeof shipments);
-            setRecentOrders((pOrders as Order[]).slice(0, 5));
         } catch (e) {
             console.error("Dashboard load error:", e);
         }
@@ -303,47 +300,7 @@ export default function AdminDashboard() {
                 </CardContent>
             </Card>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-8">
-                {/* Pending Tasks */}
-                <Card className="border-border shadow-sm bg-card rounded-xl overflow-hidden">
-                    <CardHeader className="pb-4 border-b border-border">
-                        <CardTitle className="text-base font-semibold text-foreground tracking-wide">Pending Tasks</CardTitle>
-                    </CardHeader>
-                    <CardContent className="p-0">
-                        <div className="divide-y divide-border">
-                            <Link href="/admin/clients" className="flex items-center justify-between p-5 hover:bg-muted/50 transition-colors group">
-                                <div className="flex items-center gap-3">
-                                    <ShieldAlert className="w-5 h-5 text-[#ff6b6b]" />
-                                    <span className="text-[14px] font-medium text-foreground">New Users Awaiting Verification</span>
-                                </div>
-                                <div className="flex items-center gap-4">
-                                    <span className="bg-[#ff6b6b] text-white text-[11px] font-bold px-2 py-0.5 rounded-full min-w-[24px] text-center">{kpis.pendingKyc}</span>
-                                    <ArrowUpRight className="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors" />
-                                </div>
-                            </Link>
-                            <Link href="/admin/orders#new" className="flex items-center justify-between p-5 hover:bg-muted/50 transition-colors group">
-                                <div className="flex items-center gap-3">
-                                    <ShoppingCart className="w-5 h-5 text-[#ff9f43]" />
-                                    <span className="text-[14px] font-medium text-foreground">Pending Orders / Requests</span>
-                                </div>
-                                <div className="flex items-center gap-4">
-                                    <span className="bg-[#ff9f43] text-white text-[11px] font-bold px-2 py-0.5 rounded-full min-w-[24px] text-center">{kpis.pendingOrders}</span>
-                                    <ArrowUpRight className="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors" />
-                                </div>
-                            </Link>
-                            <Link href="/admin/orders#fulfillment" className="flex items-center justify-between p-5 hover:bg-muted/50 transition-colors group">
-                                <div className="flex items-center gap-3">
-                                    <Truck className="w-5 h-5 text-[#3b82f6]" />
-                                    <span className="text-[14px] font-medium text-foreground">Pending Fulfillment</span>
-                                </div>
-                                <div className="flex items-center gap-4">
-                                    <span className="bg-[#3b82f6] text-white text-[11px] font-bold px-2 py-0.5 rounded-full min-w-[24px] text-center">{kpis.pendingFulfillment}</span>
-                                    <ArrowUpRight className="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors" />
-                                </div>
-                            </Link>
-                        </div>
-                    </CardContent>
-                </Card>
+            <div className="mt-8 space-y-6">
 
                 {/* System Activity Feed */}
                 <Card className="border-border shadow-sm bg-card rounded-xl overflow-hidden">
@@ -413,104 +370,6 @@ export default function AdminDashboard() {
                 </Card>
             </div>
 
-            {/* Recent Pending Orders */}
-            <Card className="border-border shadow-sm bg-card rounded-xl overflow-hidden mt-8">
-                <CardHeader className="pb-4 border-b border-border">
-                    <div className="flex items-center justify-between">
-                        <CardTitle className="text-base font-semibold text-foreground tracking-wide">Recent Pending Orders</CardTitle>
-                        <Link href="/admin/orders" className="text-[13px] font-medium text-slate-500 hover:text-slate-800 flex items-center gap-1 transition-colors">
-                            View All <ArrowUpRight className="w-3.5 h-3.5" />
-                        </Link>
-                    </div>
-                </CardHeader>
-                <CardContent className="p-0">
-                    {/* Mobile Card View */}
-                    <div className="grid grid-cols-1 divide-y divide-border sm:hidden">
-                        {recentOrders.length === 0 ? (
-                            <div className="px-6 py-12 text-center text-muted-foreground font-medium">No pending orders</div>
-                        ) : (
-                            recentOrders.map((order) => {
-                                const jb = order.items?.filter((i: any) => i.bag_type === 'JB').reduce((sum: number, i: any) => sum + i.requested_qty, 0) ?? 0;
-                                const sb = order.items?.filter((i: any) => i.bag_type === 'SB').reduce((sum: number, i: any) => sum + i.requested_qty, 0) ?? 0;
-                                return (
-                                    <div key={order.id} className="p-4 space-y-3">
-                                        <div className="flex items-center justify-between">
-                                            <span className="font-mono text-xs font-bold text-foreground">
-                                                {order.po_number || `#${order.id.slice(0, 8).toUpperCase()}`}
-                                            </span>
-                                            <Badge variant="outline" className="text-[10px] uppercase bg-transparent text-foreground border-border">
-                                                {order.source}
-                                            </Badge>
-                                        </div>
-                                        <div className="flex items-center justify-between">
-                                            <span className="text-sm font-bold text-primary">{(order as any).client?.full_name ?? "Unknown"}</span>
-                                            <Badge className={order.payment_method === 'cash' ? "bg-emerald-500/10 text-emerald-500 border-0" : "bg-blue-500/10 text-blue-500 border-0"}>
-                                                {order.payment_method.toUpperCase()}
-                                            </Badge>
-                                        </div>
-                                        <div className="flex items-center justify-between text-xs text-muted-foreground">
-                                            <span>JB: <span className="font-bold text-foreground">{jb}</span></span>
-                                            <span>SB: <span className="font-bold text-foreground">{sb}</span></span>
-                                            <span>Total: <span className="font-bold text-foreground">{jb + sb}</span></span>
-                                        </div>
-                                        <Link href={`/admin/orders#${order.id}`} className="block w-full text-center py-2 text-xs font-bold text-primary bg-primary/5 rounded-lg">
-                                            Review Details
-                                        </Link>
-                                    </div>
-                                );
-                            })
-                        )}
-                    </div>
-
-                    {/* Desktop Table View */}
-                    <div className="hidden sm:block overflow-x-auto">
-                        <table className="w-full text-sm text-left whitespace-nowrap">
-                            <thead className="bg-muted/50 text-muted-foreground font-medium text-[12px] uppercase tracking-wider">
-                                <tr>
-                                    <th className="px-6 py-4">PO #</th>
-                                    <th className="px-6 py-4">Client</th>
-                                    <th className="px-6 py-4">Type</th>
-                                    <th className="px-6 py-4 text-right">JB</th>
-                                    <th className="px-6 py-4 text-right">SB</th>
-                                    <th className="px-6 py-4 text-right">Total Bags</th>
-                                    <th className="px-6 py-4">Payment</th>
-                                    <th className="px-6 py-4 text-right">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-border">
-                                {recentOrders.length === 0 ? (
-                                    <tr>
-                                        <td colSpan={8} className="px-6 py-12 text-center text-slate-400 font-medium">No pending orders</td>
-                                    </tr>
-                                ) : (
-                                    recentOrders.map((order) => {
-                                        const jb = order.items?.filter((i: any) => i.bag_type === 'JB').reduce((sum: number, i: any) => sum + i.requested_qty, 0) ?? 0;
-                                        const sb = order.items?.filter((i: any) => i.bag_type === 'SB').reduce((sum: number, i: any) => sum + i.requested_qty, 0) ?? 0;
-                                        return (
-                                            <tr key={order.id} className="hover:bg-muted/30 transition-colors">
-                                                <td className="px-6 py-4 font-mono font-medium text-foreground">{order.po_number || `#${order.id.slice(0, 8).toUpperCase()}`}</td>
-                                                <td className="px-6 py-4 font-semibold text-primary">{(order as any).client?.full_name ?? "Unknown"}</td>
-                                                <td className="px-6 py-4"><Badge variant="outline" className="text-[10px] uppercase bg-transparent text-foreground border-border">{order.source}</Badge></td>
-                                                <td className="px-6 py-4 text-right font-medium">{jb}</td>
-                                                <td className="px-6 py-4 text-right font-medium">{sb}</td>
-                                                <td className="px-6 py-4 text-right font-bold text-foreground">{jb + sb}</td>
-                                                <td className="px-6 py-4">
-                                                    <Badge className={order.payment_method === 'cash' ? "bg-emerald-500/10 text-emerald-500 border-0" : "bg-blue-500/10 text-blue-500 border-0"}>
-                                                        {order.payment_method.toUpperCase()}
-                                                    </Badge>
-                                                </td>
-                                                <td className="px-6 py-4 text-right">
-                                                    <Link href={`/admin/orders#${order.id}`} className="text-[#3b82f6] hover:underline text-xs font-medium">Review</Link>
-                                                </td>
-                                            </tr>
-                                        );
-                                    })
-                                )}
-                            </tbody>
-                        </table>
-                    </div>
-                </CardContent>
-            </Card>
         </div>
     );
 }
