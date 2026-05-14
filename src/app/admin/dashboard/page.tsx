@@ -170,7 +170,7 @@ export default function AdminDashboard() {
                                     </div>
                                 </div>
                                 <div className="space-y-1">
-                                    <p className="text-[13px] font-medium text-slate-400">JB: {kpis.jbGood.toLocaleString()} - SB: {kpis.sbGood.toLocaleString()}</p>
+                                    <p className="text-[13px] font-medium text-muted-foreground">JB: {kpis.jbGood.toLocaleString()} - SB: {kpis.sbGood.toLocaleString()}</p>
                                     <p className="text-[12px] font-semibold text-emerald-500 flex items-center gap-1">
                                         <ArrowUpRight className="w-3 h-3" /> +2.4% from yesterday
                                     </p>
@@ -255,14 +255,38 @@ export default function AdminDashboard() {
                 <div className="h-[300px] w-full mt-4">
                     <ResponsiveContainer width="100%" height="100%">
                         <BarChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
-                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
-                            <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }} dy={10} />
-                            <YAxis axisLine={false} tickLine={false} tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }} />
-                            <Tooltip cursor={{ fill: 'hsl(var(--muted)/0.2)' }} contentStyle={{ borderRadius: '8px', backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', color: 'hsl(var(--foreground))' }} />
-                            <Legend wrapperStyle={{ paddingTop: '20px' }} />
-                            <Bar dataKey="good" name="Good Stock" fill="#1dd1a1" radius={[4, 4, 0, 0]} maxBarSize={60} />
-                            <Bar dataKey="obligated" name="Obligated (Balances)" fill="#feca57" radius={[4, 4, 0, 0]} maxBarSize={60} />
-                            <Bar dataKey="net" name="Net Available" fill="#3b82f6" radius={[4, 4, 0, 0]} maxBarSize={60} />
+                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border) / 0.5)" />
+                            <XAxis 
+                                dataKey="name" 
+                                axisLine={false} 
+                                tickLine={false} 
+                                tick={{ fill: 'hsl(var(--foreground))', fontSize: 12, fontWeight: 500 }} 
+                                dy={10} 
+                            />
+                            <YAxis 
+                                axisLine={false} 
+                                tickLine={false} 
+                                tick={{ fill: 'hsl(var(--foreground))', fontSize: 12, fontWeight: 500 }} 
+                                tickFormatter={(value) => value.toLocaleString()}
+                            />
+                            <Tooltip 
+                                cursor={{ fill: 'hsl(var(--muted)/0.15)' }} 
+                                contentStyle={{ 
+                                    borderRadius: '12px', 
+                                    backgroundColor: 'hsl(var(--card))', 
+                                    border: '1px solid hsl(var(--border))', 
+                                    color: 'hsl(var(--foreground))',
+                                    boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)',
+                                    padding: '12px'
+                                }} 
+                            />
+                            <Legend 
+                                wrapperStyle={{ paddingTop: '30px' }} 
+                                formatter={(value) => <span className="text-foreground/80 font-medium text-xs">{value}</span>}
+                            />
+                            <Bar dataKey="good" name="Good Stock" fill="#1dd1a1" radius={[6, 6, 0, 0]} maxBarSize={50} />
+                            <Bar dataKey="obligated" name="Obligated (Balances)" fill="#feca57" radius={[6, 6, 0, 0]} maxBarSize={50} />
+                            <Bar dataKey="net" name="Net Available" fill="#3b82f6" radius={[6, 6, 0, 0]} maxBarSize={50} />
                         </BarChart>
                     </ResponsiveContainer>
                 </div>
@@ -310,38 +334,38 @@ export default function AdminDashboard() {
                     <CardContent className="p-0">
                         {activityEvents.length === 0 && (
                             <div className="p-5">
-                                <p className="text-sm text-slate-500 italic">No recent system activity.</p>
+                                <p className="text-sm text-muted-foreground italic">No recent system activity.</p>
                                 {/* Display default mock items to match screenshot if real feed is empty for this category */}
                                 <div className="space-y-4 mt-4">
                                     <div className="flex items-center justify-between">
                                         <div className="flex items-start gap-4">
-                                            <span className="text-[12px] text-slate-400 font-mono mt-0.5">16:52:19</span>
+                                            <span className="text-[12px] text-muted-foreground font-mono mt-0.5">16:52:19</span>
                                             <div>
-                                                <p className="text-[14px] font-bold text-slate-800">Successful Login</p>
-                                                <p className="text-[12px] text-slate-500">User: admin@obbo.ct.ws · IP: 124.217.17.118</p>
+                                                <p className="text-[14px] font-bold text-foreground">Successful Login</p>
+                                                <p className="text-[12px] text-muted-foreground">User: admin@obbo.ct.ws · IP: 124.217.17.118</p>
                                             </div>
                                         </div>
-                                        <Badge className="bg-[#e6f9f0] text-emerald-600 hover:bg-[#e6f9f0] text-[10px] uppercase font-bold border-0 shadow-none">Success</Badge>
+                                        <Badge className="bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20 text-[10px] uppercase font-bold border-0 shadow-none">Success</Badge>
                                     </div>
                                     <div className="flex items-center justify-between">
                                         <div className="flex items-start gap-4">
-                                            <span className="text-[12px] text-slate-400 font-mono mt-0.5">16:44:25</span>
+                                            <span className="text-[12px] text-muted-foreground font-mono mt-0.5">16:44:25</span>
                                             <div>
-                                                <p className="text-[14px] font-bold text-slate-800">Successful Login</p>
-                                                <p className="text-[12px] text-slate-500">User: admin@obbo.ct.ws · IP: 143.44.196.72</p>
+                                                <p className="text-[14px] font-bold text-foreground">Successful Login</p>
+                                                <p className="text-[12px] text-muted-foreground">User: admin@obbo.ct.ws · IP: 143.44.196.72</p>
                                             </div>
                                         </div>
-                                        <Badge className="bg-[#e6f9f0] text-emerald-600 hover:bg-[#e6f9f0] text-[10px] uppercase font-bold border-0 shadow-none">Success</Badge>
+                                        <Badge className="bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20 text-[10px] uppercase font-bold border-0 shadow-none">Success</Badge>
                                     </div>
                                     <div className="flex items-center justify-between">
                                         <div className="flex items-start gap-4">
-                                            <span className="text-[12px] text-slate-400 font-mono mt-0.5">16:42:21</span>
+                                            <span className="text-[12px] text-muted-foreground font-mono mt-0.5">16:42:21</span>
                                             <div>
-                                                <p className="text-[14px] font-bold text-slate-800">Successful Login</p>
-                                                <p className="text-[12px] text-slate-500">User: pantidenicejane@gmail.com · IP: 131.226.111.224</p>
+                                                <p className="text-[14px] font-bold text-foreground">Successful Login</p>
+                                                <p className="text-[12px] text-muted-foreground">User: pantidenicejane@gmail.com · IP: 131.226.111.224</p>
                                             </div>
                                         </div>
-                                        <Badge className="bg-[#e6f9f0] text-emerald-600 hover:bg-[#e6f9f0] text-[10px] uppercase font-bold border-0 shadow-none">Success</Badge>
+                                        <Badge className="bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20 text-[10px] uppercase font-bold border-0 shadow-none">Success</Badge>
                                     </div>
                                 </div>
                             </div>
