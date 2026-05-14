@@ -12,14 +12,15 @@ import { toast } from "sonner";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
-export function NewRequestsTab({ orders, onApprove, onReject, loading }: { 
+export function NewRequestsTab({ orders, onApprove, onReject, onConfirmCheck, loading }: { 
     orders: Order[]; 
     onApprove: (id: string, items: {itemId: string, qty: number}[], shippingFee?: number) => Promise<void>; 
     onReject: (id: string, reason: string) => Promise<void>;
+    onConfirmCheck?: (id: string) => Promise<void>;
     loading: boolean;
 }) {
     const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
-    const [actionType, setActionType] = useState<"approve" | "reject" | null>(null);
+    const [actionType, setActionType] = useState<"approve" | "reject" | "check" | null>(null);
     const [approvedQtys, setApprovedQtys] = useState<Record<string, number>>({});
     const [shippingFee, setShippingFee] = useState<number>(0);
     const [rejectionReason, setRejectionReason] = useState("");
@@ -43,7 +44,7 @@ export function NewRequestsTab({ orders, onApprove, onReject, loading }: {
         });
     }, [orders, searchQuery, serviceFilter, paymentFilter]);
 
-    const openAction = (order: Order, type: "approve" | "reject") => {
+    const openAction = (order: Order, type: "approve" | "reject" | "check") => {
         setSelectedOrder(order);
         setActionType(type);
         if (type === "approve") {
@@ -71,13 +72,17 @@ export function NewRequestsTab({ orders, onApprove, onReject, loading }: {
                     qty: approvedQtys[item.id] ?? item.requested_qty
                 }));
                 await onApprove(selectedOrder.id, itemsToApprove, selectedOrder.service_type === 'deliver' ? shippingFee : undefined);
-            } else {
+            } else if (actionType === "reject") {
                 if (!rejectionReason.trim()) {
                     toast.error("Please provide a rejection reason.");
                     setIsSubmitting(false);
                     return;
                 }
                 await onReject(selectedOrder.id, rejectionReason);
+            } else if (actionType === "check") {
+                if (onConfirmCheck) {
+                    await onConfirmCheck(selectedOrder.id);
+                }
             }
             setSelectedOrder(null);
             setActionType(null);
@@ -266,10 +271,12 @@ export function NewRequestsTab({ orders, onApprove, onReject, loading }: {
             <Dialog open={!!selectedOrder} onOpenChange={(open) => !open && setSelectedOrder(null)}>
                 <DialogContent className="sm:max-w-[500px]">
                     <DialogHeader>
-                        <DialogTitle>{actionType === "approve" ? "Approve Order" : "Reject Order"}</DialogTitle>
+                        <DialogTitle>{actionType === "approve" ? "Approve Order" : actionType === "check" ? "Confirm Check Payment" : "Reject Order"}</DialogTitle>
                         <DialogDescription>
                             {actionType === "approve" 
                                 ? "Review requested quantities and set shipping details. You can partially approve items if stock is low."
+                                : actionType === "check"
+                                ? "Are you sure you want to confirm this check payment? This will move the order to the Fulfillment queue."
                                 : "Please provide a reason for rejecting this order."}
                         </DialogDescription>
                     </DialogHeader>
@@ -366,9 +373,9 @@ export function NewRequestsTab({ orders, onApprove, onReject, loading }: {
                         <Button 
                             onClick={handleSubmit} 
                             disabled={isSubmitting}
-                            className={actionType === "approve" ? "bg-emerald-600 hover:bg-emerald-700" : "bg-destructive hover:bg-destructive/90"}
+                            className={actionType === "approve" ? "bg-emerald-600 hover:bg-emerald-700" : actionType === "check" ? "bg-amber-600 hover:bg-amber-700" : "bg-destructive hover:bg-destructive/90"}
                         >
-                            {isSubmitting ? "Processing..." : actionType === "approve" ? "Confirm Approval" : "Confirm Rejection"}
+                            {isSubmitting ? "Processing..." : actionType === "approve" ? "Confirm Approval" : actionType === "check" ? "Confirm Check Payment" : "Confirm Rejection"}
                         </Button>
                     </DialogFooter>
                 </DialogContent>

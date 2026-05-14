@@ -9,6 +9,7 @@ export type OrderStatus =
     | 'approved'
     | 'partially_approved'
     | 'awaiting_check'
+    | 'pending_final_confirmation'
     | 'dispatched'
     | 'completed'
     | 'rejected';

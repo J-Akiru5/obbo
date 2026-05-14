@@ -276,7 +276,7 @@ export async function submitPaymentDetails(orderId: string, paymentMethod: strin
     if (paymentMethod === "check") {
         updates.check_number = checkNumber;
         updates.check_image_url = checkImageUrl;
-        updates.status = "awaiting_check"; // It goes to awaiting_check to let admin verify the check
+        updates.status = "pending_final_confirmation"; // Let admin final confirm
     } else if (paymentMethod === "cash") {
         // Cash payment submitted — mark as awaiting dispatch
         updates.status = "dispatched";

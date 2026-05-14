@@ -220,10 +220,17 @@ export async function rejectOrder(orderId: string, reason: string) {
 
 export async function finalConfirmCheck(orderId: string) {
     const { supabase, userId } = await requireAdmin();
+
+    // Check if order was partially approved by looking for customer balances linked to it
+    const { data: balances } = await supabase.from("customer_balances").select("id").eq("order_id", orderId);
+    const isPartial = balances && balances.length > 0;
+    const newStatus = isPartial ? "partially_approved" : "approved";
+
     await supabase.from("orders")
-        .update({ status: "approved", updated_at: new Date().toISOString() })
+        .update({ status: newStatus, updated_at: new Date().toISOString() })
         .eq("id", orderId);
-    await logActivity(supabase, userId, "order_check_confirmed", "order", orderId);
+    
+    await logActivity(supabase, userId, "order_check_confirmed", "order", orderId, { status: newStatus });
     return { success: true };
 }
 

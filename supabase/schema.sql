@@ -201,7 +201,7 @@ create table if not exists public.orders (
   client_id            uuid not null references public.profiles(id),
   status               text not null default 'pending'
                          check (status in ('pending','approved','partially_approved',
-                                           'awaiting_check','dispatched','completed','rejected')),
+                                           'awaiting_check','pending_final_confirmation','dispatched','completed','rejected')),
   total_amount         numeric(14, 2) not null default 0,
   payment_method       text not null check (payment_method in ('cash', 'check')),
   check_image_url      text,
