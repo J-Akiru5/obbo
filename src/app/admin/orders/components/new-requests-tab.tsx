@@ -48,7 +48,12 @@ export function NewRequestsTab({ orders, onApprove, onReject, loading }: {
         setActionType(type);
         if (type === "approve") {
             const initialQtys: Record<string, number> = {};
-            order.items.forEach(item => { initialQtys[item.id] = item.requested_qty; });
+            if (order.is_split_delivery && order.items.length === 1) {
+                // If it's a split delivery with only one item, default to the 'deliver now' quantity
+                initialQtys[order.items[0].id] = order.deliver_now_qty;
+            } else {
+                order.items.forEach(item => { initialQtys[item.id] = item.requested_qty; });
+            }
             setApprovedQtys(initialQtys);
             setShippingFee(order.service_type === 'deliver' ? (order.shipping_fee || 0) : 0);
         } else {
@@ -145,6 +150,9 @@ export function NewRequestsTab({ orders, onApprove, onReject, loading }: {
                                             <div>
                                                 <div className="flex items-center gap-2 mb-1">
                                                     <Badge className="bg-accent text-accent-foreground hover:bg-accent/90">New Request</Badge>
+                                                    {order.is_split_delivery && (
+                                                        <Badge variant="outline" className="border-amber-500 text-amber-600 bg-amber-50">SPLIT DELIVERY</Badge>
+                                                    )}
                                                     <span className="text-xs text-muted-foreground">ID: {order.id.slice(0,8)}</span>
                                                     <span className="text-xs text-muted-foreground">• {new Date(order.created_at).toLocaleDateString()}</span>
                                                 </div>
@@ -231,6 +239,14 @@ export function NewRequestsTab({ orders, onApprove, onReject, loading }: {
                                                 </div>
                                             </div>
                                         )}
+                                        {order.notes && (
+                                            <div className="rounded-md border border-muted bg-muted/20 px-4 py-3 text-sm">
+                                                <p className="font-semibold text-muted-foreground mb-1 flex items-center gap-1.5">
+                                                    <FileText className="w-4 h-4" /> Notes
+                                                </p>
+                                                <p className="text-muted-foreground whitespace-pre-wrap">{order.notes}</p>
+                                            </div>
+                                        )}
                                     </div>
                                     <div className="bg-muted/40 p-5 md:w-48 flex flex-col justify-center gap-3 border-l border-border/50">
                                         <Button onClick={() => openAction(order, "approve")} className="w-full bg-primary hover:bg-primary/90">
@@ -266,6 +282,11 @@ export function NewRequestsTab({ orders, onApprove, onReject, loading }: {
                                     {selectedOrder.payment_method === 'check' 
                                         ? <li>This is a <b>Check</b> payment. Approval will move it to "Awaiting Check" status.</li>
                                         : <li>This is a <b>Cash</b> payment. Approval will move it directly to Fulfillment.</li>}
+                                    {selectedOrder.is_split_delivery && (
+                                        <li className="text-amber-700 font-bold">
+                                            CLIENT REQUESTED SPLIT: Deliver <b>{selectedOrder.deliver_now_qty}</b> bags now.
+                                        </li>
+                                    )}
                                     <li>If you approve less than requested, the remaining bags will automatically become a Customer Balance.</li>
                                 </ul>
                             </div>

@@ -179,6 +179,9 @@ export function FulfillmentTab({ orders, shipments, onDispatch, onConfirmCheck, 
                                             <Badge variant={order.status === "partially_approved" ? "secondary" : "default"} className={order.status === "approved" ? "bg-primary" : ""}>
                                                 {order.status === "partially_approved" ? "Partial Approval" : "Approved"}
                                             </Badge>
+                                            {order.is_split_delivery && (
+                                                <Badge variant="outline" className="border-amber-500 text-amber-600 bg-amber-50 uppercase text-[10px]">Split Order</Badge>
+                                            )}
                                             <span className="text-xs text-muted-foreground">ID: {order.id.slice(0,8)}</span>
                                         </div>
                                         <div className="flex items-center gap-3">
@@ -215,10 +218,13 @@ export function FulfillmentTab({ orders, shipments, onDispatch, onConfirmCheck, 
                                                 <span>Plate: <span className="font-semibold text-foreground font-mono">{order.plate_number || <em className="text-red-500">missing</em>}</span></span>
                                             </div>
                                         )}
-                                        {order.po_image_url && (
-                                            <a href={order.po_image_url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs text-blue-600 hover:underline mt-1">
-                                                <ExternalLink className="w-3 h-3" /> View PO Document
                                             </a>
+                                        )}
+                                        {order.notes && (
+                                            <div className="mt-2 text-xs bg-muted/50 p-2 rounded border border-dashed border-border">
+                                                <span className="font-semibold text-muted-foreground block mb-0.5">Order Notes:</span>
+                                                <p className="text-muted-foreground whitespace-pre-wrap">{order.notes}</p>
+                                            </div>
                                         )}
                                     </div>
                                     <div className="flex items-center">

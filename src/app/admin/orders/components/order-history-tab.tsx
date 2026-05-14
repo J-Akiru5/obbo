@@ -88,7 +88,12 @@ export function OrderHistoryTab({ orders, loading }: { orders: Order[], loading:
                             return (
                                 <TableRow key={order.id}>
                                     <TableCell>
-                                        <p className="font-mono text-xs font-medium">{order.id.slice(0, 8)}</p>
+                                        <div className="flex items-center gap-2">
+                                            <p className="font-mono text-xs font-medium">{order.id.slice(0, 8)}</p>
+                                            {order.is_split_delivery && (
+                                                <Badge variant="outline" className="px-1 py-0 text-[9px] border-amber-300 text-amber-700 bg-amber-50">SPLIT</Badge>
+                                            )}
+                                        </div>
                                         <p className="text-xs text-muted-foreground mt-1">{new Date(order.updated_at).toLocaleDateString()}</p>
                                     </TableCell>
                                     <TableCell>
