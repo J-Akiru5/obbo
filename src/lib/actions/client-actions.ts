@@ -297,7 +297,7 @@ export async function fetchClientBalances() {
     const { supabase, user } = await requireClient();
     const { data } = await supabase
         .from("customer_balances")
-        .select("*, product:products(name, price_per_bag, bag_type), order:orders(po_number)")
+        .select("*, product:products(name, price_per_bag, bag_type), order:orders(po_number, created_at)")
         .eq("client_id", user.id)
         .order("created_at", { ascending: false });
     return data ?? [];

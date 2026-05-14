@@ -188,6 +188,7 @@ export interface CustomerBalance {
     order?: {
         po_number: string | null;
         po_image_url: string | null;
+        created_at: string | null;
     } | null;
     created_at: string;
 }
