@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { fetchCustomerBalances, fetchOrders, fetchWarehouseReport, fetchDashboardKPIs } from "@/lib/actions/admin-actions";
+import { createClient } from "@/lib/supabase/client";
 import type { WarehouseReport } from "@/lib/types/database";
 
 export default function AdminReportsPage() {
@@ -54,6 +55,21 @@ export default function AdminReportsPage() {
 
     useEffect(() => {
         loadReportData();
+        
+        const supabase = createClient();
+        const channel = supabase
+            .channel('reports-sync')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'customer_balances' }, () => {
+                loadReportData();
+            })
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, () => {
+                loadReportData();
+            })
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
     }, [loadReportData]);
 
     const clientObligations = useMemo(() => {

@@ -74,10 +74,20 @@ export function TrackingTab({ orders, onUpdateTracking, loading }: {
                     {orders.map(order => {
                         const jbQty = order.items.filter(i => i.bag_type === "JB").reduce((s, i) => s + i.dispatched_qty, 0);
                         const sbQty = order.items.filter(i => i.bag_type === "SB").reduce((s, i) => s + i.dispatched_qty, 0);
+                        const jbReq = order.items.filter(i => i.bag_type === "JB").reduce((s, i) => s + i.requested_qty, 0);
+                        const sbReq = order.items.filter(i => i.bag_type === "SB").reduce((s, i) => s + i.requested_qty, 0);
+                        const isSplit = order.is_split_delivery || order.items.some(i => i.dispatched_qty < i.requested_qty);
 
                         return (
                             <TableRow key={order.id}>
-                                <TableCell className="font-mono text-xs">{order.id.slice(0, 8)}</TableCell>
+                                <TableCell className="font-mono text-xs">
+                                    {order.id.slice(0, 8)}
+                                    {isSplit && (
+                                        <div className="mt-1">
+                                            <Badge variant="outline" className="border-amber-500 text-amber-600 bg-amber-50 uppercase text-[9px] px-1 py-0 font-bold">SPLIT</Badge>
+                                        </div>
+                                    )}
+                                </TableCell>
                                 <TableCell>
                                     <div className="flex items-center gap-3">
                                         <Avatar className="w-8 h-8 border border-border/50 shrink-0">
@@ -111,9 +121,15 @@ export function TrackingTab({ orders, onUpdateTracking, loading }: {
                                     )}
                                 </TableCell>
                                 <TableCell>
-                                    <div className="flex gap-2">
-                                        <Badge variant="outline" className="text-xs">{jbQty} JB</Badge>
-                                        <Badge variant="outline" className="text-xs">{sbQty} SB</Badge>
+                                    <div className="flex flex-col gap-1">
+                                        <div className="flex items-center gap-2">
+                                            <Badge variant="outline" className="text-xs font-bold">{jbQty} JB</Badge>
+                                            {isSplit && jbReq > 0 && <span className="text-[10px] text-muted-foreground">/ {jbReq}</span>}
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <Badge variant="outline" className="text-xs font-bold">{sbQty} SB</Badge>
+                                            {isSplit && sbReq > 0 && <span className="text-[10px] text-muted-foreground">/ {sbReq}</span>}
+                                        </div>
                                     </div>
                                 </TableCell>
                                 <TableCell>

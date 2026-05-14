@@ -156,7 +156,7 @@ export function NewRequestsTab({ orders, onApprove, onReject, onConfirmCheck, lo
                                                 <div className="flex items-center gap-2 mb-1">
                                                     <Badge className="bg-accent text-accent-foreground hover:bg-accent/90">New Request</Badge>
                                                     {order.is_split_delivery && (
-                                                        <Badge variant="outline" className="border-amber-500 text-amber-600 bg-amber-50">SPLIT DELIVERY</Badge>
+                                                        <Badge variant="outline" className="border-amber-500 text-amber-600 bg-amber-50 font-bold">SPLIT</Badge>
                                                     )}
                                                     <span className="text-xs text-muted-foreground">ID: {order.id.slice(0,8)}</span>
                                                     <span className="text-xs text-muted-foreground">• {new Date(order.created_at).toLocaleDateString()}</span>
@@ -206,11 +206,23 @@ export function NewRequestsTab({ orders, onApprove, onReject, onConfirmCheck, lo
                                             </div>
                                             <div>
                                                 <p className="text-xs text-muted-foreground mb-1">Requested JB</p>
-                                                <p className="text-lg font-bold text-foreground">{jbItem?.requested_qty || 0}</p>
+                                                <p className="text-lg font-bold text-foreground">
+                                                    {order.is_split_delivery && jbItem ? (
+                                                        <span>{order.deliver_now_qty} <span className="text-xs text-muted-foreground font-normal">/ {jbItem.requested_qty}</span></span>
+                                                    ) : (
+                                                        jbItem?.requested_qty || 0
+                                                    )}
+                                                </p>
                                             </div>
                                             <div>
                                                 <p className="text-xs text-muted-foreground mb-1">Requested SB</p>
-                                                <p className="text-lg font-bold text-foreground">{sbItem?.requested_qty || 0}</p>
+                                                <p className="text-lg font-bold text-foreground">
+                                                    {order.is_split_delivery && sbItem ? (
+                                                        <span>{order.deliver_now_qty} <span className="text-xs text-muted-foreground font-normal">/ {sbItem.requested_qty}</span></span>
+                                                    ) : (
+                                                        sbItem?.requested_qty || 0
+                                                    )}
+                                                </p>
                                             </div>
                                         </div>
                                         

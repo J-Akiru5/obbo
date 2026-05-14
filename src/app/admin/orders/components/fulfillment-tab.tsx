@@ -117,6 +117,9 @@ export function FulfillmentTab({ orders, shipments, onDispatch, loading }: {
                     readyForDispatch.map(order => {
                         const jbQty = order.items.filter(i => i.bag_type === "JB").reduce((s, i) => s + i.approved_qty, 0);
                         const sbQty = order.items.filter(i => i.bag_type === "SB").reduce((s, i) => s + i.approved_qty, 0);
+                        const jbReq = order.items.filter(i => i.bag_type === "JB").reduce((s, i) => s + i.requested_qty, 0);
+                        const sbReq = order.items.filter(i => i.bag_type === "SB").reduce((s, i) => s + i.requested_qty, 0);
+                        const isSplit = order.is_split_delivery || order.items.some(i => i.approved_qty < i.requested_qty);
 
                         return (
                             <Card key={order.id} className="border-l-4 border-l-primary">
@@ -126,8 +129,8 @@ export function FulfillmentTab({ orders, shipments, onDispatch, loading }: {
                                             <Badge variant={order.status === "partially_approved" ? "secondary" : "default"} className={order.status === "approved" ? "bg-primary" : ""}>
                                                 {order.status === "partially_approved" ? "Partial Approval" : "Approved"}
                                             </Badge>
-                                            {order.is_split_delivery && (
-                                                <Badge variant="outline" className="border-amber-500 text-amber-600 bg-amber-50 uppercase text-[10px]">Split Order</Badge>
+                                            {isSplit && (
+                                                <Badge variant="outline" className="border-amber-500 text-amber-600 bg-amber-50 uppercase text-[10px] font-bold">SPLIT</Badge>
                                             )}
                                             <span className="text-xs text-muted-foreground">ID: {order.id.slice(0,8)}</span>
                                         </div>
@@ -148,11 +151,17 @@ export function FulfillmentTab({ orders, shipments, onDispatch, loading }: {
                                         <div className="flex gap-4 text-sm mt-2">
                                             <div className="bg-muted px-3 py-1.5 rounded-md">
                                                 <span className="text-muted-foreground text-xs uppercase tracking-wider block mb-0.5">Approved JB</span>
-                                                <span className="font-bold">{jbQty}</span>
+                                                <span className="font-bold">
+                                                    {jbQty} 
+                                                    {isSplit && jbReq > 0 && <span className="text-xs text-muted-foreground font-normal ml-1">/ {jbReq}</span>}
+                                                </span>
                                             </div>
                                             <div className="bg-muted px-3 py-1.5 rounded-md">
                                                 <span className="text-muted-foreground text-xs uppercase tracking-wider block mb-0.5">Approved SB</span>
-                                                <span className="font-bold">{sbQty}</span>
+                                                <span className="font-bold">
+                                                    {sbQty}
+                                                    {isSplit && sbReq > 0 && <span className="text-xs text-muted-foreground font-normal ml-1">/ {sbReq}</span>}
+                                                </span>
                                             </div>
                                             <div className="bg-muted px-3 py-1.5 rounded-md">
                                                 <span className="text-muted-foreground text-xs uppercase tracking-wider block mb-0.5">Service</span>

@@ -185,25 +185,6 @@ export async function approveOrder(orderId: string, approvedItems: { itemId: str
 
     await supabase.from("orders").update(updates).eq("id", orderId);
 
-    // Create customer balance records for partial quantities
-    if (isPartial) {
-        for (const ai of approvedItems) {
-            const original = order.items.find((i: { id: string }) => i.id === ai.itemId);
-            if (original && ai.qty < original.requested_qty) {
-                const remaining = original.requested_qty - ai.qty;
-                await supabase.from("customer_balances").insert({
-                    client_id: order.client_id,
-                    order_id: orderId,
-                    product_id: original.product_id,
-                    bag_type: original.bag_type,
-                    total_purchase: original.requested_qty,
-                    remaining_qty: remaining,
-                    status: "pending",
-                });
-            }
-        }
-    }
-
     await logActivity(supabase, userId, "order_approved", "order", orderId, { status: newStatus, approvedItems });
     return { success: true, newStatus };
 }
@@ -221,9 +202,11 @@ export async function rejectOrder(orderId: string, reason: string) {
 export async function finalConfirmCheck(orderId: string) {
     const { supabase, userId } = await requireAdmin();
 
-    // Check if order was partially approved by looking for customer balances linked to it
-    const { data: balances } = await supabase.from("customer_balances").select("id").eq("order_id", orderId);
-    const isPartial = balances && balances.length > 0;
+    // Check if order was partially approved by looking at items
+    const { data: order } = await supabase.from("orders").select("*, items:order_items(*)").eq("id", orderId).single();
+    if (!order) throw new Error("Order not found");
+
+    const isPartial = order.items.some((i: any) => i.approved_qty < i.requested_qty);
     const newStatus = isPartial ? "partially_approved" : "approved";
 
     await supabase.from("orders")
@@ -286,6 +269,34 @@ export async function dispatchOrder(
         check_number: order.payment_method === "check" ? order.check_number : null,
         amount: Number(order.total_amount) || null,
     });
+
+    // Handle Split Delivery: Create customer balance for remaining quantities
+    for (const item of order.items) {
+        if (item.approved_qty < item.requested_qty) {
+            const remaining = item.requested_qty - item.approved_qty;
+            
+            // Check if a balance already exists for this item in this order (idempotency)
+            const { data: existing } = await supabase
+                .from("customer_balances")
+                .select("id")
+                .eq("order_id", orderId)
+                .eq("product_id", item.product_id)
+                .eq("bag_type", item.bag_type)
+                .single();
+
+            if (!existing) {
+                await supabase.from("customer_balances").insert({
+                    client_id: order.client_id,
+                    order_id: orderId,
+                    product_id: item.product_id,
+                    bag_type: item.bag_type,
+                    total_purchase: item.requested_qty,
+                    remaining_qty: remaining,
+                    status: "pending",
+                });
+            }
+        }
+    }
 
     // Update order items dispatched_qty
     for (const item of order.items) {
