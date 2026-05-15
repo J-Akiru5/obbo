@@ -7,7 +7,17 @@ const withSerwist = withSerwistInit({
 });
 
 const nextConfig: NextConfig = {
-  turbopack: {}
+  turbopack: {},
+  images: {
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'xjfbrjyvinljseqbbika.supabase.co',
+        port: '',
+        pathname: '/storage/v1/object/public/**',
+      },
+    ],
+  },
 };
 
 export default withSerwist(nextConfig);
