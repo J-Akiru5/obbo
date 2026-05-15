@@ -132,7 +132,7 @@ export default function OrdersClient({ orders }: { orders: Order[] }) {
         setIsSubmitting(true);
         try {
             await submitPaymentDetails(selectedOrder.id, "cash");
-            toast.success("Cash payment confirmed! Order is now queued for dispatch.");
+            toast.success("Cash payment submitted! Awaiting admin confirmation.");
             setIsPaymentOpen(false);
         } catch (e: unknown) {
             const msg = e instanceof Error ? e.message : "Failed to confirm payment.";
@@ -236,7 +236,7 @@ export default function OrdersClient({ orders }: { orders: Order[] }) {
                             {order.status === "partially_approved" && <Badge className="bg-status-info-bg text-status-info-text border-status-info-text/20">Partially Approved</Badge>}
                             {order.status === "approved" && <Badge className="bg-status-pending-bg text-status-pending-text border-status-pending-border">Payment Required</Badge>}
                             {order.status === "awaiting_check" && <Badge className="bg-status-pending-bg text-status-pending-text border-status-pending-border">Upload Check</Badge>}
-                            {order.status === "pending_final_confirmation" && <Badge variant="secondary">Check Verifying</Badge>}
+                            {order.status === "pending_final_confirmation" && <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200">✅ Payment Submitted</Badge>}
                             {order.status === "dispatched" && (
                                 <Badge className="bg-status-success-bg text-status-success-text border-status-success-border/20">
                                     {order.tracking_status === "in_transit" ? "In Transit" : "Dispatched"}
@@ -279,11 +279,11 @@ export default function OrdersClient({ orders }: { orders: Order[] }) {
                         </div>
                     )}
 
-                    {/* Awaiting check verification */}
+                    {/* Awaiting admin verification (Both cash & check) */}
                     {type === "active" && order.status === "pending_final_confirmation" && (
-                        <div className="p-3 bg-status-info-bg border border-status-info-text/20 rounded-lg text-sm text-status-info-text flex items-center gap-2">
-                            <Clock className="w-4 h-4 text-status-info-text" />
-                            <span>Payment Submitted – Awaiting admin check verification.</span>
+                        <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-lg text-sm text-emerald-700 flex items-center gap-2">
+                            <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                            <span>Payment Submitted – Awaiting Admin Confirmation.</span>
                         </div>
                     )}
                     

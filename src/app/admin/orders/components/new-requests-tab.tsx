@@ -158,7 +158,11 @@ export function NewRequestsTab({ orders, onApprove, onReject, onConfirmCheck, lo
                                         <div className="flex justify-between items-start">
                                             <div>
                                                 <div className="flex items-center gap-2 mb-1">
-                                                    <Badge className="bg-accent text-accent-foreground hover:bg-accent/90">New Request</Badge>
+                                                    {order.status === "pending_final_confirmation" ? (
+                                                        <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200">Payment Submitted</Badge>
+                                                    ) : (
+                                                        <Badge className="bg-accent text-accent-foreground hover:bg-accent/90">New Request</Badge>
+                                                    )}
                                                     {order.is_split_delivery && (
                                                         <Badge variant="outline" className="border-amber-500 text-amber-600 bg-amber-50 font-bold">SPLIT</Badge>
                                                     )}
@@ -235,14 +239,41 @@ export function NewRequestsTab({ orders, onApprove, onReject, onConfirmCheck, lo
                                                 <span className="text-muted-foreground">Total Value: </span>
                                                 <span className="font-bold text-primary">₱{order.total_amount.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
                                             </div>
-                                            {order.po_image_url && (
+                                            {order.check_image_url && (
+                                                <div className="flex gap-2">
+                                                    <a href={order.check_image_url} target="_blank" rel="noreferrer" className="flex items-center gap-1.5 text-xs font-medium text-emerald-600 hover:text-emerald-700 bg-emerald-50 border border-emerald-100 px-2 py-1 rounded">
+                                                        <ExternalLink className="w-3 h-3" />
+                                                        View Check
+                                                    </a>
+                                                    {order.po_image_url && (
+                                                        <a href={order.po_image_url} target="_blank" rel="noreferrer" className="flex items-center gap-1.5 text-xs font-medium text-primary hover:text-primary/80 bg-primary/5 border border-primary/10 px-2 py-1 rounded">
+                                                            <ExternalLink className="w-3 h-3" />
+                                                            View PO
+                                                        </a>
+                                                    )}
+                                                </div>
+                                            )}
+                                            {!order.check_image_url && order.po_image_url && (
                                                 <a href={order.po_image_url} target="_blank" rel="noreferrer" className="flex items-center gap-1.5 text-xs font-medium text-primary hover:text-primary/80 bg-primary/5 border border-primary/10 px-2 py-1 rounded">
                                                     <ExternalLink className="w-3 h-3" />
                                                     View PO Document
                                                 </a>
                                             )}
                                         </div>
-                                        {order.service_type === "pickup" && (
+                                        {order.status === "pending_final_confirmation" && (
+                                            <div className="rounded-md border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+                                                <p className="font-semibold mb-1 flex items-center gap-1.5">
+                                                    <CreditCard className="w-4 h-4" /> Payment Details
+                                                </p>
+                                                <p className="text-xs">
+                                                    {order.payment_method === "check" ? (
+                                                        <>Check Number: <span className="font-mono font-bold">{order.check_number}</span></>
+                                                    ) : (
+                                                        <>Payment Method: <span className="font-bold uppercase">Cash</span></>
+                                                    )}
+                                                </p>
+                                            </div>
+                                        )}
                                             <div className="rounded-md border border-accent/20 bg-accent/5 px-4 py-3 text-sm text-accent">
                                                 <p className="font-semibold text-accent mb-2 flex items-center gap-1.5">
                                                     <Car className="w-4 h-4" />
@@ -270,9 +301,15 @@ export function NewRequestsTab({ orders, onApprove, onReject, onConfirmCheck, lo
                                         )}
                                     </div>
                                     <div className="bg-muted/40 p-5 md:w-48 flex flex-col justify-center gap-3 border-l border-border/50">
-                                        <Button onClick={() => openAction(order, "approve")} className="w-full bg-primary hover:bg-primary/90">
-                                            <Check className="w-4 h-4 mr-2" /> Approve
-                                        </Button>
+                                        {order.status === "pending_final_confirmation" ? (
+                                            <Button onClick={() => openAction(order, "check")} className="w-full bg-emerald-600 hover:bg-emerald-700">
+                                                <Check className="w-4 h-4 mr-2" /> Final Confirm
+                                            </Button>
+                                        ) : (
+                                            <Button onClick={() => openAction(order, "approve")} className="w-full bg-primary hover:bg-primary/90">
+                                                <Check className="w-4 h-4 mr-2" /> Approve
+                                            </Button>
+                                        )}
                                         <Button onClick={() => openAction(order, "reject")} variant="outline" className="w-full text-destructive hover:bg-destructive/10 hover:text-destructive border-destructive/20">
                                             <X className="w-4 h-4 mr-2" /> Reject
                                         </Button>
@@ -287,12 +324,12 @@ export function NewRequestsTab({ orders, onApprove, onReject, onConfirmCheck, lo
             <Dialog open={!!selectedOrder} onOpenChange={(open) => !open && setSelectedOrder(null)}>
                 <DialogContent className="sm:max-w-[500px]">
                     <DialogHeader>
-                        <DialogTitle>{actionType === "approve" ? "Approve Order" : actionType === "check" ? "Confirm Check Payment" : "Reject Order"}</DialogTitle>
+                        <DialogTitle>{actionType === "approve" ? "Approve Order" : actionType === "check" ? "Final Payment Confirmation" : "Reject Order"}</DialogTitle>
                         <DialogDescription>
                             {actionType === "approve" 
                                 ? "Review requested quantities and set shipping details. You can partially approve items if stock is low."
                                 : actionType === "check"
-                                ? "Are you sure you want to confirm this check payment? This will move the order to the Fulfillment queue."
+                                ? `Are you sure you want to confirm this ${selectedOrder.payment_method} payment? This will move the order to the Fulfillment queue.`
                                 : "Please provide a reason for rejecting this order."}
                         </DialogDescription>
                     </DialogHeader>
@@ -391,7 +428,7 @@ export function NewRequestsTab({ orders, onApprove, onReject, onConfirmCheck, lo
                             disabled={isSubmitting}
                             className={actionType === "approve" ? "bg-emerald-600 hover:bg-emerald-700" : actionType === "check" ? "bg-amber-600 hover:bg-amber-700" : "bg-destructive hover:bg-destructive/90"}
                         >
-                            {isSubmitting ? "Processing..." : actionType === "approve" ? "Confirm Approval" : actionType === "check" ? "Confirm Check Payment" : "Confirm Rejection"}
+                            {isSubmitting ? "Processing..." : actionType === "approve" ? "Confirm Approval" : actionType === "check" ? "Confirm Final Payment" : "Confirm Rejection"}
                         </Button>
                     </DialogFooter>
                 </DialogContent>
