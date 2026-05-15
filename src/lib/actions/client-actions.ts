@@ -333,13 +333,15 @@ export async function fetchBalanceSummary() {
         }
     }
 
-    // Total delivered: sum of all dispatched_qty from all orders
+    // Total delivered: sum of dispatched_qty ONLY from fully completed orders.
+    // Orders still in transit (status: 'dispatched') are intentionally excluded
+    // to prevent premature counting of bags that haven't been received yet.
     const { data: dispatchedOrders } = await supabase
         .from("orders")
         .select("items:order_items(dispatched_qty)")
         .eq("client_id", user.id)
         .neq("order_type", "draft")
-        .in("status", ["dispatched", "completed"]);
+        .eq("status", "completed");
 
     let totalDelivered = 0;
     if (dispatchedOrders) {
