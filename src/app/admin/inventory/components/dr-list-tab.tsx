@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { DeliveryReceipt, Shipment } from "@/lib/types/database";
-import Image from "next/image";
+import { OptimizedImage } from "@/components/ui/optimized-image";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -186,7 +186,14 @@ export function DrListTab({
                                         <TableCell>
                                             <div className="w-10 h-10 rounded bg-muted flex items-center justify-center overflow-hidden border border-border/50">
                                                 {dr.dr_image_url ? (
-                                                    <Image src={dr.dr_image_url} alt="DR" width={40} height={40} className="w-full h-full object-cover" unoptimized />
+                                                    <OptimizedImage 
+                                                        src={dr.dr_image_url} 
+                                                        alt="DR" 
+                                                        fill 
+                                                        className="object-cover" 
+                                                        unoptimized 
+                                                        containerClassName="w-full h-full"
+                                                    />
                                                 ) : (
                                                     <FileImage className="w-5 h-5 text-muted-foreground/40" />
                                                 )}
@@ -243,7 +250,14 @@ export function DrListTab({
                                 <Card key={dr.id} className={`overflow-hidden group hover:shadow-md transition-shadow ${dr.order_id ? "border-primary/10 bg-primary/5" : ""}`}>
                                     <div className="aspect-video bg-muted relative overflow-hidden border-b">
                                         {dr.dr_image_url ? (
-                                            <Image src={dr.dr_image_url} alt="DR" fill className="object-cover group-hover:scale-105 transition-transform duration-500" unoptimized />
+                                            <OptimizedImage 
+                                                src={dr.dr_image_url} 
+                                                alt="DR" 
+                                                fill 
+                                                className="object-cover group-hover:scale-105 transition-transform duration-500" 
+                                                unoptimized 
+                                                containerClassName="h-full w-full"
+                                            />
                                         ) : (
                                             <div className="absolute inset-0 flex flex-col items-center justify-center text-muted-foreground/30">
                                                 <FileImage className="w-12 h-12 mb-2" />
@@ -369,12 +383,13 @@ export function DrListTab({
                         <div className="bg-muted flex items-center justify-center relative min-h-[300px] md:border-l border-t md:border-t-0">
                             {viewingDr?.dr_image_url ? (
                                 <>
-                                    <Image 
+                                    <OptimizedImage 
                                         src={viewingDr.dr_image_url} 
                                         alt="DR Document" 
                                         fill 
                                         className="object-contain p-2"
                                         unoptimized
+                                        containerClassName="h-full w-full"
                                     />
                                     <a 
                                         href={viewingDr.dr_image_url} 

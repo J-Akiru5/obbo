@@ -480,12 +480,13 @@ export function ProductCatalogTab({ products, onUpdate, onCreate, onDelete, load
 
                             {(imagePreview || editingProduct?.image_url) && (
                                 <div className="relative w-full h-36 rounded-lg overflow-hidden border border-border bg-muted">
-                                    <Image
+                                    <OptimizedImage
                                         src={imagePreview ?? editingProduct!.image_url!}
                                         alt="Product preview"
                                         fill
                                         className="object-contain"
                                         unoptimized
+                                        containerClassName="h-full w-full"
                                     />
                                 </div>
                             )}
