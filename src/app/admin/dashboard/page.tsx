@@ -72,8 +72,17 @@ export default function AdminDashboard() {
     const [recentOrders, setRecentOrders] = useState<Order[]>([]);
     const [shipments, setShipments] = useState<Array<{ batch_name: string; remaining_jb: number; remaining_sb: number; total_jb: number; total_sb: number }>>([]);
 
+    const [userRole, setUserRole] = useState<string | null>(null);
+
     const loadData = useCallback(async () => {
         try {
+            const supabase = createClient();
+            const { data: { user } } = await supabase.auth.getUser();
+            if (user) {
+                const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).single();
+                setUserRole(profile?.role || null);
+            }
+
             const [kpiData, feed, ships, pOrders] = await Promise.all([
                 fetchDashboardKPIs(),
                 fetchActivityFeed(20),
@@ -303,8 +312,9 @@ export default function AdminDashboard() {
                 </CardContent>
             </Card>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-8">
+            <div className={`grid grid-cols-1 ${userRole !== 'admin' ? 'lg:grid-cols-2' : ''} gap-6 mt-8`}>
                 {/* Pending Tasks */}
+                {userRole !== 'admin' && (
                 <Card className="border-border shadow-sm bg-card rounded-xl overflow-hidden">
                     <CardHeader className="pb-4 border-b border-border">
                         <CardTitle className="text-base font-semibold text-foreground tracking-wide">Pending Tasks</CardTitle>
@@ -344,6 +354,7 @@ export default function AdminDashboard() {
                         </div>
                     </CardContent>
                 </Card>
+                )}
 
                 {/* System Activity Feed */}
                 <Card className="border-border shadow-sm bg-card rounded-xl overflow-hidden">
@@ -414,6 +425,7 @@ export default function AdminDashboard() {
             </div>
 
             {/* Recent Pending Orders */}
+            {userRole !== 'admin' && (
             <Card className="border-border shadow-sm bg-card rounded-xl overflow-hidden mt-8">
                 <CardHeader className="pb-4 border-b border-border">
                     <div className="flex items-center justify-between">
@@ -511,6 +523,7 @@ export default function AdminDashboard() {
                     </div>
                 </CardContent>
             </Card>
+            )}
         </div>
     );
 }
