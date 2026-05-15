@@ -3,6 +3,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import { generateGlobalNextPoNumber } from "./po-utils";
+import { createRoleNotification } from "./notification-actions";
 
 // Helper to ensure the user is an authenticated client
 async function requireClient() {
@@ -180,6 +181,15 @@ export async function submitOrder(
         }));
         await supabase.from("order_items").insert(itemsToInsert);
     }
+
+    // Trigger Notification for Warehouse Manager
+    await createRoleNotification({
+        targetRole: "warehouse_manager",
+        title: "New Order Placed",
+        message: `PO Number: ${finalPoNumber}. Source: ${orderData.source.toUpperCase()}.`,
+        href: "/admin/orders?tab=new",
+        severity: "info"
+    });
 
     revalidatePath("/client/orders");
     revalidatePath("/client/dashboard");

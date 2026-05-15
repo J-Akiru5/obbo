@@ -253,27 +253,41 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) return;
 
-            // Fetch last 20 notifications
-            const { data: notifs } = await supabase
+            // Fetch last 20 notifications — Role Aware
+            const query = supabase
                 .from("notifications")
                 .select("*")
-                .eq("user_id", user.id)
                 .order("created_at", { ascending: false })
                 .limit(20);
+
+            if (adminRole) {
+                query.or(`user_id.eq.${user.id},target_role.eq.${adminRole}`);
+            } else {
+                query.eq("user_id", user.id);
+            }
+
+            const { data: notifs } = await query;
             
-            // Fetch TOTAL unread count
-            const { count: unread } = await supabase
+            // Fetch TOTAL unread count — Role Aware
+            const unreadQuery = supabase
                 .from("notifications")
                 .select("*", { count: "exact", head: true })
-                .eq("user_id", user.id)
                 .eq("is_read", false);
+
+            if (adminRole) {
+                unreadQuery.or(`user_id.eq.${user.id},target_role.eq.${adminRole}`);
+            } else {
+                unreadQuery.eq("user_id", user.id);
+            }
+
+            const { count: unread } = await unreadQuery;
 
             setNotifications(notifs ?? []);
             setUnreadCount(unread ?? 0);
         } catch (e) {
             console.error("Error loading notifications:", e);
         }
-    }, []);
+    }, [adminRole]);
     const navItems = adminRole === "admin"
         ? ADMIN_NAV_ITEMS
         : adminRole === "warehouse_manager"
@@ -326,7 +340,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                         event: "*", 
                         schema: "public", 
                         table: "notifications",
-                        filter: `user_id=eq.${user.id}`
                     }, 
                     () => {
                         loadNotifications();
@@ -347,11 +360,31 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             const supabase = createClient();
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) return;
-            await supabase.from("notifications").update({ is_read: true }).eq("user_id", user.id).eq("is_read", false);
+
+            const query = supabase.from("notifications").update({ is_read: true }).eq("is_read", false);
+            
+            if (adminRole) {
+                query.or(`user_id.eq.${user.id},target_role.eq.${adminRole}`);
+            } else {
+                query.eq("user_id", user.id);
+            }
+
+            await query;
             setUnreadCount(0);
             setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
         } catch {
             toast.error("Failed to mark notifications as read.");
+        }
+    };
+
+    const markRead = async (id: string) => {
+        try {
+            const supabase = createClient();
+            await supabase.from("notifications").update({ is_read: true }).eq("id", id);
+            setNotifications(prev => prev.map(n => n.id === id ? { ...n, is_read: true } : n));
+            loadNotifications(); // Refresh count properly
+        } catch {
+            console.error("Failed to mark notification as read");
         }
     };
 
@@ -427,7 +460,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                                         <div className="p-6 text-center text-sm text-gray-500">No notifications yet</div>
                                     ) : (
                                         notifications.map((n) => (
-                                            <Link key={n.id} href={n.href || "/admin/dashboard"} onClick={() => setNotifOpen(false)}>
+                                            <Link 
+                                                key={n.id} 
+                                                href={n.href || "/admin/dashboard"} 
+                                                onClick={() => {
+                                                    setNotifOpen(false);
+                                                    if (!n.is_read) markRead(n.id);
+                                                }}
+                                            >
                                                 <div className={`px-3 py-2.5 border-b border-gray-50 hover:bg-gray-50 transition-colors ${!n.is_read ? 'bg-blue-50/50' : ''}`}>
                                                     <div className="flex items-start gap-2">
                                                         {n.severity === 'warning' ? (

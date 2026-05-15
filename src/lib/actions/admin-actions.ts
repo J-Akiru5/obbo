@@ -3,6 +3,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { generateGlobalNextPoNumber } from "./po-utils";
+import { createRoleNotification } from "./notification-actions";
 
 // ─── Helper: ensure caller is admin or warehouse manager ─────
 async function requireAdmin() {
@@ -775,6 +776,16 @@ export async function submitWarehouseReport(date: string) {
 
     // Log the submission activity
     await logActivity(supabase, userId, "warehouse_report_submitted", "warehouse_report", report.id, { date });
+
+    // Trigger Admin Notification
+    await createRoleNotification({
+        targetRole: "admin",
+        title: "Daily Report Submitted",
+        message: `Warehouse report for ${date} has been submitted for review.`,
+        href: "/admin/inventory?tab=reports",
+        severity: "info"
+    });
+
     return { success: true };
 }
 

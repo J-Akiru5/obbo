@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
 import { AuthShell } from "@/components/auth/auth-shell";
+import { createRoleNotification } from "@/lib/actions/notification-actions";
 
 export default function RegisterPage() {
     const router = useRouter();
@@ -184,6 +185,15 @@ export default function RegisterPage() {
                     .update({ kyc_documents: kycPaths })
                     .eq("id", userId);
             }
+
+            // Trigger Admin Notification
+            await createRoleNotification({
+                targetRole: "admin",
+                title: "New Client Registration",
+                message: `${metaData.full_name} has registered and is pending KYC verification.`,
+                href: "/admin/clients?tab=verification",
+                severity: "info"
+            });
 
             // 4. Redirect to the limited client portal (user stays signed in)
             toast.success("Account created! Browse the portal while your KYC is reviewed.");
