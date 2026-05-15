@@ -28,23 +28,36 @@ export async function middleware(request: NextRequest) {
 
     const { pathname } = request.nextUrl;
 
+    // Use metadata for faster checks if available
+    const metadata = user?.user_metadata;
+    let role = metadata?.role;
+    let kycStatus = metadata?.kyc_status;
+
+    // Helper to fetch profile if metadata is missing
+    const getProfile = async () => {
+        if (!user) return null;
+        const { data: profile } = await supabase
+            .from('profiles')
+            .select('role, kyc_status')
+            .eq('id', user.id)
+            .single();
+        return profile;
+    };
+
     // ── Protect admin routes ────────────────────────────────
     if (pathname.startsWith('/admin')) {
         if (!user) {
             return NextResponse.redirect(new URL('/login', request.url));
         }
-        const { data: profile } = await supabase
-            .from('profiles')
-            .select('role')
-            .eq('id', user.id)
-            .single();
-        if (profile?.role !== 'admin' && profile?.role !== 'warehouse_manager') {
-            // Non-admin users get rerouted to client dashboard
-            return NextResponse.redirect(new URL('/client/dashboard', request.url));
+        
+        if (!role) {
+            const profile = await getProfile();
+            role = profile?.role;
         }
 
-        // No restrictive redirects between admin/wm for specific sub-routes anymore
-        // Both roles are allowed to access their respective nav item destinations
+        if (role !== 'admin' && role !== 'warehouse_manager') {
+            return NextResponse.redirect(new URL('/client/dashboard', request.url));
+        }
     }
 
     // ── Protect client routes ───────────────────────────────
@@ -52,21 +65,19 @@ export async function middleware(request: NextRequest) {
         if (!user) {
             return NextResponse.redirect(new URL('/login', request.url));
         }
-        const { data: profile } = await supabase
-            .from('profiles')
-            .select('kyc_status, role')
-            .eq('id', user.id)
-            .single();
+
+        if (!role || !kycStatus) {
+            const profile = await getProfile();
+            role = profile?.role;
+            kycStatus = profile?.kyc_status;
+        }
 
         // Redirect admins away from client portal
-        if (profile?.role === 'admin' || profile?.role === 'warehouse_manager') {
+        if (role === 'admin' || role === 'warehouse_manager') {
             return NextResponse.redirect(new URL('/admin/dashboard', request.url));
         }
 
-        // For unverified clients: gate high-value action routes to the in-portal interstitial.
-        // All other /client/* routes (dashboard, catalog, orders list, profile, contact)
-        // are open so they can browse and reach out to admin while waiting.
-        const isUnverified = profile?.kyc_status !== 'verified';
+        const isUnverified = kycStatus !== 'verified';
         const RESTRICTED_PATHS = ['/client/orders/new', '/client/ledger'];
         const isRestricted = RESTRICTED_PATHS.some(p => pathname.startsWith(p));
 
@@ -76,33 +87,30 @@ export async function middleware(request: NextRequest) {
     }
 
     // ── Block /pending for verified users ──────────────────
-    // /pending is now only used as a fallback for unauthenticated edge cases.
     if (pathname === '/pending') {
         if (user) {
-            const { data: profile } = await supabase
-                .from('profiles')
-                .select('kyc_status, role')
-                .eq('id', user.id)
-                .single();
-            if (profile?.role === 'admin' || profile?.role === 'warehouse_manager') {
+            if (!role) {
+                const profile = await getProfile();
+                role = profile?.role;
+            }
+            if (role === 'admin' || role === 'warehouse_manager') {
                 return NextResponse.redirect(new URL('/admin/dashboard', request.url));
             }
-            // All authenticated clients (verified or not) now use the client portal
             return NextResponse.redirect(new URL('/client/dashboard', request.url));
         }
     }
 
     // ── Redirect logged-in users away from /login and /register
     if ((pathname === '/login' || pathname === '/register') && user) {
-        const { data: profile } = await supabase
-            .from('profiles')
-            .select('role, kyc_status')
-            .eq('id', user.id)
-            .single();
-        if (profile?.role === 'admin' || profile?.role === 'warehouse_manager') {
+        if (!role || !kycStatus) {
+            const profile = await getProfile();
+            role = profile?.role;
+            kycStatus = profile?.kyc_status;
+        }
+        if (role === 'admin' || role === 'warehouse_manager') {
             return NextResponse.redirect(new URL('/admin/dashboard', request.url));
         }
-        if (profile?.kyc_status === 'verified') {
+        if (kycStatus === 'verified') {
             return NextResponse.redirect(new URL('/client/dashboard', request.url));
         }
         return NextResponse.redirect(new URL('/pending', request.url));
