@@ -35,8 +35,11 @@ export default function CatalogClient({ products }: { products: Product[] }) {
     // Form state
     const [source, setSource] = useState<string>("warehouse");
     const [serviceType, setServiceType] = useState<string>("pickup");
-    const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
-    const [quantity, setQuantity] = useState<number>(0);
+    
+    // Split quantities
+    const [jbQty, setJbQty] = useState<number>(0);
+    const [sbQty, setSbQty] = useState<number>(0);
+    
     const [poNumber, setPoNumber] = useState("");
     const [poFile, setPoFile] = useState<File | null>(null);
     const [supplierName, setSupplierName] = useState("");
@@ -44,7 +47,8 @@ export default function CatalogClient({ products }: { products: Product[] }) {
     
     // Split delivery (now available for BOTH pickup and deliver)
     const [wantsSplit, setWantsSplit] = useState(false);
-    const [deliverNowQty, setDeliverNowQty] = useState<number>(0);
+    const [deliverNowJB, setDeliverNowJB] = useState<number>(0);
+    const [deliverNowSB, setDeliverNowSB] = useState<number>(0);
     
     // Driver (if pickup)
     const [driverName, setDriverName] = useState("");
@@ -53,6 +57,10 @@ export default function CatalogClient({ products }: { products: Product[] }) {
     
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isSavingDraft, setIsSavingDraft] = useState(false);
+
+    // Identify products
+    const jbProduct = products.find(p => p.bag_type === "JB");
+    const sbProduct = products.find(p => p.bag_type === "SB");
 
     // Fetch client name on mount
     useEffect(() => {
@@ -68,12 +76,17 @@ export default function CatalogClient({ products }: { products: Product[] }) {
     }, []);
 
     // Price logic based on source
-    const productPrice = selectedProduct 
-        ? (source === "port" ? (selectedProduct.price_port || 0) : (selectedProduct.price_warehouse || 0))
-        : 0;
+    const getPrice = (product: Product | undefined) => {
+        if (!product) return 0;
+        return source === "port" ? (product.price_port || 0) : (product.price_warehouse || 0);
+    };
 
-    const totalIndividualBags = quantity;
-    const subtotal = quantity * productPrice;
+    const jbPrice = getPrice(jbProduct);
+    const sbPrice = getPrice(sbProduct);
+
+    const totalIndividualBags = jbQty + sbQty;
+    const subtotal = (jbQty * jbPrice) + (sbQty * sbPrice);
+    const totalDeliverNow = deliverNowJB + deliverNowSB;
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files.length > 0) {
@@ -82,13 +95,14 @@ export default function CatalogClient({ products }: { products: Product[] }) {
     };
 
     const resetForm = () => {
-        setQuantity(0);
-        setSelectedProduct(null);
+        setJbQty(0);
+        setSbQty(0);
         setPoNumber("");
         setPoFile(null);
         setSupplierName("");
         setWantsSplit(false);
-        setDeliverNowQty(0);
+        setDeliverNowJB(0);
+        setDeliverNowSB(0);
         setDriverName("");
         setPlateNumber("");
         setPickupDate("");
@@ -99,11 +113,18 @@ export default function CatalogClient({ products }: { products: Product[] }) {
 
     const buildOrderData = async (poImageUrl: string) => {
         const items = [];
-        if (quantity > 0 && selectedProduct) {
+        if (jbQty > 0 && jbProduct) {
             items.push({ 
-                product_id: selectedProduct.id, 
-                bag_type: selectedProduct.bag_type, 
-                requested_qty: quantity 
+                product_id: jbProduct.id, 
+                bag_type: "JB", 
+                requested_qty: jbQty 
+            });
+        }
+        if (sbQty > 0 && sbProduct) {
+            items.push({ 
+                product_id: sbProduct.id, 
+                bag_type: "SB", 
+                requested_qty: sbQty 
             });
         }
 
@@ -126,18 +147,18 @@ export default function CatalogClient({ products }: { products: Product[] }) {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         
-        if (quantity <= 0) {
-            toast.error("Please specify a valid quantity.");
+        if (totalIndividualBags <= 0) {
+            toast.error("Please specify at least one valid quantity.");
             return;
         }
 
         if (wantsSplit) {
-            if (deliverNowQty <= 0) {
+            if (totalDeliverNow <= 0) {
                 toast.error("Please specify a quantity to deliver now.");
                 return;
             }
-            if (deliverNowQty > quantity) {
-                toast.error("Deliver now quantity cannot exceed total ordered quantity.");
+            if (deliverNowJB > jbQty || deliverNowSB > sbQty) {
+                toast.error("Deliver now quantity cannot exceed total ordered quantity for each bag type.");
                 return;
             }
         }
@@ -184,8 +205,10 @@ export default function CatalogClient({ products }: { products: Product[] }) {
 
             const splitDetails = wantsSplit ? {
                 wantsSplit: true,
-                deliverNowQty: deliverNowQty,
-                splitNote: `Client requested ${deliverNowQty} bags now. Service: ${serviceType}.`
+                deliverNowQty: totalDeliverNow,
+                deliverNowJB,
+                deliverNowSB,
+                splitNote: `Client requested ${totalDeliverNow} total bags now (${deliverNowJB} JB, ${deliverNowSB} SB). Service: ${serviceType}.`
             } : undefined;
 
             await submitOrder(orderData, splitDetails);
@@ -205,7 +228,7 @@ export default function CatalogClient({ products }: { products: Product[] }) {
     };
 
     const handleSaveDraft = async () => {
-        if (quantity <= 0) {
+        if (totalIndividualBags <= 0) {
             toast.error("Please specify a quantity to save a draft.");
             return;
         }
@@ -227,11 +250,18 @@ export default function CatalogClient({ products }: { products: Product[] }) {
             }
 
             const items = [];
-            if (quantity > 0 && selectedProduct) {
+            if (jbQty > 0 && jbProduct) {
                 items.push({ 
-                    product_id: selectedProduct.id, 
-                    bag_type: selectedProduct.bag_type, 
-                    requested_qty: quantity 
+                    product_id: jbProduct.id, 
+                    bag_type: "JB", 
+                    requested_qty: jbQty 
+                });
+            }
+            if (sbQty > 0 && sbProduct) {
+                items.push({ 
+                    product_id: sbProduct.id, 
+                    bag_type: "SB", 
+                    requested_qty: sbQty 
                 });
             }
 
@@ -250,7 +280,9 @@ export default function CatalogClient({ products }: { products: Product[] }) {
                 preferred_pickup_date: serviceType === "pickup" ? pickupDate : undefined,
             }, wantsSplit ? { 
                 wantsSplit: true, 
-                deliverNowQty: deliverNowQty
+                deliverNowQty: totalDeliverNow,
+                deliverNowJB,
+                deliverNowSB
             } : undefined);
 
             toast.success("Order saved as draft. You can find it in the catalog later.");
@@ -288,8 +320,6 @@ export default function CatalogClient({ products }: { products: Product[] }) {
                         onClick={async () => { 
                             const nextPo = await generateNextPoNumber();
                             setPoNumber(nextPo);
-                            // Default to first product if none selected
-                            if (!selectedProduct && products.length > 0) setSelectedProduct(products[0]);
                             setIsOrderOpen(true); 
                         }} 
                         className="bg-primary hover:bg-primary/90" 
@@ -362,7 +392,13 @@ export default function CatalogClient({ products }: { products: Product[] }) {
                                 onClick={async () => {
                                     const nextPo = await generateNextPoNumber();
                                     setPoNumber(nextPo);
-                                    setSelectedProduct(product);
+                                    if (product.bag_type === "JB") {
+                                        setJbQty(25); // Default to 1 JB
+                                        setSbQty(0);
+                                    } else {
+                                        setSbQty(50); // Default to 1 SB
+                                        setJbQty(0);
+                                    }
                                     setIsOrderOpen(true);
                                 }}
                             >
@@ -378,9 +414,9 @@ export default function CatalogClient({ products }: { products: Product[] }) {
                 <Dialog open={isOrderOpen} onOpenChange={setIsOrderOpen}>
                     <DialogContent className="max-w-[100vw] w-[100vw] h-[100dvh] !rounded-none border-0 p-4 sm:p-6 sm:max-w-4xl sm:w-full sm:h-auto sm:max-h-[90vh] sm:!rounded-xl overflow-y-auto sm:border">
                         <DialogHeader>
-                            <DialogTitle>New Order Placement - {selectedProduct?.name}</DialogTitle>
+                            <DialogTitle>New Order Placement</DialogTitle>
                             <DialogDescription>
-                                {selectedProduct?.bag_type === "JB" ? "Jumbo Bag configuration (25 bags per JB)." : "Sling Bag configuration (50 bags per SB)."}
+                                Specify the quantities for Jumbo Bags (JB) and Sling Bags (SB).
                             </DialogDescription>
                         </DialogHeader>
 
@@ -412,28 +448,58 @@ export default function CatalogClient({ products }: { products: Product[] }) {
                             {/* Quantities */}
                             <div className="p-4 bg-muted/30 border border-border rounded-lg space-y-4">
                                 <h4 className="text-sm font-bold text-foreground uppercase tracking-tight">Quantity Selection</h4>
-                                <div className="space-y-4">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                                    {/* JB Quantity */}
                                     <div className="space-y-2">
-                                        <Label className="text-xs font-semibold uppercase text-muted-foreground">Quantity (Individual Bags) <span className="text-red-500">*</span></Label>
-                                        <Input 
-                                            type="number" 
-                                            min="1" 
-                                            value={quantity || ""} 
-                                            placeholder="Enter total individual bags" 
-                                            onFocus={(e) => e.target.select()} 
-                                            onChange={(e) => setQuantity(parseInt(e.target.value) || 0)} 
-                                            className="bg-background text-lg font-bold h-12" 
-                                            required
-                                        />
-                                        {selectedProduct && (
-                                            <p className="text-[10px] text-muted-foreground font-medium">
-                                                {selectedProduct.bag_type === "JB" 
-                                                    ? `≈ ${(quantity / 25).toFixed(2)} Jumbo Bags` 
-                                                    : `≈ ${(quantity / 50).toFixed(2)} Sling Bags`}
-                                            </p>
-                                        )}
+                                        <Label className="text-xs font-semibold uppercase text-muted-foreground flex justify-between">
+                                            <span>Jumbo Bag (JB)</span>
+                                            <span className="text-primary">₱{jbPrice.toLocaleString()}/indiv. bag</span>
+                                        </Label>
+                                        <div className="flex gap-2">
+                                            <Input 
+                                                type="number" 
+                                                min="0" 
+                                                step="25"
+                                                value={jbQty || ""} 
+                                                placeholder="0" 
+                                                onFocus={(e) => e.target.select()} 
+                                                onChange={(e) => setJbQty(parseInt(e.target.value) || 0)} 
+                                                className="bg-background text-lg font-bold h-12" 
+                                            />
+                                            <div className="flex flex-col justify-center text-[10px] text-muted-foreground font-medium min-w-[60px]">
+                                                <span>{(jbQty / 25).toFixed(1)} JB</span>
+                                                <span>indiv. bags</span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* SB Quantity */}
+                                    <div className="space-y-2">
+                                        <Label className="text-xs font-semibold uppercase text-muted-foreground flex justify-between">
+                                            <span>Sling Bag (SB)</span>
+                                            <span className="text-primary">₱{sbPrice.toLocaleString()}/indiv. bag</span>
+                                        </Label>
+                                        <div className="flex gap-2">
+                                            <Input 
+                                                type="number" 
+                                                min="0" 
+                                                step="50"
+                                                value={sbQty || ""} 
+                                                placeholder="0" 
+                                                onFocus={(e) => e.target.select()} 
+                                                onChange={(e) => setSbQty(parseInt(e.target.value) || 0)} 
+                                                className="bg-background text-lg font-bold h-12" 
+                                            />
+                                            <div className="flex flex-col justify-center text-[10px] text-muted-foreground font-medium min-w-[60px]">
+                                                <span>{(sbQty / 50).toFixed(1)} SB</span>
+                                                <span>indiv. bags</span>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
+                                <p className="text-[10px] text-muted-foreground text-center italic">
+                                    * JB contains 25 bags, SB contains 50 bags. Please input multiples for full bags.
+                                </p>
                             </div>
 
                             {/* Order Details */}
@@ -509,29 +575,41 @@ export default function CatalogClient({ products }: { products: Product[] }) {
                                 </div>
                                 {wantsSplit && (
                                     <div className="pt-3 space-y-4 border-t border-blue-500/20">
-                                        <div className="space-y-2">
-                                            <Label className="text-xs text-blue-600 font-bold uppercase">Bags to Deliver Now <span className="text-red-500">*</span></Label>
-                                            <Input 
-                                                type="number" 
-                                                min="1" 
-                                                max={quantity} 
-                                                value={deliverNowQty || ""} 
-                                                placeholder="0"
-                                                onChange={(e) => setDeliverNowQty(parseInt(e.target.value) || 0)} 
-                                                className="bg-background border-blue-500/20 focus-visible:ring-blue-500 h-10 font-semibold"
-                                                required
-                                            />
-                                            <p className="text-[10px] text-blue-500/70 font-medium">Max available: {quantity} bags</p>
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                            <div className="space-y-2">
+                                                <Label className="text-xs text-blue-600 font-bold uppercase">JB to Deliver Now</Label>
+                                                <Input 
+                                                    type="number" 
+                                                    min="0" 
+                                                    max={jbQty} 
+                                                    value={deliverNowJB || ""} 
+                                                    placeholder="0"
+                                                    onChange={(e) => setDeliverNowJB(parseInt(e.target.value) || 0)} 
+                                                    className="bg-background border-blue-500/20 focus-visible:ring-blue-500 h-10 font-semibold"
+                                                />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label className="text-xs text-blue-600 font-bold uppercase">SB to Deliver Now</Label>
+                                                <Input 
+                                                    type="number" 
+                                                    min="0" 
+                                                    max={sbQty} 
+                                                    value={deliverNowSB || ""} 
+                                                    placeholder="0"
+                                                    onChange={(e) => setDeliverNowSB(parseInt(e.target.value) || 0)} 
+                                                    className="bg-background border-blue-500/20 focus-visible:ring-blue-500 h-10 font-semibold"
+                                                />
+                                            </div>
                                         </div>
 
                                         <div className="p-2 bg-blue-500/10 rounded border border-blue-500/20">
                                             <p className="text-[11px] text-blue-600 font-bold flex justify-between">
                                                 <span>Delivering Now:</span>
-                                                <span>{deliverNowQty.toLocaleString()} individual bags</span>
+                                                <span>{totalDeliverNow.toLocaleString()} total bags</span>
                                             </p>
                                             <p className="text-[11px] text-blue-400 font-medium flex justify-between mt-0.5">
                                                 <span>Remaining Balance:</span>
-                                                <span>{(quantity - deliverNowQty).toLocaleString()} bags</span>
+                                                <span>{(totalIndividualBags - totalDeliverNow).toLocaleString()} bags</span>
                                             </p>
                                         </div>
                                     </div>
@@ -547,9 +625,19 @@ export default function CatalogClient({ products }: { products: Product[] }) {
                                     </div>
                                     <div className="text-2xl font-bold">₱{subtotal.toLocaleString()}</div>
                                 </div>
-                                <div className="flex justify-between items-center text-xs text-blue-200">
-                                    <span>{quantity.toLocaleString()} bags × ₱{productPrice.toLocaleString()} per bag</span>
-                                    <span>₱{subtotal.toLocaleString()}</span>
+                                <div className="space-y-1">
+                                    {jbQty > 0 && (
+                                        <div className="flex justify-between items-center text-[10px] text-blue-200">
+                                            <span>JB: {jbQty.toLocaleString()} bags × ₱{jbPrice.toLocaleString()} per bag</span>
+                                            <span>₱{(jbQty * jbPrice).toLocaleString()}</span>
+                                        </div>
+                                    )}
+                                    {sbQty > 0 && (
+                                        <div className="flex justify-between items-center text-[10px] text-blue-200">
+                                            <span>SB: {sbQty.toLocaleString()} bags × ₱{sbPrice.toLocaleString()} per bag</span>
+                                            <span>₱{(sbQty * sbPrice).toLocaleString()}</span>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
 

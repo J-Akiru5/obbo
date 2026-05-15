@@ -45,8 +45,8 @@ export function DrListTab({
     const [shipmentId, setShipmentId] = useState("");
     const [clientName, setClientName] = useState("");
     const [poNumber, setPoNumber] = useState("");
-    const [quantity, setQuantity] = useState(0);
-    const [bagType, setBagType] = useState<"JB" | "SB">("JB");
+    const [jbQty, setJbQty] = useState(0);
+    const [sbQty, setSbQty] = useState(0);
     const [driver, setDriver] = useState("");
     const [plateNumber, setPlateNumber] = useState("");
     const [destination, setDestination] = useState("");
@@ -55,8 +55,7 @@ export function DrListTab({
 
     const openCreate = () => {
         setEditingDr(null);
-        setDrNumber(""); setShipmentId(""); setClientName(""); setPoNumber("");
-        setQuantity(0); setBagType("JB"); setDriver(""); setPlateNumber(""); setDestination("");
+        setJbQty(0); setSbQty(0); setDriver(""); setPlateNumber(""); setDestination("");
         setShippingFee(0); setPhotoFile(null);
         setIsDialogOpen(true);
     };
@@ -64,8 +63,8 @@ export function DrListTab({
     const openEdit = (dr: DeliveryReceipt) => {
         setEditingDr(dr);
         setDrNumber(dr.dr_number); setShipmentId(dr.shipment_id); setClientName(dr.client_name || ""); setPoNumber(dr.po_number || "");
-        setQuantity(dr.jb + dr.sb);
-        setBagType(dr.jb > 0 ? "JB" : "SB");
+        setJbQty(dr.jb || 0);
+        setSbQty(dr.sb || 0);
         setDriver(dr.driver || ""); setPlateNumber(dr.plate_number || "");
         setDestination(dr.destination || ""); setShippingFee(dr.shipping_fee || 0);
         setPhotoFile(null);
@@ -97,7 +96,7 @@ export function DrListTab({
             if (editingDr) {
                 await updateDeliveryReceipt(editingDr.id, {
                     dr_number: drNumber, shipment_id: shipmentId, client_name: clientName,
-                    po_number: poNumber, quantity, bag_type: bagType, driver, plate_number: plateNumber,
+                    po_number: poNumber, jb: jbQty, sb: sbQty, driver, plate_number: plateNumber,
                     shipping_fee: shippingFee, destination: destination || null,
                     ...(drImageUrl ? { dr_image_url: drImageUrl } : {}),
                 });
@@ -105,7 +104,7 @@ export function DrListTab({
             } else {
                 await createDeliveryReceipt({
                     dr_number: drNumber, shipment_id: shipmentId, client_name: clientName,
-                    po_number: poNumber, quantity, bag_type: bagType, driver, plate_number: plateNumber,
+                    po_number: poNumber, jb: jbQty, sb: sbQty, driver, plate_number: plateNumber,
                     shipping_fee: shippingFee,
                     ...(drImageUrl ? { dr_image_url: drImageUrl } as any : {}),
                 });
@@ -517,25 +516,26 @@ export function DrListTab({
                         </div>
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
-                                <Label>Quantity (Individual Bags)</Label>
+                                <Label>Quantity JB (Jumbo Bag)</Label>
                                 <Input 
                                     type="number" 
-                                    min="1" 
-                                    value={quantity || ""} 
-                                    placeholder="Total bags" 
-                                    onChange={e => setQuantity(parseInt(e.target.value) || 0)} 
+                                    min="0" 
+                                    value={jbQty || ""} 
+                                    placeholder="0" 
+                                    onChange={e => setJbQty(parseInt(e.target.value) || 0)} 
                                     className="font-bold"
                                 />
                             </div>
                             <div className="space-y-2">
-                                <Label>Bag Type</Label>
-                                <Select value={bagType} onValueChange={(v) => setBagType(v as any)}>
-                                    <SelectTrigger><SelectValue /></SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="JB">Jumbo Bag (JB)</SelectItem>
-                                        <SelectItem value="SB">Sling Bag (SB)</SelectItem>
-                                    </SelectContent>
-                                </Select>
+                                <Label>Quantity SB (Sling Bag)</Label>
+                                <Input 
+                                    type="number" 
+                                    min="0" 
+                                    value={sbQty || ""} 
+                                    placeholder="0" 
+                                    onChange={e => setSbQty(parseInt(e.target.value) || 0)} 
+                                    className="font-bold"
+                                />
                             </div>
                         </div>
                         <div className="grid grid-cols-2 gap-4">

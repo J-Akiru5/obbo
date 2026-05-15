@@ -25,8 +25,8 @@ export function PoListTab({ purchaseOrders, loading, onReload }: { purchaseOrder
     // Form state
     const [poNumber, setPoNumber] = useState("");
     const [clientName, setClientName] = useState("");
-    const [quantity, setQuantity] = useState(0);
-    const [bagType, setBagType] = useState<"JB" | "SB">("JB");
+    const [jbQty, setJbQty] = useState(0);
+    const [sbQty, setSbQty] = useState(0);
     const [source, setSource] = useState("warehouse");
     const [serviceType, setServiceType] = useState("pickup");
     const [checkNumber, setCheckNumber] = useState("");
@@ -36,9 +36,7 @@ export function PoListTab({ purchaseOrders, loading, onReload }: { purchaseOrder
 
      const openCreate = async () => {
         setEditingPo(null);
-        setPoNumber(""); setClientName(""); setQuantity(0); setBagType("JB");
-        setSource("warehouse"); setServiceType("pickup");
-        setCheckNumber(""); setCheckAmount(0); setCashAmount(0);
+        setJbQty(0); setSbQty(0);
         setPhotoFile(null);
         setIsDialogOpen(true);
         
@@ -51,8 +49,8 @@ export function PoListTab({ purchaseOrders, loading, onReload }: { purchaseOrder
         setEditingPo(po);
         setPoNumber(po.po_number);
         setClientName(po.client_name || "");
-        setQuantity(po.jb + po.sb);
-        setBagType(po.jb > 0 ? "JB" : "SB");
+        setJbQty(po.jb || 0);
+        setSbQty(po.sb || 0);
         setSource(po.source || "warehouse");
         setServiceType(po.service_type || "pickup");
         setCheckNumber(po.check_number || "");
@@ -86,7 +84,7 @@ export function PoListTab({ purchaseOrders, loading, onReload }: { purchaseOrder
             if (editingPo) {
                 await updatePurchaseOrder(editingPo.id, {
                     po_number: poNumber, client_name: clientName, 
-                    quantity, bag_type: bagType,
+                    jb: jbQty, sb: sbQty,
                     source, service_type: serviceType,
                     check_number: checkNumber || null,
                     check_amount: checkAmount || null,
@@ -97,7 +95,7 @@ export function PoListTab({ purchaseOrders, loading, onReload }: { purchaseOrder
             } else {
                 await createPurchaseOrder({
                     po_number: poNumber, client_name: clientName, 
-                    quantity, bag_type: bagType,
+                    jb: jbQty, sb: sbQty,
                     source, service_type: serviceType,
                     check_number: checkNumber || null,
                     check_amount: checkAmount || null,
@@ -357,25 +355,26 @@ export function PoListTab({ purchaseOrders, loading, onReload }: { purchaseOrder
                         </div>
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
-                                <Label>Quantity (Individual Bags)</Label>
+                                <Label>Quantity JB (Jumbo Bag)</Label>
                                 <Input 
                                     type="number" 
-                                    min="1" 
-                                    value={quantity || ""} 
-                                    placeholder="Total bags" 
-                                    onChange={e => setQuantity(parseInt(e.target.value) || 0)} 
+                                    min="0" 
+                                    value={jbQty || ""} 
+                                    placeholder="0" 
+                                    onChange={e => setJbQty(parseInt(e.target.value) || 0)} 
                                     className="font-bold"
                                 />
                             </div>
                             <div className="space-y-2">
-                                <Label>Bag Type</Label>
-                                <Select value={bagType} onValueChange={(v) => setBagType(v as any)}>
-                                    <SelectTrigger><SelectValue /></SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="JB">Jumbo Bag (JB)</SelectItem>
-                                        <SelectItem value="SB">Sling Bag (SB)</SelectItem>
-                                    </SelectContent>
-                                </Select>
+                                <Label>Quantity SB (Sling Bag)</Label>
+                                <Input 
+                                    type="number" 
+                                    min="0" 
+                                    value={sbQty || ""} 
+                                    placeholder="0" 
+                                    onChange={e => setSbQty(parseInt(e.target.value) || 0)} 
+                                    className="font-bold"
+                                />
                             </div>
                         </div>
 
