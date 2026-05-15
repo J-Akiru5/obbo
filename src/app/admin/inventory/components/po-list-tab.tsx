@@ -25,8 +25,8 @@ export function PoListTab({ purchaseOrders, loading, onReload }: { purchaseOrder
     // Form state
     const [poNumber, setPoNumber] = useState("");
     const [clientName, setClientName] = useState("");
-    const [jb, setJb] = useState(0);
-    const [sb, setSb] = useState(0);
+    const [quantity, setQuantity] = useState(0);
+    const [bagType, setBagType] = useState<"JB" | "SB">("JB");
     const [source, setSource] = useState("warehouse");
     const [serviceType, setServiceType] = useState("pickup");
     const [checkNumber, setCheckNumber] = useState("");
@@ -36,7 +36,7 @@ export function PoListTab({ purchaseOrders, loading, onReload }: { purchaseOrder
 
      const openCreate = async () => {
         setEditingPo(null);
-        setPoNumber(""); setClientName(""); setJb(0); setSb(0);
+        setPoNumber(""); setClientName(""); setQuantity(0); setBagType("JB");
         setSource("warehouse"); setServiceType("pickup");
         setCheckNumber(""); setCheckAmount(0); setCashAmount(0);
         setPhotoFile(null);
@@ -51,8 +51,8 @@ export function PoListTab({ purchaseOrders, loading, onReload }: { purchaseOrder
         setEditingPo(po);
         setPoNumber(po.po_number);
         setClientName(po.client_name || "");
-        setJb(po.jb);
-        setSb(po.sb);
+        setQuantity(po.jb + po.sb);
+        setBagType(po.jb > 0 ? "JB" : "SB");
         setSource(po.source || "warehouse");
         setServiceType(po.service_type || "pickup");
         setCheckNumber(po.check_number || "");
@@ -85,7 +85,8 @@ export function PoListTab({ purchaseOrders, loading, onReload }: { purchaseOrder
 
             if (editingPo) {
                 await updatePurchaseOrder(editingPo.id, {
-                    po_number: poNumber, client_name: clientName, jb, sb,
+                    po_number: poNumber, client_name: clientName, 
+                    quantity, bag_type: bagType,
                     source, service_type: serviceType,
                     check_number: checkNumber || null,
                     check_amount: checkAmount || null,
@@ -95,7 +96,8 @@ export function PoListTab({ purchaseOrders, loading, onReload }: { purchaseOrder
                 toast.success("PO updated");
             } else {
                 await createPurchaseOrder({
-                    po_number: poNumber, client_name: clientName, jb, sb,
+                    po_number: poNumber, client_name: clientName, 
+                    quantity, bag_type: bagType,
                     source, service_type: serviceType,
                     check_number: checkNumber || null,
                     check_amount: checkAmount || null,
@@ -163,8 +165,8 @@ export function PoListTab({ purchaseOrders, loading, onReload }: { purchaseOrder
                                     <TableHead>PO #</TableHead>
                                     <TableHead>Client Name</TableHead>
                                     <TableHead>Service</TableHead>
-                                    <TableHead className="text-right">JB Qty</TableHead>
-                                    <TableHead className="text-right">SB Qty</TableHead>
+                                    <TableHead className="text-right">Quantity</TableHead>
+                                    <TableHead>Type</TableHead>
                                     <TableHead>Check No.</TableHead>
                                     <TableHead>Cash</TableHead>
                                     <TableHead>Image</TableHead>
@@ -190,8 +192,10 @@ export function PoListTab({ purchaseOrders, loading, onReload }: { purchaseOrder
                                                 {po.service_type === 'deliver' ? 'Delivery' : 'Pick-up'}
                                             </div>
                                         </TableCell>
-                                        <TableCell className="text-right font-medium text-sm">{po.jb}</TableCell>
-                                        <TableCell className="text-right font-medium text-sm">{po.sb}</TableCell>
+                                        <TableCell className="text-right font-bold text-sm">{po.jb + po.sb}</TableCell>
+                                        <TableCell className="text-sm">
+                                            <Badge variant="outline" className="font-mono text-[10px]">{po.jb > 0 ? "JB" : "SB"}</Badge>
+                                        </TableCell>
                                         <TableCell className="text-sm">
                                             {po.check_number ? (
                                                 <div>
@@ -274,13 +278,13 @@ export function PoListTab({ purchaseOrders, loading, onReload }: { purchaseOrder
                                     
                                     <div className="flex items-center gap-3 py-2 border-y border-muted/50">
                                         <div className="flex-1">
-                                            <p className="text-[9px] text-muted-foreground font-bold uppercase">JB</p>
-                                            <p className="text-sm font-bold">{po.jb}</p>
+                                            <p className="text-[9px] text-muted-foreground font-bold uppercase">Quantity</p>
+                                            <p className="text-sm font-bold">{po.jb + po.sb}</p>
                                         </div>
                                         <div className="w-px h-6 bg-muted"></div>
                                         <div className="flex-1">
-                                            <p className="text-[9px] text-muted-foreground font-bold uppercase">SB</p>
-                                            <p className="text-sm font-bold">{po.sb}</p>
+                                            <p className="text-[9px] text-muted-foreground font-bold uppercase">Type</p>
+                                            <Badge variant="outline" className="text-[9px] font-mono h-4 px-1">{po.jb > 0 ? "JB" : "SB"}</Badge>
                                         </div>
                                         <div className="w-px h-6 bg-muted"></div>
                                         <div className="flex-1 text-right">
@@ -353,12 +357,25 @@ export function PoListTab({ purchaseOrders, loading, onReload }: { purchaseOrder
                         </div>
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
-                                <Label>JB Qty</Label>
-                                <Input type="number" min="0" value={jb || ""} placeholder="0" onChange={e => setJb(parseInt(e.target.value) || 0)} />
+                                <Label>Quantity (Individual Bags)</Label>
+                                <Input 
+                                    type="number" 
+                                    min="1" 
+                                    value={quantity || ""} 
+                                    placeholder="Total bags" 
+                                    onChange={e => setQuantity(parseInt(e.target.value) || 0)} 
+                                    className="font-bold"
+                                />
                             </div>
                             <div className="space-y-2">
-                                <Label>SB Qty</Label>
-                                <Input type="number" min="0" value={sb || ""} placeholder="0" onChange={e => setSb(parseInt(e.target.value) || 0)} />
+                                <Label>Bag Type</Label>
+                                <Select value={bagType} onValueChange={(v) => setBagType(v as any)}>
+                                    <SelectTrigger><SelectValue /></SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="JB">Jumbo Bag (JB)</SelectItem>
+                                        <SelectItem value="SB">Sling Bag (SB)</SelectItem>
+                                    </SelectContent>
+                                </Select>
                             </div>
                         </div>
 
@@ -460,12 +477,12 @@ export function PoListTab({ purchaseOrders, loading, onReload }: { purchaseOrder
 
                             <div className="grid grid-cols-2 gap-4 border-t pt-4">
                                 <div className="space-y-1">
-                                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold">JB Quantity</p>
-                                    <p className="text-sm font-bold">{viewingPo.jb} bags</p>
+                                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold">Quantity</p>
+                                    <p className="text-sm font-bold">{viewingPo.jb + viewingPo.sb} individual bags</p>
                                 </div>
                                 <div className="space-y-1">
-                                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold">SB Quantity</p>
-                                    <p className="text-sm font-bold">{viewingPo.sb} bags</p>
+                                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold">Bag Type</p>
+                                    <p className="text-sm font-bold">{viewingPo.jb > 0 ? "Jumbo Bag (JB)" : "Sling Bag (SB)"}</p>
                                 </div>
                                 <div className="space-y-1">
                                     <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold">Service Type</p>

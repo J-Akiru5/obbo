@@ -214,25 +214,37 @@ export function NewRequestsTab({ orders, onApprove, onReject, onConfirmCheck, lo
                                                     </Badge>
                                                 </div>
                                             </div>
-                                            <div>
-                                                <p className="text-xs text-muted-foreground mb-1">Requested JB</p>
-                                                <p className="text-lg font-bold text-foreground">
-                                                    {order.is_split_delivery && jbItem ? (
-                                                        <span>{order.deliver_now_jb} <span className="text-xs text-muted-foreground font-normal">/ {jbItem.requested_qty}</span></span>
-                                                    ) : (
-                                                        jbItem?.requested_qty || 0
+                                            <div className="col-span-2">
+                                                <p className="text-xs text-muted-foreground mb-1">Ordered Quantity</p>
+                                                <div className="flex flex-wrap gap-3">
+                                                    {jbItem && (jbItem.requested_qty > 0 || order.deliver_now_jb > 0) && (
+                                                        <div className="bg-primary/5 border border-primary/10 rounded px-2 py-1">
+                                                            <p className="text-lg font-bold text-foreground leading-none">
+                                                                {order.is_split_delivery ? (
+                                                                    <span>{order.deliver_now_jb} <span className="text-[10px] text-muted-foreground font-normal">/ {jbItem.requested_qty}</span></span>
+                                                                ) : (
+                                                                    jbItem.requested_qty
+                                                                )}
+                                                                <span className="ml-1 text-xs font-medium text-muted-foreground uppercase">JB</span>
+                                                            </p>
+                                                        </div>
                                                     )}
-                                                </p>
-                                            </div>
-                                            <div>
-                                                <p className="text-xs text-muted-foreground mb-1">Requested SB</p>
-                                                <p className="text-lg font-bold text-foreground">
-                                                    {order.is_split_delivery && sbItem ? (
-                                                        <span>{order.deliver_now_sb} <span className="text-xs text-muted-foreground font-normal">/ {sbItem.requested_qty}</span></span>
-                                                    ) : (
-                                                        sbItem?.requested_qty || 0
+                                                    {sbItem && (sbItem.requested_qty > 0 || order.deliver_now_sb > 0) && (
+                                                        <div className="bg-primary/5 border border-primary/10 rounded px-2 py-1">
+                                                            <p className="text-lg font-bold text-foreground leading-none">
+                                                                {order.is_split_delivery ? (
+                                                                    <span>{order.deliver_now_sb} <span className="text-[10px] text-muted-foreground font-normal">/ {sbItem.requested_qty}</span></span>
+                                                                ) : (
+                                                                    sbItem.requested_qty
+                                                                )}
+                                                                <span className="ml-1 text-xs font-medium text-muted-foreground uppercase">SB</span>
+                                                            </p>
+                                                        </div>
                                                     )}
-                                                </p>
+                                                    {totalBags > 0 && !jbItem && !sbItem && (
+                                                        <p className="text-lg font-bold text-foreground">{totalBags} bags</p>
+                                                    )}
+                                                </div>
                                             </div>
                                         </div>
                                         

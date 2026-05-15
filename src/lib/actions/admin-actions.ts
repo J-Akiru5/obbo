@@ -567,6 +567,7 @@ export async function generateAdminPoNumber() {
 
 export async function createPurchaseOrder(po: {
     po_number?: string; client_name?: string; jb?: number; sb?: number;
+    quantity?: number; bag_type?: string;
     status?: string; source?: string; service_type?: string; shipment_id?: string;
     check_number?: string | null; check_amount?: number | null; cash_amount?: number | null;
     photo_url?: string;
@@ -579,8 +580,14 @@ export async function createPurchaseOrder(po: {
         finalPoNumber = await generateGlobalNextPoNumber();
     }
 
+    // Map quantity and bag_type to legacy jb/sb columns
+    const jb = po.jb ?? (po.bag_type === "JB" ? po.quantity : 0);
+    const sb = po.sb ?? (po.bag_type === "SB" ? po.quantity : 0);
+
     const { data, error } = await supabase.from("purchase_orders").insert({
         ...po,
+        jb,
+        sb,
         po_number: finalPoNumber
     }).select().single();
     if (error) throw new Error(error.message);
@@ -588,8 +595,16 @@ export async function createPurchaseOrder(po: {
     return data;
 }
 
-export async function updatePurchaseOrder(id: string, updates: Record<string, unknown>) {
+export async function updatePurchaseOrder(id: string, updates: any) {
     const { supabase, userId } = await requireAdmin();
+    
+    // Handle unified quantity mapping if provided
+    if (updates.quantity !== undefined && updates.bag_type !== undefined) {
+        updates.jb = updates.bag_type === "JB" ? updates.quantity : 0;
+        updates.sb = updates.bag_type === "SB" ? updates.quantity : 0;
+        // Don't delete them if they exist in DB, but usually they don't for PO
+    }
+
     const { error } = await supabase.from("purchase_orders").update({ ...updates, updated_at: new Date().toISOString() }).eq("id", id);
     if (error) throw new Error(error.message);
     await logActivity(supabase, userId, "po_updated", "purchase_order", id, updates);
@@ -607,7 +622,7 @@ export async function fetchDeliveryReceipts() {
 }
 
 export async function createDeliveryReceipt(dr: {
-    shipment_id: string; dr_number: string; quantity?: number; bag_type?: string;
+    shipment_id: string; dr_number: string; quantity: number; bag_type: string;
     received_date?: string; po_number?: string; client_name?: string; jb?: number;
     sb?: number; driver?: string; plate_number?: string; shipping_fee?: number;
     destination?: string;
@@ -623,12 +638,18 @@ export async function createDeliveryReceipt(dr: {
 
     const clientName = dr.client_name || poData?.client_name || "Unknown";
 
+    // Map quantity and bag_type to legacy jb/sb columns
+    const jb = dr.jb ?? (dr.bag_type === "JB" ? dr.quantity : 0);
+    const sb = dr.sb ?? (dr.bag_type === "SB" ? dr.quantity : 0);
+
     // 2. Create the DR record
     const { data, error } = await supabase.from("delivery_receipts").insert({
         ...dr,
         client_name: clientName,
-        quantity: (dr.jb ?? 0) + (dr.sb ?? 0),
-        bag_type: dr.bag_type ?? ((dr.jb ?? 0) > 0 ? "JB" : "SB"),
+        jb,
+        sb,
+        quantity: dr.quantity,
+        bag_type: dr.bag_type,
         received_date: dr.received_date ?? new Date().toISOString().split("T")[0],
     }).select().single();
     if (error) throw new Error(error.message);
@@ -641,8 +662,8 @@ export async function createDeliveryReceipt(dr: {
         client_name: clientName,
         destination: dr.destination, // DR destination
         service_type: poData?.service_type || "pickup",
-        jb: dr.jb ?? 0,
-        sb: dr.sb ?? 0,
+        jb,
+        sb,
         driver_name: dr.driver,
         plate_number: dr.plate_number,
         payment_method: poData?.check_number ? "check" : (poData?.cash_amount ? "cash" : undefined),
@@ -654,8 +675,15 @@ export async function createDeliveryReceipt(dr: {
     return data;
 }
 
-export async function updateDeliveryReceipt(id: string, updates: Record<string, unknown>) {
+export async function updateDeliveryReceipt(id: string, updates: any) {
     const { supabase, userId } = await requireAdmin();
+
+    // Handle unified quantity mapping if provided
+    if (updates.quantity !== undefined && updates.bag_type !== undefined) {
+        updates.jb = updates.bag_type === "JB" ? updates.quantity : 0;
+        updates.sb = updates.bag_type === "SB" ? updates.quantity : 0;
+    }
+
     const { error } = await supabase.from("delivery_receipts").update(updates).eq("id", id);
     if (error) throw new Error(error.message);
     await logActivity(supabase, userId, "dr_updated", "delivery_receipt", id, updates);

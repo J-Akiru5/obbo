@@ -146,6 +146,11 @@ export async function submitOrder(
         notes += `\n[SPLIT DELIVERY REQUESTED]: Client requested ${splitDetails.deliverNowQty} total bags now (${splitDetails.deliverNowJB || 0} JB, ${splitDetails.deliverNowSB || 0} SB), and the rest to be saved to balances.\n${splitDetails.splitNote}`;
     }
 
+    // Ensure deliver_now_jb/sb are correctly set if only deliverNowQty is provided
+    const mainBagType = orderData.items[0]?.bag_type || "SB";
+    const deliverNowJB = splitDetails?.deliverNowJB ?? (mainBagType === "JB" ? splitDetails?.deliverNowQty : 0);
+    const deliverNowSB = splitDetails?.deliverNowSB ?? (mainBagType === "SB" ? splitDetails?.deliverNowQty : 0);
+
     const { data: order, error } = await supabase.from("orders").insert({
         client_id: user.id,
         status: "pending",
@@ -161,8 +166,8 @@ export async function submitOrder(
         preferred_pickup_date: orderData.preferred_pickup_date || null,
         is_split_delivery: splitDetails?.wantsSplit ?? false,
         deliver_now_qty: splitDetails?.deliverNowQty ?? 0,
-        deliver_now_jb: splitDetails?.deliverNowJB ?? 0,
-        deliver_now_sb: splitDetails?.deliverNowSB ?? 0,
+        deliver_now_jb: deliverNowJB ?? 0,
+        deliver_now_sb: deliverNowSB ?? 0,
         order_type: "new",
         notes: notes.trim()
     }).select().single();
@@ -218,6 +223,11 @@ export async function saveOrderDraft(
     // Auto-generate PO number for draft if blank
     const finalPoNumber = orderData.po_number?.trim() || await generateNextPoNumber();
 
+    // Ensure deliver_now_jb/sb are correctly set if only deliverNowQty is provided
+    const mainBagType = orderData.items[0]?.bag_type || "SB";
+    const deliverNowJB = splitDetails?.deliverNowJB ?? (mainBagType === "JB" ? splitDetails?.deliverNowQty : 0);
+    const deliverNowSB = splitDetails?.deliverNowSB ?? (mainBagType === "SB" ? splitDetails?.deliverNowQty : 0);
+
     const { data: order, error } = await supabase.from("orders").insert({
         client_id: user.id,
         status: "pending",
@@ -233,8 +243,8 @@ export async function saveOrderDraft(
         preferred_pickup_date: orderData.preferred_pickup_date || null,
         is_split_delivery: splitDetails?.wantsSplit ?? false,
         deliver_now_qty: splitDetails?.deliverNowQty ?? 0,
-        deliver_now_jb: splitDetails?.deliverNowJB ?? 0,
-        deliver_now_sb: splitDetails?.deliverNowSB ?? 0,
+        deliver_now_jb: deliverNowJB ?? 0,
+        deliver_now_sb: deliverNowSB ?? 0,
         order_type: "draft",
         notes: orderData.notes || ""
     }).select().single();

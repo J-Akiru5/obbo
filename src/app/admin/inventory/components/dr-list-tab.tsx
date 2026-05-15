@@ -45,8 +45,8 @@ export function DrListTab({
     const [shipmentId, setShipmentId] = useState("");
     const [clientName, setClientName] = useState("");
     const [poNumber, setPoNumber] = useState("");
-    const [jb, setJb] = useState(0);
-    const [sb, setSb] = useState(0);
+    const [quantity, setQuantity] = useState(0);
+    const [bagType, setBagType] = useState<"JB" | "SB">("JB");
     const [driver, setDriver] = useState("");
     const [plateNumber, setPlateNumber] = useState("");
     const [destination, setDestination] = useState("");
@@ -56,7 +56,7 @@ export function DrListTab({
     const openCreate = () => {
         setEditingDr(null);
         setDrNumber(""); setShipmentId(""); setClientName(""); setPoNumber("");
-        setJb(0); setSb(0); setDriver(""); setPlateNumber(""); setDestination("");
+        setQuantity(0); setBagType("JB"); setDriver(""); setPlateNumber(""); setDestination("");
         setShippingFee(0); setPhotoFile(null);
         setIsDialogOpen(true);
     };
@@ -64,7 +64,9 @@ export function DrListTab({
     const openEdit = (dr: DeliveryReceipt) => {
         setEditingDr(dr);
         setDrNumber(dr.dr_number); setShipmentId(dr.shipment_id); setClientName(dr.client_name || ""); setPoNumber(dr.po_number || "");
-        setJb(dr.jb); setSb(dr.sb); setDriver(dr.driver || ""); setPlateNumber(dr.plate_number || "");
+        setQuantity(dr.jb + dr.sb);
+        setBagType(dr.jb > 0 ? "JB" : "SB");
+        setDriver(dr.driver || ""); setPlateNumber(dr.plate_number || "");
         setDestination(dr.destination || ""); setShippingFee(dr.shipping_fee || 0);
         setPhotoFile(null);
         setIsDialogOpen(true);
@@ -95,7 +97,7 @@ export function DrListTab({
             if (editingDr) {
                 await updateDeliveryReceipt(editingDr.id, {
                     dr_number: drNumber, shipment_id: shipmentId, client_name: clientName,
-                    po_number: poNumber, jb, sb, driver, plate_number: plateNumber,
+                    po_number: poNumber, quantity, bag_type: bagType, driver, plate_number: plateNumber,
                     shipping_fee: shippingFee, destination: destination || null,
                     ...(drImageUrl ? { dr_image_url: drImageUrl } : {}),
                 });
@@ -103,7 +105,7 @@ export function DrListTab({
             } else {
                 await createDeliveryReceipt({
                     dr_number: drNumber, shipment_id: shipmentId, client_name: clientName,
-                    po_number: poNumber, jb, sb, driver, plate_number: plateNumber,
+                    po_number: poNumber, quantity, bag_type: bagType, driver, plate_number: plateNumber,
                     shipping_fee: shippingFee,
                     ...(drImageUrl ? { dr_image_url: drImageUrl } as any : {}),
                 });
@@ -218,9 +220,8 @@ export function DrListTab({
                                         <TableCell className="text-sm">{dr.plate_number || "—"}</TableCell>
                                         <TableCell className="text-right">
                                             <div className="flex items-center justify-end gap-1.5">
-                                                <Badge variant="outline" className="text-xs">{dr.jb} JB</Badge>
-                                                <Badge variant="outline" className="text-xs">{dr.sb} SB</Badge>
-                                                <span className="text-xs font-bold text-foreground ml-1">= {dr.jb + dr.sb}</span>
+                                                <span className="text-xs font-bold text-foreground">{dr.jb + dr.sb}</span>
+                                                <Badge variant="outline" className="text-[10px] font-mono">{dr.jb > 0 ? "JB" : "SB"}</Badge>
                                             </div>
                                         </TableCell>
                                         <TableCell className="text-right whitespace-nowrap">
@@ -287,8 +288,8 @@ export function DrListTab({
                                                 <p className="text-[11px] font-medium truncate">{dr.driver || "—"} • {dr.plate_number || "—"}</p>
                                             </div>
                                             <div className="text-right">
-                                                <div className="text-[9px] uppercase font-bold text-muted-foreground mb-1">Total Quantity</div>
-                                                <p className="text-[11px] font-bold text-foreground">{dr.jb} JB + {dr.sb} SB</p>
+                                                <div className="text-[9px] uppercase font-bold text-muted-foreground mb-1">Quantity</div>
+                                                <p className="text-[11px] font-bold text-foreground">{dr.jb + dr.sb} {dr.jb > 0 ? "JB" : "SB"}</p>
                                             </div>
                                         </div>
 
@@ -346,18 +347,14 @@ export function DrListTab({
                             </div>
 
                             <div className="p-4 bg-muted/30 rounded-lg border border-border/50 space-y-3">
-                                <p className="text-[10px] uppercase font-black text-muted-foreground/60 tracking-wider">Shipment Composition</p>
+                                <p className="text-[10px] uppercase font-black text-muted-foreground/60 tracking-wider">Shipment Details</p>
                                 <div className="flex items-center justify-between text-sm">
-                                    <span className="flex items-center gap-2 font-medium text-muted-foreground"><Package className="w-4 h-4" /> Jumbo Bags (JB)</span>
-                                    <span className="font-black text-foreground">{viewingDr?.jb}</span>
+                                    <span className="flex items-center gap-2 font-medium text-muted-foreground"><Package className="w-4 h-4" /> Quantity</span>
+                                    <span className="font-black text-foreground">{(viewingDr?.jb || 0) + (viewingDr?.sb || 0)}</span>
                                 </div>
                                 <div className="flex items-center justify-between text-sm">
-                                    <span className="flex items-center gap-2 font-medium text-muted-foreground"><Package className="w-4 h-4" /> Sling Bags (SB)</span>
-                                    <span className="font-black text-foreground">{viewingDr?.sb}</span>
-                                </div>
-                                <div className="pt-2 border-t flex items-center justify-between">
-                                    <span className="text-xs font-bold text-foreground">Total Bags Distributed</span>
-                                    <span className="text-lg font-black text-primary">{(viewingDr?.jb || 0) + (viewingDr?.sb || 0)}</span>
+                                    <span className="flex items-center gap-2 font-medium text-muted-foreground"><Package className="w-4 h-4" /> Bag Type</span>
+                                    <span className="font-black text-foreground">{(viewingDr?.jb ?? 0) > 0 ? "JB" : "SB"}</span>
                                 </div>
                             </div>
 
@@ -520,12 +517,25 @@ export function DrListTab({
                         </div>
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
-                                <Label>JB Bags</Label>
-                                <Input type="number" min="0" value={jb || ""} placeholder="0" onChange={e => setJb(parseInt(e.target.value) || 0)} />
+                                <Label>Quantity (Individual Bags)</Label>
+                                <Input 
+                                    type="number" 
+                                    min="1" 
+                                    value={quantity || ""} 
+                                    placeholder="Total bags" 
+                                    onChange={e => setQuantity(parseInt(e.target.value) || 0)} 
+                                    className="font-bold"
+                                />
                             </div>
                             <div className="space-y-2">
-                                <Label>SB Bags</Label>
-                                <Input type="number" min="0" value={sb || ""} placeholder="0" onChange={e => setSb(parseInt(e.target.value) || 0)} />
+                                <Label>Bag Type</Label>
+                                <Select value={bagType} onValueChange={(v) => setBagType(v as any)}>
+                                    <SelectTrigger><SelectValue /></SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="JB">Jumbo Bag (JB)</SelectItem>
+                                        <SelectItem value="SB">Sling Bag (SB)</SelectItem>
+                                    </SelectContent>
+                                </Select>
                             </div>
                         </div>
                         <div className="grid grid-cols-2 gap-4">
