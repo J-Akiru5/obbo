@@ -1,5 +1,5 @@
 import { useState } from "react";
-import Image from "next/image";
+import { OptimizedImage } from "@/components/ui/optimized-image";
 import { Product } from "@/lib/types/database";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -199,7 +199,7 @@ export function ProductCatalogTab({ products, onUpdate, onCreate, onDelete, load
                                         <TableCell>
                                             <div className="w-12 h-12 rounded-lg bg-muted flex items-center justify-center overflow-hidden border">
                                                 {p.image_url ? (
-                                                    <Image
+                                                    <OptimizedImage
                                                         src={p.image_url}
                                                         alt={p.name}
                                                         width={48}
@@ -264,7 +264,14 @@ export function ProductCatalogTab({ products, onUpdate, onCreate, onDelete, load
                                 <Card key={p.id} className="overflow-hidden group hover:shadow-md transition-shadow border-border/50">
                                     <div className="aspect-square bg-muted relative overflow-hidden border-b">
                                         {p.image_url ? (
-                                            <Image src={p.image_url} alt={p.name} fill className="object-cover group-hover:scale-105 transition-transform duration-500" unoptimized />
+                                            <OptimizedImage 
+                                                src={p.image_url} 
+                                                alt={p.name} 
+                                                fill 
+                                                className="object-cover group-hover:scale-105 transition-transform duration-500" 
+                                                unoptimized 
+                                                containerClassName="h-full w-full"
+                                            />
                                         ) : (
                                             <div className="absolute inset-0 flex flex-col items-center justify-center text-muted-foreground/30">
                                                 <Package className="w-16 h-16 mb-2" />
@@ -340,12 +347,13 @@ export function ProductCatalogTab({ products, onUpdate, onCreate, onDelete, load
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-0">
                         <div className="bg-muted flex items-center justify-center relative min-h-[300px]">
                             {viewingProduct?.image_url ? (
-                                <Image 
+                                <OptimizedImage 
                                     src={viewingProduct.image_url} 
                                     alt={viewingProduct.name} 
                                     fill 
                                     className="object-cover"
                                     unoptimized
+                                    containerClassName="h-full w-full"
                                 />
                             ) : (
                                 <div className="flex flex-col items-center justify-center text-muted-foreground/40 text-center p-8">

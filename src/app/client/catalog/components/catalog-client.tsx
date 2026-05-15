@@ -17,7 +17,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 
 import { PackageSearch, ShoppingCart, Building2, Anchor, Save, CheckCircle2, Split, ShieldAlert, Car } from "lucide-react";
 import type { Product } from "@/lib/types/database";
-import Image from "next/image";
+import { OptimizedImage } from "@/components/ui/optimized-image";
 
 const generateFileName = (userId: string, prefix: string, fileExt: string) => {
     const timestamp = Date.now();
@@ -297,11 +297,12 @@ export default function CatalogClient({ products }: { products: Product[] }) {
                     <Card key={product.id} className="overflow-hidden shadow-sm flex flex-col bg-card border-border">
                         <div className="h-48 sm:h-64 w-full bg-muted flex shrink-0 items-center justify-center border-b overflow-hidden relative">
                             {product.image_url ? (
-                                <Image 
+                                <OptimizedImage 
                                     src={product.image_url} 
                                     alt={product.name} 
                                     fill
                                     className="object-cover" 
+                                    containerClassName="h-full w-full"
                                 />
                             ) : (
                                 <PackageSearch className="w-16 h-16 text-muted-foreground/50 z-10" />
