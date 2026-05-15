@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
 import { submitPaymentDetails } from "@/lib/actions/client-actions";
@@ -77,6 +78,7 @@ function TrackingProgressBar({ order }: { order: Order }) {
 }
 
 export default function OrdersClient({ orders }: { orders: Order[] }) {
+    const router = useRouter();
     const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
     const [isPaymentOpen, setIsPaymentOpen] = useState(false);
     const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null);
@@ -134,6 +136,7 @@ export default function OrdersClient({ orders }: { orders: Order[] }) {
             await submitPaymentDetails(selectedOrder.id, "cash");
             toast.success("Cash payment submitted! Awaiting admin confirmation.");
             setIsPaymentOpen(false);
+            router.refresh();
         } catch (e: unknown) {
             const msg = e instanceof Error ? e.message : "Failed to confirm payment.";
             toast.error(msg);
@@ -164,6 +167,7 @@ export default function OrdersClient({ orders }: { orders: Order[] }) {
             
             toast.success("Check payment submitted! Awaiting admin verification.");
             setIsPaymentOpen(false);
+            router.refresh();
         } catch (error: unknown) {
             const msg = error instanceof Error ? error.message : "An error occurred while submitting check.";
             toast.error(msg);

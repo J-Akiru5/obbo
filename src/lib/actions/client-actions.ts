@@ -294,19 +294,20 @@ export async function submitPaymentDetails(orderId: string, paymentMethod: strin
 
     const updates: Record<string, unknown> = {
         payment_method: paymentMethod,
+        status: "pending_final_confirmation",
         updated_at: new Date().toISOString(),
     };
     
     if (paymentMethod === "check") {
         updates.check_number = checkNumber;
         updates.check_image_url = checkImageUrl;
-        updates.status = "pending_final_confirmation";
     }
 
     const { error } = await supabase.from("orders").update(updates).eq("id", orderId).eq("client_id", user.id);
     if (error) throw new Error(error.message);
 
     revalidatePath("/client/orders");
+    revalidatePath("/client/dashboard");
     return { success: true };
 }
 
