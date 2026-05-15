@@ -276,6 +276,7 @@ export function NewRequestsTab({ orders, onApprove, onReject, onConfirmCheck, lo
                                                 </p>
                                             </div>
                                         )}
+                                        {order.service_type === "pickup" && (
                                             <div className="rounded-md border border-accent/20 bg-accent/5 px-4 py-3 text-sm text-accent">
                                                 <p className="font-semibold text-accent mb-2 flex items-center gap-1.5">
                                                     <Car className="w-4 h-4" />
