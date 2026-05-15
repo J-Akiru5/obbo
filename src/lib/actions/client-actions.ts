@@ -3,6 +3,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import { generateGlobalNextPoNumber } from "./po-utils";
+import { createRoleNotification } from "./notification-actions";
 
 // Helper to ensure the user is an authenticated client
 async function requireClient() {
@@ -181,6 +182,15 @@ export async function submitOrder(
         await supabase.from("order_items").insert(itemsToInsert);
     }
 
+    // Trigger Notification for Warehouse Manager
+    await createRoleNotification({
+        targetRole: "warehouse_manager",
+        title: "New Order Placed",
+        message: `PO Number: ${finalPoNumber}. Source: ${orderData.source.toUpperCase()}.`,
+        href: "/admin/orders?tab=new",
+        severity: "info"
+    });
+
     revalidatePath("/client/orders");
     revalidatePath("/client/dashboard");
     return order;
@@ -323,13 +333,15 @@ export async function fetchBalanceSummary() {
         }
     }
 
-    // Total delivered: sum of all dispatched_qty from all orders
+    // Total delivered: sum of dispatched_qty ONLY from fully completed orders.
+    // Orders still in transit (status: 'dispatched') are intentionally excluded
+    // to prevent premature counting of bags that haven't been received yet.
     const { data: dispatchedOrders } = await supabase
         .from("orders")
         .select("items:order_items(dispatched_qty)")
         .eq("client_id", user.id)
         .neq("order_type", "draft")
-        .in("status", ["dispatched", "completed"]);
+        .eq("status", "completed");
 
     let totalDelivered = 0;
     if (dispatchedOrders) {

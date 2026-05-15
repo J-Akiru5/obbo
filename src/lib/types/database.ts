@@ -262,5 +262,6 @@ export interface Notification {
     href: string | null;
     severity: 'info' | 'warning' | 'success';
     is_read: boolean;
+    target_role: 'admin' | 'warehouse_manager' | 'client' | null;
     created_at: string;
 }
