@@ -143,7 +143,7 @@ function OrdersContent() {
                 <div className="mt-6">
                     <TabsContent value="new">
                         <NewRequestsTab 
-                            orders={orders.filter(o => o.status === "pending" || o.status === "pending_final_confirmation")} 
+                            orders={orders.filter(o => o.status === "pending" || o.status === "pending_final_confirmation" || o.status === "awaiting_check")} 
                             onApprove={handleApproveOrder} 
                             onReject={handleRejectOrder}
                             onConfirmCheck={handleConfirmCheck}

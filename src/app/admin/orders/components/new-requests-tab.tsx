@@ -7,7 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Check, X, FileText, Truck, MapPin, ExternalLink, Car, Search, Filter } from "lucide-react";
+import { Check, X, FileText, Truck, MapPin, ExternalLink, Car, Search, Filter, Clock, CreditCard } from "lucide-react";
 import { toast } from "sonner";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -159,7 +159,9 @@ export function NewRequestsTab({ orders, onApprove, onReject, onConfirmCheck, lo
                                             <div>
                                                 <div className="flex items-center gap-2 mb-1">
                                                     {order.status === "pending_final_confirmation" ? (
-                                                        <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200">Payment Submitted</Badge>
+                                                        <Badge className="bg-blue-100 text-blue-700 border-blue-200">Check Uploaded - Needs Review</Badge>
+                                                    ) : order.status === "awaiting_check" ? (
+                                                        <Badge className="bg-amber-100 text-amber-700 border-amber-200">Awaiting Client Check Upload</Badge>
                                                     ) : (
                                                         <Badge className="bg-accent text-accent-foreground hover:bg-accent/90">New Request</Badge>
                                                     )}
@@ -302,15 +304,24 @@ export function NewRequestsTab({ orders, onApprove, onReject, onConfirmCheck, lo
                                     </div>
                                     <div className="bg-muted/40 p-5 md:w-48 flex flex-col justify-center gap-3 border-l border-border/50">
                                         {order.status === "pending_final_confirmation" ? (
-                                            <Button onClick={() => openAction(order, "check")} className="w-full bg-emerald-600 hover:bg-emerald-700">
-                                                <Check className="w-4 h-4 mr-2" /> Final Confirm
+                                            <Button onClick={() => openAction(order, "check")} className="w-full bg-blue-600 hover:bg-blue-700">
+                                                <Check className="w-4 h-4 mr-2" /> Review & Confirm
+                                            </Button>
+                                        ) : order.status === "awaiting_check" ? (
+                                            <Button disabled className="w-full bg-gray-200 text-gray-500 border-gray-300">
+                                                <Clock className="w-4 h-4 mr-2" /> Waiting...
                                             </Button>
                                         ) : (
                                             <Button onClick={() => openAction(order, "approve")} className="w-full bg-primary hover:bg-primary/90">
                                                 <Check className="w-4 h-4 mr-2" /> Approve
                                             </Button>
                                         )}
-                                        <Button onClick={() => openAction(order, "reject")} variant="outline" className="w-full text-destructive hover:bg-destructive/10 hover:text-destructive border-destructive/20">
+                                        <Button 
+                                            onClick={() => openAction(order, "reject")} 
+                                            variant="outline" 
+                                            className="w-full text-destructive hover:bg-destructive/10 hover:text-destructive border-destructive/20"
+                                            disabled={order.status === "awaiting_check"}
+                                        >
                                             <X className="w-4 h-4 mr-2" /> Reject
                                         </Button>
                                     </div>
