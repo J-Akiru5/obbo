@@ -172,24 +172,6 @@ export async function approveOrder(orderId: string, approvedItems: { itemId: str
 
     await supabase.from("orders").update(updates).eq("id", orderId);
 
-    // Create customer balance records for partial quantities
-    if (isPartial) {
-        for (const ai of approvedItems) {
-            const original = order.items.find((i: { id: string }) => i.id === ai.itemId);
-            if (original && ai.qty < original.requested_qty) {
-                const remaining = original.requested_qty - ai.qty;
-                await supabase.from("customer_balances").insert({
-                    client_id: order.client_id,
-                    order_id: orderId,
-                    product_id: original.product_id,
-                    bag_type: original.bag_type,
-                    remaining_qty: remaining,
-                    status: "pending",
-                });
-            }
-        }
-    }
-
     await logActivity(supabase, userId, "order_approved", "order", orderId, { status: newStatus, approvedItems });
     return { success: true, newStatus };
 }
@@ -206,10 +188,19 @@ export async function rejectOrder(orderId: string, reason: string) {
 
 export async function finalConfirmCheck(orderId: string) {
     const { supabase, userId } = await requireAdmin();
+
+    // Check if order was partially approved by looking at items
+    const { data: order } = await supabase.from("orders").select("*, items:order_items(*)").eq("id", orderId).single();
+    if (!order) throw new Error("Order not found");
+
+    const isPartial = order.items.some((i: any) => i.approved_qty < i.requested_qty);
+    const newStatus = isPartial ? "partially_approved" : "approved";
+
     await supabase.from("orders")
-        .update({ status: "approved", updated_at: new Date().toISOString() })
+        .update({ status: newStatus, updated_at: new Date().toISOString() })
         .eq("id", orderId);
-    await logActivity(supabase, userId, "order_check_confirmed", "order", orderId);
+    
+    await logActivity(supabase, userId, "order_check_confirmed", "order", orderId, { status: newStatus });
     return { success: true };
 }
 
@@ -265,6 +256,34 @@ export async function dispatchOrder(
         check_number: order.payment_method === "check" ? order.check_number : null,
         amount: Number(order.total_amount) || null,
     });
+
+    // Handle Split Delivery: Create customer balance for remaining quantities
+    for (const item of order.items) {
+        if (item.approved_qty < item.requested_qty) {
+            const remaining = item.requested_qty - item.approved_qty;
+            
+            // Check if a balance already exists for this item in this order (idempotency)
+            const { data: existing } = await supabase
+                .from("customer_balances")
+                .select("id")
+                .eq("order_id", orderId)
+                .eq("product_id", item.product_id)
+                .eq("bag_type", item.bag_type)
+                .single();
+
+            if (!existing) {
+                await supabase.from("customer_balances").insert({
+                    client_id: order.client_id,
+                    order_id: orderId,
+                    product_id: item.product_id,
+                    bag_type: item.bag_type,
+                    total_purchase: item.requested_qty,
+                    remaining_qty: remaining,
+                    status: "pending",
+                });
+            }
+        }
+    }
 
     // Update order items dispatched_qty
     for (const item of order.items) {
@@ -677,7 +696,7 @@ export async function generateDailyReportData(date: string) {
     // 5. Get pending balances for Module 3
     const { data: customerBalances } = await supabase
         .from("customer_balances")
-        .select("*, client:profiles!customer_balances_client_id_fkey(full_name, company_name), product:products!customer_balances_product_id_fkey(name)")
+        .select("*, client:profiles!customer_balances_client_id_fkey(full_name, company_name), product:products!customer_balances_product_id_fkey(name), order:orders(po_number)")
         .eq("status", "pending");
         
     const balances = (customerBalances || []).map(b => ({
@@ -766,7 +785,7 @@ export async function submitWarehouseReport(date: string) {
 export async function fetchCustomerBalances() {
     const { supabase } = await requireAdmin();
     const { data } = await supabase.from("customer_balances")
-        .select("*, client:profiles!customer_balances_client_id_fkey(full_name, company_name), product:products!customer_balances_product_id_fkey(name)")
+        .select("*, client:profiles!customer_balances_client_id_fkey(full_name, company_name), product:products!customer_balances_product_id_fkey(name), order:orders(po_number)")
         .eq("status", "pending");
     return data ?? [];
 }

@@ -10,15 +10,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { AlertCircle, CheckCircle2, ExternalLink, Truck, UploadCloud, X } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
-export function FulfillmentTab({ orders, shipments, onDispatch, onConfirmCheck, loading }: { 
+export function FulfillmentTab({ orders, shipments, onDispatch, loading }: { 
     orders: Order[]; 
     shipments: Shipment[];
     onDispatch: (id: string, shipmentId: string, drNumber: string, drImageUrl: string | null, driverName: string | null, plateNumber: string | null) => Promise<void>; 
-    onConfirmCheck: (id: string) => Promise<void>;
     loading: boolean;
 }) {
     const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
-    const [actionType, setActionType] = useState<"dispatch" | "check" | null>(null);
+    const [actionType, setActionType] = useState<"dispatch" | null>(null);
     
     // Dispatch form state
     const [shipmentId, setShipmentId] = useState("");
@@ -28,7 +27,7 @@ export function FulfillmentTab({ orders, shipments, onDispatch, onConfirmCheck, 
     const [drImageFile, setDrImageFile] = useState<File | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
-    const openAction = (order: Order, type: "dispatch" | "check") => {
+    const openAction = (order: Order, type: "dispatch") => {
         setSelectedOrder(order);
         setActionType(type);
         setShipmentId("");
@@ -92,8 +91,6 @@ export function FulfillmentTab({ orders, shipments, onDispatch, onConfirmCheck, 
                 }
 
                 await onDispatch(selectedOrder.id, shipmentId, drNumber.trim(), drImageUrl, resolvedDriverName, resolvedPlateNumber);
-            } else {
-                await onConfirmCheck(selectedOrder.id);
             }
             setSelectedOrder(null);
             setActionType(null);
@@ -106,60 +103,10 @@ export function FulfillmentTab({ orders, shipments, onDispatch, onConfirmCheck, 
     if (loading) return <div className="py-8 text-center text-muted-foreground animate-pulse">Loading fulfillment queue...</div>;
     if (orders.length === 0) return <div className="py-12 text-center text-muted-foreground border-2 border-dashed rounded-xl">No orders ready for fulfillment.</div>;
 
-    const awaitingChecks = orders.filter(o => o.status === "awaiting_check");
     const readyForDispatch = orders.filter(o => o.status === "approved" || o.status === "partially_approved");
 
     return (
         <div className="space-y-8">
-            {awaitingChecks.length > 0 && (
-                <div className="space-y-4">
-                    <h3 className="text-lg font-semibold flex items-center gap-2 text-amber-600">
-                        <AlertCircle className="w-5 h-5" /> Awaiting Check Confirmation
-                    </h3>
-                    {awaitingChecks.map(order => (
-                        <Card key={order.id} className="border-l-4 border-l-amber-500">
-                            <CardContent className="p-4 flex items-center justify-between">
-                                <div>
-                                    <div className="flex items-center gap-3">
-                                        <Avatar className="w-8 h-8 border border-border/50">
-                                            {order.client?.avatar_url ? (
-                                                <AvatarImage src={order.client.avatar_url} alt="Client" className="object-cover" />
-                                            ) : (
-                                                <AvatarFallback className="bg-accent/10 text-accent text-[10px] font-bold">
-                                                    {(order.client?.full_name || "CL").split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2)}
-                                                </AvatarFallback>
-                                            )}
-                                        </Avatar>
-                                        <h4 className="font-bold">
-                                            {order.client?.company_name || order.client?.full_name}
-                                        </h4>
-                                    </div>
-                                    <p className="text-sm text-muted-foreground mt-1">
-                                        Check Number: <span className="font-mono font-medium text-foreground">{order.check_number || "Not uploaded yet"}</span>
-                                    </p>
-                                </div>
-                                <div className="flex items-center gap-4">
-                                    {order.check_image_url ? (
-                                        <a href={order.check_image_url} target="_blank" rel="noreferrer" className="text-sm text-primary hover:underline flex items-center gap-1">
-                                            View Image
-                                        </a>
-                                    ) : (
-                                        <span className="text-sm text-accent italic">Waiting for client upload...</span>
-                                    )}
-                                    <Button 
-                                        onClick={() => openAction(order, "check")} 
-                                        disabled={!order.check_number}
-                                        className="bg-emerald-600 hover:bg-emerald-700"
-                                    >
-                                        <CheckCircle2 className="w-4 h-4 mr-2" /> Confirm Payment
-                                    </Button>
-                                </div>
-                            </CardContent>
-                        </Card>
-                    ))}
-                </div>
-            )}
-
             <div className="space-y-4">
                 <h3 className="text-lg font-semibold flex items-center gap-2 text-primary">
                     <Truck className="w-5 h-5" /> Ready for Dispatch
@@ -170,6 +117,9 @@ export function FulfillmentTab({ orders, shipments, onDispatch, onConfirmCheck, 
                     readyForDispatch.map(order => {
                         const jbQty = order.items.filter(i => i.bag_type === "JB").reduce((s, i) => s + i.approved_qty, 0);
                         const sbQty = order.items.filter(i => i.bag_type === "SB").reduce((s, i) => s + i.approved_qty, 0);
+                        const jbReq = order.items.filter(i => i.bag_type === "JB").reduce((s, i) => s + i.requested_qty, 0);
+                        const sbReq = order.items.filter(i => i.bag_type === "SB").reduce((s, i) => s + i.requested_qty, 0);
+                        const isSplit = order.is_split_delivery || order.items.some(i => i.approved_qty < i.requested_qty);
 
                         return (
                             <Card key={order.id} className="border-l-4 border-l-primary">
@@ -179,6 +129,9 @@ export function FulfillmentTab({ orders, shipments, onDispatch, onConfirmCheck, 
                                             <Badge variant={order.status === "partially_approved" ? "secondary" : "default"} className={order.status === "approved" ? "bg-primary" : ""}>
                                                 {order.status === "partially_approved" ? "Partial Approval" : "Approved"}
                                             </Badge>
+                                            {isSplit && (
+                                                <Badge variant="outline" className="border-amber-500 text-amber-600 bg-amber-50 uppercase text-[10px] font-bold">SPLIT</Badge>
+                                            )}
                                             <span className="text-xs text-muted-foreground">ID: {order.id.slice(0,8)}</span>
                                         </div>
                                         <div className="flex items-center gap-3">
@@ -198,11 +151,17 @@ export function FulfillmentTab({ orders, shipments, onDispatch, onConfirmCheck, 
                                         <div className="flex gap-4 text-sm mt-2">
                                             <div className="bg-muted px-3 py-1.5 rounded-md">
                                                 <span className="text-muted-foreground text-xs uppercase tracking-wider block mb-0.5">Approved JB</span>
-                                                <span className="font-bold">{jbQty}</span>
+                                                <span className="font-bold">
+                                                    {jbQty} 
+                                                    {isSplit && jbReq > 0 && <span className="text-xs text-muted-foreground font-normal ml-1">/ {jbReq}</span>}
+                                                </span>
                                             </div>
                                             <div className="bg-muted px-3 py-1.5 rounded-md">
                                                 <span className="text-muted-foreground text-xs uppercase tracking-wider block mb-0.5">Approved SB</span>
-                                                <span className="font-bold">{sbQty}</span>
+                                                <span className="font-bold">
+                                                    {sbQty}
+                                                    {isSplit && sbReq > 0 && <span className="text-xs text-muted-foreground font-normal ml-1">/ {sbReq}</span>}
+                                                </span>
                                             </div>
                                             <div className="bg-muted px-3 py-1.5 rounded-md">
                                                 <span className="text-muted-foreground text-xs uppercase tracking-wider block mb-0.5">Service</span>
@@ -216,9 +175,15 @@ export function FulfillmentTab({ orders, shipments, onDispatch, onConfirmCheck, 
                                             </div>
                                         )}
                                         {order.po_image_url && (
-                                            <a href={order.po_image_url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs text-blue-600 hover:underline mt-1">
-                                                <ExternalLink className="w-3 h-3" /> View PO Document
+                                            <a href={order.po_image_url} target="_blank" rel="noreferrer" className="text-xs text-primary hover:underline flex items-center gap-1 mt-1">
+                                                <ExternalLink className="w-3 h-3" /> View PO
                                             </a>
+                                        )}
+                                        {order.notes && (
+                                            <div className="mt-2 text-xs bg-muted/50 p-2 rounded border border-dashed border-border">
+                                                <span className="font-semibold text-muted-foreground block mb-0.5">Order Notes:</span>
+                                                <p className="text-muted-foreground whitespace-pre-wrap">{order.notes}</p>
+                                            </div>
                                         )}
                                     </div>
                                     <div className="flex items-center">
@@ -236,11 +201,9 @@ export function FulfillmentTab({ orders, shipments, onDispatch, onConfirmCheck, 
             <Dialog open={!!selectedOrder} onOpenChange={(open) => !open && setSelectedOrder(null)}>
                 <DialogContent className="sm:max-w-[500px]">
                     <DialogHeader>
-                        <DialogTitle>{actionType === "check" ? "Confirm Check Payment" : "Dispatch Order"}</DialogTitle>
+                        <DialogTitle>Dispatch Order</DialogTitle>
                         <DialogDescription>
-                            {actionType === "check" 
-                                ? "Confirm that the check has been cleared. This will move the order to Ready for Dispatch."
-                                : "Fill in dispatch details and select the shipment batch to deduct stock from."}
+                            Fill in dispatch details and select the shipment batch to deduct stock from.
                         </DialogDescription>
                     </DialogHeader>
 
@@ -344,7 +307,7 @@ export function FulfillmentTab({ orders, shipments, onDispatch, onConfirmCheck, 
                             disabled={isSubmitting}
                             className="bg-primary"
                         >
-                            {isSubmitting ? "Processing..." : actionType === "check" ? "Confirm Payment" : "Dispatch & Deduct Stock"}
+                            {isSubmitting ? "Processing..." : "Dispatch & Deduct Stock"}
                         </Button>
                     </DialogFooter>
                 </DialogContent>

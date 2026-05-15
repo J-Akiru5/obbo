@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { fetchCustomerBalances, fetchOrders, fetchWarehouseReport, fetchDashboardKPIs } from "@/lib/actions/admin-actions";
+import { createClient } from "@/lib/supabase/client";
 import type { WarehouseReport } from "@/lib/types/database";
 
 export default function AdminReportsPage() {
@@ -54,6 +55,21 @@ export default function AdminReportsPage() {
 
     useEffect(() => {
         loadReportData();
+        
+        const supabase = createClient();
+        const channel = supabase
+            .channel('reports-sync')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'customer_balances' }, () => {
+                loadReportData();
+            })
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, () => {
+                loadReportData();
+            })
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
     }, [loadReportData]);
 
     const clientObligations = useMemo(() => {
@@ -178,35 +194,29 @@ export default function AdminReportsPage() {
                                 <Table>
                                     <TableHeader className="bg-muted/30">
                                         <TableRow>
+                                            <TableHead>PO #</TableHead>
                                             <TableHead>Client</TableHead>
-                                            <TableHead className="text-right">Remaining JB</TableHead>
-                                            <TableHead className="text-right">Remaining SB</TableHead>
-                                            <TableHead className="text-right">Total Bags</TableHead>
+                                            <TableHead>Bag Type</TableHead>
+                                            <TableHead className="text-right">Total Purchase</TableHead>
+                                            <TableHead className="text-right text-amber-600 font-semibold">Balance</TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
-                                        {clientObligations.length === 0 ? (
+                                        {balances.length === 0 ? (
                                             <TableRow>
-                                                <TableCell colSpan={4} className="py-8 text-center text-muted-foreground">
+                                                <TableCell colSpan={5} className="py-8 text-center text-muted-foreground">
                                                     No pending obligations.
                                                 </TableCell>
                                             </TableRow>
                                         ) : (
-                                            clientObligations.map((obl, idx) => (
-                                                <TableRow key={idx}>
-                                                    <TableCell className="font-medium">{obl.clientName}</TableCell>
-                                                    <TableCell className="text-right">
-                                                        <Badge className="bg-amber-500/10 text-amber-500 hover:bg-amber-500/20 border-0">
-                                                            {obl.jb} JB
-                                                        </Badge>
-                                                    </TableCell>
-                                                    <TableCell className="text-right">
-                                                        <Badge className="bg-amber-500/10 text-amber-500 hover:bg-amber-500/20 border-0">
-                                                            {obl.sb} SB
-                                                        </Badge>
-                                                    </TableCell>
-                                                    <TableCell className="text-right font-semibold">
-                                                        {obl.jb + obl.sb}
+                                            balances.map((balance) => (
+                                                <TableRow key={balance.id}>
+                                                    <TableCell className="font-mono text-xs font-bold">{(balance as any).order?.po_number || "—"}</TableCell>
+                                                    <TableCell className="font-medium">{balance.client?.company_name || balance.client?.full_name || "Unknown"}</TableCell>
+                                                    <TableCell>{balance.bag_type}</TableCell>
+                                                    <TableCell className="text-right">{(balance as any).total_purchase || 0}</TableCell>
+                                                    <TableCell className="text-right font-bold text-amber-600">
+                                                        {balance.remaining_qty}
                                                     </TableCell>
                                                 </TableRow>
                                             ))

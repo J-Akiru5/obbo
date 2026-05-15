@@ -82,13 +82,21 @@ export function OrderHistoryTab({ orders, loading }: { orders: Order[], loading:
                                 <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">No matching history records found.</TableCell>
                             </TableRow>
                         ) : filteredOrders.map(order => {
-                            const jbQty = order.items.filter(i => i.bag_type === "JB").reduce((s, i) => s + (order.status === "rejected" ? i.requested_qty : i.dispatched_qty), 0);
-                            const sbQty = order.items.filter(i => i.bag_type === "SB").reduce((s, i) => s + (order.status === "rejected" ? i.requested_qty : i.dispatched_qty), 0);
+                             const jbQty = order.items.filter(i => i.bag_type === "JB").reduce((s, i) => s + (order.status === "rejected" ? i.requested_qty : i.dispatched_qty), 0);
+                             const sbQty = order.items.filter(i => i.bag_type === "SB").reduce((s, i) => s + (order.status === "rejected" ? i.requested_qty : i.dispatched_qty), 0);
+                             const jbReq = order.items.filter(i => i.bag_type === "JB").reduce((s, i) => s + i.requested_qty, 0);
+                             const sbReq = order.items.filter(i => i.bag_type === "SB").reduce((s, i) => s + i.requested_qty, 0);
+                             const isSplit = order.is_split_delivery || (order.status !== "rejected" && order.items.some(i => i.dispatched_qty < i.requested_qty));
 
                             return (
                                 <TableRow key={order.id}>
                                     <TableCell>
-                                        <p className="font-mono text-xs font-medium">{order.id.slice(0, 8)}</p>
+                                        <div className="flex items-center gap-2">
+                                            <p className="font-mono text-xs font-medium">{order.id.slice(0, 8)}</p>
+                                             {isSplit && (
+                                                 <Badge variant="outline" className="px-1 py-0 text-[9px] border-amber-500 text-amber-700 bg-amber-50 font-bold">SPLIT</Badge>
+                                             )}
+                                        </div>
                                         <p className="text-xs text-muted-foreground mt-1">{new Date(order.updated_at).toLocaleDateString()}</p>
                                     </TableCell>
                                     <TableCell>
@@ -112,11 +120,16 @@ export function OrderHistoryTab({ orders, loading }: { orders: Order[], loading:
                                         </div>
                                     </TableCell>
                                     <TableCell>
-                                        <div className="flex gap-2 mb-1">
-                                            <span className="text-xs font-medium">{jbQty} JB</span>
-                                            <span className="text-xs font-medium text-muted-foreground">·</span>
-                                            <span className="text-xs font-medium">{sbQty} SB</span>
-                                        </div>
+                                         <div className="flex flex-col gap-0.5 mb-1">
+                                             <div className="flex items-center gap-1.5">
+                                                 <span className="text-xs font-semibold">{jbQty} JB</span>
+                                                 {isSplit && jbReq > 0 && <span className="text-[10px] text-muted-foreground font-normal">/ {jbReq}</span>}
+                                             </div>
+                                             <div className="flex items-center gap-1.5">
+                                                 <span className="text-xs font-semibold">{sbQty} SB</span>
+                                                 {isSplit && sbReq > 0 && <span className="text-[10px] text-muted-foreground font-normal">/ {sbReq}</span>}
+                                             </div>
+                                         </div>
                                         {order.status === "completed" && order.dr_number && (
                                             <p className="text-xs text-muted-foreground">DR: {order.dr_number}</p>
                                         )}

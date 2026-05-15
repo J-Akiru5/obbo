@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
 import { submitRedeliveryRequest } from "@/lib/actions/client-actions";
@@ -11,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 import { Package, Truck, Info, History, ShoppingBag, TrendingDown, Split } from "lucide-react";
 
@@ -23,8 +25,33 @@ interface BalanceSummary {
 }
 
 export default function LedgerClient({ balances, summary }: { balances: CustomerBalance[]; summary: BalanceSummary }) {
+    const router = useRouter();
     const [selectedBalance, setSelectedBalance] = useState<CustomerBalance | null>(null);
     const [isRedeliveryOpen, setIsRedeliveryOpen] = useState(false);
+
+    // Real-time synchronization
+    useEffect(() => {
+        const supabase = createClient();
+        
+        const channel = supabase
+            .channel('balance-changes')
+            .on(
+                'postgres_changes',
+                {
+                    event: '*',
+                    schema: 'public',
+                    table: 'customer_balances'
+                },
+                () => {
+                    router.refresh();
+                }
+            )
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
+    }, [router]);
     
     // Form state
     const [source, setSource] = useState<string>("warehouse");
@@ -200,10 +227,10 @@ export default function LedgerClient({ balances, summary }: { balances: Customer
                 </Card>
             </div>
 
-            <div className="grid gap-6 md:grid-cols-2">
+            <div className="grid gap-6">
                 {/* Active Balances */}
-                <Card className="shadow-sm border-primary/20">
-                    <CardHeader className="pb-3 border-b border-gray-100 bg-blue-50/30 rounded-t-xl">
+                <Card className="shadow-sm border-primary/20 overflow-hidden">
+                    <CardHeader className="pb-3 border-b border-gray-100 bg-blue-50/30">
                         <CardTitle className="text-base flex items-center gap-2">
                             <Package className="w-5 h-5 text-primary" />
                             Outstanding Balances
@@ -217,26 +244,51 @@ export default function LedgerClient({ balances, summary }: { balances: Customer
                                 <p>You have no outstanding balances.</p>
                             </div>
                         ) : (
-                            <div className="divide-y divide-gray-100">
-                                {pendingBalances.map(b => (
-                                    <div key={b.id} className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                                        <div>
-                                            <div className="font-medium text-gray-900">{b.product?.name || "Unknown Product"}</div>
-                                            <div className="text-sm text-gray-500">
-                                                PO: <span className="font-mono text-xs">{b.order?.po_number || 'N/A'}</span> • {b.bag_type === "JB" ? "Jumbo Bag" : "Sling Bag"}
-                                            </div>
-                                        </div>
-                                        <div className="flex flex-col items-end gap-2">
-                                            <div className="text-2xl font-bold text-primary">
-                                                {b.remaining_qty} <span className="text-sm font-normal text-gray-500">bags</span>
-                                            </div>
-                                            <Button size="sm" className="bg-accent text-accent-foreground hover:bg-accent/90" onClick={() => handleOpenRedelivery(b)}>
-                                                <Truck className="w-4 h-4 mr-2" />
-                                                Request Redelivery
-                                            </Button>
-                                        </div>
-                                    </div>
-                                ))}
+                            <div className="overflow-x-auto">
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow className="bg-muted/50 hover:bg-muted/50">
+                                            <TableHead className="font-bold whitespace-nowrap">Date of Original Order</TableHead>
+                                            <TableHead className="font-bold whitespace-nowrap">PO #</TableHead>
+                                            <TableHead className="font-bold whitespace-nowrap">Product</TableHead>
+                                            <TableHead className="font-bold text-center whitespace-nowrap">Original Qty</TableHead>
+                                            <TableHead className="font-bold text-center whitespace-nowrap">Delivered Qty</TableHead>
+                                            <TableHead className="font-bold text-center whitespace-nowrap text-primary">Remaining Balance</TableHead>
+                                            <TableHead className="text-right font-bold">Action</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {pendingBalances.map(b => (
+                                            <TableRow key={b.id} className="hover:bg-muted/30 transition-colors">
+                                                <TableCell className="whitespace-nowrap">
+                                                    {b.order?.created_at ? new Date(b.order.created_at).toLocaleDateString() : new Date(b.created_at).toLocaleDateString()}
+                                                </TableCell>
+                                                <TableCell className="font-mono text-xs">{b.order?.po_number || 'N/A'}</TableCell>
+                                                <TableCell>
+                                                    <div className="font-medium">{b.product?.name}</div>
+                                                    <div className="text-[10px] text-muted-foreground uppercase">{b.bag_type === "JB" ? "Jumbo Bag" : "Sling Bag"}</div>
+                                                </TableCell>
+                                                <TableCell className="text-center font-semibold">{b.total_purchase.toLocaleString()}</TableCell>
+                                                <TableCell className="text-center text-muted-foreground">{(b.total_purchase - b.remaining_qty).toLocaleString()}</TableCell>
+                                                <TableCell className="text-center">
+                                                    <span className="inline-flex items-center justify-center px-3 py-1 rounded-full bg-blue-100 text-blue-700 font-bold text-sm min-w-[3rem]">
+                                                        {b.remaining_qty.toLocaleString()}
+                                                    </span>
+                                                </TableCell>
+                                                <TableCell className="text-right">
+                                                    <Button 
+                                                        size="sm" 
+                                                        className="bg-accent text-accent-foreground hover:bg-accent/90 shadow-sm" 
+                                                        onClick={() => handleOpenRedelivery(b)}
+                                                    >
+                                                        <Truck className="w-3.5 h-3.5 mr-1.5" />
+                                                        Request Balance Delivery
+                                                    </Button>
+                                                </TableCell>
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
                             </div>
                         )}
                     </CardContent>
@@ -257,18 +309,35 @@ export default function LedgerClient({ balances, summary }: { balances: Customer
                                 <p>No completed balances yet.</p>
                             </div>
                         ) : (
-                            <div className="divide-y divide-gray-100">
-                                {fulfilledBalances.map(b => (
-                                    <div key={b.id} className="p-4 flex justify-between items-center opacity-70 grayscale">
-                                        <div>
-                                            <div className="font-medium text-gray-600">{b.product?.name || "Unknown Product"}</div>
-                                            <div className="text-xs text-gray-400">PO: {b.order?.po_number || 'N/A'}</div>
-                                        </div>
-                                        <div className="text-sm font-semibold text-emerald-600">
-                                            Fulfilled
-                                        </div>
-                                    </div>
-                                ))}
+                            <div className="overflow-x-auto opacity-70 grayscale hover:opacity-100 transition-opacity">
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead>Date</TableHead>
+                                            <TableHead>PO #</TableHead>
+                                            <TableHead>Product</TableHead>
+                                            <TableHead className="text-center">Original Qty</TableHead>
+                                            <TableHead className="text-center">Total Delivered</TableHead>
+                                            <TableHead className="text-right">Status</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {fulfilledBalances.map(b => (
+                                            <TableRow key={b.id}>
+                                                <TableCell className="text-xs text-muted-foreground">
+                                                    {b.order?.created_at ? new Date(b.order.created_at).toLocaleDateString() : new Date(b.created_at).toLocaleDateString()}
+                                                </TableCell>
+                                                <TableCell className="font-mono text-[10px]">{b.order?.po_number || 'N/A'}</TableCell>
+                                                <TableCell className="text-sm font-medium">{b.product?.name}</TableCell>
+                                                <TableCell className="text-center text-sm">{b.total_purchase}</TableCell>
+                                                <TableCell className="text-center text-sm font-bold text-emerald-600">{b.total_purchase}</TableCell>
+                                                <TableCell className="text-right">
+                                                    <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-600 border border-emerald-200 bg-emerald-50 px-2 py-0.5 rounded">Fulfilled</span>
+                                                </TableCell>
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
                             </div>
                         )}
                     </CardContent>

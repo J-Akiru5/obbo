@@ -12,14 +12,15 @@ import { toast } from "sonner";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
-export function NewRequestsTab({ orders, onApprove, onReject, loading }: { 
+export function NewRequestsTab({ orders, onApprove, onReject, onConfirmCheck, loading }: { 
     orders: Order[]; 
     onApprove: (id: string, items: {itemId: string, qty: number}[], shippingFee?: number) => Promise<void>; 
     onReject: (id: string, reason: string) => Promise<void>;
+    onConfirmCheck?: (id: string) => Promise<void>;
     loading: boolean;
 }) {
     const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
-    const [actionType, setActionType] = useState<"approve" | "reject" | null>(null);
+    const [actionType, setActionType] = useState<"approve" | "reject" | "check" | null>(null);
     const [approvedQtys, setApprovedQtys] = useState<Record<string, number>>({});
     const [shippingFee, setShippingFee] = useState<number>(0);
     const [rejectionReason, setRejectionReason] = useState("");
@@ -43,12 +44,17 @@ export function NewRequestsTab({ orders, onApprove, onReject, loading }: {
         });
     }, [orders, searchQuery, serviceFilter, paymentFilter]);
 
-    const openAction = (order: Order, type: "approve" | "reject") => {
+    const openAction = (order: Order, type: "approve" | "reject" | "check") => {
         setSelectedOrder(order);
         setActionType(type);
         if (type === "approve") {
             const initialQtys: Record<string, number> = {};
-            order.items.forEach(item => { initialQtys[item.id] = item.requested_qty; });
+            if (order.is_split_delivery && order.items.length === 1) {
+                // If it's a split delivery with only one item, default to the 'deliver now' quantity
+                initialQtys[order.items[0].id] = order.deliver_now_qty;
+            } else {
+                order.items.forEach(item => { initialQtys[item.id] = item.requested_qty; });
+            }
             setApprovedQtys(initialQtys);
             setShippingFee(order.service_type === 'deliver' ? (order.shipping_fee || 0) : 0);
         } else {
@@ -66,13 +72,17 @@ export function NewRequestsTab({ orders, onApprove, onReject, loading }: {
                     qty: approvedQtys[item.id] ?? item.requested_qty
                 }));
                 await onApprove(selectedOrder.id, itemsToApprove, selectedOrder.service_type === 'deliver' ? shippingFee : undefined);
-            } else {
+            } else if (actionType === "reject") {
                 if (!rejectionReason.trim()) {
                     toast.error("Please provide a rejection reason.");
                     setIsSubmitting(false);
                     return;
                 }
                 await onReject(selectedOrder.id, rejectionReason);
+            } else if (actionType === "check") {
+                if (onConfirmCheck) {
+                    await onConfirmCheck(selectedOrder.id);
+                }
             }
             setSelectedOrder(null);
             setActionType(null);
@@ -145,6 +155,9 @@ export function NewRequestsTab({ orders, onApprove, onReject, loading }: {
                                             <div>
                                                 <div className="flex items-center gap-2 mb-1">
                                                     <Badge className="bg-accent text-accent-foreground hover:bg-accent/90">New Request</Badge>
+                                                    {order.is_split_delivery && (
+                                                        <Badge variant="outline" className="border-amber-500 text-amber-600 bg-amber-50 font-bold">SPLIT</Badge>
+                                                    )}
                                                     <span className="text-xs text-muted-foreground">ID: {order.id.slice(0,8)}</span>
                                                     <span className="text-xs text-muted-foreground">• {new Date(order.created_at).toLocaleDateString()}</span>
                                                 </div>
@@ -193,11 +206,23 @@ export function NewRequestsTab({ orders, onApprove, onReject, loading }: {
                                             </div>
                                             <div>
                                                 <p className="text-xs text-muted-foreground mb-1">Requested JB</p>
-                                                <p className="text-lg font-bold text-foreground">{jbItem?.requested_qty || 0}</p>
+                                                <p className="text-lg font-bold text-foreground">
+                                                    {order.is_split_delivery && jbItem ? (
+                                                        <span>{order.deliver_now_qty} <span className="text-xs text-muted-foreground font-normal">/ {jbItem.requested_qty}</span></span>
+                                                    ) : (
+                                                        jbItem?.requested_qty || 0
+                                                    )}
+                                                </p>
                                             </div>
                                             <div>
                                                 <p className="text-xs text-muted-foreground mb-1">Requested SB</p>
-                                                <p className="text-lg font-bold text-foreground">{sbItem?.requested_qty || 0}</p>
+                                                <p className="text-lg font-bold text-foreground">
+                                                    {order.is_split_delivery && sbItem ? (
+                                                        <span>{order.deliver_now_qty} <span className="text-xs text-muted-foreground font-normal">/ {sbItem.requested_qty}</span></span>
+                                                    ) : (
+                                                        sbItem?.requested_qty || 0
+                                                    )}
+                                                </p>
                                             </div>
                                         </div>
                                         
@@ -231,6 +256,14 @@ export function NewRequestsTab({ orders, onApprove, onReject, loading }: {
                                                 </div>
                                             </div>
                                         )}
+                                        {order.notes && (
+                                            <div className="rounded-md border border-muted bg-muted/20 px-4 py-3 text-sm">
+                                                <p className="font-semibold text-muted-foreground mb-1 flex items-center gap-1.5">
+                                                    <FileText className="w-4 h-4" /> Notes
+                                                </p>
+                                                <p className="text-muted-foreground whitespace-pre-wrap">{order.notes}</p>
+                                            </div>
+                                        )}
                                     </div>
                                     <div className="bg-muted/40 p-5 md:w-48 flex flex-col justify-center gap-3 border-l border-border/50">
                                         <Button onClick={() => openAction(order, "approve")} className="w-full bg-primary hover:bg-primary/90">
@@ -250,10 +283,12 @@ export function NewRequestsTab({ orders, onApprove, onReject, loading }: {
             <Dialog open={!!selectedOrder} onOpenChange={(open) => !open && setSelectedOrder(null)}>
                 <DialogContent className="sm:max-w-[500px]">
                     <DialogHeader>
-                        <DialogTitle>{actionType === "approve" ? "Approve Order" : "Reject Order"}</DialogTitle>
+                        <DialogTitle>{actionType === "approve" ? "Approve Order" : actionType === "check" ? "Confirm Check Payment" : "Reject Order"}</DialogTitle>
                         <DialogDescription>
                             {actionType === "approve" 
                                 ? "Review requested quantities and set shipping details. You can partially approve items if stock is low."
+                                : actionType === "check"
+                                ? "Are you sure you want to confirm this check payment? This will move the order to the Fulfillment queue."
                                 : "Please provide a reason for rejecting this order."}
                         </DialogDescription>
                     </DialogHeader>
@@ -266,6 +301,11 @@ export function NewRequestsTab({ orders, onApprove, onReject, loading }: {
                                     {selectedOrder.payment_method === 'check' 
                                         ? <li>This is a <b>Check</b> payment. Approval will move it to "Awaiting Check" status.</li>
                                         : <li>This is a <b>Cash</b> payment. Approval will move it directly to Fulfillment.</li>}
+                                    {selectedOrder.is_split_delivery && (
+                                        <li className="text-amber-700 font-bold">
+                                            CLIENT REQUESTED SPLIT: Deliver <b>{selectedOrder.deliver_now_qty}</b> bags now.
+                                        </li>
+                                    )}
                                     <li>If you approve less than requested, the remaining bags will automatically become a Customer Balance.</li>
                                 </ul>
                             </div>
@@ -345,9 +385,9 @@ export function NewRequestsTab({ orders, onApprove, onReject, loading }: {
                         <Button 
                             onClick={handleSubmit} 
                             disabled={isSubmitting}
-                            className={actionType === "approve" ? "bg-emerald-600 hover:bg-emerald-700" : "bg-destructive hover:bg-destructive/90"}
+                            className={actionType === "approve" ? "bg-emerald-600 hover:bg-emerald-700" : actionType === "check" ? "bg-amber-600 hover:bg-amber-700" : "bg-destructive hover:bg-destructive/90"}
                         >
-                            {isSubmitting ? "Processing..." : actionType === "approve" ? "Confirm Approval" : "Confirm Rejection"}
+                            {isSubmitting ? "Processing..." : actionType === "approve" ? "Confirm Approval" : actionType === "check" ? "Confirm Check Payment" : "Confirm Rejection"}
                         </Button>
                     </DialogFooter>
                 </DialogContent>

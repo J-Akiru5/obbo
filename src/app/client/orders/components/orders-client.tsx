@@ -33,7 +33,7 @@ function getActiveStep(order: Order): number {
     if (order.status === "completed" || order.tracking_status === "delivered") return 4;
     if (order.tracking_status === "in_transit") return 3;
     if (order.status === "dispatched") return 2;
-    if (order.status === "awaiting_check" || (order.status === "approved" && (order.check_number || order.payment_method === "cash"))) return 1;
+    if (order.status === "pending_final_confirmation" || order.status === "awaiting_check" || (order.status === "approved" && (order.check_number || order.payment_method === "cash"))) return 1;
     if (order.status === "approved") return 0;
     return -1;
 }
@@ -92,7 +92,7 @@ export default function OrdersClient({ orders }: { orders: Order[] }) {
     const [dateTo, setDateTo] = useState("");
 
     const pendingOrders = orders.filter(o => o.status === "pending" || o.status === "partially_approved");
-    const activeOrders = orders.filter(o => o.status === "approved" || o.status === "awaiting_check" || o.status === "dispatched");
+    const activeOrders = orders.filter(o => o.status === "approved" || o.status === "awaiting_check" || o.status === "pending_final_confirmation" || o.status === "dispatched");
     const historyOrders = useMemo(() => {
         let filtered = orders.filter(o => o.status === "completed" || o.status === "rejected");
         
@@ -235,7 +235,8 @@ export default function OrdersClient({ orders }: { orders: Order[] }) {
                             {order.status === "pending" && <Badge variant="secondary">Awaiting Approval</Badge>}
                             {order.status === "partially_approved" && <Badge className="bg-status-info-bg text-status-info-text border-status-info-text/20">Partially Approved</Badge>}
                             {order.status === "approved" && <Badge className="bg-status-pending-bg text-status-pending-text border-status-pending-border">Payment Required</Badge>}
-                            {order.status === "awaiting_check" && <Badge variant="secondary">Check Verifying</Badge>}
+                            {order.status === "awaiting_check" && <Badge className="bg-status-pending-bg text-status-pending-text border-status-pending-border">Upload Check</Badge>}
+                            {order.status === "pending_final_confirmation" && <Badge variant="secondary">Check Verifying</Badge>}
                             {order.status === "dispatched" && (
                                 <Badge className="bg-status-success-bg text-status-success-text border-status-success-border/20">
                                     {order.tracking_status === "in_transit" ? "In Transit" : "Dispatched"}
@@ -255,7 +256,7 @@ export default function OrdersClient({ orders }: { orders: Order[] }) {
                     )}
 
                     {/* Approval Banner with Shipping Fee (Active orders) */}
-                    {type === "active" && order.status === "approved" && (
+                    {type === "active" && (order.status === "approved" || order.status === "awaiting_check") && (
                         <div className="p-3 bg-status-pending-bg border border-status-pending-border rounded-lg space-y-3">
                             <div className="flex items-start gap-2">
                                 <AlertCircle className="w-5 h-5 text-status-pending-text shrink-0 mt-0.5" />
@@ -264,18 +265,22 @@ export default function OrdersClient({ orders }: { orders: Order[] }) {
                                     {order.shipping_fee > 0 && (
                                         <span className="text-sm text-foreground"> Shipping Fee: <strong>₱{order.shipping_fee.toLocaleString()}</strong>.</span>
                                     )}
-                                    <p className="text-xs text-muted-foreground mt-1">Please complete your payment below.</p>
+                                    <p className="text-xs text-muted-foreground mt-1">
+                                        {order.status === "awaiting_check" 
+                                            ? "Please upload a picture of your check to proceed."
+                                            : "Please complete your payment below."}
+                                    </p>
                                 </div>
                             </div>
                             <Button size="sm" className="bg-status-pending-text hover:bg-status-pending-text/80 text-background w-full sm:w-auto" onClick={() => handleOpenPayment(order)}>
-                                <CreditCard className="w-4 h-4 mr-2" />
-                                Submit Payment
+                                {order.status === "awaiting_check" ? <UploadCloud className="w-4 h-4 mr-2" /> : <CreditCard className="w-4 h-4 mr-2" />}
+                                {order.status === "awaiting_check" ? "Upload Check Details" : "Submit Payment"}
                             </Button>
                         </div>
                     )}
 
                     {/* Awaiting check verification */}
-                    {type === "active" && order.status === "awaiting_check" && (
+                    {type === "active" && order.status === "pending_final_confirmation" && (
                         <div className="p-3 bg-status-info-bg border border-status-info-text/20 rounded-lg text-sm text-status-info-text flex items-center gap-2">
                             <Clock className="w-4 h-4 text-status-info-text" />
                             <span>Payment Submitted – Awaiting admin check verification.</span>
@@ -283,7 +288,7 @@ export default function OrdersClient({ orders }: { orders: Order[] }) {
                     )}
                     
                     {/* Tracking progress bar + details */}
-                    {type === "active" && (order.status === "dispatched" || order.status === "approved" || order.status === "awaiting_check") && (
+                    {type === "active" && (order.status === "dispatched" || order.status === "approved" || order.status === "awaiting_check" || order.status === "pending_final_confirmation") && (
                         <TrackingProgressBar order={order} />
                     )}
 

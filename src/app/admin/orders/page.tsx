@@ -129,9 +129,9 @@ function OrdersContent() {
                 <TabsList className="flex w-full overflow-x-auto h-auto justify-start md:grid md:grid-cols-4 no-scrollbar border-b md:border-b-0 rounded-none md:rounded-md pb-1 md:pb-0 mb-4 md:mb-0">
                     <TabsTrigger value="new" className="py-2.5 whitespace-nowrap shrink-0">
                         New Requests
-                        {orders.filter(o => o.status === "pending").length > 0 && (
+                        {orders.filter(o => o.status === "pending" || o.status === "pending_final_confirmation").length > 0 && (
                             <span className="ml-2 bg-accent text-accent-foreground text-[10px] font-bold px-1.5 py-0.5 rounded-full">
-                                {orders.filter(o => o.status === "pending").length}
+                                {orders.filter(o => o.status === "pending" || o.status === "pending_final_confirmation").length}
                             </span>
                         )}
                     </TabsTrigger>
@@ -143,19 +143,19 @@ function OrdersContent() {
                 <div className="mt-6">
                     <TabsContent value="new">
                         <NewRequestsTab 
-                            orders={orders.filter(o => o.status === "pending")} 
+                            orders={orders.filter(o => o.status === "pending" || o.status === "pending_final_confirmation")} 
                             onApprove={handleApproveOrder} 
                             onReject={handleRejectOrder}
+                            onConfirmCheck={handleConfirmCheck}
                             loading={loading}
                         />
                     </TabsContent>
 
                     <TabsContent value="fulfillment">
                         <FulfillmentTab 
-                            orders={orders.filter(o => o.status === "approved" || o.status === "partially_approved" || o.status === "awaiting_check")}
+                            orders={orders.filter(o => o.status === "approved" || o.status === "partially_approved")}
                             shipments={shipments}
                             onDispatch={handleDispatch}
-                            onConfirmCheck={handleConfirmCheck}
                             loading={loading}
                         />
                     </TabsContent>

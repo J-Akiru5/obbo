@@ -9,6 +9,7 @@ export type OrderStatus =
     | 'approved'
     | 'partially_approved'
     | 'awaiting_check'
+    | 'pending_final_confirmation'
     | 'dispatched'
     | 'completed'
     | 'rejected';
@@ -181,11 +182,13 @@ export interface CustomerBalance {
     product_id: string;
     product?: Product;
     bag_type: BagType;
+    total_purchase: number;
     remaining_qty: number;
     status: BalanceStatus;
     order?: {
         po_number: string | null;
         po_image_url: string | null;
+        created_at: string | null;
     } | null;
     created_at: string;
 }

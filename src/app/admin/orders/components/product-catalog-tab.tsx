@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Edit, Package, UploadCloud, Loader2, Plus, Eye, LayoutGrid, List, X } from "lucide-react";
+import { Edit, Package, UploadCloud, Loader2, Plus, Trash2, Eye, LayoutGrid, List, X } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
 
@@ -16,15 +16,15 @@ interface ProductCatalogTabProps {
     products: Product[];
     onUpdate: (id: string, updates: Partial<Product>) => Promise<void>;
     onCreate?: (product: any) => Promise<void>;
+    onDelete?: (id: string) => Promise<void>;
     loading: boolean;
 }
 
-export function ProductCatalogTab({ products, onUpdate, onCreate, loading }: ProductCatalogTabProps) {
+export function ProductCatalogTab({ products, onUpdate, onCreate, onDelete, loading }: ProductCatalogTabProps) {
     const [viewMode, setViewMode] = useState<"list" | "grid">("list");
     const [isViewOpen, setIsViewOpen] = useState(false);
     const [viewingProduct, setViewingProduct] = useState<Product | null>(null);
     const [editingProduct, setEditingProduct] = useState<Product | null>(null);
-    const [isCreating, setIsCreating] = useState(false);
     
     // Form state (used for both edit and create)
     const [formData, setFormData] = useState({
@@ -45,18 +45,6 @@ export function ProductCatalogTab({ products, onUpdate, onCreate, loading }: Pro
         && (p.bag_type === "SB" || p.bag_type === "JB")
     );
 
-    const openCreate = () => {
-        setFormData({
-            name: "Portland Cement Type 1",
-            description: "",
-            bag_type: "JB",
-            port: 0,
-            warehouse: 0
-        });
-        setImageFile(null);
-        setImagePreview(null);
-        setIsCreating(true);
-    };
 
     const openEdit = (product: Product) => {
         setEditingProduct(product);
@@ -110,32 +98,7 @@ export function ProductCatalogTab({ products, onUpdate, onCreate, loading }: Pro
     const handleSave = async () => {
         setIsSaving(true);
         try {
-            if (isCreating && onCreate) {
-                // For create, we first create the product, then upload image if needed and update
-                const newProductData = {
-                    name: formData.name,
-                    description: formData.description,
-                    bag_type: formData.bag_type,
-                    price_port: formData.port,
-                    price_warehouse: formData.warehouse,
-                    price_per_bag: formData.warehouse, // legacy
-                    is_active: true
-                };
-                
-                // We don't have the ID yet, but our backend action returns the created product data
-                // In this setup, we'll let onCreate handle the database insert, but we need to upload the image first
-                // A better approach is to upload with a temporary name, or just use the action.
-                // We'll pass the image later or let the admin action handle it.
-                // Since `onCreate` doesn't return the ID in our current setup (it returns void because it's wrapped in page.tsx),
-                // we'll just generate a random ID for the image name if needed.
-                let imageUrl = null;
-                if (imageFile) {
-                    imageUrl = await uploadImage(Date.now().toString(), imageFile);
-                }
-
-                await onCreate({ ...newProductData, image_url: imageUrl });
-                setIsCreating(false);
-            } else if (editingProduct) {
+            if (editingProduct) {
                 let newImageUrl = editingProduct.image_url;
 
                 if (imageFile) {
@@ -171,8 +134,8 @@ export function ProductCatalogTab({ products, onUpdate, onCreate, loading }: Pro
 
     if (loading) return <div className="py-8 text-center text-muted-foreground text-sm animate-pulse">Loading products...</div>;
 
-    const modalOpen = isCreating || !!editingProduct;
-    const modalTitle = isCreating ? "Create New Product" : `Edit Product: ${editingProduct?.name}`;
+    const modalOpen = !!editingProduct;
+    const modalTitle = `Edit Product: ${editingProduct?.name}`;
 
     return (
         <Card>
@@ -203,11 +166,6 @@ export function ProductCatalogTab({ products, onUpdate, onCreate, loading }: Pro
                                 <LayoutGrid className="h-4 w-4" />
                             </Button>
                         </div>
-                        {onCreate && (
-                            <Button onClick={openCreate} className="bg-primary gap-2 h-9">
-                                <Plus className="w-4 h-4" /> Create Product
-                            </Button>
-                        )}
                     </div>
                 </div>
                 <div className="p-3 bg-primary/5 border border-primary/10 rounded-lg text-xs text-primary mt-3">
@@ -455,7 +413,6 @@ export function ProductCatalogTab({ products, onUpdate, onCreate, loading }: Pro
             <Dialog open={modalOpen} onOpenChange={(open) => {
                 if (!open) {
                     setEditingProduct(null);
-                    setIsCreating(false);
                 }
             }}>
                 <DialogContent className="max-h-[90vh] overflow-y-auto">
@@ -544,7 +501,7 @@ export function ProductCatalogTab({ products, onUpdate, onCreate, loading }: Pro
                         </div>
                     </div>
                     <DialogFooter>
-                        <Button variant="outline" onClick={() => { setEditingProduct(null); setIsCreating(false); }} disabled={isSaving}>Cancel</Button>
+                        <Button variant="outline" onClick={() => { setEditingProduct(null); }} disabled={isSaving}>Cancel</Button>
                         <Button onClick={handleSave} disabled={isSaving} className="bg-primary gap-2">
                             {isSaving ? (
                                 <><Loader2 className="h-4 w-4 animate-spin" />{isUploadingImage ? "Uploading..." : "Saving..."}</>
