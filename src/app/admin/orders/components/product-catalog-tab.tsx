@@ -336,7 +336,7 @@ export function ProductCatalogTab({ products, onUpdate, onCreate, onDelete, load
                                     {viewingProduct?.name}
                                     <Badge variant="outline" className="border-white/40 text-white font-mono text-[10px] ml-2">{viewingProduct?.bag_type}</Badge>
                                 </h2>
-                                <p className="text-primary-foreground/70 text-sm mt-1">{viewingProduct?.description || "High-quality industrial cement product."}</p>
+                                <p className="text-white/80 text-sm mt-1">{viewingProduct?.description || "High-quality industrial cement product."}</p>
                             </div>
                             <Button variant="ghost" size="icon" onClick={() => setIsViewOpen(false)} className="text-white hover:bg-white/10 rounded-full h-8 w-8">
                                 <X className="w-5 h-5" />
@@ -392,13 +392,13 @@ export function ProductCatalogTab({ products, onUpdate, onCreate, onDelete, load
                             <div className="space-y-4">
                                 <p className="text-[10px] uppercase font-black text-muted-foreground/60 tracking-widest">Specifications</p>
                                 <div className="grid grid-cols-2 gap-4">
-                                    <div className="p-3 bg-white border rounded-lg shadow-sm">
+                                    <div className="p-3 bg-muted/30 border rounded-lg shadow-sm">
                                         <p className="text-[9px] font-black text-muted-foreground uppercase mb-1">Packaging</p>
-                                        <p className="text-sm font-bold">{viewingProduct?.bag_type === "JB" ? "Jumbo Bag" : "Sling Bag"}</p>
+                                        <p className="text-sm font-bold text-foreground">{viewingProduct?.bag_type === "JB" ? "Jumbo Bag" : "Sling Bag"}</p>
                                     </div>
-                                    <div className="p-3 bg-white border rounded-lg shadow-sm">
+                                    <div className="p-3 bg-muted/30 border rounded-lg shadow-sm">
                                         <p className="text-[9px] font-black text-muted-foreground uppercase mb-1">Unit</p>
-                                        <p className="text-sm font-bold">Per Bag</p>
+                                        <p className="text-sm font-bold text-foreground">Per Bag</p>
                                     </div>
                                 </div>
                             </div>

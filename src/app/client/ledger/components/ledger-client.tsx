@@ -179,36 +179,36 @@ export default function LedgerClient({ balances, summary }: { balances: Customer
     return (
         <div className="space-y-6">
             <div>
-                <h2 className="text-2xl font-bold text-gray-900 tracking-tight">Balance Ledger</h2>
-                <p className="text-sm text-gray-500">Monitor your remaining cement balance and request re-delivery.</p>
+                <h2 className="text-2xl font-bold text-foreground tracking-tight">Balance Ledger</h2>
+                <p className="text-sm text-muted-foreground">Monitor your remaining cement balance and request re-delivery.</p>
             </div>
 
             {/* Balance Summary Counters */}
             <div className="grid gap-4 md:grid-cols-3">
-                <Card className="bg-white border-blue-100 shadow-sm">
+                <Card className="bg-card border-border/50 shadow-sm">
                     <CardContent className="p-5">
                         <div className="flex items-center justify-between">
                             <div>
-                                <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Total Purchased</p>
-                                <p className="text-2xl font-bold text-gray-900 mt-1">{summary.totalPurchased.toLocaleString()}</p>
-                                <p className="text-xs text-gray-500">individual bags</p>
+                                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Total Purchased</p>
+                                <p className="text-2xl font-bold text-foreground mt-1">{summary.totalPurchased.toLocaleString()}</p>
+                                <p className="text-xs text-muted-foreground">individual bags</p>
                             </div>
-                            <div className="h-10 w-10 rounded-xl bg-blue-50 flex items-center justify-center">
+                            <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center">
                                 <ShoppingBag className="w-5 h-5 text-primary" />
                             </div>
                         </div>
                     </CardContent>
                 </Card>
-                <Card className="bg-white border-blue-100 shadow-sm">
+                <Card className="bg-card border-border/50 shadow-sm">
                     <CardContent className="p-5">
                         <div className="flex items-center justify-between">
                             <div>
-                                <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Total Delivered</p>
-                                <p className="text-2xl font-bold text-gray-900 mt-1">{summary.totalDelivered.toLocaleString()}</p>
-                                <p className="text-xs text-gray-500">individual bags</p>
+                                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Total Delivered</p>
+                                <p className="text-2xl font-bold text-foreground mt-1">{summary.totalDelivered.toLocaleString()}</p>
+                                <p className="text-xs text-muted-foreground">individual bags</p>
                             </div>
-                            <div className="h-10 w-10 rounded-xl bg-emerald-50 flex items-center justify-center">
-                                <Truck className="w-5 h-5 text-emerald-600" />
+                            <div className="h-10 w-10 rounded-xl bg-emerald-500/10 flex items-center justify-center">
+                                <Truck className="w-5 h-5 text-emerald-600 dark:text-emerald-500" />
                             </div>
                         </div>
                     </CardContent>
@@ -217,12 +217,12 @@ export default function LedgerClient({ balances, summary }: { balances: Customer
                     <CardContent className="p-5">
                         <div className="flex items-center justify-between">
                             <div>
-                                <p className="text-xs font-semibold uppercase tracking-wide text-blue-200">Remaining Balance</p>
-                                <p className="text-2xl font-bold text-white mt-1">{summary.remainingBalance.toLocaleString()}</p>
-                                <p className="text-xs text-blue-200">available for re-delivery</p>
+                                <p className="text-xs font-semibold uppercase tracking-wide text-primary-foreground/80">Remaining Balance</p>
+                                <p className="text-2xl font-bold text-primary-foreground mt-1">{summary.remainingBalance.toLocaleString()}</p>
+                                <p className="text-xs text-primary-foreground/80">available for re-delivery</p>
                             </div>
-                            <div className="h-10 w-10 rounded-xl bg-white/15 flex items-center justify-center">
-                                <TrendingDown className="w-5 h-5 text-blue-200" />
+                            <div className="h-10 w-10 rounded-xl bg-primary-foreground/15 flex items-center justify-center">
+                                <TrendingDown className="w-5 h-5 text-primary-foreground/80" />
                             </div>
                         </div>
                     </CardContent>
@@ -232,12 +232,12 @@ export default function LedgerClient({ balances, summary }: { balances: Customer
             <div className="grid gap-6">
                 {/* Active Balances */}
                 <Card className="shadow-sm border-primary/20 overflow-hidden">
-                    <CardHeader className="pb-3 border-b border-gray-100 bg-blue-50/30">
+                    <CardHeader className="pb-3 border-b border-border/50 bg-primary/5">
                         <CardTitle className="text-base flex items-center gap-2">
                             <Package className="w-5 h-5 text-primary" />
                             Outstanding Balances
                         </CardTitle>
-                        <CardDescription>Bags that have been paid for but not yet delivered</CardDescription>
+                        <CardDescription className="text-muted-foreground">Bags that have been paid for but not yet delivered</CardDescription>
                     </CardHeader>
                     <CardContent className="p-0">
                         {pendingBalances.length === 0 ? (
@@ -273,7 +273,7 @@ export default function LedgerClient({ balances, summary }: { balances: Customer
                                                 <TableCell className="text-center font-semibold">{b.total_purchase.toLocaleString()}</TableCell>
                                                 <TableCell className="text-center text-muted-foreground">{(b.total_purchase - b.remaining_qty).toLocaleString()}</TableCell>
                                                 <TableCell className="text-center">
-                                                    <span className="inline-flex items-center justify-center px-3 py-1 rounded-full bg-blue-100 text-blue-700 font-bold text-sm min-w-[3rem]">
+                                                    <span className="inline-flex items-center justify-center px-3 py-1 rounded-full bg-primary/10 text-primary font-bold text-sm min-w-[3rem]">
                                                         {b.remaining_qty.toLocaleString()}
                                                     </span>
                                                 </TableCell>
@@ -298,8 +298,8 @@ export default function LedgerClient({ balances, summary }: { balances: Customer
 
                 {/* Fulfilled Balances */}
                 <Card className="shadow-sm">
-                    <CardHeader className="pb-3 border-b border-gray-100">
-                        <CardTitle className="text-base flex items-center gap-2 text-gray-600">
+                    <CardHeader className="pb-3 border-b border-border/50">
+                        <CardTitle className="text-base flex items-center gap-2 text-muted-foreground">
                             <History className="w-5 h-5" />
                             Fulfilled Balances
                         </CardTitle>
@@ -311,7 +311,7 @@ export default function LedgerClient({ balances, summary }: { balances: Customer
                                 <p>No completed balances yet.</p>
                             </div>
                         ) : (
-                            <div className="overflow-x-auto opacity-70 grayscale hover:opacity-100 transition-opacity">
+                            <div className="overflow-x-auto opacity-80 grayscale-[30%] hover:opacity-100 hover:grayscale-0 transition-all duration-300">
                                 <Table>
                                     <TableHeader>
                                         <TableRow>
@@ -356,11 +356,11 @@ export default function LedgerClient({ balances, summary }: { balances: Customer
 
                     {selectedBalance && (
                         <form onSubmit={handleSubmit} className="space-y-6 py-4">
-                            <div className="p-4 bg-blue-50 border border-blue-100 rounded-lg">
-                                <div className="text-sm text-blue-800">You are requesting delivery from a balance of:</div>
-                                <div className="text-lg font-bold text-blue-900">{selectedBalance.remaining_qty} individual bags of {selectedBalance.product?.name}</div>
+                            <div className="p-4 bg-primary/5 border border-primary/10 rounded-lg">
+                                <div className="text-sm text-primary/80 font-medium">You are requesting delivery from a balance of:</div>
+                                <div className="text-lg font-bold text-primary">{selectedBalance.remaining_qty} individual bags of {selectedBalance.product?.name}</div>
                                 {selectedBalance.order?.po_number && (
-                                    <div className="text-xs text-blue-600 mt-1">Linked to original PO: {selectedBalance.order.po_number}</div>
+                                    <div className="text-xs text-primary/60 mt-1 italic">Linked to original PO: {selectedBalance.order.po_number}</div>
                                 )}
                             </div>
 
@@ -392,7 +392,7 @@ export default function LedgerClient({ balances, summary }: { balances: Customer
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-2">
                                     <Label>PO Number <span className="text-red-500">*</span></Label>
-                                    <Input value={poNumber} readOnly className="bg-slate-50 cursor-not-allowed" />
+                                    <Input value={poNumber} readOnly className="bg-muted/30 cursor-not-allowed border-dashed" />
                                     <p className="text-[10px] text-muted-foreground">This PO is linked to your original purchase.</p>
                                 </div>
                                 <div className="space-y-2">
@@ -413,8 +413,8 @@ export default function LedgerClient({ balances, summary }: { balances: Customer
 
                             {/* Conditional Pickup fields */}
                             {serviceType === "pickup" && (
-                                <div className="p-4 border border-amber-200 bg-amber-50 rounded-lg space-y-4">
-                                    <h4 className="text-sm font-semibold text-amber-900">Pick-up Details</h4>
+                                <div className="p-4 border border-amber-500/20 bg-amber-500/5 rounded-lg space-y-4">
+                                    <h4 className="text-sm font-semibold text-amber-600 dark:text-amber-500">Pick-up Details</h4>
                                     <div className="grid grid-cols-2 gap-4">
                                         <div className="space-y-2">
                                             <Label>Driver Name <span className="text-red-500">*</span></Label>
@@ -433,20 +433,20 @@ export default function LedgerClient({ balances, summary }: { balances: Customer
                             )}
 
                             {/* Split Redelivery — available for BOTH pickup and deliver */}
-                            <div className="p-4 border border-blue-200 bg-blue-50 rounded-lg space-y-4">
+                            <div className="p-4 border border-primary/20 bg-primary/5 rounded-lg space-y-4">
                                 <div className="flex items-center justify-between">
                                     <div className="flex items-center gap-2">
-                                        <Split className="w-4 h-4 text-blue-600" />
+                                        <Split className="w-4 h-4 text-primary" />
                                         <div>
-                                            <h4 className="text-sm font-semibold text-blue-900">Split Redelivery Option</h4>
-                                            <p className="text-xs text-blue-700">Don&apos;t need all {selectedBalance.remaining_qty} bags right now?</p>
+                                            <h4 className="text-sm font-semibold text-foreground">Split Redelivery Option</h4>
+                                            <p className="text-xs text-muted-foreground">Don&apos;t need all {selectedBalance.remaining_qty} bags right now?</p>
                                         </div>
                                     </div>
-                                    <input type="checkbox" checked={wantsSplit} onChange={e => setWantsSplit(e.target.checked)} className="w-5 h-5 text-primary rounded border-blue-300 focus:ring-primary" />
+                                    <input type="checkbox" checked={wantsSplit} onChange={e => setWantsSplit(e.target.checked)} className="w-5 h-5 text-primary rounded border-border focus:ring-primary" />
                                 </div>
                                 {wantsSplit && (
-                                    <div className="pt-2 space-y-2 border-t border-blue-100">
-                                        <Label className="text-blue-900">How many individual bags do you want to receive now?</Label>
+                                    <div className="pt-2 space-y-2 border-t border-border/50">
+                                        <Label className="text-foreground">How many individual bags do you want to receive now?</Label>
                                         <Input 
                                             type="number" 
                                             min="1" 
@@ -456,7 +456,7 @@ export default function LedgerClient({ balances, summary }: { balances: Customer
                                             onFocus={(e) => e.target.select()}
                                             onChange={(e) => setDeliverNowQty(parseInt(e.target.value) || 0)} 
                                         />
-                                        <p className="text-[10px] text-blue-600">
+                                        <p className="text-[10px] text-muted-foreground italic">
                                             {selectedBalance.remaining_qty - deliverNowQty} bags will remain in your balance.
                                         </p>
                                     </div>
