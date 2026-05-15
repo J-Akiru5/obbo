@@ -341,7 +341,7 @@ export function NewRequestsTab({ orders, onApprove, onReject, onConfirmCheck, lo
                             {actionType === "approve" 
                                 ? "Review requested quantities and set shipping details. You can partially approve items if stock is low."
                                 : actionType === "check"
-                                ? `Are you sure you want to confirm this ${selectedOrder.payment_method} payment? This will move the order to the Fulfillment queue.`
+                                ? `Are you sure you want to confirm this ${selectedOrder?.payment_method} payment? This will move the order to the Fulfillment queue.`
                                 : "Please provide a reason for rejecting this order."}
                         </DialogDescription>
                     </DialogHeader>
