@@ -233,19 +233,24 @@ export async function dispatchOrder(
     }
 
     // Deduct stock
-    await supabase.from("shipments").update({
+    const { error: stockError } = await supabase.from("shipments").update({
         remaining_jb: shipment.remaining_jb - jbQty,
         remaining_sb: shipment.remaining_sb - sbQty,
-        good_stock: shipment.good_stock - (jbQty + sbQty),
+        good_stock: (shipment.good_stock || 0) - (jbQty + sbQty),
     }).eq("id", shipmentId);
+    if (stockError) throw new Error(`Failed to deduct stock: ${stockError.message}`);
 
     // Create ledger row (with all new fields)
-    const clientName = order.client?.company_name || order.client?.full_name || "Unknown";
+    const clientName = order.client?.company_name || order.client?.full_name || "Unknown Client";
     const destination = [order.client?.address_street, order.client?.address_city, order.client?.address_province].filter(Boolean).join(", ") || null;
-    await supabase.from("shipment_ledger").insert({
+    
+    const poNumber = order.po_number || `SYS-${orderId.slice(0, 8).toUpperCase()}`;
+    const dispatchDate = new Date().toISOString().split("T")[0];
+
+    const { error: ledgerError } = await supabase.from("shipment_ledger").insert({
         shipment_id: shipmentId,
         dr_number: drNumber,
-        po_number: order.po_number || `SYS-${orderId.slice(0, 8).toUpperCase()}`,
+        po_number: poNumber,
         client_name: clientName,
         driver_name: driverName,
         plate_number: plateNumber,
@@ -257,10 +262,11 @@ export async function dispatchOrder(
         check_number: order.payment_method === "check" ? order.check_number : null,
         amount: Number(order.total_amount) || null,
     });
+    if (ledgerError) throw new Error(`Failed to create ledger entry: ${ledgerError.message}`);
 
     // Handle Split Delivery: Create customer balance for remaining quantities
     for (const item of order.items) {
-        if (item.approved_qty < item.requested_qty) {
+        if ((item.approved_qty || 0) < (item.requested_qty || 0)) {
             const remaining = item.requested_qty - item.approved_qty;
             
             // Check if a balance already exists for this item in this order (idempotency)
@@ -273,7 +279,7 @@ export async function dispatchOrder(
                 .single();
 
             if (!existing) {
-                await supabase.from("customer_balances").insert({
+                const { error: balanceError } = await supabase.from("customer_balances").insert({
                     client_id: order.client_id,
                     order_id: orderId,
                     product_id: item.product_id,
@@ -282,17 +288,19 @@ export async function dispatchOrder(
                     remaining_qty: remaining,
                     status: "pending",
                 });
+                if (balanceError) console.error("Balance creation error:", balanceError);
             }
         }
     }
 
     // Update order items dispatched_qty
     for (const item of order.items) {
-        await supabase.from("order_items").update({ dispatched_qty: item.approved_qty }).eq("id", item.id);
+        const { error: itemError } = await supabase.from("order_items").update({ dispatched_qty: item.approved_qty }).eq("id", item.id);
+        if (itemError) console.error(`Failed to update item ${item.id}:`, itemError);
     }
 
     // Update order status
-    await supabase.from("orders").update({
+    const { error: orderUpdateError } = await supabase.from("orders").update({
         status: "dispatched",
         tracking_status: "pending_dispatch",
         dr_number: drNumber,
@@ -302,27 +310,31 @@ export async function dispatchOrder(
         shipment_id: shipmentId,
         updated_at: new Date().toISOString(),
     }).eq("id", orderId);
+    if (orderUpdateError) throw new Error(`Failed to update order status: ${orderUpdateError.message}`);
 
     // ── AUTO-GENERATE PO RECORD ──────────────────────────────
-    const poNumber = order.po_number || `SYS-${orderId.slice(0, 8).toUpperCase()}`;
-
     // Determine payment columns
     let checkNumber: string | null = null;
     let checkAmount: number | null = null;
     let cashAmount: number | null = null;
+    
     if (order.payment_method === "check") {
         checkNumber = order.check_number || null;
         checkAmount = Number(order.total_amount) || null;
+    } else if (order.payment_method === "cash") {
+        cashAmount = Number(order.total_amount) || null;
     } else {
+        // For bank_transfer or others, we'll map to cash_amount for ledger parity if needed
         cashAmount = Number(order.total_amount) || null;
     }
 
-    await supabase.from("purchase_orders").upsert({
+    const { error: poError } = await supabase.from("purchase_orders").upsert({
         po_number: poNumber,
         client_id: order.client_id,
         client_name: clientName,
         jb: jbQty,
         sb: sbQty,
+        date: dispatchDate,
         status: "dispatched",
         source: order.source,
         service_type: order.service_type,
@@ -333,10 +345,16 @@ export async function dispatchOrder(
         cash_amount: cashAmount,
         photo_url: order.po_image_url,
     }, { onConflict: "po_number" });
+    
+    if (poError) {
+        console.error("PO Auto-generation error:", poError);
+        // We don't throw here to avoid failing the whole dispatch if just the ledger sync fails, 
+        // but the user wants it to be a transaction, so maybe we should.
+        throw new Error(`Failed to auto-generate PO record: ${poError.message}`);
+    }
 
     // ── AUTO-GENERATE DR RECORD ──────────────────────────────
-
-    await supabase.from("delivery_receipts").upsert({
+    const { error: drError } = await supabase.from("delivery_receipts").upsert({
         dr_number: drNumber,
         shipment_id: shipmentId,
         client_name: clientName,
@@ -346,7 +364,7 @@ export async function dispatchOrder(
         sb: sbQty,
         quantity: jbQty + sbQty,
         bag_type: jbQty > 0 ? "JB" : "SB",
-        received_date: new Date().toISOString().split("T")[0],
+        received_date: dispatchDate,
         driver: driverName,
         plate_number: plateNumber,
         shipping_fee: Number(order.shipping_fee) || 0,
@@ -354,6 +372,8 @@ export async function dispatchOrder(
         destination: destination,
         order_id: orderId,
     }, { onConflict: "dr_number" });
+
+    if (drError) throw new Error(`Failed to auto-generate DR record: ${drError.message}`);
 
     await logActivity(supabase, userId, "order_dispatched", "order", orderId, {
         shipment: shipment.batch_name, dr: drNumber, jb: jbQty, sb: sbQty,
