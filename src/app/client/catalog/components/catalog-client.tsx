@@ -45,6 +45,8 @@ export default function CatalogClient({ products }: { products: Product[] }) {
     // Split delivery (now available for BOTH pickup and deliver)
     const [wantsSplit, setWantsSplit] = useState(false);
     const [deliverNowQty, setDeliverNowQty] = useState<number>(0);
+    const [deliverNowJB, setDeliverNowJB] = useState<number>(0);
+    const [deliverNowSB, setDeliverNowSB] = useState<number>(0);
     
     // Driver (if pickup)
     const [driverName, setDriverName] = useState("");
@@ -91,6 +93,8 @@ export default function CatalogClient({ products }: { products: Product[] }) {
         setSupplierName("");
         setWantsSplit(false);
         setDeliverNowQty(0);
+        setDeliverNowJB(0);
+        setDeliverNowSB(0);
         setDriverName("");
         setPlateNumber("");
         setPickupDate("");
@@ -133,8 +137,13 @@ export default function CatalogClient({ products }: { products: Product[] }) {
         }
 
         if (wantsSplit) {
-            if (deliverNowQty <= 0 || deliverNowQty > totalIndividualBags) {
-                toast.error("Invalid split delivery quantity. Must be between 1 and Total Individual Bags.");
+            const totalToDeliverNow = (deliverNowJB * 25) + (deliverNowSB * 50);
+            if (totalToDeliverNow <= 0) {
+                toast.error("Please specify at least one bag type (JB or SB) to deliver now.");
+                return;
+            }
+            if (deliverNowJB > qtyJB || deliverNowSB > qtySB) {
+                toast.error("Deliver now quantity cannot exceed total ordered quantity for each bag type.");
                 return;
             }
         }
@@ -181,8 +190,10 @@ export default function CatalogClient({ products }: { products: Product[] }) {
 
             const splitDetails = wantsSplit ? {
                 wantsSplit: true,
-                deliverNowQty,
-                splitNote: `Client split: ${deliverNowQty} indiv bags now out of ${totalIndividualBags} total. Service: ${serviceType}.`
+                deliverNowQty: (deliverNowJB * 25) + (deliverNowSB * 50),
+                deliverNowJB,
+                deliverNowSB,
+                splitNote: `Client split breakdown: ${deliverNowJB} JB (${deliverNowJB * 25} bags) and ${deliverNowSB} SB (${deliverNowSB * 50} bags) now. Service: ${serviceType}.`
             } : undefined;
 
             await submitOrder(orderData, splitDetails);
@@ -244,7 +255,12 @@ export default function CatalogClient({ products }: { products: Product[] }) {
                 items,
                 notes: serviceType === "pickup" && pickupDate ? `Preferred Pick-up Date: ${pickupDate}` : "",
                 preferred_pickup_date: serviceType === "pickup" ? pickupDate : undefined,
-            }, wantsSplit ? { wantsSplit: true, deliverNowQty } : undefined);
+            }, wantsSplit ? { 
+                wantsSplit: true, 
+                deliverNowQty: (deliverNowJB * 25) + (deliverNowSB * 50),
+                deliverNowJB,
+                deliverNowSB
+            } : undefined);
 
             toast.success("Order saved as draft. You can find it in the catalog later.");
             setIsOrderOpen(false);
@@ -489,19 +505,52 @@ export default function CatalogClient({ products }: { products: Product[] }) {
                                     <input type="checkbox" checked={wantsSplit} onChange={e => setWantsSplit(e.target.checked)} className="w-5 h-5 text-blue-600 rounded border-blue-500/30 focus:ring-blue-500 bg-background" />
                                 </div>
                                 {wantsSplit && (
-                                    <div className="pt-3 space-y-2 border-t border-blue-500/20">
-                                        <Label className="text-blue-700 dark:text-blue-300/80">How many individual bags do you want to receive now?</Label>
-                                        <Input 
-                                            type="number" 
-                                            min="1" 
-                                            max={totalIndividualBags} 
-                                            value={deliverNowQty} 
-                                            onChange={(e) => setDeliverNowQty(parseInt(e.target.value) || 0)} 
-                                            className="bg-background border-blue-500/20 focus-visible:ring-blue-500"
-                                        />
-                                        <p className="text-[10px] text-blue-500 font-bold">
-                                            {totalIndividualBags - deliverNowQty} bags will be saved to your balance for later.
-                                        </p>
+                                    <div className="pt-3 space-y-4 border-t border-blue-500/20">
+                                        <p className="text-sm font-semibold text-blue-700 dark:text-blue-300/80">Specify quantities to receive now:</p>
+                                        
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                            {qtyJB > 0 && (
+                                                <div className="space-y-1.5">
+                                                    <Label className="text-xs text-blue-600 font-bold uppercase">JB Bags Now</Label>
+                                                    <Input 
+                                                        type="number" 
+                                                        min="0" 
+                                                        max={qtyJB} 
+                                                        value={deliverNowJB || ""} 
+                                                        placeholder="0"
+                                                        onChange={(e) => setDeliverNowJB(parseInt(e.target.value) || 0)} 
+                                                        className="bg-background border-blue-500/20 focus-visible:ring-blue-500"
+                                                    />
+                                                    <p className="text-[10px] text-blue-500/70">Max: {qtyJB} JB</p>
+                                                </div>
+                                            )}
+                                            {qtySB > 0 && (
+                                                <div className="space-y-1.5">
+                                                    <Label className="text-xs text-blue-600 font-bold uppercase">SB Bags Now</Label>
+                                                    <Input 
+                                                        type="number" 
+                                                        min="0" 
+                                                        max={qtySB} 
+                                                        value={deliverNowSB || ""} 
+                                                        placeholder="0"
+                                                        onChange={(e) => setDeliverNowSB(parseInt(e.target.value) || 0)} 
+                                                        className="bg-background border-blue-500/20 focus-visible:ring-blue-500"
+                                                    />
+                                                    <p className="text-[10px] text-blue-500/70">Max: {qtySB} SB</p>
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        <div className="p-2 bg-blue-500/10 rounded border border-blue-500/20">
+                                            <p className="text-[11px] text-blue-600 font-bold flex justify-between">
+                                                <span>Delivering Now:</span>
+                                                <span>{(deliverNowJB * 25) + (deliverNowSB * 50)} individual bags</span>
+                                            </p>
+                                            <p className="text-[11px] text-blue-400 font-medium flex justify-between mt-0.5">
+                                                <span>Remaining Balance:</span>
+                                                <span>{totalIndividualBags - ((deliverNowJB * 25) + (deliverNowSB * 50))} bags</span>
+                                            </p>
+                                        </div>
                                     </div>
                                 )}
                             </div>

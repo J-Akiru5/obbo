@@ -155,6 +155,8 @@ export interface Order {
     // Split delivery fields
     is_split_delivery: boolean;
     deliver_now_qty: number;
+    deliver_now_jb: number;
+    deliver_now_sb: number;
     supplier_name: string | null;
     preferred_pickup_date: string | null;
     order_type: OrderType;

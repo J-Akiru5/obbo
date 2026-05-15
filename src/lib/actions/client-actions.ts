@@ -123,7 +123,7 @@ export async function submitOrder(
         notes?: string;
         preferred_pickup_date?: string;
     },
-    splitDetails?: { wantsSplit: boolean; deliverNowQty: number; splitNote: string }
+    splitDetails?: { wantsSplit: boolean; deliverNowQty: number; deliverNowJB?: number; deliverNowSB?: number; splitNote: string }
 ) {
     const { supabase, user } = await requireClient();
     
@@ -142,7 +142,7 @@ export async function submitOrder(
     // Build notes
     let notes = orderData.notes || "";
     if (splitDetails && splitDetails.wantsSplit) {
-        notes += `\n[SPLIT DELIVERY REQUESTED]: Client requested ${splitDetails.deliverNowQty} bags now, and the rest to be saved to balances.\n${splitDetails.splitNote}`;
+        notes += `\n[SPLIT DELIVERY REQUESTED]: Client requested ${splitDetails.deliverNowQty} total bags now (${splitDetails.deliverNowJB || 0} JB, ${splitDetails.deliverNowSB || 0} SB), and the rest to be saved to balances.\n${splitDetails.splitNote}`;
     }
 
     const { data: order, error } = await supabase.from("orders").insert({
@@ -160,6 +160,8 @@ export async function submitOrder(
         preferred_pickup_date: orderData.preferred_pickup_date || null,
         is_split_delivery: splitDetails?.wantsSplit ?? false,
         deliver_now_qty: splitDetails?.deliverNowQty ?? 0,
+        deliver_now_jb: splitDetails?.deliverNowJB ?? 0,
+        deliver_now_sb: splitDetails?.deliverNowSB ?? 0,
         order_type: "new",
         notes: notes.trim()
     }).select().single();
@@ -199,7 +201,7 @@ export async function saveOrderDraft(
         notes?: string;
         preferred_pickup_date?: string;
     },
-    splitDetails?: { wantsSplit: boolean; deliverNowQty: number }
+    splitDetails?: { wantsSplit: boolean; deliverNowQty: number; deliverNowJB?: number; deliverNowSB?: number }
 ) {
     const { supabase, user } = await requireClient();
 
@@ -221,6 +223,8 @@ export async function saveOrderDraft(
         preferred_pickup_date: orderData.preferred_pickup_date || null,
         is_split_delivery: splitDetails?.wantsSplit ?? false,
         deliver_now_qty: splitDetails?.deliverNowQty ?? 0,
+        deliver_now_jb: splitDetails?.deliverNowJB ?? 0,
+        deliver_now_sb: splitDetails?.deliverNowSB ?? 0,
         order_type: "draft",
         notes: orderData.notes || ""
     }).select().single();
@@ -360,7 +364,7 @@ export async function submitRedeliveryRequest(balanceId: string, orderData: {
     plate_number?: string | null;
     notes?: string;
     preferred_pickup_date?: string;
-}, splitDetails?: { wantsSplit: boolean; deliverNowQty: number; splitNote: string }) {
+}, splitDetails?: { wantsSplit: boolean; deliverNowQty: number; deliverNowJB?: number; deliverNowSB?: number; splitNote: string }) {
     const { supabase, user } = await requireClient();
 
     // Verify balance
@@ -379,7 +383,7 @@ export async function submitRedeliveryRequest(balanceId: string, orderData: {
     // Build notes
     let notes = `[REDELIVERY REQUEST for PO: ${linkedPo}]\n` + (orderData.notes || "");
     if (splitDetails && splitDetails.wantsSplit) {
-        notes += `\n[SPLIT DELIVERY REQUESTED]: Client requested ${splitDetails.deliverNowQty} bags now, and the rest to remain in balances.\n${splitDetails.splitNote}`;
+        notes += `\n[SPLIT DELIVERY REQUESTED]: Client requested ${splitDetails.deliverNowQty} total bags now (${splitDetails.deliverNowJB || 0} JB, ${splitDetails.deliverNowSB || 0} SB), and the rest to remain in balances.\n${splitDetails.splitNote}`;
     }
 
     // Create a new order linked to the original PO
@@ -397,6 +401,8 @@ export async function submitRedeliveryRequest(balanceId: string, orderData: {
         preferred_pickup_date: orderData.preferred_pickup_date || null,
         is_split_delivery: splitDetails?.wantsSplit ?? false,
         deliver_now_qty: splitDetails?.deliverNowQty ?? 0,
+        deliver_now_jb: splitDetails?.deliverNowJB ?? 0,
+        deliver_now_sb: splitDetails?.deliverNowSB ?? 0,
         order_type: "redelivery",
         linked_po_number: linkedPo,
         notes: notes.trim()

@@ -153,13 +153,15 @@ export default function LedgerClient({ balances, summary }: { balances: Customer
                 preferred_pickup_date: serviceType === "pickup" ? pickupDate : undefined,
             };
 
-            const splitDetails = wantsSplit ? {
+            const adjustedSplitDetails = wantsSplit ? {
                 wantsSplit: true,
                 deliverNowQty,
-                splitNote: `Redelivery split: Client requested ${deliverNowQty} bags now.`
+                deliverNowJB: selectedBalance.bag_type === "JB" ? (deliverNowQty / 25) : 0,
+                deliverNowSB: selectedBalance.bag_type === "SB" ? (deliverNowQty / 50) : 0,
+                splitNote: `Redelivery split: Client requested ${deliverNowQty} indiv bags now.`
             } : undefined;
 
-            await submitRedeliveryRequest(selectedBalance.id, orderData, splitDetails);
+            await submitRedeliveryRequest(selectedBalance.id, orderData, adjustedSplitDetails);
             
             toast.success("Re-delivery request submitted! It is now pending admin approval.");
             

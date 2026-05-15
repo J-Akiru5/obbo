@@ -49,9 +49,13 @@ export function NewRequestsTab({ orders, onApprove, onReject, onConfirmCheck, lo
         setActionType(type);
         if (type === "approve") {
             const initialQtys: Record<string, number> = {};
-            if (order.is_split_delivery && order.items.length === 1) {
-                // If it's a split delivery with only one item, default to the 'deliver now' quantity
-                initialQtys[order.items[0].id] = order.deliver_now_qty;
+            if (order.is_split_delivery) {
+                // Default approved quantities to the 'deliver now' request
+                order.items.forEach(item => {
+                    if (item.bag_type === "JB") initialQtys[item.id] = order.deliver_now_jb || 0;
+                    else if (item.bag_type === "SB") initialQtys[item.id] = order.deliver_now_sb || 0;
+                    else initialQtys[item.id] = item.requested_qty;
+                });
             } else {
                 order.items.forEach(item => { initialQtys[item.id] = item.requested_qty; });
             }
@@ -208,7 +212,7 @@ export function NewRequestsTab({ orders, onApprove, onReject, onConfirmCheck, lo
                                                 <p className="text-xs text-muted-foreground mb-1">Requested JB</p>
                                                 <p className="text-lg font-bold text-foreground">
                                                     {order.is_split_delivery && jbItem ? (
-                                                        <span>{order.deliver_now_qty} <span className="text-xs text-muted-foreground font-normal">/ {jbItem.requested_qty}</span></span>
+                                                        <span>{order.deliver_now_jb} <span className="text-xs text-muted-foreground font-normal">/ {jbItem.requested_qty}</span></span>
                                                     ) : (
                                                         jbItem?.requested_qty || 0
                                                     )}
@@ -218,7 +222,7 @@ export function NewRequestsTab({ orders, onApprove, onReject, onConfirmCheck, lo
                                                 <p className="text-xs text-muted-foreground mb-1">Requested SB</p>
                                                 <p className="text-lg font-bold text-foreground">
                                                     {order.is_split_delivery && sbItem ? (
-                                                        <span>{order.deliver_now_qty} <span className="text-xs text-muted-foreground font-normal">/ {sbItem.requested_qty}</span></span>
+                                                        <span>{order.deliver_now_sb} <span className="text-xs text-muted-foreground font-normal">/ {sbItem.requested_qty}</span></span>
                                                     ) : (
                                                         sbItem?.requested_qty || 0
                                                     )}
@@ -303,7 +307,7 @@ export function NewRequestsTab({ orders, onApprove, onReject, onConfirmCheck, lo
                                         : <li>This is a <b>Cash</b> payment. Approval will move it directly to Fulfillment.</li>}
                                     {selectedOrder.is_split_delivery && (
                                         <li className="text-amber-700 font-bold">
-                                            CLIENT REQUESTED SPLIT: Deliver <b>{selectedOrder.deliver_now_qty}</b> bags now.
+                                            CLIENT REQUESTED SPLIT: Deliver <b>{selectedOrder.deliver_now_jb}</b> JB and <b>{selectedOrder.deliver_now_sb}</b> SB now.
                                         </li>
                                     )}
                                     <li>If you approve less than requested, the remaining bags will automatically become a Customer Balance.</li>
