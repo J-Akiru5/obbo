@@ -234,7 +234,11 @@ export default function OrdersClient({ orders }: { orders: Order[] }) {
                             <p className="text-muted-foreground text-xs">Status</p>
                             {order.status === "pending" && <Badge variant="secondary">Awaiting Approval</Badge>}
                             {order.status === "partially_approved" && <Badge className="bg-status-info-bg text-status-info-text border-status-info-text/20">Partially Approved</Badge>}
-                            {order.status === "approved" && <Badge className="bg-status-pending-bg text-status-pending-text border-status-pending-border">Payment Required</Badge>}
+                            {order.status === "approved" && (
+                                 <Badge className={order.payment_method === 'cash' ? "bg-status-success-bg text-status-success-text border-status-success-border/20" : "bg-status-pending-bg text-status-pending-text border-status-pending-border"}>
+                                     {order.payment_method === 'cash' ? "Ready for Dispatch" : "Payment Required"}
+                                 </Badge>
+                             )}
                             {order.status === "awaiting_check" && <Badge className="bg-status-pending-bg text-status-pending-text border-status-pending-border">Upload Check</Badge>}
                             {order.status === "pending_final_confirmation" && <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200">✅ Payment Submitted</Badge>}
                             {order.status === "dispatched" && (
@@ -255,27 +259,43 @@ export default function OrdersClient({ orders }: { orders: Order[] }) {
                         </div>
                     )}
 
-                    {/* Approval Banner with Shipping Fee (Active orders) */}
-                    {type === "active" && (order.status === "approved" || order.status === "awaiting_check") && (
+                    {/* Check Payment Upload (Only for Check method + Awaiting status) */}
+                    {type === "active" && order.status === "awaiting_check" && order.payment_method === "check" && (
                         <div className="p-3 bg-status-pending-bg border border-status-pending-border rounded-lg space-y-3">
                             <div className="flex items-start gap-2">
                                 <AlertCircle className="w-5 h-5 text-status-pending-text shrink-0 mt-0.5" />
                                 <div>
-                                    <span className="text-sm text-foreground font-medium">Your order has been approved.</span>
+                                    <span className="text-sm text-foreground font-medium">Order Approved – Awaiting Payment.</span>
                                     {order.shipping_fee > 0 && (
                                         <span className="text-sm text-foreground"> Shipping Fee: <strong>₱{order.shipping_fee.toLocaleString()}</strong>.</span>
                                     )}
-                                    <p className="text-xs text-muted-foreground mt-1">
-                                        {order.status === "awaiting_check" 
-                                            ? "Please upload a picture of your check to proceed."
-                                            : "Please complete your payment below."}
-                                    </p>
+                                    <p className="text-xs text-muted-foreground mt-1">Please upload a picture of your check to proceed.</p>
                                 </div>
                             </div>
                             <Button size="sm" className="bg-status-pending-text hover:bg-status-pending-text/80 text-background w-full sm:w-auto" onClick={() => handleOpenPayment(order)}>
-                                {order.status === "awaiting_check" ? <UploadCloud className="w-4 h-4 mr-2" /> : <CreditCard className="w-4 h-4 mr-2" />}
-                                {order.status === "awaiting_check" ? "Upload Check Details" : "Submit Payment"}
+                                <UploadCloud className="w-4 h-4 mr-2" />
+                                Upload Check Details
                             </Button>
+                        </div>
+                    )}
+
+                    {/* Approved / Ready for Dispatch Banner (For Cash COD or Verified Check) */}
+                    {type === "active" && order.status === "approved" && (
+                        <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-lg space-y-2">
+                            <div className="flex items-start gap-2">
+                                <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
+                                <div>
+                                    <span className="text-sm text-emerald-800 font-bold">Your order has been approved.</span>
+                                    {order.shipping_fee > 0 && (
+                                        <span className="text-sm text-emerald-700"> Shipping Fee: <strong>₱{order.shipping_fee.toLocaleString()}</strong>.</span>
+                                    )}
+                                    <p className="text-xs text-emerald-600 mt-1">
+                                        Your order is queued for dispatch. {order.payment_method === 'cash' 
+                                            ? "Please prepare the cash payment for collection upon delivery." 
+                                            : "Your check payment has been verified."}
+                                    </p>
+                                </div>
+                            </div>
                         </div>
                     )}
 

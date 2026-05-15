@@ -280,10 +280,8 @@ export async function submitPaymentDetails(orderId: string, paymentMethod: strin
     if (paymentMethod === "check") {
         updates.check_number = checkNumber;
         updates.check_image_url = checkImageUrl;
+        updates.status = "pending_final_confirmation";
     }
-    
-    // For both cash and check, move to pending_final_confirmation to lock UI and route to admin
-    updates.status = "pending_final_confirmation";
 
     const { error } = await supabase.from("orders").update(updates).eq("id", orderId).eq("client_id", user.id);
     if (error) throw new Error(error.message);
