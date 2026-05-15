@@ -5,8 +5,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Search, Edit2, Trash2, MapPin, Truck, UploadCloud, CheckCircle2, X, FileImage, AlertTriangle, Eye, LayoutGrid, List } from "lucide-react";
-import { createPurchaseOrder, updatePurchaseOrder, deletePurchaseOrder, generateAdminPoNumber } from "@/lib/actions/admin-actions";
+import { Plus, Search, Edit2, MapPin, Truck, UploadCloud, CheckCircle2, X, FileImage, AlertTriangle, Eye, LayoutGrid, List } from "lucide-react";
+import { createPurchaseOrder, updatePurchaseOrder, generateAdminPoNumber } from "@/lib/actions/admin-actions";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
@@ -21,7 +21,6 @@ export function PoListTab({ purchaseOrders, loading, onReload }: { purchaseOrder
     const [viewingPo, setViewingPo] = useState<PurchaseOrder | null>(null);
     const [editingPo, setEditingPo] = useState<PurchaseOrder | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [deleteTarget, setDeleteTarget] = useState<PurchaseOrder | null>(null);
 
     // Form state
     const [poNumber, setPoNumber] = useState("");
@@ -112,19 +111,6 @@ export function PoListTab({ purchaseOrders, loading, onReload }: { purchaseOrder
             toast.error(e.message || "Failed to save PO");
         } finally {
             setIsSubmitting(false);
-        }
-    };
-
-    const confirmDelete = async () => {
-        if (!deleteTarget) return;
-        try {
-            await deletePurchaseOrder(deleteTarget.id);
-            toast.success("PO deleted");
-            onReload();
-        } catch (e: any) {
-            toast.error("Failed to delete");
-        } finally {
-            setDeleteTarget(null);
         }
     };
 
@@ -244,7 +230,6 @@ export function PoListTab({ purchaseOrders, loading, onReload }: { purchaseOrder
                                                 <Eye className="w-4 h-4" />
                                             </Button>
                                             <Button variant="ghost" size="icon" onClick={() => openEdit(po)} className="h-8 w-8 text-primary hover:text-primary/90 hover:bg-primary/10"><Edit2 className="w-4 h-4" /></Button>
-                                            <Button variant="ghost" size="icon" onClick={() => setDeleteTarget(po)} className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"><Trash2 className="w-4 h-4" /></Button>
                                         </TableCell>
                                     </TableRow>
                                 ))}
@@ -541,31 +526,6 @@ export function PoListTab({ purchaseOrders, loading, onReload }: { purchaseOrder
                 </DialogContent>
             </Dialog>
 
-            {/* Delete Confirmation Dialog */}
-            <Dialog open={!!deleteTarget} onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}>
-                <DialogContent className="sm:max-w-md">
-                    <DialogHeader>
-                        <DialogTitle className="flex items-center gap-2 text-destructive">
-                            <AlertTriangle className="w-5 h-5" /> Delete Purchase Order
-                        </DialogTitle>
-                        <DialogDescription>
-                            Are you sure you want to delete <strong>{deleteTarget?.po_number}</strong>?
-                        </DialogDescription>
-                    </DialogHeader>
-                    {deleteTarget?.order_id && (
-                        <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
-                            <p className="font-semibold flex items-center gap-1.5"><AlertTriangle className="w-4 h-4" /> System-generated record</p>
-                            <p className="mt-1 text-xs text-amber-800">This PO was automatically created from a dispatched order. Deleting it will affect the Shipment Ledger and may cause data inconsistency.</p>
-                        </div>
-                    )}
-                    <DialogFooter className="gap-2">
-                        <Button variant="outline" onClick={() => setDeleteTarget(null)}>Cancel</Button>
-                        <Button variant="destructive" onClick={confirmDelete}>
-                            <Trash2 className="w-4 h-4 mr-2" /> Delete
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
         </Card>
     );
 }

@@ -6,8 +6,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Search, Edit2, Trash2, UploadCloud, CheckCircle2, X, FileImage, AlertTriangle } from "lucide-react";
-import { createDeliveryReceipt, updateDeliveryReceipt, deleteDeliveryReceipt } from "@/lib/actions/admin-actions";
+import { Plus, Search, Edit2, UploadCloud, CheckCircle2, X, FileImage, AlertTriangle } from "lucide-react";
+import { createDeliveryReceipt, updateDeliveryReceipt } from "@/lib/actions/admin-actions";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
@@ -39,7 +39,6 @@ export function DrListTab({
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [editingDr, setEditingDr] = useState<DeliveryReceipt | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [deleteTarget, setDeleteTarget] = useState<DeliveryReceipt | null>(null);
 
     // Form state
     const [drNumber, setDrNumber] = useState("");
@@ -117,19 +116,6 @@ export function DrListTab({
             toast.error(e.message || "Failed to save DR");
         } finally {
             setIsSubmitting(false);
-        }
-    };
-
-    const confirmDelete = async () => {
-        if (!deleteTarget) return;
-        try {
-            await deleteDeliveryReceipt(deleteTarget.id);
-            toast.success("DR deleted");
-            onReload();
-        } catch (e: any) {
-            toast.error("Failed to delete");
-        } finally {
-            setDeleteTarget(null);
         }
     };
 
@@ -240,7 +226,6 @@ export function DrListTab({
                                                 <Eye className="w-4 h-4" />
                                             </Button>
                                             <Button variant="ghost" size="icon" onClick={() => openEdit(dr)} className="h-8 w-8 text-primary hover:text-primary/90 hover:bg-primary/10"><Edit2 className="w-4 h-4" /></Button>
-                                            <Button variant="ghost" size="icon" onClick={() => setDeleteTarget(dr)} className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"><Trash2 className="w-4 h-4" /></Button>
                                         </TableCell>
                                     </TableRow>
                                 ))}
@@ -304,7 +289,6 @@ export function DrListTab({
                                             </Button>
                                             <div className="flex gap-1">
                                                 <Button variant="ghost" size="icon" onClick={() => openEdit(dr)} className="h-8 w-8 text-primary hover:text-primary/90 hover:bg-primary/10"><Edit2 className="w-3.5 h-3.5" /></Button>
-                                                <Button variant="ghost" size="icon" onClick={() => setDeleteTarget(dr)} className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"><Trash2 className="w-3.5 h-3.5" /></Button>
                                             </div>
                                         </div>
                                     </CardContent>
@@ -598,31 +582,6 @@ export function DrListTab({
                 </DialogContent>
             </Dialog>
 
-            {/* Delete Confirmation Dialog */}
-            <Dialog open={!!deleteTarget} onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}>
-                <DialogContent className="sm:max-w-md">
-                    <DialogHeader>
-                        <DialogTitle className="flex items-center gap-2 text-destructive">
-                            <AlertTriangle className="w-5 h-5" /> Delete Delivery Receipt
-                        </DialogTitle>
-                        <DialogDescription>
-                            Are you sure you want to delete <strong>{deleteTarget?.dr_number}</strong>?
-                        </DialogDescription>
-                    </DialogHeader>
-                    {deleteTarget?.order_id && (
-                        <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
-                            <p className="font-semibold flex items-center gap-1.5"><AlertTriangle className="w-4 h-4" /> System-generated record</p>
-                            <p className="mt-1 text-xs text-amber-800">This DR was automatically created from a dispatched order. Deleting it will affect the Shipment Ledger and may cause data inconsistency.</p>
-                        </div>
-                    )}
-                    <DialogFooter className="gap-2">
-                        <Button variant="outline" onClick={() => setDeleteTarget(null)}>Cancel</Button>
-                        <Button variant="destructive" onClick={confirmDelete}>
-                            <Trash2 className="w-4 h-4 mr-2" /> Delete
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
         </Card>
     );
 }

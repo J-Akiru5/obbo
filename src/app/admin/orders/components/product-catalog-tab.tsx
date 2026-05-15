@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Edit, Package, UploadCloud, Loader2, Plus, Trash2, Eye, LayoutGrid, List, X } from "lucide-react";
+import { Edit, Package, UploadCloud, Loader2, Plus, Eye, LayoutGrid, List, X } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
 
@@ -16,11 +16,10 @@ interface ProductCatalogTabProps {
     products: Product[];
     onUpdate: (id: string, updates: Partial<Product>) => Promise<void>;
     onCreate?: (product: any) => Promise<void>;
-    onDelete?: (id: string) => Promise<void>;
     loading: boolean;
 }
 
-export function ProductCatalogTab({ products, onUpdate, onCreate, onDelete, loading }: ProductCatalogTabProps) {
+export function ProductCatalogTab({ products, onUpdate, onCreate, loading }: ProductCatalogTabProps) {
     const [viewMode, setViewMode] = useState<"list" | "grid">("list");
     const [isViewOpen, setIsViewOpen] = useState(false);
     const [viewingProduct, setViewingProduct] = useState<Product | null>(null);
@@ -40,8 +39,6 @@ export function ProductCatalogTab({ products, onUpdate, onCreate, onDelete, load
     const [imagePreview, setImagePreview] = useState<string | null>(null);
     const [isSaving, setIsSaving] = useState(false);
     const [isUploadingImage, setIsUploadingImage] = useState(false);
-    const [productToDelete, setProductToDelete] = useState<Product | null>(null);
-    const [isDeleting, setIsDeleting] = useState(false);
 
     const filteredProducts = products.filter(p =>
         (p.name.toLowerCase().includes("portland cement type 1") || p.name.toLowerCase().includes("portland cement type i"))
@@ -168,19 +165,6 @@ export function ProductCatalogTab({ products, onUpdate, onCreate, onDelete, load
         }
     };
 
-    const handleDelete = async () => {
-        if (!productToDelete || !onDelete) return;
-        setIsDeleting(true);
-        try {
-            await onDelete(productToDelete.id);
-            setProductToDelete(null);
-        } catch (err) {
-            // Error is handled in page.tsx
-        } finally {
-            setIsDeleting(false);
-        }
-    };
-
     const toggleActive = async (product: Product) => {
         await onUpdate(product.id, { is_active: !product.is_active });
     };
@@ -304,11 +288,6 @@ export function ProductCatalogTab({ products, onUpdate, onCreate, onDelete, load
                                                 <Button variant="ghost" size="icon" onClick={() => openEdit(p)} className="h-8 w-8 text-primary hover:text-primary hover:bg-primary/10">
                                                     <Edit className="w-4 h-4" />
                                                 </Button>
-                                                {onDelete && (
-                                                    <Button variant="ghost" size="icon" onClick={() => setProductToDelete(p)} className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10">
-                                                        <Trash2 className="w-4 h-4" />
-                                                    </Button>
-                                                )}
                                             </div>
                                         </TableCell>
                                     </TableRow>
@@ -371,9 +350,6 @@ export function ProductCatalogTab({ products, onUpdate, onCreate, onDelete, load
                                             </Button>
                                             <div className="flex gap-1 ml-2">
                                                 <Button variant="outline" size="icon" onClick={() => openEdit(p)} className="h-8 w-8 text-primary border-primary/10 hover:bg-primary/10"><Edit className="w-3.5 h-3.5" /></Button>
-                                                {onDelete && (
-                                                    <Button variant="outline" size="icon" onClick={() => setProductToDelete(p)} className="h-8 w-8 text-destructive border-red-100 hover:bg-red-50"><Trash2 className="w-3.5 h-3.5" /></Button>
-                                                )}
                                             </div>
                                         </div>
                                     </CardContent>
@@ -578,24 +554,6 @@ export function ProductCatalogTab({ products, onUpdate, onCreate, onDelete, load
                 </DialogContent>
             </Dialog>
 
-            <Dialog open={!!productToDelete} onOpenChange={(open) => !open && setProductToDelete(null)}>
-                <DialogContent>
-                    <DialogHeader>
-                        <DialogTitle>Delete Product</DialogTitle>
-                    </DialogHeader>
-                    <div className="py-4 text-sm text-muted-foreground">
-                        Are you sure you want to delete <strong>{productToDelete?.name} ({productToDelete?.bag_type})</strong>? This action cannot be undone.
-                        <br/><br/>
-                        If this product has been used in orders or shipments, you will not be able to delete it. Please use the <strong>Disable</strong> button instead.
-                    </div>
-                    <DialogFooter>
-                        <Button variant="outline" onClick={() => setProductToDelete(null)} disabled={isDeleting}>Cancel</Button>
-                        <Button variant="destructive" onClick={handleDelete} disabled={isDeleting} className="gap-2">
-                            {isDeleting ? <><Loader2 className="h-4 w-4 animate-spin" /> Deleting...</> : "Delete Product"}
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
         </Card>
     );
 }

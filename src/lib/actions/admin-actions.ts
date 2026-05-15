@@ -124,19 +124,6 @@ export async function createProduct(product: {
     return data;
 }
 
-export async function deleteProduct(id: string) {
-    const { supabase, userId } = await requireAdmin();
-    const { error } = await supabase.from("products").delete().eq("id", id);
-    if (error) {
-        if (error.code === '23503') { // Foreign key violation
-            throw new Error("Cannot delete product because it is already used in orders or shipments. Please disable it instead.");
-        }
-        throw new Error(error.message);
-    }
-    await logActivity(supabase, userId, "product_deleted", "product", id);
-    return { success: true };
-}
-
 // ═══════════════════════════════════════════════════════════════
 // ORDERS
 // ═══════════════════════════════════════════════════════════════
@@ -422,23 +409,6 @@ export async function updateShipment(id: string, updates: Partial<{
     return { success: true };
 }
 
-export async function deleteShipment(id: string) {
-    const { supabase, userId } = await requireAdmin();
-    
-    // Check if shipment has ledger entries or orders
-    const { count: ledgerCount } = await supabase.from("shipment_ledger").select("id", { count: "exact", head: true }).eq("shipment_id", id);
-    if (ledgerCount && ledgerCount > 0) {
-        // Option 1: Prevent deletion if ledger exists
-        // throw new Error("Cannot delete shipment batch with existing ledger entries. Delete entries first.");
-    }
-
-    const { error } = await supabase.from("shipments").delete().eq("id", id);
-    if (error) throw new Error(error.message);
-    
-    await logActivity(supabase, userId, "shipment_deleted", "shipment", id);
-    return { success: true };
-}
-
 export async function fetchShipmentLedger(shipmentId: string) {
     const { supabase } = await requireAdmin();
     const { data } = await supabase.from("shipment_ledger").select("*").eq("shipment_id", shipmentId).order("date", { ascending: false });
@@ -541,13 +511,6 @@ export async function updateLedgerEntry(
     return { success: true };
 }
 
-export async function deleteLedgerEntry(id: string) {
-    const { supabase, userId } = await requireAdmin();
-    await supabase.from("shipment_ledger").delete().eq("id", id);
-    await logActivity(supabase, userId, "ledger_entry_deleted", "shipment_ledger", id);
-    return { success: true };
-}
-
 // ═══════════════════════════════════════════════════════════════
 // PO LIST
 // ═══════════════════════════════════════════════════════════════
@@ -590,13 +553,6 @@ export async function updatePurchaseOrder(id: string, updates: Record<string, un
     const { error } = await supabase.from("purchase_orders").update({ ...updates, updated_at: new Date().toISOString() }).eq("id", id);
     if (error) throw new Error(error.message);
     await logActivity(supabase, userId, "po_updated", "purchase_order", id, updates);
-    return { success: true };
-}
-
-export async function deletePurchaseOrder(id: string) {
-    const { supabase, userId } = await requireAdmin();
-    await supabase.from("purchase_orders").delete().eq("id", id);
-    await logActivity(supabase, userId, "po_deleted", "purchase_order", id);
     return { success: true };
 }
 
@@ -663,13 +619,6 @@ export async function updateDeliveryReceipt(id: string, updates: Record<string, 
     const { error } = await supabase.from("delivery_receipts").update(updates).eq("id", id);
     if (error) throw new Error(error.message);
     await logActivity(supabase, userId, "dr_updated", "delivery_receipt", id, updates);
-    return { success: true };
-}
-
-export async function deleteDeliveryReceipt(id: string) {
-    const { supabase, userId } = await requireAdmin();
-    await supabase.from("delivery_receipts").delete().eq("id", id);
-    await logActivity(supabase, userId, "dr_deleted", "delivery_receipt", id);
     return { success: true };
 }
 

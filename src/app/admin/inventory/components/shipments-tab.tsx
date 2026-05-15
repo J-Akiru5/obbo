@@ -8,8 +8,8 @@ import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogTrigger } from "@/components/ui/dialog";
-import { ChevronDown, ChevronRight, PackagePlus, Plus, Trash2, Edit2, MoreVertical, Save, AlertTriangle, Pencil } from "lucide-react";
-import { createShipment, fetchShipmentLedger, addLedgerEntry, updateLedgerEntry, deleteLedgerEntry, updateShipment, deleteShipment } from "@/lib/actions/admin-actions";
+import { ChevronDown, ChevronRight, PackagePlus, Plus, Edit2, MoreVertical, Save, AlertTriangle, Pencil } from "lucide-react";
+import { createShipment, fetchShipmentLedger, addLedgerEntry, updateLedgerEntry, updateShipment } from "@/lib/actions/admin-actions";
 import { toast } from "sonner";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { LedgerEntryDialog } from "./ledger-entry-dialog";
@@ -41,8 +41,7 @@ export function ShipmentsTab({ shipments, loading, onReload }: { shipments: Ship
     const [editingEntry, setEditingEntry] = useState<ShipmentLedgerEntry | null>(null);
     const [activeShipmentId, setActiveShipmentId] = useState<string>("");
 
-    // Delete confirmation
-    const [deleteTarget, setDeleteTarget] = useState<{ entry: ShipmentLedgerEntry; shipmentId: string } | null>(null);
+    // Ledger entry dialog
 
     const refreshLedger = async (shipmentId: string) => {
         const ledger = await fetchShipmentLedger(shipmentId);
@@ -80,12 +79,6 @@ export function ShipmentsTab({ shipments, loading, onReload }: { shipments: Ship
             onReload();
         } catch (e: any) { toast.error(e.message || "Failed to update batch."); }
         finally { setIsUpdating(false); }
-    };
-
-    const handleDeleteBatch = async (id: string) => {
-        if (!confirm("Delete this shipment batch? This cannot be undone.")) return;
-        try { await deleteShipment(id); toast.success("Batch deleted."); onReload(); }
-        catch (e: any) { toast.error(e.message || "Failed to delete batch."); }
     };
 
     const openEditDialog = (s: Shipment) => {
@@ -148,17 +141,6 @@ export function ShipmentsTab({ shipments, loading, onReload }: { shipments: Ship
         }
         await refreshLedger(activeShipmentId);
         onReload();
-    };
-
-    const confirmDeleteEntry = async () => {
-        if (!deleteTarget) return;
-        try {
-            await deleteLedgerEntry(deleteTarget.entry.id);
-            toast.success("Entry deleted.");
-            await refreshLedger(deleteTarget.shipmentId);
-            onReload();
-        } catch (e: any) { toast.error(e.message || "Failed to delete."); }
-        finally { setDeleteTarget(null); }
     };
 
     if (loading) return <div className="py-8 text-center text-muted-foreground animate-pulse">Loading shipment batches...</div>;
@@ -253,9 +235,6 @@ export function ShipmentsTab({ shipments, loading, onReload }: { shipments: Ship
                                             <DropdownMenuItem onClick={() => openOverrideDialog(shipment)}>
                                                 <Pencil className="w-4 h-4 mr-2" /> Adjust Remaining
                                             </DropdownMenuItem>
-                                            <DropdownMenuItem onClick={() => handleDeleteBatch(shipment.id)} className="text-destructive focus:text-destructive">
-                                                <Trash2 className="w-4 h-4 mr-2" /> Delete Batch
-                                            </DropdownMenuItem>
                                         </DropdownMenuContent>
                                     </DropdownMenu>
                                 </div>
@@ -334,7 +313,6 @@ export function ShipmentsTab({ shipments, loading, onReload }: { shipments: Ship
                                                     <TableCell className="text-[10px]">{e.bag_returned_type || "—"}</TableCell>
                                                     <TableCell className="text-right whitespace-nowrap">
                                                         <Button variant="ghost" size="icon" className="h-6 w-6 text-primary" onClick={() => openEditEntry(e, shipment.id)}><Edit2 className="w-3 h-3" /></Button>
-                                                        <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive" onClick={() => setDeleteTarget({ entry: e, shipmentId: shipment.id })}><Trash2 className="w-3 h-3" /></Button>
                                                     </TableCell>
                                                 </TableRow>
                                             ))}
@@ -432,26 +410,6 @@ export function ShipmentsTab({ shipments, loading, onReload }: { shipments: Ship
                 entry={editingEntry}
                 onSubmit={handleLedgerSubmit}
             />
-
-            {/* Delete Entry Confirmation */}
-            <Dialog open={!!deleteTarget} onOpenChange={open => { if (!open) setDeleteTarget(null); }}>
-                <DialogContent className="sm:max-w-md">
-                    <DialogHeader>
-                        <DialogTitle className="flex items-center gap-2 text-destructive">
-                            <AlertTriangle className="w-5 h-5" /> Delete Ledger Entry
-                        </DialogTitle>
-                        <DialogDescription>
-                            Are you sure? Stock will NOT be automatically reverted. You may need to manually adjust the remaining count.
-                        </DialogDescription>
-                    </DialogHeader>
-                    <DialogFooter className="gap-2">
-                        <Button variant="outline" onClick={() => setDeleteTarget(null)}>Cancel</Button>
-                        <Button variant="destructive" onClick={confirmDeleteEntry}>
-                            <Trash2 className="w-4 h-4 mr-2" /> Delete
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
         </div>
     );
 }
