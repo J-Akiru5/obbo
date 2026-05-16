@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { toast } from "sonner";
-import { submitOrder, saveOrderDraft, generateNextPoNumber } from "@/lib/actions/client-actions";
+import { submitOrder, generateNextPoNumber } from "@/lib/actions/client-actions";
 import { createClient } from "@/lib/supabase/client";
 import { useClientKyc } from "@/lib/context/client-kyc-context";
 
@@ -15,7 +15,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
-import { PackageSearch, ShoppingCart, Building2, Anchor, Save, CheckCircle2, Split, ShieldAlert, Car } from "lucide-react";
+import { PackageSearch, ShoppingCart, Building2, Anchor, CheckCircle2, Split, ShieldAlert, Car } from "lucide-react";
 import type { Product } from "@/lib/types/database";
 import { OptimizedImage } from "@/components/ui/optimized-image";
 
@@ -56,7 +56,6 @@ export default function CatalogClient({ products }: { products: Product[] }) {
     const [pickupDate, setPickupDate] = useState("");
     
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [isSavingDraft, setIsSavingDraft] = useState(false);
 
     // Identify products
     const jbProduct = products.find(p => p.bag_type === "JB");
@@ -224,75 +223,6 @@ export default function CatalogClient({ products }: { products: Product[] }) {
             toast.error(msg);
         } finally {
             setIsSubmitting(false);
-        }
-    };
-
-    const handleSaveDraft = async () => {
-        if (totalIndividualBags <= 0) {
-            toast.error("Please specify a quantity to save a draft.");
-            return;
-        }
-
-        setIsSavingDraft(true);
-        try {
-            let poImageUrl = "";
-            if (poFile) {
-                const supabase = createClient();
-                const { data: { user } } = await supabase.auth.getUser();
-                if (!user) throw new Error("Not authenticated");
-                const fileExt = poFile.name.split('.').pop() || "jpg";
-                const fileName = generateFileName(user.id, "draft", fileExt);
-                const { error: uploadError } = await supabase.storage.from('order-attachments').upload(fileName, poFile, { upsert: true, contentType: poFile.type });
-                if (!uploadError) {
-                    const { data: { publicUrl } } = supabase.storage.from('order-attachments').getPublicUrl(fileName);
-                    poImageUrl = publicUrl;
-                }
-            }
-
-            const items = [];
-            if (jbQty > 0 && jbProduct) {
-                items.push({ 
-                    product_id: jbProduct.id, 
-                    bag_type: "JB", 
-                    requested_qty: jbQty 
-                });
-            }
-            if (sbQty > 0 && sbProduct) {
-                items.push({ 
-                    product_id: sbProduct.id, 
-                    bag_type: "SB", 
-                    requested_qty: sbQty 
-                });
-            }
-
-            await saveOrderDraft({
-                source,
-                service_type: serviceType,
-                payment_method: paymentMethod,
-                po_number: poNumber || "DRAFT",
-                po_image_url: poImageUrl || undefined,
-                supplier_name: supplierName,
-                driver_name: serviceType === "pickup" ? driverName : null,
-                plate_number: serviceType === "pickup" ? plateNumber : null,
-                total_amount: subtotal,
-                items,
-                notes: serviceType === "pickup" && pickupDate ? `Preferred Pick-up Date: ${pickupDate}` : "",
-                preferred_pickup_date: serviceType === "pickup" ? pickupDate : undefined,
-            }, wantsSplit ? { 
-                wantsSplit: true, 
-                deliverNowQty: totalDeliverNow,
-                deliverNowJB,
-                deliverNowSB
-            } : undefined);
-
-            toast.success("Order saved as draft. You can find it in the catalog later.");
-            setIsOrderOpen(false);
-            resetForm();
-        } catch (error: unknown) {
-            const msg = error instanceof Error ? error.message : "Failed to save draft.";
-            toast.error(msg);
-        } finally {
-            setIsSavingDraft(false);
         }
     };
 
@@ -642,12 +572,8 @@ export default function CatalogClient({ products }: { products: Product[] }) {
                             </div>
 
                             <DialogFooter className="gap-3 sm:gap-2 flex-col sm:flex-row mt-6 pb-6 sm:pb-0">
-                                <Button type="button" variant="outline" onClick={() => { setIsOrderOpen(false); resetForm(); }} disabled={isSubmitting || isSavingDraft}>Cancel</Button>
-                                <Button type="button" variant="secondary" onClick={handleSaveDraft} disabled={isSubmitting || isSavingDraft || totalIndividualBags === 0}>
-                                    <Save className="w-4 h-4 mr-2" />
-                                    {isSavingDraft ? "Saving..." : "Save as Draft"}
-                                </Button>
-                                <Button type="submit" className="bg-accent text-accent-foreground hover:bg-accent/90" disabled={isSubmitting || isSavingDraft || totalIndividualBags === 0}>
+                                <Button type="button" variant="outline" onClick={() => { setIsOrderOpen(false); resetForm(); }} disabled={isSubmitting}>Cancel</Button>
+                                <Button type="submit" className="bg-accent text-accent-foreground hover:bg-accent/90" disabled={isSubmitting || totalIndividualBags === 0}>
                                     <CheckCircle2 className="w-4 h-4 mr-2" />
                                     {isSubmitting ? "Submitting..." : "Submit Order for Approval"}
                                 </Button>

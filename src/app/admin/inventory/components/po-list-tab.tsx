@@ -1,16 +1,19 @@
 import { useState } from "react";
-import { PurchaseOrder } from "@/lib/types/database";
+import { PurchaseOrder, Profile } from "@/lib/types/database";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Search, Edit2, MapPin, Truck, UploadCloud, CheckCircle2, X, FileImage, AlertTriangle, Eye, LayoutGrid, List } from "lucide-react";
+import { Plus, Search, Edit2, MapPin, Truck, UploadCloud, CheckCircle2, X, FileImage, AlertTriangle, Eye, LayoutGrid, List, Check, ChevronsUpDown } from "lucide-react";
 import { createPurchaseOrder, updatePurchaseOrder, generateAdminPoNumber } from "@/lib/actions/admin-actions";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandInput, CommandList, CommandEmpty, CommandGroup, CommandItem } from "@/components/ui/command";
+import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
 
 export function PoListTab({ purchaseOrders, loading, onReload }: { purchaseOrders: PurchaseOrder[], loading: boolean, onReload: () => void }) {
@@ -21,6 +24,11 @@ export function PoListTab({ purchaseOrders, loading, onReload }: { purchaseOrder
     const [viewingPo, setViewingPo] = useState<PurchaseOrder | null>(null);
     const [editingPo, setEditingPo] = useState<PurchaseOrder | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
+
+    // Client search state
+    const [clients, setClients] = useState<Profile[]>([]);
+    const [clientId, setClientId] = useState<string | null>(null);
+    const [clientOpen, setClientOpen] = useState(false);
 
     // Form state
     const [poNumber, setPoNumber] = useState("");
@@ -34,10 +42,29 @@ export function PoListTab({ purchaseOrders, loading, onReload }: { purchaseOrder
     const [cashAmount, setCashAmount] = useState(0);
     const [photoFile, setPhotoFile] = useState<File | null>(null);
 
+    const fetchClients = async () => {
+        try {
+            const supabase = createClient();
+            const { data } = await supabase
+                .from("profiles")
+                .select("*")
+                .eq("role", "client")
+                .eq("kyc_status", "verified")
+                .order("company_name", { ascending: true })
+                .order("full_name", { ascending: true });
+            setClients(data ?? []);
+        } catch (e) {
+            console.error("Error fetching clients:", e);
+        }
+    };
+
      const openCreate = async () => {
         setEditingPo(null);
         setJbQty(0); setSbQty(0);
+        setClientName("");
+        setClientId(null);
         setPhotoFile(null);
+        fetchClients();
         setIsDialogOpen(true);
         
         // Fetch next PO number as a suggestion
@@ -49,6 +76,7 @@ export function PoListTab({ purchaseOrders, loading, onReload }: { purchaseOrder
         setEditingPo(po);
         setPoNumber(po.po_number);
         setClientName(po.client_name || "");
+        setClientId(po.client_id || null);
         setJbQty(po.jb || 0);
         setSbQty(po.sb || 0);
         setSource(po.source || "warehouse");
@@ -57,11 +85,19 @@ export function PoListTab({ purchaseOrders, loading, onReload }: { purchaseOrder
         setCheckAmount(po.check_amount || 0);
         setCashAmount(po.cash_amount || 0);
         setPhotoFile(null);
+        fetchClients();
         setIsDialogOpen(true);
     };
 
     const handleSubmit = async () => {
-        // PO Number is now optional in frontend as well, handled in backend
+        if (!poNumber.trim()) {
+            toast.error("PO Number is required.");
+            return;
+        }
+        if (!photoFile && !editingPo?.photo_url) {
+            toast.error("PO Photo is required.");
+            return;
+        }
         setIsSubmitting(true);
         try {
             // Upload photo if provided
@@ -83,7 +119,7 @@ export function PoListTab({ purchaseOrders, loading, onReload }: { purchaseOrder
 
             if (editingPo) {
                 await updatePurchaseOrder(editingPo.id, {
-                    po_number: poNumber, client_name: clientName, 
+                    po_number: poNumber, client_name: clientName, client_id: clientId,
                     jb: jbQty, sb: sbQty,
                     source, service_type: serviceType,
                     check_number: checkNumber || null,
@@ -94,7 +130,7 @@ export function PoListTab({ purchaseOrders, loading, onReload }: { purchaseOrder
                 toast.success("PO updated");
             } else {
                 await createPurchaseOrder({
-                    po_number: poNumber, client_name: clientName, 
+                    po_number: poNumber, client_name: clientName, client_id: clientId,
                     jb: jbQty, sb: sbQty,
                     source, service_type: serviceType,
                     check_number: checkNumber || null,
@@ -323,13 +359,53 @@ export function PoListTab({ purchaseOrders, loading, onReload }: { purchaseOrder
                     </DialogHeader>
                     <div className="space-y-4 py-4">
                         <div className="space-y-2">
-                            <Label>PO Number <span className="text-muted-foreground text-xs">(Optional)</span></Label>
+                            <Label>PO Number <span className="text-red-500">*</span></Label>
                             <Input value={poNumber} onChange={e => setPoNumber(e.target.value)} placeholder="e.g. PO-2026-001" />
-                            <p className="text-[10px] text-muted-foreground">System will auto-generate if left blank.</p>
                         </div>
                         <div className="space-y-2">
                             <Label>Client Name</Label>
-                            <Input value={clientName} onChange={e => setClientName(e.target.value)} placeholder="Client or company name" />
+                            <Popover open={clientOpen} onOpenChange={setClientOpen}>
+                                <PopoverTrigger>
+                                    <div className="w-full flex items-center justify-between rounded-lg border border-input bg-background px-3 py-2 text-sm cursor-pointer hover:border-primary/50 transition-colors">
+                                        <span className={clientName ? "" : "text-muted-foreground"}>
+                                            {clientName || "Select a verified client..."}
+                                        </span>
+                                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 text-muted-foreground" />
+                                    </div>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-[var(--anchor-width)] p-0" align="start">
+                                    <Command>
+                                        <CommandInput placeholder="Search clients..." />
+                                        <CommandList>
+                                            <CommandEmpty>No verified clients found.</CommandEmpty>
+                                            <CommandGroup>
+                                                {clients.map((client) => {
+                                                    const displayName = client.company_name || client.full_name;
+                                                    return (
+                                                        <CommandItem
+                                                            key={client.id}
+                                                            value={displayName}
+                                                            onSelect={() => {
+                                                                setClientName(displayName);
+                                                                setClientId(client.id);
+                                                                setClientOpen(false);
+                                                            }}
+                                                        >
+                                                            <Check
+                                                                className={cn(
+                                                                    "mr-2 h-4 w-4",
+                                                                    clientId === client.id ? "opacity-100" : "opacity-0"
+                                                                )}
+                                                            />
+                                                            {displayName}
+                                                        </CommandItem>
+                                                    );
+                                                })}
+                                            </CommandGroup>
+                                        </CommandList>
+                                    </Command>
+                                </PopoverContent>
+                            </Popover>
                         </div>
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
@@ -409,7 +485,7 @@ export function PoListTab({ purchaseOrders, loading, onReload }: { purchaseOrder
 
                         {/* Photo Upload */}
                         <div className="space-y-2">
-                            <Label>PO Photo <span className="text-muted-foreground text-xs">(optional)</span></Label>
+                            <Label>PO Photo <span className="text-red-500">*</span></Label>
                             {photoFile ? (
                                 <div className="flex items-center gap-3 p-3 border border-emerald-200 bg-emerald-50 rounded-lg">
                                     <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />

@@ -7,7 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { AlertCircle, CheckCircle2, ExternalLink, Truck, UploadCloud, X } from "lucide-react";
+import { AlertCircle, CheckCircle2, ExternalLink, Truck, UploadCloud, X, Banknote, FileText } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 export function FulfillmentTab({ orders, shipments, onDispatch, loading }: { 
@@ -179,6 +179,28 @@ export function FulfillmentTab({ orders, shipments, onDispatch, loading }: {
                                                 <ExternalLink className="w-3 h-3" /> View PO
                                             </a>
                                         )}
+                                        {/* Payment info */}
+                                        <div className="flex flex-wrap items-center gap-2 mt-2">
+                                            <Badge variant={order.payment_method === "check" ? "secondary" : "outline"} className="text-[10px] uppercase font-bold">
+                                                <Banknote className="w-3 h-3 mr-1" />
+                                                {order.payment_method}
+                                            </Badge>
+                                            {order.payment_method === "check" && order.check_number && (
+                                                <>
+                                                    <span className="text-xs text-muted-foreground">
+                                                        Check #: <span className="font-semibold text-foreground">{order.check_number}</span>
+                                                    </span>
+                                                    {order.check_image_url && (
+                                                        <a href={order.check_image_url} target="_blank" rel="noreferrer" className="text-xs text-primary hover:underline flex items-center gap-1">
+                                                            <FileText className="w-3 h-3" /> View Check
+                                                        </a>
+                                                    )}
+                                                </>
+                                            )}
+                                            <span className="text-xs font-bold text-foreground ml-auto">
+                                                ₱{Number(order.total_amount).toLocaleString()}
+                                            </span>
+                                        </div>
                                         {order.notes && (
                                             <div className="mt-2 text-xs bg-muted/50 p-2 rounded border border-dashed border-border">
                                                 <span className="font-semibold text-muted-foreground block mb-0.5">Order Notes:</span>

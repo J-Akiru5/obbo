@@ -116,7 +116,7 @@ const WAREHOUSE_NAV_ITEMS = [
 
 import { RealTimeClock } from "@/components/real-time-clock";
 
-function SidebarContent({ pathname, navItems, onNavigate, adminName, adminInitials, avatarUrl }: { pathname: string; navItems: typeof ADMIN_NAV_ITEMS; onNavigate?: () => void; adminName?: string; adminInitials?: string; avatarUrl?: string | null }) {
+function SidebarContent({ pathname, navItems, onNavigate, adminName, adminInitials, avatarUrl, pendingOrderCount, pendingKycCount }: { pathname: string; navItems: typeof ADMIN_NAV_ITEMS; onNavigate?: () => void; adminName?: string; adminInitials?: string; avatarUrl?: string | null; pendingOrderCount?: number; pendingKycCount?: number }) {
     const [expanded, setExpanded] = useState<Record<string, boolean>>(() => {
         const initial: Record<string, boolean> = {};
         navItems.forEach(item => {
@@ -178,14 +178,14 @@ function SidebarContent({ pathname, navItems, onNavigate, adminName, adminInitia
                                             <span>{item.label}</span>
                                         </div>
                                         <div className="flex items-center gap-2">
-                                            {item.label === "Orders" && (
+                                            {item.label === "Orders" && (pendingOrderCount ?? 0) > 0 && (
                                                 <Badge className="bg-accent text-accent-foreground text-xs px-1.5 py-0 hover:bg-accent/90">
-                                                    2
+                                                    {pendingOrderCount}
                                                 </Badge>
                                             )}
-                                            {item.label === "Clients" && (
+                                            {item.label === "Clients" && (pendingKycCount ?? 0) > 0 && (
                                                 <Badge className="bg-red-500 text-white text-xs px-1.5 py-0 hover:bg-red-500">
-                                                    2
+                                                    {pendingKycCount}
                                                 </Badge>
                                             )}
                                             <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`} />
@@ -246,6 +246,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     const [unreadCount, setUnreadCount] = useState(0);
     const [notifications, setNotifications] = useState<Notification[]>([]);
     const [notifOpen, setNotifOpen] = useState(false);
+    const [pendingOrderCount, setPendingOrderCount] = useState(0);
+    const [pendingKycCount, setPendingKycCount] = useState(0);
 
     const loadNotifications = useCallback(async () => {
         try {
@@ -320,9 +322,29 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         }
     }, []);
 
+    const fetchPendingCounts = useCallback(async () => {
+        try {
+            const supabase = createClient();
+            const { count: orderCount } = await supabase
+                .from("orders")
+                .select("*", { count: "exact", head: true })
+                .in("status", ["pending", "awaiting_check", "pending_final_confirmation"]);
+            const { count: kycCount } = await supabase
+                .from("profiles")
+                .select("*", { count: "exact", head: true })
+                .eq("kyc_status", "pending_verification")
+                .eq("role", "client");
+            setPendingOrderCount(orderCount ?? 0);
+            setPendingKycCount(kycCount ?? 0);
+        } catch (e) {
+            console.error("Error fetching pending counts:", e);
+        }
+    }, []);
+
     useEffect(() => {
         fetchProfile();
         loadNotifications();
+        fetchPendingCounts();
 
         window.addEventListener("profile-updated", fetchProfile);
 
@@ -345,6 +367,28 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                         loadNotifications();
                     }
                 )
+                .on(
+                    "postgres_changes",
+                    {
+                        event: "*",
+                        schema: "public",
+                        table: "orders",
+                    },
+                    () => {
+                        fetchPendingCounts();
+                    }
+                )
+                .on(
+                    "postgres_changes",
+                    {
+                        event: "*",
+                        schema: "public",
+                        table: "profiles",
+                    },
+                    () => {
+                        fetchPendingCounts();
+                    }
+                )
                 .subscribe();
         };
 
@@ -353,7 +397,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             if (channel) supabase.removeChannel(channel); 
             window.removeEventListener("profile-updated", fetchProfile);
         };
-    }, [loadNotifications, fetchProfile]);
+    }, [loadNotifications, fetchProfile, fetchPendingCounts]);
 
     const markAllRead = async () => {
         try {
@@ -400,7 +444,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         <div className="min-h-screen flex bg-background">
             {/* Desktop Sidebar */}
             <aside className="hidden lg:flex lg:w-64 flex-col bg-sidebar border-r border-sidebar-border fixed inset-y-0 left-0 z-40">
-                <SidebarContent pathname={pathname} navItems={navItems} adminName={adminName} adminInitials={adminInitials} avatarUrl={avatarUrl} />
+                <SidebarContent pathname={pathname} navItems={navItems} adminName={adminName} adminInitials={adminInitials} avatarUrl={avatarUrl} pendingOrderCount={pendingOrderCount} pendingKycCount={pendingKycCount} />
             </aside>
 
             {/* Main Content */}
@@ -416,7 +460,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                                 <Menu className="w-5 h-5" />
                             </SheetTrigger>
                             <SheetContent side="left" className="w-64 p-0 bg-sidebar">
-                                <SidebarContent pathname={pathname} navItems={navItems} onNavigate={() => setMobileOpen(false)} adminName={adminName} adminInitials={adminInitials} avatarUrl={avatarUrl} />
+                                <SidebarContent pathname={pathname} navItems={navItems} onNavigate={() => setMobileOpen(false)} adminName={adminName} adminInitials={adminInitials} avatarUrl={avatarUrl} pendingOrderCount={pendingOrderCount} pendingKycCount={pendingKycCount} />
                             </SheetContent>
                         </Sheet>
 
