@@ -211,7 +211,7 @@ alter table public.delivery_receipts add column if not exists order_id     uuid 
 -- ── ORDERS ───────────────────────────────────────────────────
 create table if not exists public.orders (
   id                   uuid primary key default gen_random_uuid(),
-  client_id            uuid not null references public.profiles(id),
+  client_id            uuid not null references public.profiles(id) on delete set null,
   status               text not null default 'pending'
                          check (status in ('pending','approved','partially_approved',
                                            'awaiting_check','pending_final_confirmation','dispatched','completed','rejected')),
@@ -237,6 +237,8 @@ create table if not exists public.orders (
   shipment_id          uuid references public.shipments(id) on delete set null,
   is_split_delivery    boolean not null default false,
   deliver_now_qty      integer not null default 0,
+  deliver_now_jb       integer not null default 0,
+  deliver_now_sb       integer not null default 0,
   supplier_name        text,
   preferred_pickup_date date,
   order_type           text not null default 'new'
@@ -266,6 +268,8 @@ alter table public.orders add column if not exists supplier_name         text;
 alter table public.orders add column if not exists preferred_pickup_date date;
 alter table public.orders add column if not exists order_type            text not null default 'new';
 alter table public.orders add column if not exists linked_po_number      text;
+alter table public.orders add column if not exists deliver_now_jb        integer not null default 0;
+alter table public.orders add column if not exists deliver_now_sb        integer not null default 0;
 
 alter table public.orders drop constraint if exists orders_order_type_check;
 alter table public.orders add  constraint orders_order_type_check
@@ -275,7 +279,7 @@ alter table public.orders add  constraint orders_order_type_check
 create table if not exists public.order_items (
   id             uuid primary key default gen_random_uuid(),
   order_id       uuid not null references public.orders(id) on delete cascade,
-  product_id     uuid not null references public.products(id),
+  product_id     uuid not null references public.products(id) on delete set null,
   bag_type       text not null check (bag_type in ('JB', 'SB')),
   requested_qty  integer not null check (requested_qty > 0),
   approved_qty   integer not null default 0 check (approved_qty >= 0),
@@ -284,15 +288,18 @@ create table if not exists public.order_items (
 
 -- ── CUSTOMER BALANCES ────────────────────────────────────────
 create table if not exists public.customer_balances (
-  id            uuid primary key default gen_random_uuid(),
-  client_id     uuid not null references public.profiles(id),
-  order_id      uuid not null references public.orders(id),
-  product_id    uuid not null references public.products(id),
-  bag_type      text not null check (bag_type in ('JB', 'SB')),
-  remaining_qty integer not null check (remaining_qty > 0),
-  status        text not null default 'pending' check (status in ('pending', 'fulfilled')),
-  created_at    timestamptz not null default now()
+  id             uuid primary key default gen_random_uuid(),
+  client_id      uuid not null references public.profiles(id) on delete cascade,
+  order_id       uuid not null references public.orders(id) on delete cascade,
+  product_id     uuid not null references public.products(id) on delete set null,
+  bag_type       text not null check (bag_type in ('JB', 'SB')),
+  total_purchase integer not null default 0,
+  remaining_qty  integer not null check (remaining_qty > 0),
+  status         text not null default 'pending' check (status in ('pending', 'fulfilled')),
+  created_at     timestamptz not null default now()
 );
+-- For existing DBs
+alter table public.customer_balances add column if not exists total_purchase integer not null default 0;
 
 -- ── PURCHASE ORDERS ──────────────────────────────────────────
 create table if not exists public.purchase_orders (
@@ -369,7 +376,7 @@ create table if not exists public.activity_log (
 create table if not exists public.order_returns (
   id          uuid primary key default gen_random_uuid(),
   order_id    uuid not null references public.orders(id) on delete cascade,
-  client_id   uuid not null references public.profiles(id),
+  client_id   uuid not null references public.profiles(id) on delete set null,
   jb_qty      integer not null default 0,
   sb_qty      integer not null default 0,
   reason      text not null default '',

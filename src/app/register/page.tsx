@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
 import { AuthShell } from "@/components/auth/auth-shell";
-import { createRoleNotification } from "@/lib/actions/notification-actions";
+import { createRoleNotificationAdmin } from "@/lib/actions/notification-actions";
 
 export default function RegisterPage() {
     const router = useRouter();
@@ -186,8 +186,8 @@ export default function RegisterPage() {
                     .eq("id", userId);
             }
 
-            // Trigger Admin Notification
-            await createRoleNotification({
+            // Trigger Admin Notification (uses service-role client to bypass RLS)
+            await createRoleNotificationAdmin({
                 targetRole: "admin",
                 title: "New Client Registration",
                 message: `${metaData.full_name} has registered and is pending KYC verification.`,
