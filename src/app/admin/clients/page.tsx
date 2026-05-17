@@ -608,14 +608,6 @@ function ClientsContent() {
     }, []);
 
     useEffect(() => {
-        mountedRef.current = true;
-        void fetchProfiles();
-        return () => {
-            mountedRef.current = false;
-        };
-    }, [fetchProfiles]);
-
-    useEffect(() => {
         const loadCurrentRole = async () => {
             const supabase = createClient();
             const { data: { user } } = await supabase.auth.getUser();

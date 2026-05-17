@@ -303,8 +303,9 @@ export async function submitPaymentDetails(orderId: string, paymentMethod: strin
         updates.check_image_url = checkImageUrl;
     }
 
-    const { error } = await supabase.from("orders").update(updates).eq("id", orderId).eq("client_id", user.id);
+    const { data, error } = await supabase.from("orders").update(updates).eq("id", orderId).eq("client_id", user.id).select("id").maybeSingle();
     if (error) throw new Error(error.message);
+    if (!data) throw new Error("Failed to update order. The order may not exist or you may not have permission.");
 
     revalidatePath("/client/orders");
     revalidatePath("/client/dashboard");
