@@ -325,9 +325,13 @@ create table if not exists public.warehouse_reports (
   closing_jb     integer not null default 0,
   closing_sb     integer not null default 0,
   notes          text,
+  submitted      boolean not null default false,
   created_at     timestamptz not null default now(),
   updated_at     timestamptz not null default now()
 );
+
+-- For existing DBs
+alter table public.warehouse_reports add column if not exists submitted boolean not null default false;
 
 -- ── ADMIN SETTINGS ───────────────────────────────────────────
 create table if not exists public.admin_settings (

@@ -4,6 +4,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { generateGlobalNextPoNumber } from "./po-utils";
 import { createRoleNotification } from "./notification-actions";
+import type { WarehouseReport } from "@/lib/types/database";
 
 // ─── Helper: ensure caller is admin or warehouse manager ─────
 async function requireAdmin() {
@@ -18,7 +19,7 @@ async function requireAdmin() {
     if (profile?.role !== "admin" && profile?.role !== "warehouse_manager") {
         throw new Error("Forbidden");
     }
-    return { supabase, userId: user.id };
+    return { supabase, userId: user.id, role: profile.role as "admin" | "warehouse_manager" };
 }
 
 // ─── Helper: ensure caller is admin only ────────────────────
@@ -827,31 +828,42 @@ export async function generateDailyReportData(date: string) {
 }
 
 export async function fetchWarehouseReport(date: string) {
-    const { supabase } = await requireAdmin();
+    const { supabase, role } = await requireAdmin();
     const { data } = await supabase.from("warehouse_reports").select("*").eq("report_date", date).maybeSingle();
-    return data ?? null;
+    if (!data) return null;
+
+    const today = new Date().toISOString().split("T")[0];
+    // Admin can only see today's report if it has been submitted
+    if (role === "admin" && date === today && !data.submitted) {
+        return null;
+    }
+    return data as unknown as WarehouseReport;
 }
 
 export async function fetchWarehouseReports(limit: number = 30) {
-    const { supabase } = await requireAdmin();
-    const { data } = await supabase
+    const { supabase, role } = await requireAdmin();
+    const today = new Date().toISOString().split("T")[0];
+    let query = supabase
         .from("warehouse_reports")
         .select("*")
         .order("report_date", { ascending: false })
         .limit(limit);
-    return data ?? [];
+    if (role === "admin") {
+        // Admin sees past reports always, but today's only if submitted
+        query = query.or(`report_date.lt.${today},and(report_date.eq.${today},submitted.eq.true)`);
+    }
+    const { data } = await query;
+    return (data ?? []) as unknown as WarehouseReport[];
 }
 
 export async function checkReportSubmission(date: string) {
     const { supabase } = await requireAdmin();
     const { data } = await supabase
-        .from("activity_log")
-        .select("id")
-        .eq("action", "warehouse_report_submitted")
-        .eq("entity_type", "warehouse_report")
-        .filter("metadata->>date", "eq", date)
-        .limit(1);
-    return (data?.length ?? 0) > 0;
+        .from("warehouse_reports")
+        .select("submitted")
+        .eq("report_date", date)
+        .maybeSingle();
+    return data?.submitted ?? false;
 }
 
 export async function saveWarehouseReport(report: {
@@ -882,6 +894,9 @@ export async function submitWarehouseReport(date: string) {
     
     if (fetchError || !report) throw new Error("Please save the report before submitting.");
 
+    // Mark report as submitted
+    await supabase.from("warehouse_reports").update({ submitted: true }).eq("id", report.id);
+
     // Log the submission activity
     await logActivity(supabase, userId, "warehouse_report_submitted", "warehouse_report", report.id, { date });
 
@@ -895,6 +910,62 @@ export async function submitWarehouseReport(date: string) {
     });
 
     return { success: true };
+}
+
+export async function autoSubmitEndOfDayReports() {
+    const { supabase, userId, role } = await requireAdmin();
+    if (role !== "warehouse_manager" && role !== "admin") throw new Error("Forbidden");
+
+    const today = new Date().toISOString().split("T")[0];
+    const yesterday = new Date(Date.now() - 86400000).toISOString().split("T")[0];
+
+    const autoSubmitted: string[] = [];
+
+    // Find any unsubmitted reports from past days
+    const { data: pastReports } = await supabase
+        .from("warehouse_reports")
+        .select("*")
+        .lt("report_date", today)
+        .eq("submitted", false);
+
+    for (const report of pastReports ?? []) {
+        await supabase.from("warehouse_reports").update({ submitted: true }).eq("id", report.id);
+        await logActivity(supabase, userId, "warehouse_report_auto_submitted", "warehouse_report", report.id, { date: report.report_date });
+        autoSubmitted.push(report.report_date);
+    }
+
+    // Also check if yesterday has no report at all — auto-generate and submit
+    const { data: yesterdayReport } = await supabase
+        .from("warehouse_reports")
+        .select("id")
+        .eq("report_date", yesterday)
+        .maybeSingle();
+
+    if (!yesterdayReport) {
+        try {
+            const generated = await generateDailyReportData(yesterday);
+            const closing_jb = generated.yesterday_jb + generated.received_jb - generated.dispatched_jb + generated.returned_jb - generated.waste_jb;
+            const closing_sb = generated.yesterday_sb + generated.received_sb - generated.dispatched_sb + generated.returned_sb - generated.waste_sb;
+            const { data: newReport } = await supabase.from("warehouse_reports").upsert({
+                report_date: yesterday,
+                yesterday_jb: generated.yesterday_jb, yesterday_sb: generated.yesterday_sb,
+                received_jb: generated.received_jb, received_sb: generated.received_sb,
+                dispatched_jb: generated.dispatched_jb, dispatched_sb: generated.dispatched_sb,
+                returned_jb: generated.returned_jb, returned_sb: generated.returned_sb,
+                waste_jb: generated.waste_jb, waste_sb: generated.waste_sb,
+                closing_jb, closing_sb,
+                submitted: true,
+            }).select().single();
+            if (newReport) {
+                await logActivity(supabase, userId, "warehouse_report_auto_submitted", "warehouse_report", newReport.id, { date: yesterday });
+                autoSubmitted.push(yesterday);
+            }
+        } catch (e) {
+            console.error("Auto-generate failed for", yesterday, e);
+        }
+    }
+
+    return { autoSubmitted };
 }
 
 // ═══════════════════════════════════════════════════════════════

@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { fetchCustomerBalances, fetchOrders, fetchWarehouseReport, fetchDashboardKPIs } from "@/lib/actions/admin-actions";
+import { fetchCustomerBalances, fetchOrders, fetchWarehouseReport, fetchDashboardKPIs, autoSubmitEndOfDayReports } from "@/lib/actions/admin-actions";
 import { createClient } from "@/lib/supabase/client";
 import type { WarehouseReport } from "@/lib/types/database";
 
@@ -17,10 +17,13 @@ export default function AdminReportsPage() {
     const [todayDispatches, setTodayDispatches] = useState<Array<{ client: string; dr: string | null; service: string; jb: number; sb: number }>>([]);
     const [balances, setBalances] = useState<Array<{ id: string; remaining_qty: number; bag_type: string; client?: { full_name: string; company_name: string | null }; product?: { name: string } }>>([]);
     const [loading, setLoading] = useState(true);
+    const [notAvailable, setNotAvailable] = useState(false);
 
     const loadReportData = useCallback(async () => {
         setLoading(true);
+        setNotAvailable(false);
         try {
+            const today = new Date().toISOString().split("T")[0];
             const [reportRow, dispatchedOrders, completedOrders, balanceRows, dashboardKpis] = await Promise.all([
                 fetchWarehouseReport(reportDate),
                 fetchOrders("dispatched"),
@@ -29,7 +32,14 @@ export default function AdminReportsPage() {
                 fetchDashboardKPIs(),
             ]);
 
-            setReport((reportRow ?? null) as WarehouseReport | null);
+            const fetchedReport = (reportRow ?? null) as WarehouseReport | null;
+            setReport(fetchedReport);
+
+            // If today's date and no report returned, it may be unsubmitted
+            if (!fetchedReport && reportDate === today) {
+                setNotAvailable(true);
+            }
+
             setCurrentInventory({ jb: dashboardKpis.jbGood, sb: dashboardKpis.sbGood });
 
             const dayOrders = [...(dispatchedOrders as any[]), ...(completedOrders as any[])].filter((order) =>
@@ -54,6 +64,9 @@ export default function AdminReportsPage() {
     }, [reportDate]);
 
     useEffect(() => {
+        // Trigger auto-submit for past unsubmitted reports on page load
+        autoSubmitEndOfDayReports().catch(() => {});
+
         loadReportData();
         
         const supabase = createClient();
@@ -120,27 +133,39 @@ export default function AdminReportsPage() {
                                 <CardDescription>Simplified daily snapshot of warehouse stock.</CardDescription>
                             </CardHeader>
                             <CardContent className="p-0">
-                                <Table>
-                                    <TableHeader className="bg-muted/30">
-                                        <TableRow>
-                                            <TableHead className="w-[220px]">Metric</TableHead>
-                                            <TableHead>JB Bags</TableHead>
-                                            <TableHead>SB Bags</TableHead>
-                                        </TableRow>
-                                    </TableHeader>
-                                    <TableBody>
-                                        <TableRow>
-                                            <TableCell className="font-medium">Yesterday's closing</TableCell>
-                                            <TableCell>{report?.yesterday_jb ?? 0}</TableCell>
-                                            <TableCell>{report?.yesterday_sb ?? 0}</TableCell>
-                                        </TableRow>
-                                        <TableRow className="bg-primary/5">
-                                            <TableCell className="font-semibold text-primary">Today's closing (Current)</TableCell>
-                                            <TableCell className="font-semibold">{currentInventory.jb}</TableCell>
-                                            <TableCell className="font-semibold">{currentInventory.sb}</TableCell>
-                                        </TableRow>
-                                    </TableBody>
-                                </Table>
+                                {notAvailable ? (
+                                    <div className="flex flex-col items-center gap-3 py-12 text-center">
+                                        <div className="rounded-full border border-border/60 bg-muted/30 p-3">
+                                            <Calendar className="h-6 w-6 text-muted-foreground/60" />
+                                        </div>
+                                        <p className="text-sm font-medium text-foreground">Today's report is not yet available</p>
+                                        <p className="max-w-md text-xs text-muted-foreground">
+                                            The warehouse report for today will be visible here once the warehouse manager submits it, or it will be automatically uploaded at the end of the day.
+                                        </p>
+                                    </div>
+                                ) : (
+                                    <Table>
+                                        <TableHeader className="bg-muted/30">
+                                            <TableRow>
+                                                <TableHead className="w-[220px]">Metric</TableHead>
+                                                <TableHead>JB Bags</TableHead>
+                                                <TableHead>SB Bags</TableHead>
+                                            </TableRow>
+                                        </TableHeader>
+                                        <TableBody>
+                                            <TableRow>
+                                                <TableCell className="font-medium">Yesterday's closing</TableCell>
+                                                <TableCell>{report?.yesterday_jb ?? 0}</TableCell>
+                                                <TableCell>{report?.yesterday_sb ?? 0}</TableCell>
+                                            </TableRow>
+                                            <TableRow className="bg-primary/5">
+                                                <TableCell className="font-semibold text-primary">Today's closing (Current)</TableCell>
+                                                <TableCell className="font-semibold">{currentInventory.jb}</TableCell>
+                                                <TableCell className="font-semibold">{currentInventory.sb}</TableCell>
+                                            </TableRow>
+                                        </TableBody>
+                                    </Table>
+                                )}
                             </CardContent>
                         </Card>
                     </section>
