@@ -152,10 +152,13 @@ export default function OrdersClient({ orders }: { orders: Order[] }) {
         setIsSubmitting(true);
         try {
             const supabase = createClient();
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) throw new Error("Not authenticated");
+
             const fileExt = checkFile.name.split('.').pop();
             const timestamp = Date.now();
             const random = Math.random().toString(36).substring(7);
-            const fileName = `check_${timestamp}_${random}.${fileExt}`;
+            const fileName = `${user.id}/check_${timestamp}_${random}.${fileExt}`;
             const { error: uploadError } = await supabase.storage
                 .from('order-attachments')
                 .upload(fileName, checkFile);

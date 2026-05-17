@@ -50,7 +50,7 @@ export function AvatarUpload({ uid, url, fullName, onUpload, className }: Avatar
             const file = event.target.files[0];
             const fileExt = file.name.split(".").pop();
             const fileName = `${uid}-${Math.random()}.${fileExt}`;
-            const filePath = `${fileName}`;
+            const filePath = `${uid}/${fileName}`;
 
             const supabase = createClient();
 
