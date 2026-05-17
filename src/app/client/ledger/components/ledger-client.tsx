@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/client";
 import { submitRedeliveryRequest } from "@/lib/actions/client-actions";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -14,7 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
-import { Package, Truck, Info, History, ShoppingBag, TrendingDown, Split } from "lucide-react";
+import { Package, Truck, Info, History, ShoppingBag, TrendingDown, Split, CheckCircle2 } from "lucide-react";
 
 import { CustomerBalance, Order } from "@/lib/types/database";
 
@@ -278,14 +279,21 @@ export default function LedgerClient({ balances, summary }: { balances: Customer
                                                     </span>
                                                 </TableCell>
                                                 <TableCell className="text-right">
-                                                    <Button 
-                                                        size="sm" 
-                                                        className="bg-accent text-accent-foreground hover:bg-accent/90 shadow-sm" 
-                                                        onClick={() => handleOpenRedelivery(b)}
-                                                    >
-                                                        <Truck className="w-3.5 h-3.5 mr-1.5" />
-                                                        Request Balance Delivery
-                                                    </Button>
+                                                    {b.remaining_qty > 0 ? (
+                                                        <Button 
+                                                            size="sm" 
+                                                            className="bg-accent text-accent-foreground hover:bg-accent/90 shadow-sm" 
+                                                            onClick={() => handleOpenRedelivery(b)}
+                                                        >
+                                                            <Truck className="w-3.5 h-3.5 mr-1.5" />
+                                                            Request Balance Delivery
+                                                        </Button>
+                                                    ) : (
+                                                        <Badge variant="outline" className="text-emerald-600 border-emerald-200 bg-emerald-50 dark:text-emerald-400 dark:border-emerald-800 dark:bg-emerald-950/30">
+                                                            <CheckCircle2 className="w-3 h-3 mr-1" />
+                                                            Completed
+                                                        </Badge>
+                                                    )}
                                                 </TableCell>
                                             </TableRow>
                                         ))}

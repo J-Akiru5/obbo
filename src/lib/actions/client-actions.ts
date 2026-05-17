@@ -479,13 +479,9 @@ export async function submitRedeliveryRequest(balanceId: string, orderData: {
         dispatched_qty: 0
     });
 
-    // Update customer balance to deduct the requested amount, or mark as fulfilled if full
-    const newRemaining = balance.remaining_qty - requestedQty;
-    const newStatus = newRemaining <= 0 ? "fulfilled" : "pending";
-    await supabase.from("customer_balances").update({
-        remaining_qty: Math.max(0, newRemaining),
-        status: newStatus
-    }).eq("id", balance.id);
+    // Note: Balance deduction now happens server-side in dispatchOrder when admin dispatches.
+    // This avoids the RLS policy issue where clients cannot UPDATE customer_balances.
+    // The balance remains unchanged until the redelivery order is actually dispatched.
 
     revalidatePath("/client/ledger");
     revalidatePath("/client/orders");

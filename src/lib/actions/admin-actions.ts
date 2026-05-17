@@ -347,6 +347,39 @@ export async function dispatchOrder(
         }
     }
 
+    // If this is a redelivery order, deduct dispatched qty from original customer balance
+    if (order.order_type === "redelivery" && order.linked_po_number) {
+        const { data: originalOrder } = await supabase.from("orders")
+            .select("id").eq("po_number", order.linked_po_number).maybeSingle();
+
+        if (originalOrder) {
+            for (const item of order.items) {
+                const dispatchedQty = item.approved_qty || 0;
+                if (dispatchedQty <= 0) continue;
+
+                const { data: balance } = await supabase.from("customer_balances")
+                    .select("id, remaining_qty")
+                    .eq("order_id", originalOrder.id)
+                    .eq("product_id", item.product_id)
+                    .eq("bag_type", item.bag_type)
+                    .eq("status", "pending")
+                    .maybeSingle();
+
+                if (balance && balance.remaining_qty > 0) {
+                    const newRemaining = balance.remaining_qty - dispatchedQty;
+                    const newStatus = newRemaining <= 0 ? "fulfilled" : "pending";
+                    const { error: balanceUpdateError } = await supabase.from("customer_balances").update({
+                        remaining_qty: Math.max(0, newRemaining),
+                        status: newStatus,
+                    }).eq("id", balance.id);
+                    if (balanceUpdateError) {
+                        console.error("Balance deduction on redelivery dispatch failed:", balanceUpdateError);
+                    }
+                }
+            }
+        }
+    }
+
     // Update order items dispatched_qty
     for (const item of order.items) {
         const { error: itemError } = await supabase.from("order_items").update({ dispatched_qty: item.approved_qty }).eq("id", item.id);
