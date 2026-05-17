@@ -532,7 +532,7 @@ export async function updateTrackingStatus(orderId: string, trackingStatus: stri
 
 export async function fetchShipments() {
     const { supabase } = await requireAdmin();
-    const { data } = await supabase.from("shipments").select("*").order("created_at", { ascending: false });
+    const { data } = await supabase.from("shipments").select("*").order("created_at", { ascending: false }).limit(10000);
     return data ?? [];
 }
 
@@ -813,7 +813,7 @@ async function createOrderForClientPortal(
 
 export async function fetchPurchaseOrders() {
     const { supabase } = await requireAdmin();
-    const { data } = await supabase.from("purchase_orders").select("*, order:orders(id, status, po_number, dr_number)").order("date", { ascending: false });
+    const { data } = await supabase.from("purchase_orders").select("*, order:orders(id, status, po_number, dr_number)").order("date", { ascending: false }).limit(10000);
     return data ?? [];
 }
 
@@ -911,7 +911,7 @@ export async function updatePurchaseOrder(id: string, updates: any) {
 
 export async function fetchDeliveryReceipts() {
     const { supabase } = await requireAdmin();
-    const { data } = await supabase.from("delivery_receipts").select("*, shipment:shipments(batch_name), order:orders(id, status, po_number, dr_number)").order("received_date", { ascending: false });
+    const { data } = await supabase.from("delivery_receipts").select("*, shipment:shipments(batch_name), order:orders(id, status, po_number, dr_number)").order("received_date", { ascending: false }).limit(10000);
     return data ?? [];
 }
 
