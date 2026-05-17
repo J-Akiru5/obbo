@@ -856,10 +856,12 @@ export async function generateDailyReportData(date: string) {
     const yesterday_jb = yesterdayReport?.closing_jb || 0;
     const yesterday_sb = yesterdayReport?.closing_sb || 0;
 
-    // 2. Get today's received stock from shipments
-    const { data: shipments } = await supabase.from("shipments").select("total_jb, total_sb").eq("arrival_date", date);
+    // 2. Get today's received stock from shipments (including damaged)
+    const { data: shipments } = await supabase.from("shipments").select("total_jb, total_sb, damaged_jb, damaged_sb").eq("arrival_date", date);
     const received_jb = shipments?.reduce((sum, s) => sum + (s.total_jb || 0), 0) || 0;
     const received_sb = shipments?.reduce((sum, s) => sum + (s.total_sb || 0), 0) || 0;
+    const shipmentDamagedJb = shipments?.reduce((sum, s) => sum + (s.damaged_jb || 0), 0) || 0;
+    const shipmentDamagedSb = shipments?.reduce((sum, s) => sum + (s.damaged_sb || 0), 0) || 0;
 
     // 3. Get today's dispatches & returns from ledger
     const { data: ledger } = await supabase.from("shipment_ledger").select("*").eq("date", date);
@@ -881,6 +883,10 @@ export async function generateDailyReportData(date: string) {
             else returned_sb += l.bags_returned;
         }
     });
+
+    // Add damaged bags from shipment intake to waste totals (arrival-day damage)
+    waste_jb += shipmentDamagedJb;
+    waste_sb += shipmentDamagedSb;
 
     // 4. Get today's dispatches for Module 2
     const { data: orders } = await supabase
