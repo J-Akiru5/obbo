@@ -315,6 +315,7 @@ export function NewRequestsTab({ orders, onApprove, onReject, onConfirmCheck, lo
                                             </div>
                                         )}
                                     </div>
+<<<<<<< HEAD
                                     <div className="bg-muted/40 p-5 md:w-48 flex flex-col justify-center gap-3 border-l border-border/50">
                                         {order.status === "pending_final_confirmation" ? (
                                             <Button onClick={() => openAction(order, "check")} className="w-full bg-blue-600 hover:bg-blue-700">

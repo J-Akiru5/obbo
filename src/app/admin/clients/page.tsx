@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, Suspense, type ComponentType } from "react";
+import { useCallback, useEffect, useRef, useState, Suspense, type ComponentType } from "react";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import {
     AlertTriangle,
@@ -606,6 +606,14 @@ function ClientsContent() {
         };
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
+
+    useEffect(() => {
+        mountedRef.current = true;
+        void fetchProfiles();
+        return () => {
+            mountedRef.current = false;
+        };
+    }, [fetchProfiles]);
 
     useEffect(() => {
         const loadCurrentRole = async () => {

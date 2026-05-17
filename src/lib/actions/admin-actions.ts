@@ -146,14 +146,34 @@ export async function approveOrder(orderId: string, approvedItems: { itemId: str
     // Get order
     const { data: order } = await supabase.from("orders").select("*, items:order_items(*)").eq("id", orderId).single();
     if (!order) throw new Error("Order not found");
+    const requestedOrderQty = order.items.reduce((sum: number, item: { requested_qty: number }) => sum + item.requested_qty, 0);
+
+    const approvedLookup = new Map(approvedItems.map((item) => [item.itemId, item.qty]));
+    let constrainedApprovedItems = order.items.map((item: { id: string; requested_qty: number }) => ({
+        itemId: item.id,
+        qty: Math.max(0, Math.min(item.requested_qty, approvedLookup.get(item.id) ?? 0)),
+    }));
+
+    if (order.is_split_delivery && order.deliver_now_qty > 0) {
+        const splitTarget = Math.min(order.deliver_now_qty, requestedOrderQty);
+        const totalApprovedQty = constrainedApprovedItems.reduce((sum, item) => sum + item.qty, 0);
+        if (totalApprovedQty > splitTarget) {
+            let remainingToApprove = splitTarget;
+            constrainedApprovedItems = constrainedApprovedItems.map((item) => {
+                const nextQty = Math.max(0, Math.min(item.qty, remainingToApprove));
+                remainingToApprove -= nextQty;
+                return { ...item, qty: nextQty };
+            });
+        }
+    }
 
     // Update each item's approved_qty
-    for (const item of approvedItems) {
+    for (const item of constrainedApprovedItems) {
         await supabase.from("order_items").update({ approved_qty: item.qty }).eq("id", item.itemId);
     }
 
     // Check if any item is partially approved
-    const isPartial = approvedItems.some(ai => {
+    const isPartial = constrainedApprovedItems.some(ai => {
         const original = order.items.find((i: { id: string }) => i.id === ai.itemId);
         return original && ai.qty < original.requested_qty;
     });
@@ -173,7 +193,29 @@ export async function approveOrder(orderId: string, approvedItems: { itemId: str
 
     await supabase.from("orders").update(updates).eq("id", orderId);
 
-    await logActivity(supabase, userId, "order_approved", "order", orderId, { status: newStatus, approvedItems });
+    // Create customer balance records for partial quantities
+    if (isPartial) {
+        for (const ai of approvedItems) {
+            const original = order.items.find((i: { id: string }) => i.id === ai.itemId);
+            if (original && ai.qty < original.requested_qty) {
+                const remaining = original.requested_qty - ai.qty;
+                await supabase.from("customer_balances").insert({
+                    client_id: order.client_id,
+                    order_id: orderId,
+                    product_id: original.product_id,
+                    bag_type: original.bag_type,
+                    remaining_qty: remaining,
+                    status: "pending",
+                });
+            }
+        }
+    }
+
+    await logActivity(supabase, userId, "order_approved", "order", orderId, {
+        status: newStatus,
+        approvedItems,
+        splitDeliveryApplied: Boolean(order.is_split_delivery),
+    });
     return { success: true, newStatus };
 }
 
