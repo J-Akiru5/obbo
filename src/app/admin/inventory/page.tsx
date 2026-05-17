@@ -3,12 +3,13 @@
 import { useState, useEffect, Suspense } from "react";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { fetchShipments, fetchPurchaseOrders, fetchDeliveryReceipts, fetchWarehouseReport } from "@/lib/actions/admin-actions";
+import { fetchShipments, fetchPurchaseOrders, fetchDeliveryReceipts, fetchOrderReturns, processOrderReturn } from "@/lib/actions/admin-actions";
 import { ShipmentsTab } from "./components/shipments-tab";
 import { PoListTab } from "./components/po-list-tab";
 import { DrListTab } from "./components/dr-list-tab";
 import { ReportsTab } from "./components/reports-tab";
-import { Shipment, PurchaseOrder, DeliveryReceipt, WarehouseReport } from "@/lib/types/database";
+import { ReturnsTab } from "./components/returns-tab";
+import { Shipment, PurchaseOrder, DeliveryReceipt, WarehouseReport, OrderReturn } from "@/lib/types/database";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
 
@@ -20,18 +21,21 @@ function InventoryContent() {
     const [shipments, setShipments] = useState<Shipment[]>([]);
     const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrder[]>([]);
     const [deliveryReceipts, setDeliveryReceipts] = useState<DeliveryReceipt[]>([]);
+    const [orderReturns, setOrderReturns] = useState<OrderReturn[]>([]);
     const [loading, setLoading] = useState(true);
 
     const loadData = async () => {
         try {
-            const [s, p, d] = await Promise.all([
+            const [s, p, d, r] = await Promise.all([
                 fetchShipments(),
                 fetchPurchaseOrders(),
-                fetchDeliveryReceipts()
+                fetchDeliveryReceipts(),
+                fetchOrderReturns()
             ]);
             setShipments(s as Shipment[]);
             setPurchaseOrders(p as PurchaseOrder[]);
             setDeliveryReceipts(d as DeliveryReceipt[]);
+            setOrderReturns(r as unknown as OrderReturn[]);
         } catch (error) {
             console.error("Error loading inventory data:", error);
             toast.error("Failed to load inventory data.");
@@ -77,10 +81,11 @@ function InventoryContent() {
             </div>
 
             <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-                <TabsList className="grid w-full grid-cols-3 h-auto">
+                <TabsList className="grid w-full grid-cols-4 h-auto">
                     <TabsTrigger value="shipments" className="py-2.5">Shipment Batches</TabsTrigger>
                     <TabsTrigger value="po" className="py-2.5">PO List</TabsTrigger>
                     <TabsTrigger value="dr" className="py-2.5">DR List</TabsTrigger>
+                    <TabsTrigger value="returns" className="py-2.5">Returns</TabsTrigger>
                 </TabsList>
 
                 <div className="mt-6">
@@ -94,6 +99,10 @@ function InventoryContent() {
 
                     <TabsContent value="dr">
                         <DrListTab deliveryReceipts={deliveryReceipts} shipments={shipments} purchaseOrders={purchaseOrders} loading={loading} onReload={loadData} />
+                    </TabsContent>
+
+                    <TabsContent value="returns">
+                        <ReturnsTab returns={orderReturns} loading={loading} onReload={loadData} />
                     </TabsContent>
                 </div>
             </Tabs>

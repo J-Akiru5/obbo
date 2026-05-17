@@ -448,6 +448,30 @@ export async function updateTrackingStatus(orderId: string, trackingStatus: stri
     }
     await supabase.from("orders").update(updates).eq("id", orderId);
     await logActivity(supabase, userId, "tracking_updated", "order", orderId, { trackingStatus });
+
+    // If bags were returned, auto-create a shipment ledger entry so it reflects in stock and reports
+    if (trackingStatus === "bags_returned" && (bagsReturnedJb || bagsReturnedSb)) {
+        const { data: order } = await supabase.from("orders").select("shipment_id, po_number, dr_number, client_id").eq("id", orderId).single();
+        if (order?.shipment_id) {
+            let clientLabel = "Unknown";
+            if (order.client_id) {
+                const { data: profile } = await supabase.from("profiles").select("full_name, company_name").eq("id", order.client_id).single();
+                clientLabel = profile?.company_name || profile?.full_name || "Unknown";
+            }
+            await addLedgerEntry(order.shipment_id, {
+                date: new Date().toISOString().split("T")[0],
+                po_number: order.po_number,
+                dr_number: order.dr_number,
+                client_name: clientLabel,
+                jb: 0,
+                sb: 0,
+                bags_returned: (bagsReturnedJb || 0) + (bagsReturnedSb || 0),
+                bag_returned_type: bagsReturnedJb ? "JB" : "SB",
+                return_reason: "return",
+            });
+        }
+    }
+
     return { success: true };
 }
 
@@ -540,6 +564,7 @@ export async function addLedgerEntry(shipmentId: string, entry: {
     bags_returned?: number;
     bag_returned_type?: string;
     return_reason?: string;
+    client_reason?: string;
     notes?: string;
 }) {
     const { supabase, userId } = await requireAdmin();
@@ -1221,6 +1246,28 @@ export async function fetchPendingKyc() {
 
         return { success: true };
     }
+
+// ═══════════════════════════════════════════════════════════════
+// ORDER RETURNS
+// ═══════════════════════════════════════════════════════════════
+
+export async function fetchOrderReturns() {
+    const { supabase } = await requireAdmin();
+    const { data } = await supabase
+        .from("order_returns")
+        .select("*, order:orders(po_number, dr_number, client:profiles!orders_client_id_fkey(full_name, company_name))")
+        .eq("status", "pending")
+        .order("created_at", { ascending: false });
+    return data ?? [];
+}
+
+export async function processOrderReturn(returnId: string) {
+    const { supabase, userId } = await requireAdmin();
+    const { error } = await supabase.from("order_returns").update({ status: "processed", updated_at: new Date().toISOString() }).eq("id", returnId);
+    if (error) throw new Error(error.message);
+    await logActivity(supabase, userId, "return_processed", "order_returns", returnId, {});
+    return { success: true };
+}
 
 // ═══════════════════════════════════════════════════════════════
 // NOTIFICATIONS

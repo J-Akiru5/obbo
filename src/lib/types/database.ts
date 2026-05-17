@@ -103,6 +103,7 @@ export interface ShipmentLedgerEntry {
     bags_returned: number;
     bag_returned_type: BagType | null;
     return_reason: string | null;
+    client_reason: string | null;
     notes: string | null;
     created_at: string;
     updated_at: string;
@@ -215,6 +216,18 @@ export interface PurchaseOrder {
     check_amount: number | null;
     cash_amount: number | null;
     photo_url: string | null;
+    created_at: string;
+    updated_at: string;
+}
+
+export interface OrderReturn {
+    id: string;
+    order_id: string;
+    client_id: string;
+    jb_qty: number;
+    sb_qty: number;
+    reason: string;
+    status: string;
     created_at: string;
     updated_at: string;
 }

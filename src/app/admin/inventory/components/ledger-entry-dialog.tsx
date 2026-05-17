@@ -21,7 +21,7 @@ const EMPTY = {
     service_type: "pickup",
     jb: 0, sb: 0,
     payment_method: "cash", check_number: "", amount: 0,
-    bags_returned: 0, bag_returned_type: "", return_reason: "return", notes: "",
+    bags_returned: 0, bag_returned_type: "", return_reason: "return", client_reason: "", notes: "",
 };
 
 export function LedgerEntryDialog({ open, onOpenChange, entry, onSubmit }: LedgerEntryDialogProps) {
@@ -47,6 +47,7 @@ export function LedgerEntryDialog({ open, onOpenChange, entry, onSubmit }: Ledge
                 bags_returned: entry.bags_returned ?? 0,
                 bag_returned_type: entry.bag_returned_type ?? "",
                 return_reason: entry.return_reason ?? "return",
+                client_reason: entry.client_reason ?? "",
                 notes: entry.notes ?? "",
             });
         } else {
@@ -214,6 +215,14 @@ export function LedgerEntryDialog({ open, onOpenChange, entry, onSubmit }: Ledge
                             </p>
                         )}
                     </div>
+
+                    {/* Client Reason (for returns) */}
+                    {Number(form.bags_returned) > 0 && (
+                        <div className="space-y-1.5">
+                            <Label className="text-xs">Client Reason / Notes</Label>
+                            <Input value={form.client_reason || ""} onChange={e => set("client_reason", e.target.value)} placeholder="Optional: reason from client or additional notes" className="h-9" />
+                        </div>
+                    )}
 
                     {/* Notes */}
                     <div className="space-y-1.5">
