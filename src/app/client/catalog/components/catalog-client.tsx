@@ -389,7 +389,7 @@ export default function CatalogClient({ products }: { products: Product[] }) {
                                             <Input 
                                                 type="number" 
                                                 min="0" 
-                                                step="25"
+                                                step="1"
                                                 value={jbQty || ""} 
                                                 placeholder="0" 
                                                 onFocus={(e) => e.target.select()} 
@@ -397,8 +397,8 @@ export default function CatalogClient({ products }: { products: Product[] }) {
                                                 className="bg-background text-lg font-bold h-12" 
                                             />
                                             <div className="flex flex-col justify-center text-[10px] text-muted-foreground font-medium min-w-[60px]">
+                                                <span>{jbQty} indiv.</span>
                                                 <span>{(jbQty / 25).toFixed(1)} JB</span>
-                                                <span>indiv. bags</span>
                                             </div>
                                         </div>
                                     </div>
@@ -413,7 +413,7 @@ export default function CatalogClient({ products }: { products: Product[] }) {
                                             <Input 
                                                 type="number" 
                                                 min="0" 
-                                                step="50"
+                                                step="1"
                                                 value={sbQty || ""} 
                                                 placeholder="0" 
                                                 onFocus={(e) => e.target.select()} 
@@ -421,14 +421,14 @@ export default function CatalogClient({ products }: { products: Product[] }) {
                                                 className="bg-background text-lg font-bold h-12" 
                                             />
                                             <div className="flex flex-col justify-center text-[10px] text-muted-foreground font-medium min-w-[60px]">
+                                                <span>{sbQty} indiv.</span>
                                                 <span>{(sbQty / 50).toFixed(1)} SB</span>
-                                                <span>indiv. bags</span>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
                                 <p className="text-[10px] text-muted-foreground text-center italic">
-                                    * JB contains 25 bags, SB contains 50 bags. Please input multiples for full bags.
+                                    * Orders are by individual bag. 1 JB = 25 bags, 1 SB = 50 bags.
                                 </p>
                             </div>
 
