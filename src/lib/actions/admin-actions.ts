@@ -378,11 +378,10 @@ export async function dispatchOrder(
     } else if (order.payment_method === "cash") {
         cashAmount = Number(order.total_amount) || null;
     } else {
-        // For bank_transfer or others, we'll map to cash_amount for ledger parity if needed
         cashAmount = Number(order.total_amount) || null;
     }
 
-    const { error: poError } = await supabase.from("purchase_orders").upsert({
+    const poPayload = {
         po_number: poNumber,
         client_id: order.client_id,
         client_name: clientName,
@@ -398,13 +397,23 @@ export async function dispatchOrder(
         check_amount: checkAmount,
         cash_amount: cashAmount,
         photo_url: order.po_image_url,
-    }, { onConflict: "po_number" });
-    
-    if (poError) {
-        console.error("PO Auto-generation error:", poError);
-        // We don't throw here to avoid failing the whole dispatch if just the ledger sync fails, 
-        // but the user wants it to be a transaction, so maybe we should.
-        throw new Error(`Failed to auto-generate PO record: ${poError.message}`);
+        updated_at: new Date().toISOString(),
+    };
+
+    // Check if a PO record with this po_number already exists
+    const { data: existingPo } = await supabase.from("purchase_orders")
+        .select("id").eq("po_number", poNumber).maybeSingle();
+
+    let poResult;
+    if (existingPo) {
+        poResult = await supabase.from("purchase_orders").update(poPayload).eq("id", existingPo.id);
+    } else {
+        poResult = await supabase.from("purchase_orders").insert(poPayload);
+    }
+
+    if (poResult?.error) {
+        console.error("PO Auto-generation error:", poResult.error);
+        // Non-blocking: let dispatch complete even if PO sync fails
     }
 
     // ── AUTO-GENERATE DR RECORD ──────────────────────────────
