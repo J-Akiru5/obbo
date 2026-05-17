@@ -192,10 +192,10 @@ export default function OrdersClient({ orders }: { orders: Order[] }) {
         return (
             <Card key={order.id} className="mb-4 shadow-sm overflow-hidden bg-card border-border">
                 <CardHeader className="bg-muted/30 border-b pb-3 pt-4 cursor-pointer" onClick={() => toggleExpanded(order.id)}>
-                    <div className="flex justify-between items-start">
-                        <div>
-                            <div className="flex items-center gap-2">
-                                <CardTitle className="text-base text-foreground">PO: {order.po_number}</CardTitle>
+                    <div className="flex justify-between items-start gap-3">
+                        <div className="min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                                <CardTitle className="text-base text-foreground truncate">PO: {order.po_number}</CardTitle>
                                 {isRedelivery && (
                                     <Badge variant="outline" className="text-[10px] border-status-info-text/30 text-status-info-text bg-status-info-bg/50">
                                         Re-delivery
@@ -239,22 +239,22 @@ export default function OrdersClient({ orders }: { orders: Order[] }) {
                         </div>
                         <div>
                             <p className="text-muted-foreground text-xs">Status</p>
-                            {order.status === "pending" && <Badge variant="secondary">Awaiting Approval</Badge>}
-                            {order.status === "partially_approved" && <Badge className="bg-status-info-bg text-status-info-text border-status-info-text/20">Partially Approved</Badge>}
+                            {order.status === "pending" && <Badge variant="secondary" className="whitespace-normal text-center">Awaiting Approval</Badge>}
+                            {order.status === "partially_approved" && <Badge className="bg-status-info-bg text-status-info-text border-status-info-text/20 whitespace-normal text-center">Partially Approved</Badge>}
                             {order.status === "approved" && (
-                                 <Badge className={order.payment_method === 'cash' ? "bg-status-success-bg text-status-success-text border-status-success-border/20" : "bg-status-pending-bg text-status-pending-text border-status-pending-border"}>
+                                 <Badge className={order.payment_method === 'cash' ? "bg-status-success-bg text-status-success-text border-status-success-border/20 whitespace-normal text-center" : "bg-status-pending-bg text-status-pending-text border-status-pending-border whitespace-normal text-center"}>
                                      {order.payment_method === 'cash' ? "Ready for Dispatch" : "Payment Required"}
                                  </Badge>
                              )}
-                            {order.status === "awaiting_check" && <Badge className="bg-status-pending-bg text-status-pending-text border-status-pending-border">Upload Check</Badge>}
-                            {order.status === "pending_final_confirmation" && <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200">✅ Payment Submitted</Badge>}
+                            {order.status === "awaiting_check" && <Badge className="bg-status-pending-bg text-status-pending-text border-status-pending-border whitespace-normal text-center">Upload Check</Badge>}
+                            {order.status === "pending_final_confirmation" && <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 whitespace-normal text-center">✅ Payment Submitted</Badge>}
                             {order.status === "dispatched" && (
-                                <Badge className="bg-status-success-bg text-status-success-text border-status-success-border/20">
+                                <Badge className="bg-status-success-bg text-status-success-text border-status-success-border/20 whitespace-normal text-center">
                                     {order.tracking_status === "in_transit" ? "In Transit" : "Dispatched"}
                                 </Badge>
                             )}
-                            {order.status === "completed" && <Badge variant="outline" className="border-status-success-border text-status-success-text">Completed</Badge>}
-                            {order.status === "rejected" && <Badge variant="destructive">Rejected</Badge>}
+                            {order.status === "completed" && <Badge variant="outline" className="border-status-success-border text-status-success-text whitespace-normal text-center">Completed</Badge>}
+                            {order.status === "rejected" && <Badge variant="destructive" className="whitespace-normal text-center">Rejected</Badge>}
                         </div>
                     </div>
 
@@ -341,16 +341,16 @@ export default function OrdersClient({ orders }: { orders: Order[] }) {
 
                     {/* Expanded details */}
                     {isExpanded && (
-                        <div className="mt-3 pt-3 border-t border-gray-100 space-y-3">
-                            <h4 className="text-xs font-semibold uppercase tracking-wide text-gray-500">Order Items</h4>
+                        <div className="mt-3 pt-3 border-t border-border space-y-3">
+                            <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Order Items</h4>
                             <div className="space-y-2">
                                 {order.items.map((item: any) => (
-                                    <div key={item.id} className="flex justify-between items-center p-2 bg-gray-50 rounded text-sm">
-                                        <div>
-                                            <span className="font-medium">{item.product?.name || "Product"}</span>
-                                            <span className="text-gray-500 ml-2">({item.bag_type})</span>
+                                    <div key={item.id} className="flex justify-between items-center gap-3 p-2 bg-muted/30 rounded text-sm">
+                                        <div className="min-w-0">
+                                            <span className="font-medium truncate block">{item.product?.name || "Product"}</span>
+                                            <span className="text-muted-foreground">({item.bag_type})</span>
                                         </div>
-                                        <div className="text-right text-xs text-gray-600">
+                                        <div className="text-right text-xs text-muted-foreground shrink-0">
                                             <div>Requested: {item.requested_qty}</div>
                                             {item.approved_qty > 0 && <div className="text-emerald-600">Approved: {item.approved_qty}</div>}
                                             {item.dispatched_qty > 0 && <div className="text-blue-600">Dispatched: {item.dispatched_qty}</div>}
@@ -359,13 +359,13 @@ export default function OrdersClient({ orders }: { orders: Order[] }) {
                                 ))}
                             </div>
                             {order.supplier_name && (
-                                <div className="text-xs text-gray-500">Supplier: <span className="text-gray-700">{order.supplier_name}</span></div>
+                                <div className="text-xs text-muted-foreground">Supplier: <span className="text-foreground">{order.supplier_name}</span></div>
                             )}
                             {order.driver_name && (
-                                <div className="text-xs text-gray-500">Driver: <span className="text-gray-700">{order.driver_name}</span> | Plate: <span className="text-gray-700">{order.plate_number}</span></div>
+                                <div className="text-xs text-muted-foreground">Driver: <span className="text-foreground">{order.driver_name}</span> | Plate: <span className="text-foreground">{order.plate_number}</span></div>
                             )}
                             {order.dr_number && (
-                                <div className="text-xs text-gray-500">DR Number: <span className="font-mono text-gray-700">{order.dr_number}</span></div>
+                                <div className="text-xs text-muted-foreground">DR Number: <span className="font-mono text-foreground">{order.dr_number}</span></div>
                             )}
                         </div>
                     )}
@@ -382,14 +382,14 @@ export default function OrdersClient({ orders }: { orders: Order[] }) {
             </div>
 
             <Tabs defaultValue="active" className="w-full">
-                <TabsList className="w-full justify-start border-b rounded-none h-auto p-0 bg-transparent mb-6 space-x-6">
-                    <TabsTrigger value="active" className="data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-primary rounded-none px-0 py-3 shadow-none">
+                <TabsList className="w-full justify-start overflow-x-auto no-scrollbar border-b rounded-none h-auto p-0 bg-transparent mb-6">
+                    <TabsTrigger value="active" className="shrink-0 whitespace-nowrap data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-primary rounded-none px-0 py-3 mr-6 shadow-none">
                         Active & Tracking ({activeOrders.length})
                     </TabsTrigger>
-                    <TabsTrigger value="pending" className="data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-primary rounded-none px-0 py-3 shadow-none">
+                    <TabsTrigger value="pending" className="shrink-0 whitespace-nowrap data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-primary rounded-none px-0 py-3 mr-6 shadow-none">
                         Pending Approval ({pendingOrders.length})
                     </TabsTrigger>
-                    <TabsTrigger value="history" className="data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-primary rounded-none px-0 py-3 shadow-none">
+                    <TabsTrigger value="history" className="shrink-0 whitespace-nowrap data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-primary rounded-none px-0 py-3 shadow-none">
                         Order History
                     </TabsTrigger>
                 </TabsList>
@@ -428,11 +428,11 @@ export default function OrdersClient({ orders }: { orders: Order[] }) {
                                 className="pl-9"
                             />
                         </div>
-                        <div className="flex gap-2 items-center">
-                            <CalendarDays className="w-4 h-4 text-gray-400 shrink-0" />
-                            <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="w-auto" />
-                            <span className="text-xs text-gray-400">to</span>
-                            <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="w-auto" />
+                        <div className="flex flex-wrap items-center gap-2">
+                            <CalendarDays className="w-4 h-4 text-muted-foreground shrink-0" />
+                            <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="w-[140px] min-w-0" />
+                            <span className="text-xs text-muted-foreground">to</span>
+                            <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="w-[140px] min-w-0" />
                         </div>
                     </div>
 
