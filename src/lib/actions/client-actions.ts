@@ -24,6 +24,19 @@ async function requireClient() {
     return { supabase, user, profile };
 }
 
+async function requireVerifiedClient() {
+    const { supabase, user, profile } = await requireClient();
+    if (profile.kyc_status !== "verified") {
+        throw new Error("KYC verification required to access this feature.");
+    }
+    return { supabase, user, profile };
+}
+
+export async function getClientKycStatus(): Promise<{ kyc_status: string | null }> {
+    const { profile } = await requireClient();
+    return { kyc_status: profile.kyc_status };
+}
+
 // ═══════════════════════════════════════════════════════════════
 // DASHBOARD
 // ═══════════════════════════════════════════════════════════════
