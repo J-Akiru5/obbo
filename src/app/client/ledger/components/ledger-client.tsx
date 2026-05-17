@@ -15,7 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
-import { Package, Truck, Info, History, ShoppingBag, TrendingDown, Split, CheckCircle2 } from "lucide-react";
+import { Package, Truck, Info, History, ShoppingBag, TrendingDown, Split, CheckCircle2, Loader2 } from "lucide-react";
 
 import { CustomerBalance, Order } from "@/lib/types/database";
 
@@ -25,7 +25,7 @@ interface BalanceSummary {
     remainingBalance: number;
 }
 
-export default function LedgerClient({ balances, summary }: { balances: CustomerBalance[]; summary: BalanceSummary }) {
+export default function LedgerClient({ balances, summary, pendingRedeliveryPos }: { balances: CustomerBalance[]; summary: BalanceSummary; pendingRedeliveryPos: string[] }) {
     const router = useRouter();
     const [selectedBalance, setSelectedBalance] = useState<CustomerBalance | null>(null);
     const [isRedeliveryOpen, setIsRedeliveryOpen] = useState(false);
@@ -280,14 +280,21 @@ export default function LedgerClient({ balances, summary }: { balances: Customer
                                                 </TableCell>
                                                 <TableCell className="text-right">
                                                     {b.remaining_qty > 0 ? (
-                                                        <Button 
-                                                            size="sm" 
-                                                            className="bg-accent text-accent-foreground hover:bg-accent/90 shadow-sm" 
-                                                            onClick={() => handleOpenRedelivery(b)}
-                                                        >
-                                                            <Truck className="w-3.5 h-3.5 mr-1.5" />
-                                                            Request Balance Delivery
-                                                        </Button>
+                                                        pendingRedeliveryPos.includes(b.order?.po_number || "") ? (
+                                                            <Button size="sm" disabled className="opacity-60 cursor-not-allowed">
+                                                                <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+                                                                Re-delivery Pending
+                                                            </Button>
+                                                        ) : (
+                                                            <Button 
+                                                                size="sm" 
+                                                                className="bg-accent text-accent-foreground hover:bg-accent/90 shadow-sm" 
+                                                                onClick={() => handleOpenRedelivery(b)}
+                                                            >
+                                                                <Truck className="w-3.5 h-3.5 mr-1.5" />
+                                                                Request Balance Delivery
+                                                            </Button>
+                                                        )
                                                     ) : (
                                                         <Badge variant="outline" className="text-emerald-600 border-emerald-200 bg-emerald-50 dark:text-emerald-400 dark:border-emerald-800 dark:bg-emerald-950/30">
                                                             <CheckCircle2 className="w-3 h-3 mr-1" />

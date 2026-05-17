@@ -1,4 +1,4 @@
-import { fetchClientBalances, fetchBalanceSummary, getClientKycStatus } from "@/lib/actions/client-actions";
+import { fetchClientBalances, fetchBalanceSummary, getClientKycStatus, fetchPendingRedeliveryPoNumbers } from "@/lib/actions/client-actions";
 import LedgerClient from "./components/ledger-client";
 
 export const metadata = {
@@ -31,10 +31,11 @@ export default async function ClientLedgerPage() {
         );
     }
 
-    const [balances, summary] = await Promise.all([
+    const [balances, summary, pendingRedeliveryPos] = await Promise.all([
         fetchClientBalances(),
         fetchBalanceSummary(),
+        fetchPendingRedeliveryPoNumbers(),
     ]);
 
-    return <LedgerClient balances={balances} summary={summary} />;
+    return <LedgerClient balances={balances} summary={summary} pendingRedeliveryPos={pendingRedeliveryPos} />;
 }

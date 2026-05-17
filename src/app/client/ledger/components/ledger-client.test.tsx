@@ -48,6 +48,7 @@ describe("LedgerClient - Balance Ledger Component", () => {
                     totalDelivered: 0,
                     remainingBalance: 0,
                 }}
+                pendingRedeliveryPos={[]}
             />
         );
 
@@ -63,6 +64,7 @@ describe("LedgerClient - Balance Ledger Component", () => {
                     totalDelivered: 75,
                     remainingBalance: 25,
                 }}
+                pendingRedeliveryPos={[]}
             />
         );
 
@@ -80,6 +82,7 @@ describe("LedgerClient - Balance Ledger Component", () => {
                     totalDelivered: 10,
                     remainingBalance: 0,
                 }}
+                pendingRedeliveryPos={[]}
             />
         );
 
@@ -113,6 +116,7 @@ describe("LedgerClient - Balance Ledger Component", () => {
                     totalDelivered: 10,
                     remainingBalance: 0,
                 }}
+                pendingRedeliveryPos={[]}
             />
         );
 
@@ -120,7 +124,7 @@ describe("LedgerClient - Balance Ledger Component", () => {
         expect(screen.queryByText("Request Balance Delivery")).not.toBeInTheDocument();
     });
 
-    it("shows request button when balance is greater than 0", () => {
+    it("shows request button when balance is greater than 0 and no pending redelivery", () => {
         render(
             <LedgerClient
                 balances={[
@@ -146,9 +150,44 @@ describe("LedgerClient - Balance Ledger Component", () => {
                     totalDelivered: 15,
                     remainingBalance: 5,
                 }}
+                pendingRedeliveryPos={[]}
             />
         );
 
         expect(screen.getByText("Request Balance Delivery")).toBeInTheDocument();
+    });
+
+    it("shows disabled pending button when balance has an active redelivery", () => {
+        render(
+            <LedgerClient
+                balances={[
+                    {
+                        id: "3",
+                        client_id: "client-1",
+                        order_id: "order-1",
+                        product_id: "prod-1",
+                        bag_type: "JB",
+                        total_purchase: 30,
+                        remaining_qty: 10,
+                        status: "pending",
+                        created_at: new Date().toISOString(),
+                        product: { name: "Portland Cement" },
+                        order: {
+                            po_number: "PO-2026-003",
+                            created_at: new Date().toISOString(),
+                        },
+                    },
+                ]}
+                summary={{
+                    totalPurchased: 30,
+                    totalDelivered: 20,
+                    remainingBalance: 10,
+                }}
+                pendingRedeliveryPos={["PO-2026-003"]}
+            />
+        );
+
+        expect(screen.getByText("Re-delivery Pending")).toBeInTheDocument();
+        expect(screen.queryByText("Request Balance Delivery")).not.toBeInTheDocument();
     });
 });

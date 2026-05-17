@@ -2,6 +2,7 @@
 
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+import { revalidatePath } from "next/cache";
 import { generateGlobalNextPoNumber } from "./po-utils";
 import { createRoleNotification, createUserNotification } from "./notification-actions";
 import type { WarehouseReport } from "@/lib/types/database";
@@ -379,6 +380,8 @@ export async function dispatchOrder(
             }
         }
     }
+
+    revalidatePath("/client/ledger");
 
     // Update order items dispatched_qty
     for (const item of order.items) {

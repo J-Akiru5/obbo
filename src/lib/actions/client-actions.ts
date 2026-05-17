@@ -424,6 +424,21 @@ export async function fetchBalanceSummary() {
     return { totalPurchased, totalDelivered, remainingBalance };
 }
 
+export async function fetchPendingRedeliveryPoNumbers() {
+    const { supabase, user } = await requireClient();
+    const { data } = await supabase
+        .from("orders")
+        .select("linked_po_number")
+        .eq("client_id", user.id)
+        .eq("order_type", "redelivery")
+        .in("status", ["pending", "approved", "partially_approved", "awaiting_check", "dispatched"])
+        .not("linked_po_number", "is", null);
+    
+    // Return unique PO numbers that have pending redelivery requests
+    const poNumbers = [...new Set((data || []).map(o => o.linked_po_number).filter(Boolean))];
+    return poNumbers as string[];
+}
+
 export async function submitRedeliveryRequest(balanceId: string, orderData: {
     source: string;
     service_type: string;
