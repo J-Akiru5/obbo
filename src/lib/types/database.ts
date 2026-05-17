@@ -232,6 +232,7 @@ export interface WarehouseReport {
     closing_jb: number;
     closing_sb: number;
     notes: string | null;
+    submitted: boolean;
     created_at: string;
     updated_at: string;
 }

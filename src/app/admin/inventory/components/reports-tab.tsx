@@ -9,6 +9,7 @@ import {
     generateDailyReportData,
     submitWarehouseReport,
     checkReportSubmission,
+    autoSubmitEndOfDayReports,
 } from "@/lib/actions/admin-actions";
 import { generateReportXLSX } from "@/lib/report-generators/report-xlsx";
 import { generateReportPDF } from "@/lib/report-generators/report-pdf";
@@ -49,6 +50,7 @@ export function ReportsTab() {
     const [balances, setBalances] = useState<CustomerBalance[]>([]);
 
     useEffect(() => {
+        autoSubmitEndOfDayReports().catch(() => {});
         setIsAutoFilled(false);
         loadReportData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
