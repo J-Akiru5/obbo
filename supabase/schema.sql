@@ -435,11 +435,14 @@ create policy "delivery_receipts: admin all" on public.delivery_receipts for all
 -- orders
 drop policy if exists "orders: client insert"   on public.orders;
 drop policy if exists "orders: client read own" on public.orders;
+drop policy if exists "orders: client update own" on public.orders;
 drop policy if exists "orders: admin all"       on public.orders;
 create policy "orders: client insert"
   on public.orders for insert with check (client_id = auth.uid() and public.is_verified_client());
 create policy "orders: client read own"
   on public.orders for select using (client_id = auth.uid());
+create policy "orders: client update own"
+  on public.orders for update using (client_id = auth.uid()) with check (client_id = auth.uid());
 create policy "orders: admin all"
   on public.orders for all using (public.is_admin());
 
