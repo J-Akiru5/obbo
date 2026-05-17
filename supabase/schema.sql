@@ -361,14 +361,15 @@ create table if not exists public.activity_log (
 
 -- ── NOTIFICATIONS ───────────────────────────────────────────
 create table if not exists public.notifications (
-  id         uuid primary key default gen_random_uuid(),
-  user_id    uuid not null references public.profiles(id) on delete cascade,
-  title      text not null,
-  message    text not null,
-  href       text,
-  severity   text not null default 'info' check (severity in ('info','warning','success')),
-  is_read    boolean not null default false,
-  created_at timestamptz not null default now()
+  id          uuid primary key default gen_random_uuid(),
+  user_id     uuid not null references public.profiles(id) on delete cascade,
+  title       text not null,
+  message     text not null,
+  href        text,
+  severity    text not null default 'info' check (severity in ('info','warning','success')),
+  target_role text check (target_role in ('admin', 'warehouse_manager', 'client')),
+  is_read     boolean not null default false,
+  created_at  timestamptz not null default now()
 );
 
 -- ── ENABLE RLS ───────────────────────────────────────────────
@@ -515,5 +516,5 @@ on conflict (name, bag_type) do update set
 -- alter publication supabase_realtime add table public.orders;
 -- alter publication supabase_realtime add table public.activity_log;
 -- alter publication supabase_realtime add table public.profiles;
--- alter publication supabase_realtime add table public.notifications;
+alter publication supabase_realtime add table public.notifications;
 -- alter publication supabase_realtime add table public.products;
