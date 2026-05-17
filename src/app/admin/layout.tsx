@@ -501,7 +501,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                                 </div>
                                 <div className="max-h-80 overflow-y-auto">
                                     {notifications.length === 0 ? (
-                                        <div className="p-6 text-center text-sm text-gray-500">No notifications yet</div>
+                                        <div className="p-6 text-center text-sm text-muted-foreground">No notifications yet</div>
                                     ) : (
                                         notifications.map((n) => (
                                             <Link 
@@ -512,7 +512,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                                                     if (!n.is_read) markRead(n.id);
                                                 }}
                                             >
-                                                <div className={`px-3 py-2.5 border-b border-gray-50 hover:bg-gray-50 transition-colors ${!n.is_read ? 'bg-blue-50/50' : ''}`}>
+                                                <div className={`px-3 py-2.5 border-b border-border hover:bg-accent transition-colors ${!n.is_read ? 'bg-primary/5 dark:bg-primary/10' : ''}`}>
                                                     <div className="flex items-start gap-2">
                                                         {n.severity === 'warning' ? (
                                                             <AlertCircle className="w-3.5 h-3.5 text-amber-500 mt-0.5 shrink-0" />
@@ -522,9 +522,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                                                             <Info className="w-3.5 h-3.5 text-blue-500 mt-0.5 shrink-0" />
                                                         )}
                                                         <div>
-                                                            <p className={`text-xs font-medium ${!n.is_read ? 'text-gray-900' : 'text-gray-600'}`}>{n.title}</p>
-                                                            <p className="text-[10px] text-gray-500 mt-0.5">{n.message}</p>
-                                                            <p className="text-[9px] text-gray-400 mt-1">{new Date(n.created_at).toLocaleString()}</p>
+                                                            <p className={`text-xs font-medium ${!n.is_read ? 'text-foreground' : 'text-muted-foreground'}`}>{n.title}</p>
+                                                            <p className="text-[10px] text-muted-foreground mt-0.5">{n.message}</p>
+                                                            <p className="text-[9px] text-muted-foreground/60 mt-1">{new Date(n.created_at).toLocaleString()}</p>
                                                         </div>
                                                     </div>
                                                 </div>

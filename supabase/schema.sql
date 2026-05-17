@@ -102,6 +102,9 @@ alter table public.products add column if not exists price_warehouse numeric(12,
 update public.products
   set price_port = price_per_bag, price_warehouse = price_per_bag
   where price_port is null or price_warehouse is null;
+-- Prevent duplicate product entries by name + bag type
+alter table public.products drop constraint if exists products_name_bag_type_key;
+alter table public.products add constraint products_name_bag_type_key unique (name, bag_type);
 
 -- ── SHIPMENTS ────────────────────────────────────────────────
 create table if not exists public.shipments (
@@ -488,12 +491,15 @@ create policy "notifications: admin insert" on public.notifications for insert w
 -- ── CANONICAL PRODUCT SEED ───────────────────────────────────
 -- Only Portland Cement Type 1 — SB (₱235 port / ₱240 warehouse)
 -- and JB (₱5,700 port / ₱5,800 warehouse).
--- On conflict: do nothing (preserves any price edits made via admin UI).
+-- On conflict (name, bag_type): update prices (idempotent seed).
 insert into public.products (name, description, bag_type, price_per_bag, price_port, price_warehouse, is_active)
 values
   ('Portland Cement Type 1', 'General-purpose Portland cement. 40 kg per bag.', 'SB', 240,  235,  240,  true),
   ('Portland Cement Type 1', 'General-purpose Portland cement. 1-ton jumbo bag.','JB', 5800, 5700, 5800, true)
-on conflict do nothing;
+on conflict (name, bag_type) do update set
+  price_per_bag = excluded.price_per_bag,
+  price_port = excluded.price_port,
+  price_warehouse = excluded.price_warehouse;
 
 -- ── PROMOTE ADMIN ─────────────────────────────────────────────
 -- After signing up, run the line below in the SQL Editor to grant admin access:

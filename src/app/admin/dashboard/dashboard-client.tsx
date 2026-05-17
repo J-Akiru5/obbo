@@ -375,7 +375,31 @@ export default function DashboardClient({
                                                     ? `Report for ${String((activity.metadata as any)?.date ?? "Unknown")}`
                                                     : `User: ${activity.actor?.email ?? "Unknown"} · IP: ${String((activity.metadata as any)?.ip ?? "Unknown")}`}
                                             </p>
+                    </div>
+                    {/* Mobile card view */}
+                    <div className="sm:hidden divide-y divide-border">
+                        {recentOrders.length === 0 ? (
+                            <div className="px-4 py-12 text-center text-sm text-muted-foreground">No pending orders</div>
+                        ) : (
+                            recentOrders.map((order) => {
+                                const total = order.items?.reduce((sum: number, i: any) => sum + i.requested_qty, 0) ?? 0;
+                                return (
+                                    <Link key={order.id} href={`/admin/orders#${order.id}`} className="flex items-center justify-between px-4 py-3 hover:bg-muted/30 transition-colors">
+                                        <div className="min-w-0">
+                                            <p className="font-mono text-sm font-medium">{order.po_number || `#${order.id.slice(0, 8).toUpperCase()}`}</p>
+                                            <p className="text-xs text-muted-foreground">{(order as any).client?.full_name ?? "Unknown"}</p>
                                         </div>
+                                        <div className="flex items-center gap-3">
+                                            <Badge className={order.payment_method === 'cash' ? "bg-emerald-500/10 text-emerald-500 border-0 text-xs" : "bg-blue-500/10 text-blue-500 border-0 text-xs"}>
+                                                {order.payment_method.toUpperCase()}
+                                            </Badge>
+                                            <span className="text-sm font-bold">{total}</span>
+                                        </div>
+                                    </Link>
+                                );
+                            })
+                        )}
+                    </div>
                                     </div>
                                     <Badge className={`${activity.action === "warehouse_report_submitted" ? "bg-indigo-500/10 text-indigo-500 border-0" : "bg-emerald-500/10 text-emerald-500 border-0"} text-[10px] uppercase font-bold hidden sm:flex`}>
                                         {activity.action === "warehouse_report_submitted" ? "Report" : "Success"}
@@ -393,7 +417,7 @@ export default function DashboardClient({
                 <CardHeader className="pb-4 border-b border-border">
                     <div className="flex items-center justify-between">
                         <CardTitle className="text-base font-semibold text-foreground tracking-wide">Recent Pending Orders</CardTitle>
-                        <Link href="/admin/orders" className="text-[13px] font-medium text-slate-500 hover:text-slate-800 flex items-center gap-1 transition-colors">
+                        <Link href="/admin/orders" className="text-[13px] font-medium text-muted-foreground hover:text-foreground flex items-center gap-1 transition-colors">
                             View All <ArrowUpRight className="w-3.5 h-3.5" />
                         </Link>
                     </div>
@@ -413,7 +437,7 @@ export default function DashboardClient({
                             <tbody className="divide-y divide-border">
                                 {recentOrders.length === 0 ? (
                                     <tr>
-                                        <td colSpan={5} className="px-6 py-12 text-center text-slate-400 font-medium">No pending orders</td>
+                                        <td colSpan={5} className="px-6 py-12 text-center text-muted-foreground font-medium">No pending orders</td>
                                     </tr>
                                 ) : (
                                     recentOrders.map((order) => {
@@ -429,7 +453,7 @@ export default function DashboardClient({
                                                     </Badge>
                                                 </td>
                                                 <td className="px-6 py-4 text-right">
-                                                    <Link href={`/admin/orders#${order.id}`} className="text-[#3b82f6] hover:underline text-xs font-medium">Review</Link>
+                                                    <Link href={`/admin/orders#${order.id}`} className="text-primary hover:underline text-xs font-medium">Review</Link>
                                                 </td>
                                             </tr>
                                         );

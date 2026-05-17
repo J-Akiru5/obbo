@@ -102,7 +102,10 @@ export async function fetchActiveProducts() {
         .select("*")
         .eq("is_active", true)
         .order("name", { ascending: true });
-    return data ?? [];
+    return (data ?? []).filter((product) =>
+        product.name?.toLowerCase().includes("portland cement type 1")
+        && (product.bag_type === "JB" || product.bag_type === "SB")
+    );
 }
 
 export async function generateNextPoNumber() {

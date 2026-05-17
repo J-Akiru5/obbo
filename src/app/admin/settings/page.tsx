@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import {
     Activity,
     Database,
+    Download,
     Globe,
     HardDrive,
     Info,
@@ -16,6 +17,7 @@ import {
     Save,
     Settings,
     Shield,
+    Smartphone,
     Sun,
     ShieldAlert,
     User,
@@ -68,6 +70,30 @@ export default function AdminSettingsPage() {
     const [changingPassword, setChangingPassword] = useState(false);
 
     const GIT_SHA = "f399c95";
+
+    const [installPrompt, setInstallPrompt] = useState<any>(null);
+    const [isInstallable, setIsInstallable] = useState(false);
+
+    useEffect(() => {
+        const handler = (e: Event) => {
+            e.preventDefault();
+            setInstallPrompt(e);
+            setIsInstallable(true);
+        };
+        window.addEventListener("beforeinstallprompt", handler);
+        return () => window.removeEventListener("beforeinstallprompt", handler);
+    }, []);
+
+    const handleInstallPWA = async () => {
+        if (!installPrompt) return;
+        installPrompt.prompt();
+        const result = await installPrompt.userChoice;
+        if (result.outcome === "accepted") {
+            toast.success("App installed successfully!");
+        }
+        setInstallPrompt(null);
+        setIsInstallable(false);
+    };
 
     useEffect(() => {
         const loadSettings = async () => {
@@ -182,12 +208,15 @@ export default function AdminSettingsPage() {
             </header>
 
             <Tabs defaultValue="appearance" className="w-full">
-                <TabsList className="flex h-auto w-full items-center justify-start gap-1 overflow-x-auto bg-muted p-1 no-scrollbar sm:grid sm:grid-cols-5 sm:gap-2">
+                <TabsList className="flex h-auto w-full items-center justify-start gap-1 overflow-x-auto bg-muted p-1 no-scrollbar sm:grid sm:grid-cols-6 sm:gap-2">
                     <TabsTrigger value="appearance" className="flex-shrink-0 px-4 py-2 sm:px-3">Appearance</TabsTrigger>
                     <TabsTrigger value="contact" className="flex-shrink-0 px-4 py-2 sm:px-3">Contact Info</TabsTrigger>
                     <TabsTrigger value="security" className="flex-shrink-0 px-4 py-2 sm:px-3">Login Security</TabsTrigger>
                     <TabsTrigger value="audit" className="flex-shrink-0 px-4 py-2 sm:px-3">System Audits</TabsTrigger>
                     <TabsTrigger value="account" className="flex-shrink-0 px-4 py-2 sm:px-3">Admin Account</TabsTrigger>
+                    <TabsTrigger value="app" className="flex-shrink-0 px-4 py-2 sm:px-3">
+                        <Smartphone className="h-3.5 w-3.5 mr-1.5" /> App
+                    </TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="appearance" className="mt-6">
@@ -436,6 +465,56 @@ export default function AdminSettingsPage() {
                             ) : (
                                 <div className="py-8 text-center text-sm text-muted-foreground">No profile loaded.</div>
                             )}
+                        </CardContent>
+                    </Card>
+                </TabsContent>
+
+                <TabsContent value="app" className="mt-6">
+                    <Card className="border-border/70 shadow-sm">
+                        <CardHeader>
+                            <CardTitle className="flex items-center gap-2 text-base">
+                                <Smartphone className="h-4 w-4" /> App Installation
+                            </CardTitle>
+                            <CardDescription>Install OBBO iManage as a standalone app on your device or download the Android APK.</CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-0">
+                            <SettingRow
+                                icon={<Download className="h-4 w-4 text-muted-foreground" />}
+                                title="Install as App (PWA)"
+                                description="Add OBBO iManage to your home screen for quick access. Works on Android, iOS, and desktop."
+                            >
+                                {isInstallable ? (
+                                    <Button onClick={handleInstallPWA} className="bg-primary gap-2">
+                                        <Download className="h-4 w-4" /> Install App
+                                    </Button>
+                                ) : (
+                                    <div className="text-xs text-muted-foreground">
+                                        Open this page in a Chromium-based browser (Chrome, Edge) to install.
+                                    </div>
+                                )}
+                            </SettingRow>
+
+                            <SettingRow
+                                icon={<Smartphone className="h-4 w-4 text-muted-foreground" />}
+                                title="How to install manually"
+                                description="If the install button is not available, use your browser's menu."
+                            >
+                                <div className="space-y-2 text-xs text-muted-foreground max-w-sm">
+                                    <p><strong className="text-foreground">Android (Chrome):</strong> Tap the ⋮ menu → "Add to Home screen"</p>
+                                    <p><strong className="text-foreground">iOS (Safari):</strong> Tap the Share button → "Add to Home Screen"</p>
+                                    <p><strong className="text-foreground">Desktop (Chrome/Edge):</strong> Click the install icon (⊕) in the address bar</p>
+                                </div>
+                            </SettingRow>
+
+                            <SettingRow
+                                icon={<Download className="h-4 w-4 text-muted-foreground" />}
+                                title="Android APK"
+                                description="Download the standalone Android APK for direct installation without using a browser."
+                            >
+                                <Button variant="outline" disabled className="gap-2">
+                                    <Download className="h-4 w-4" /> Coming Soon
+                                </Button>
+                            </SettingRow>
                         </CardContent>
                     </Card>
                 </TabsContent>
