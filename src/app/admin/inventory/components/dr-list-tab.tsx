@@ -200,7 +200,7 @@ export function DrListTab({
                                 ) : filtered.map(dr => (
                                     <TableRow key={dr.id} className={dr.order_id ? "bg-primary/5" : ""}>
                                         <TableCell>
-                                            <div className="w-10 h-10 rounded bg-muted flex items-center justify-center overflow-hidden border border-border/50">
+                                            <div className="w-10 h-10 rounded bg-muted flex items-center justify-center overflow-hidden border border-border">
                                                 {dr.dr_image_url ? (
                                                     <OptimizedImage 
                                                         src={dr.dr_image_url} 
@@ -296,7 +296,7 @@ export function DrListTab({
                                             </div>
                                         </div>
 
-                                        <div className="grid grid-cols-2 gap-2 py-2 border-y border-border/50">
+                                        <div className="grid grid-cols-2 gap-2 py-2 border-y border-border">
                                             <div>
                                                 <div className="text-[9px] uppercase font-bold text-muted-foreground mb-1">Driver / Plate</div>
                                                 <p className="text-[11px] font-medium truncate">{dr.driver || "—"} • {dr.plate_number || "—"}</p>
@@ -360,7 +360,7 @@ export function DrListTab({
                                 </div>
                             </div>
 
-                            <div className="p-4 bg-muted/30 rounded-lg border border-border/50 space-y-3">
+                            <div className="p-4 bg-muted/30 rounded-lg border border-border space-y-3">
                                 <p className="text-[10px] uppercase font-black text-muted-foreground/60 tracking-wider">Shipment Details</p>
                                 <div className="flex items-center justify-between text-sm">
                                     <span className="flex items-center gap-2 font-medium text-muted-foreground"><Package className="w-4 h-4" /> Quantity</span>
@@ -438,8 +438,8 @@ export function DrListTab({
                     </DialogHeader>
                     <div className="space-y-4 py-4">
                         <div className="space-y-2">
-                            <Label>DR Number <span className="text-red-500">*</span></Label>
-                            <Input value={drNumber} onChange={e => setDrNumber(e.target.value)} placeholder="e.g. DR-2026-001" />
+                            <Label htmlFor="dr-number">DR Number <span className="text-red-500">*</span></Label>
+                            <Input id="dr-number" value={drNumber} onChange={e => setDrNumber(e.target.value)} placeholder="e.g. DR-2026-001" />
                         </div>
                         <div className="space-y-2">
                             <Label>Source Shipment Batch <span className="text-red-500">*</span></Label>
@@ -455,8 +455,8 @@ export function DrListTab({
                         </div>
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
-                                <Label>Client Name</Label>
-                                <Input value={clientName} onChange={e => setClientName(e.target.value)} />
+                                <Label htmlFor="dr-client">Client Name</Label>
+                                <Input id="dr-client" value={clientName} onChange={e => setClientName(e.target.value)} />
                             </div>
                             <div className="space-y-2">
                                 <Label>PO# Link <span className="text-red-500">*</span></Label>
@@ -531,8 +531,9 @@ export function DrListTab({
                         </div>
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
-                                <Label>Quantity JB (Jumbo Bag)</Label>
+                                <Label htmlFor="dr-jb-quantity">Quantity JB (Jumbo Bag)</Label>
                                 <Input 
+                                    id="dr-jb-quantity"
                                     type="number" 
                                     min="0" 
                                     value={jbQty || ""} 
@@ -542,8 +543,9 @@ export function DrListTab({
                                 />
                             </div>
                             <div className="space-y-2">
-                                <Label>Quantity SB (Sling Bag)</Label>
+                                <Label htmlFor="dr-sb-quantity">Quantity SB (Sling Bag)</Label>
                                 <Input 
+                                    id="dr-sb-quantity"
                                     type="number" 
                                     min="0" 
                                     value={sbQty || ""} 
@@ -555,21 +557,21 @@ export function DrListTab({
                         </div>
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
-                                <Label>Driver Name</Label>
-                                <Input value={driver} onChange={e => setDriver(e.target.value)} />
+                                <Label htmlFor="dr-driver">Driver Name</Label>
+                                <Input id="dr-driver" value={driver} onChange={e => setDriver(e.target.value)} />
                             </div>
                             <div className="space-y-2">
-                                <Label>Plate Number</Label>
-                                <Input value={plateNumber} onChange={e => setPlateNumber(e.target.value)} />
+                                <Label htmlFor="dr-plate">Plate Number</Label>
+                                <Input id="dr-plate" value={plateNumber} onChange={e => setPlateNumber(e.target.value)} />
                             </div>
                         </div>
                         <div className="space-y-2">
-                            <Label>Destination</Label>
-                            <Input value={destination} onChange={e => setDestination(e.target.value)} placeholder="Delivery address or location" />
+                            <Label htmlFor="dr-destination">Destination</Label>
+                            <Input id="dr-destination" value={destination} onChange={e => setDestination(e.target.value)} placeholder="Delivery address or location" />
                         </div>
                         <div className="space-y-2">
-                            <Label>Shipping Fee (₱)</Label>
-                            <Input type="number" min="0" value={shippingFee || ""} placeholder="0" onChange={e => setShippingFee(parseFloat(e.target.value) || 0)} />
+                            <Label htmlFor="dr-shipping-fee">Shipping Fee (₱)</Label>
+                            <Input id="dr-shipping-fee" type="number" min="0" value={shippingFee || ""} placeholder="0" onChange={e => setShippingFee(parseFloat(e.target.value) || 0)} />
                         </div>
 
                         {/* Photo Upload */}

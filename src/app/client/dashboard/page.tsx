@@ -195,7 +195,7 @@ export default async function ClientDashboardPage() {
                     </CardHeader>
                     <CardContent>
                         {recentOrders.length === 0 ? (
-                            <div className="text-center py-12 text-gray-500">
+                            <div className="text-center py-12 text-muted-foreground">
                                 <PackageSearch className="w-12 h-12 mx-auto mb-3 text-gray-300" />
                                 <p>You haven&apos;t placed any orders yet.</p>
                             </div>

@@ -231,15 +231,16 @@ export default function RegisterPage() {
                         Sign up
                     </div>
                     <div className="space-y-2">
-                        <h2 className="text-3xl font-semibold tracking-tight text-balance text-foreground">
+                        <h1 className="text-3xl font-semibold tracking-tight text-balance text-foreground">
                             Start your client profile
-                        </h2>
+                        </h1>
                         <p className="text-sm leading-6 text-muted-foreground">
                             Complete the details below to request access to the portal.
                         </p>
                     </div>
                 </div>
 
+                <div className="sr-only" aria-live="polite" role="status"></div>
                 <form onSubmit={handleRegister} className="flex flex-col">
                     <div className="grid grid-cols-1 gap-8 md:gap-10 lg:grid-cols-2">
 
@@ -264,9 +265,10 @@ export default function RegisterPage() {
                                 <h3 className="font-semibold text-lg mb-4 text-foreground">Email verification</h3>
                                 <div className="space-y-3">
                                     <div className="space-y-1.5">
-                                        <Label className="text-sm font-medium">Email address</Label>
+                                        <Label htmlFor="email" className="text-sm font-medium">Email address</Label>
                                         <div className="flex flex-col gap-2 sm:flex-row">
                                             <Input
+                                                id="email"
                                                 type="email"
                                                 placeholder="you@example.com"
                                                 value={form.email}
@@ -291,9 +293,10 @@ export default function RegisterPage() {
 
                                     {otpSent && !otpVerified && (
                                         <div className="space-y-1.5">
-                                            <Label className="text-sm font-medium">Verification code</Label>
+                                            <Label htmlFor="verification-code" className="text-sm font-medium">Verification code</Label>
                                             <div className="flex flex-col gap-2 sm:flex-row">
-                                                <Input
+                                                    <Input
+                                                    id="verification-code"
                                                     type="text"
                                                     placeholder="6-digit code"
                                                     value={otpCode}
@@ -318,9 +321,10 @@ export default function RegisterPage() {
 
                                     {/* Password */}
                                     <div className="space-y-1.5">
-                                        <Label className="text-sm font-medium">Password</Label>
+                                        <Label htmlFor="password" className="text-sm font-medium">Password</Label>
                                         <div className="relative">
-                                            <Input
+                                                <Input
+                                                id="password"
                                                 type={showPassword ? "text" : "password"}
                                                 placeholder="••••••••"
                                                 value={form.password}
@@ -334,6 +338,7 @@ export default function RegisterPage() {
                                             </button>
                                         </div>
                                     </div>
+                                    <p id="password-error" className="sr-only" role="alert"></p>
                                 </div>
                             </div>
 
@@ -341,10 +346,10 @@ export default function RegisterPage() {
                             <div>
                                 <h3 className="font-semibold text-lg mb-4 text-foreground">Address</h3>
                                 <div className="grid grid-cols-1 gap-3">
-                                    <div><Label className="mb-1.5 block text-sm font-medium">Street Address</Label><Input value={form.street} onChange={(e) => updateField("street", e.target.value)} className="h-11" required /></div>
-                                    <div><Label className="mb-1.5 block text-sm font-medium">Municipality</Label><Input value={form.city} onChange={(e) => updateField("city", e.target.value)} className="h-11" required /></div>
-                                    <div><Label className="mb-1.5 block text-sm font-medium">Province</Label><Input value={form.province} onChange={(e) => updateField("province", e.target.value)} className="h-11" required /></div>
-                                    <div><Label className="mb-1.5 block text-sm font-medium">Postal code</Label><Input value={form.postal_code} onChange={(e) => updateField("postal_code", e.target.value)} className="h-11" required /></div>
+                                    <div><Label htmlFor="street-address" className="mb-1.5 block text-sm font-medium">Street Address</Label><Input id="street-address" value={form.street} onChange={(e) => updateField("street", e.target.value)} className="h-11" required /></div>
+                                    <div><Label htmlFor="municipality" className="mb-1.5 block text-sm font-medium">Municipality</Label><Input id="municipality" value={form.city} onChange={(e) => updateField("city", e.target.value)} className="h-11" required /></div>
+                                    <div><Label htmlFor="province" className="mb-1.5 block text-sm font-medium">Province</Label><Input id="province" value={form.province} onChange={(e) => updateField("province", e.target.value)} className="h-11" required /></div>
+                                    <div><Label htmlFor="postal-code" className="mb-1.5 block text-sm font-medium">Postal code</Label><Input id="postal-code" value={form.postal_code} onChange={(e) => updateField("postal_code", e.target.value)} className="h-11" required /></div>
                                 </div>
                             </div>
                         </div>
@@ -355,9 +360,9 @@ export default function RegisterPage() {
                                 <div>
                                     <h3 className="font-semibold text-lg mb-4 text-foreground">Personal information</h3>
                                     <div className="space-y-4">
-                                        <div><Label className="mb-1.5 block text-sm font-medium">First name</Label><Input value={form.first_name} onChange={(e) => updateField("first_name", e.target.value)} className="h-11" required /></div>
-                                        <div><Label className="mb-1.5 block text-sm font-medium">Surname</Label><Input value={form.surname} onChange={(e) => updateField("surname", e.target.value)} className="h-11" required /></div>
-                                        <div><Label className="mb-1.5 block text-sm font-medium">Contact number</Label><Input value={form.contact_number} onChange={(e) => updateField("contact_number", e.target.value)} className="h-11" required /></div>
+                                        <div><Label htmlFor="first-name" className="mb-1.5 block text-sm font-medium">First name</Label><Input id="first-name" value={form.first_name} onChange={(e) => updateField("first_name", e.target.value)} className="h-11" required /></div>
+                                        <div><Label htmlFor="surname" className="mb-1.5 block text-sm font-medium">Surname</Label><Input id="surname" value={form.surname} onChange={(e) => updateField("surname", e.target.value)} className="h-11" required /></div>
+                                        <div><Label htmlFor="contact-number" className="mb-1.5 block text-sm font-medium">Contact number</Label><Input id="contact-number" value={form.contact_number} onChange={(e) => updateField("contact_number", e.target.value)} className="h-11" required /></div>
                                         <div className="space-y-1.5">
                                             <Label className="text-sm font-medium">Valid ID (photo)</Label>
                                             <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
@@ -376,10 +381,10 @@ export default function RegisterPage() {
                                 <div>
                                     <h3 className="font-semibold text-lg mb-4 text-foreground">Company information</h3>
                                     <div className="space-y-4">
-                                        <div><Label className="mb-1.5 block text-sm font-medium">Company name</Label><Input value={form.company_name} onChange={(e) => updateField("company_name", e.target.value)} className="h-11" required /></div>
-                                        <div><Label className="mb-1.5 block text-sm font-medium">Contact person first name</Label><Input value={form.contact_person_first_name} onChange={(e) => updateField("contact_person_first_name", e.target.value)} className="h-11" required /></div>
-                                        <div><Label className="mb-1.5 block text-sm font-medium">Contact person surname</Label><Input value={form.contact_person_surname} onChange={(e) => updateField("contact_person_surname", e.target.value)} className="h-11" required /></div>
-                                        <div><Label className="mb-1.5 block text-sm font-medium">Contact person number</Label><Input value={form.contact_person_number} onChange={(e) => updateField("contact_person_number", e.target.value)} className="h-11" required /></div>
+                                        <div><Label htmlFor="company-name" className="mb-1.5 block text-sm font-medium">Company name</Label><Input id="company-name" value={form.company_name} onChange={(e) => updateField("company_name", e.target.value)} className="h-11" required /></div>
+                                        <div><Label htmlFor="contact-first-name" className="mb-1.5 block text-sm font-medium">Contact person first name</Label><Input id="contact-first-name" value={form.contact_person_first_name} onChange={(e) => updateField("contact_person_first_name", e.target.value)} className="h-11" required /></div>
+                                        <div><Label htmlFor="contact-surname" className="mb-1.5 block text-sm font-medium">Contact person surname</Label><Input id="contact-surname" value={form.contact_person_surname} onChange={(e) => updateField("contact_person_surname", e.target.value)} className="h-11" required /></div>
+                                        <div><Label htmlFor="contact-person-number" className="mb-1.5 block text-sm font-medium">Contact person number</Label><Input id="contact-person-number" value={form.contact_person_number} onChange={(e) => updateField("contact_person_number", e.target.value)} className="h-11" required /></div>
 
                                         <div className="space-y-1.5 pt-2">
                                             <Label className="text-sm font-medium">Contact person valid ID</Label>
@@ -394,7 +399,7 @@ export default function RegisterPage() {
                                             </div>
                                         </div>
 
-                                        <div><Label className="mb-1.5 block text-sm font-medium">Business permit no.</Label><Input value={form.business_permit_no} onChange={(e) => updateField("business_permit_no", e.target.value)} className="h-11" required /></div>
+                                        <div><Label htmlFor="business-permit-no" className="mb-1.5 block text-sm font-medium">Business permit no.</Label><Input id="business-permit-no" value={form.business_permit_no} onChange={(e) => updateField("business_permit_no", e.target.value)} className="h-11" required /></div>
 
                                         <div className="space-y-1.5 pt-2">
                                             <Label className="text-sm font-medium">Business permit (photo)</Label>
@@ -409,7 +414,7 @@ export default function RegisterPage() {
                                             </div>
                                         </div>
 
-                                        <div><Label className="mb-1.5 block text-sm font-medium">TIN no.</Label><Input value={form.tin_no} onChange={(e) => updateField("tin_no", e.target.value)} className="h-11" required /></div>
+                                        <div><Label htmlFor="tin-no" className="mb-1.5 block text-sm font-medium">TIN no.</Label><Input id="tin-no" value={form.tin_no} onChange={(e) => updateField("tin_no", e.target.value)} className="h-11" required /></div>
                                     </div>
                                 </div>
                             )}

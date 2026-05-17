@@ -7,6 +7,7 @@ import {
     Package, AlertTriangle, ShieldAlert,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { createClient } from "@/lib/supabase/client";
 import { fetchDashboardKPIs, fetchActivityFeed, fetchShipments, fetchOrders } from "@/lib/actions/admin-actions";
@@ -131,7 +132,7 @@ export default function DashboardClient({
     ];
 
     return (
-        <div className="space-y-6 max-w-7xl mx-auto p-4 md:p-6 lg:p-8 font-sans min-h-screen">
+        <div className="space-y-6 max-w-7xl mx-auto p-4 md:p-6 lg:p-8 min-h-screen">
             {/* Header */}
             <div className="flex items-center justify-between mb-8">
                 <div>
@@ -376,30 +377,7 @@ export default function DashboardClient({
                                                     : `User: ${activity.actor?.email ?? "Unknown"} · IP: ${String((activity.metadata as any)?.ip ?? "Unknown")}`}
                                             </p>
                     </div>
-                    {/* Mobile card view */}
-                    <div className="sm:hidden divide-y divide-border">
-                        {recentOrders.length === 0 ? (
-                            <div className="px-4 py-12 text-center text-sm text-muted-foreground">No pending orders</div>
-                        ) : (
-                            recentOrders.map((order) => {
-                                const total = order.items?.reduce((sum: number, i: any) => sum + i.requested_qty, 0) ?? 0;
-                                return (
-                                    <Link key={order.id} href={`/admin/orders#${order.id}`} className="flex items-center justify-between px-4 py-3 hover:bg-muted/30 transition-colors">
-                                        <div className="min-w-0">
-                                            <p className="font-mono text-sm font-medium">{order.po_number || `#${order.id.slice(0, 8).toUpperCase()}`}</p>
-                                            <p className="text-xs text-muted-foreground">{(order as any).client?.full_name ?? "Unknown"}</p>
-                                        </div>
-                                        <div className="flex items-center gap-3">
-                                            <Badge className={order.payment_method === 'cash' ? "bg-emerald-500/10 text-emerald-500 border-0 text-xs" : "bg-blue-500/10 text-blue-500 border-0 text-xs"}>
-                                                {order.payment_method.toUpperCase()}
-                                            </Badge>
-                                            <span className="text-sm font-bold">{total}</span>
-                                        </div>
-                                    </Link>
-                                );
-                            })
-                        )}
-                    </div>
+
                                     </div>
                                     <Badge className={`${activity.action === "warehouse_report_submitted" ? "bg-indigo-500/10 text-indigo-500 border-0" : "bg-emerald-500/10 text-emerald-500 border-0"} text-[10px] uppercase font-bold hidden sm:flex`}>
                                         {activity.action === "warehouse_report_submitted" ? "Report" : "Success"}
@@ -424,43 +402,67 @@ export default function DashboardClient({
                 </CardHeader>
                 <CardContent className="p-0">
                     <div className="hidden sm:block overflow-x-auto">
-                        <table className="w-full text-sm text-left whitespace-nowrap">
-                            <thead className="bg-muted/50 text-muted-foreground font-medium text-[12px] uppercase tracking-wider">
-                                <tr>
-                                    <th className="px-6 py-4">PO #</th>
-                                    <th className="px-6 py-4">Client</th>
-                                    <th className="px-6 py-4 text-right">Total Bags</th>
-                                    <th className="px-6 py-4">Payment</th>
-                                    <th className="px-6 py-4 text-right">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-border">
+                        <Table className="w-full text-left whitespace-nowrap">
+                            <TableHeader className="bg-muted/50 text-muted-foreground font-medium text-[12px] uppercase tracking-wider">
+                                <TableRow>
+                                    <TableHead className="px-6 py-4">PO #</TableHead>
+                                    <TableHead className="px-6 py-4">Client</TableHead>
+                                    <TableHead className="px-6 py-4 text-right">Total Bags</TableHead>
+                                    <TableHead className="px-6 py-4">Payment</TableHead>
+                                    <TableHead className="px-6 py-4 text-right">Actions</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody className="divide-y divide-border">
                                 {recentOrders.length === 0 ? (
-                                    <tr>
-                                        <td colSpan={5} className="px-6 py-12 text-center text-muted-foreground font-medium">No pending orders</td>
-                                    </tr>
+                                    <TableRow>
+                                        <TableCell colSpan={5} className="px-6 py-12 text-center text-muted-foreground font-medium">No pending orders</TableCell>
+                                    </TableRow>
                                 ) : (
                                     recentOrders.map((order) => {
                                         const total = order.items?.reduce((sum: number, i: any) => sum + i.requested_qty, 0) ?? 0;
                                         return (
-                                            <tr key={order.id} className="hover:bg-muted/30 transition-colors">
-                                                <td className="px-6 py-4 font-mono font-medium text-foreground">{order.po_number || `#${order.id.slice(0, 8).toUpperCase()}`}</td>
-                                                <td className="px-6 py-4 font-semibold text-primary">{(order as any).client?.full_name ?? "Unknown"}</td>
-                                                <td className="px-6 py-4 text-right font-bold text-foreground">{total}</td>
-                                                <td className="px-6 py-4">
+                                            <TableRow key={order.id} className="hover:bg-muted/30 transition-colors">
+                                                <TableCell className="px-6 py-4 font-mono font-medium text-foreground">{order.po_number || `#${order.id.slice(0, 8).toUpperCase()}`}</TableCell>
+                                                <TableCell className="px-6 py-4 font-semibold text-primary">{(order as any).client?.full_name ?? "Unknown"}</TableCell>
+                                                <TableCell className="px-6 py-4 text-right font-bold text-foreground">{total}</TableCell>
+                                                <TableCell className="px-6 py-4">
                                                     <Badge className={order.payment_method === 'cash' ? "bg-emerald-500/10 text-emerald-500 border-0" : "bg-blue-500/10 text-blue-500 border-0"}>
                                                         {order.payment_method.toUpperCase()}
                                                     </Badge>
-                                                </td>
-                                                <td className="px-6 py-4 text-right">
+                                                </TableCell>
+                                                <TableCell className="px-6 py-4 text-right">
                                                     <Link href={`/admin/orders#${order.id}`} className="text-primary hover:underline text-xs font-medium">Review</Link>
-                                                </td>
-                                            </tr>
+                                                </TableCell>
+                                            </TableRow>
                                         );
                                     })
                                 )}
-                            </tbody>
-                        </table>
+                            </TableBody>
+                        </Table>
+                    </div>
+                    {/* Mobile card view */}
+                    <div className="sm:hidden divide-y divide-border">
+                        {recentOrders.length === 0 ? (
+                            <div className="px-4 py-12 text-center text-sm text-muted-foreground">No pending orders</div>
+                        ) : (
+                            recentOrders.map((order) => {
+                                const total = order.items?.reduce((sum: number, i: any) => sum + i.requested_qty, 0) ?? 0;
+                                return (
+                                    <Link key={order.id} href={`/admin/orders#${order.id}`} className="flex items-center justify-between px-4 py-3 hover:bg-muted/30 transition-colors">
+                                        <div className="min-w-0">
+                                            <p className="font-mono text-sm font-medium">{order.po_number || `#${order.id.slice(0, 8).toUpperCase()}`}</p>
+                                            <p className="text-xs text-muted-foreground">{(order as any).client?.full_name ?? "Unknown"}</p>
+                                        </div>
+                                        <div className="flex items-center gap-3">
+                                            <Badge className={order.payment_method === 'cash' ? "bg-emerald-500/10 text-emerald-500 border-0 text-xs" : "bg-blue-500/10 text-blue-500 border-0 text-xs"}>
+                                                {order.payment_method.toUpperCase()}
+                                            </Badge>
+                                            <span className="text-sm font-bold">{total}</span>
+                                        </div>
+                                    </Link>
+                                );
+                            })
+                        )}
                     </div>
                 </CardContent>
             </Card>

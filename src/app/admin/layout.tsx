@@ -33,7 +33,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from "@/components/ui/popover";
 import type { Notification } from "@/lib/types/database";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { GlobalSearch } from "@/components/global-search";
@@ -456,8 +456,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                         <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
                             <SheetTrigger
                                 className="inline-flex items-center justify-center rounded-md w-9 h-9 hover:bg-accent hover:text-accent-foreground transition-colors lg:hidden"
+                                aria-label="Open navigation menu"
                             >
-                                <Menu className="w-5 h-5" />
+                                <Menu className="w-5 h-5" aria-hidden="true" />
                             </SheetTrigger>
                             <SheetContent side="left" className="w-64 p-0 bg-sidebar">
                                 <SidebarContent pathname={pathname} navItems={navItems} onNavigate={() => setMobileOpen(false)} adminName={adminName} adminInitials={adminInitials} avatarUrl={avatarUrl} pendingOrderCount={pendingOrderCount} pendingKycCount={pendingKycCount} />
@@ -480,8 +481,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                         <Popover open={notifOpen} onOpenChange={(open) => { setNotifOpen(open); if (open && unreadCount > 0) markAllRead(); }}>
                             <PopoverTrigger 
                                 render={
-                                    <Button variant="ghost" size="icon" className="relative">
-                                        <Bell className="w-5 h-5" />
+                                    <Button variant="ghost" size="icon" className="relative" aria-label="Notifications">
+                                        <Bell className="w-5 h-5" aria-hidden="true" />
                                         {unreadCount > 0 && (
                                             <span className="absolute -top-0.5 -right-0.5 w-4 h-4 rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold flex items-center justify-center">
                                                 {unreadCount > 9 ? "9+" : unreadCount}
@@ -492,7 +493,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                             />
                             <PopoverContent align="end" className="w-80 p-0">
                                 <div className="flex items-center justify-between p-3 border-b">
-                                    <h3 className="text-sm font-semibold">Notifications</h3>
+                                    <PopoverTitle className="text-sm font-semibold">Notifications</PopoverTitle>
                                     {unreadCount > 0 && (
                                         <button onClick={markAllRead} className="text-xs text-primary hover:underline">
                                             Mark all as read
@@ -567,7 +568,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 </header>
 
                 {/* Page Content */}
-                <main className="flex-1 p-4 pb-20 lg:p-6 lg:pb-6">{children}</main>
+                <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:top-3 focus:left-3 focus:z-50 focus:rounded-md focus:bg-primary focus:px-3 focus:py-2 focus:text-sm focus:text-primary-foreground focus:outline-none">Skip to content</a>
+                <main id="main-content" className="flex-1 p-4 pb-20 lg:p-6 lg:pb-6">{children}</main>
             </div>
             
             {/* Mobile Bottom Nav */}

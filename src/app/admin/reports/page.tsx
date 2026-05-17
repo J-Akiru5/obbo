@@ -99,14 +99,14 @@ export default function AdminReportsPage() {
     }, [balances]);
 
     return (
-        <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 py-4 md:px-6 lg:px-8">
-            <header className="flex flex-col gap-4 rounded-2xl border border-border/70 bg-card p-5 shadow-sm lg:flex-row lg:items-end lg:justify-between">
+        <div className="mx-auto flex w-full max-w-7xl flex-col gap-6">
+            <header className="flex flex-col gap-4 rounded-2xl border border-border bg-card p-5 shadow-sm lg:flex-row lg:items-end lg:justify-between">
                 <div className="space-y-2">
                     <div className="inline-flex items-center gap-2 rounded-full border border-primary/15 bg-primary/8 px-3 py-1 text-xs font-semibold uppercase tracking-[0.28em] text-primary">
                         Reports
                     </div>
                     <div>
-                        <h2 className="text-3xl font-semibold tracking-tight text-foreground">Warehouse report review</h2>
+                        <h2 className="text-2xl font-bold tracking-tight text-foreground">Warehouse report review</h2>
                         <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">
                             View-only reporting for daily inventory reconciliation, movement tracking, and client obligation summaries.
                         </p>
@@ -121,13 +121,13 @@ export default function AdminReportsPage() {
             </header>
 
             {loading ? (
-                <Card className="border-border/70 shadow-sm">
+                <Card className="border-border shadow-sm">
                     <CardContent className="py-12 text-center text-sm text-muted-foreground">Loading report data...</CardContent>
                 </Card>
             ) : (
                 <div className="flex flex-col gap-6">
                     <section>
-                        <Card className="border-border/70 shadow-sm">
+                        <Card className="border-border shadow-sm">
                             <CardHeader className="border-b border-border/60 pb-4">
                                 <CardTitle className="text-base font-semibold">Physical warehouse inventory</CardTitle>
                                 <CardDescription>Simplified daily snapshot of warehouse stock.</CardDescription>
@@ -171,7 +171,7 @@ export default function AdminReportsPage() {
                     </section>
 
                     <section className="grid gap-6 lg:grid-cols-2">
-                        <Card className="border-border/70 shadow-sm">
+                        <Card className="border-border shadow-sm">
                             <CardHeader className="border-b border-border/60 pb-4">
                                 <CardTitle className="text-base font-semibold">Customer movement today</CardTitle>
                                 <CardDescription>Auto-generated from dispatched and completed orders for the selected date.</CardDescription>
@@ -210,7 +210,7 @@ export default function AdminReportsPage() {
                             </CardContent>
                         </Card>
 
-                        <Card className="border-border/70 shadow-sm">
+                        <Card className="border-border shadow-sm">
                             <CardHeader className="border-b border-border/60 pb-4">
                                 <CardTitle className="text-base font-semibold">Customer obligation report</CardTitle>
                                 <CardDescription>Pending balances owed by clients, grouped for oversight.</CardDescription>

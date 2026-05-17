@@ -166,29 +166,29 @@ export function ShipmentsTab({ shipments, loading, onReload }: { shipments: Ship
                         </DialogHeader>
                         <div className="space-y-4 py-4">
                             <div className="space-y-2">
-                                <Label>Batch Name / Vessel <span className="text-red-500">*</span></Label>
-                                <Input value={newBatchName} onChange={e => setNewBatchName(e.target.value)} placeholder="e.g. MV Alpha - May 2026" />
+                                <Label htmlFor="shipment-batch-name">Batch Name / Vessel <span className="text-red-500">*</span></Label>
+                                <Input id="shipment-batch-name" value={newBatchName} onChange={e => setNewBatchName(e.target.value)} placeholder="e.g. MV Alpha - May 2026" />
                             </div>
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-2">
-                                    <Label>JB Bags <span className="text-red-500">*</span></Label>
-                                    <Input type="number" min={0} value={newJbBags || ""} onChange={e => setNewJbBags(parseInt(e.target.value) || 0)} placeholder="Jumbo Bags" />
+                                    <Label htmlFor="shipment-jb-bags">JB Bags <span className="text-red-500">*</span></Label>
+                                    <Input id="shipment-jb-bags" type="number" min={0} value={newJbBags || ""} onChange={e => setNewJbBags(parseInt(e.target.value) || 0)} placeholder="Jumbo Bags" />
                                 </div>
                                 <div className="space-y-2">
-                                    <Label>SB Bags <span className="text-red-500">*</span></Label>
-                                    <Input type="number" min={0} value={newSbBags || ""} onChange={e => setNewSbBags(parseInt(e.target.value) || 0)} placeholder="Standard Bags" />
+                                    <Label htmlFor="shipment-sb-bags">SB Bags <span className="text-red-500">*</span></Label>
+                                    <Input id="shipment-sb-bags" type="number" min={0} value={newSbBags || ""} onChange={e => setNewSbBags(parseInt(e.target.value) || 0)} placeholder="Standard Bags" />
                                 </div>
                             </div>
-                            <div className="border-t border-border/50 pt-4">
+                            <div className="border-t border-border pt-4">
                                 <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Damaged (optional)</p>
                                 <div className="grid grid-cols-2 gap-4">
                                     <div className="space-y-2">
-                                        <Label>Damaged JB</Label>
-                                        <Input type="number" min={0} value={newDamagedJb || ""} onChange={e => setNewDamagedJb(Math.min(parseInt(e.target.value) || 0, newJbBags))} placeholder="0" />
+                                        <Label htmlFor="shipment-damaged-jb">Damaged JB</Label>
+                                        <Input id="shipment-damaged-jb" type="number" min={0} value={newDamagedJb || ""} onChange={e => setNewDamagedJb(Math.min(parseInt(e.target.value) || 0, newJbBags))} placeholder="0" />
                                     </div>
                                     <div className="space-y-2">
-                                        <Label>Damaged SB</Label>
-                                        <Input type="number" min={0} value={newDamagedSb || ""} onChange={e => setNewDamagedSb(Math.min(parseInt(e.target.value) || 0, newSbBags))} placeholder="0" />
+                                        <Label htmlFor="shipment-damaged-sb">Damaged SB</Label>
+                                        <Input id="shipment-damaged-sb" type="number" min={0} value={newDamagedSb || ""} onChange={e => setNewDamagedSb(Math.min(parseInt(e.target.value) || 0, newSbBags))} placeholder="0" />
                                     </div>
                                 </div>
                             </div>
@@ -209,8 +209,8 @@ export function ShipmentsTab({ shipments, loading, onReload }: { shipments: Ship
                                 )}
                             </div>
                             <div className="space-y-2">
-                                <Label>Arrival Date</Label>
-                                <Input type="date" value={newArrivalDate} onChange={e => setNewArrivalDate(e.target.value)} />
+                                <Label htmlFor="shipment-arrival-date">Arrival Date</Label>
+                                <Input id="shipment-arrival-date" type="date" value={newArrivalDate} onChange={e => setNewArrivalDate(e.target.value)} />
                             </div>
                         </div>
                         <DialogFooter>
@@ -228,7 +228,7 @@ export function ShipmentsTab({ shipments, loading, onReload }: { shipments: Ship
                     const totalRemaining = shipment.remaining_jb + shipment.remaining_sb;
                     const totalInitial = shipment.total_jb + shipment.total_sb;
                     return (
-                    <Card key={shipment.id} className="overflow-hidden border border-border/50 shadow-sm transition-shadow hover:shadow-md">
+                    <Card key={shipment.id} className="overflow-hidden border border-border shadow-sm transition-shadow hover:shadow-md">
                         {/* Batch Header */}
                         <div className="p-4 flex items-center justify-between cursor-pointer hover:bg-muted/30 transition-colors" onClick={() => toggleExpand(shipment.id)}>
                             <div className="flex items-center gap-4">
@@ -365,21 +365,21 @@ export function ShipmentsTab({ shipments, loading, onReload }: { shipments: Ship
                     <DialogHeader><DialogTitle>Edit Shipment Batch</DialogTitle></DialogHeader>
                     <div className="space-y-4 py-4">
                         <div className="space-y-2">
-                            <Label>Batch Name <span className="text-red-500">*</span></Label>
-                            <Input value={editForm.batch_name} onChange={e => setEditForm({ ...editForm, batch_name: e.target.value })} />
+                            <Label htmlFor="shipment-edit-batch-name">Batch Name <span className="text-red-500">*</span></Label>
+                            <Input id="shipment-edit-batch-name" value={editForm.batch_name} onChange={e => setEditForm({ ...editForm, batch_name: e.target.value })} />
                         </div>
                         <div className="space-y-2">
-                            <Label>Arrival Date</Label>
-                            <Input type="date" value={editForm.arrival_date} onChange={e => setEditForm({ ...editForm, arrival_date: e.target.value })} />
+                            <Label htmlFor="shipment-edit-arrival-date">Arrival Date</Label>
+                            <Input id="shipment-edit-arrival-date" type="date" value={editForm.arrival_date} onChange={e => setEditForm({ ...editForm, arrival_date: e.target.value })} />
                         </div>
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
-                                <Label>Initial JB</Label>
-                                <Input type="number" min={0} value={editForm.total_jb || ""} placeholder="0" onChange={e => setEditForm({ ...editForm, total_jb: parseInt(e.target.value) || 0 })} />
+                                <Label htmlFor="shipment-edit-initial-jb">Initial JB</Label>
+                                <Input id="shipment-edit-initial-jb" type="number" min={0} value={editForm.total_jb || ""} placeholder="0" onChange={e => setEditForm({ ...editForm, total_jb: parseInt(e.target.value) || 0 })} />
                             </div>
                             <div className="space-y-2">
-                                <Label>Initial SB</Label>
-                                <Input type="number" min={0} value={editForm.total_sb || ""} placeholder="0" onChange={e => setEditForm({ ...editForm, total_sb: parseInt(e.target.value) || 0 })} />
+                                <Label htmlFor="shipment-edit-initial-sb">Initial SB</Label>
+                                <Input id="shipment-edit-initial-sb" type="number" min={0} value={editForm.total_sb || ""} placeholder="0" onChange={e => setEditForm({ ...editForm, total_sb: parseInt(e.target.value) || 0 })} />
                             </div>
                         </div>
                         <div className="bg-muted p-3 rounded-lg border border-dashed border-border">
@@ -415,12 +415,12 @@ export function ShipmentsTab({ shipments, loading, onReload }: { shipments: Ship
                         </div>
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
-                                <Label>Remaining JB</Label>
-                                <Input type="number" min={0} value={overrideRemJb || ""} placeholder="0" onChange={e => setOverrideRemJb(parseInt(e.target.value) || 0)} />
+                                <Label htmlFor="shipment-override-remaining-jb">Remaining JB</Label>
+                                <Input id="shipment-override-remaining-jb" type="number" min={0} value={overrideRemJb || ""} placeholder="0" onChange={e => setOverrideRemJb(parseInt(e.target.value) || 0)} />
                             </div>
                             <div className="space-y-2">
-                                <Label>Remaining SB</Label>
-                                <Input type="number" min={0} value={overrideRemSb || ""} placeholder="0" onChange={e => setOverrideRemSb(parseInt(e.target.value) || 0)} />
+                                <Label htmlFor="shipment-override-remaining-sb">Remaining SB</Label>
+                                <Input id="shipment-override-remaining-sb" type="number" min={0} value={overrideRemSb || ""} placeholder="0" onChange={e => setOverrideRemSb(parseInt(e.target.value) || 0)} />
                             </div>
                         </div>
                         <div className="bg-muted p-3 rounded-lg text-sm">

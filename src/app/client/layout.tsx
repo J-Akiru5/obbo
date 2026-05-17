@@ -26,7 +26,7 @@ import type { Notification } from "@/lib/types/database";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from "@/components/ui/popover";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
 import { ClientKycProvider, useClientKyc, type KycStatus } from "@/lib/context/client-kyc-context";
@@ -274,8 +274,8 @@ function ClientLayoutInner({ children }: { children: React.ReactNode }) {
         <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-border bg-background/95 px-3 sm:px-4 backdrop-blur-sm lg:px-6 gap-2 sm:gap-4">
           <div className="flex items-center gap-2 sm:gap-3 shrink-0">
             <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
-              <SheetTrigger className="inline-flex h-8 w-8 items-center justify-center rounded-md hover:bg-muted lg:hidden">
-                <Menu className="h-4 w-4" />
+              <SheetTrigger className="inline-flex h-8 w-8 items-center justify-center rounded-md hover:bg-muted lg:hidden" aria-label="Open navigation menu">
+                <Menu className="h-4 w-4" aria-hidden="true" />
               </SheetTrigger>
               <SheetContent side="left" className="w-72 bg-sidebar p-0">
                 <SidebarContent pathname={pathname} onNavigate={() => setMobileOpen(false)} />
@@ -304,8 +304,8 @@ function ClientLayoutInner({ children }: { children: React.ReactNode }) {
           <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
             <ThemeToggle />
             <Popover open={notifOpen} onOpenChange={(open) => { setNotifOpen(open); if (open && unreadCount > 0) markAllRead(); }}>
-              <PopoverTrigger className="relative inline-flex h-8 w-8 items-center justify-center rounded-md hover:bg-muted">
-                <Bell className="h-4 w-4" />
+              <PopoverTrigger className="relative inline-flex h-8 w-8 items-center justify-center rounded-md hover:bg-muted" aria-label="Notifications">
+                <Bell className="h-4 w-4" aria-hidden="true" />
                 {unreadCount > 0 && (
                   <span className="absolute -right-0.5 -top-0.5 h-4 w-4 rounded-full bg-accent text-[10px] font-bold text-accent-foreground flex items-center justify-center">
                     {unreadCount > 9 ? "9+" : unreadCount}
@@ -314,7 +314,7 @@ function ClientLayoutInner({ children }: { children: React.ReactNode }) {
               </PopoverTrigger>
               <PopoverContent align="end" className="w-80 p-0">
                 <div className="flex items-center justify-between p-3 border-b">
-                  <h3 className="text-sm font-semibold">Notifications</h3>
+                  <PopoverTitle className="text-sm font-semibold">Notifications</PopoverTitle>
                   {unreadCount > 0 && (
                     <button onClick={markAllRead} className="text-xs text-primary hover:underline">
                       Mark all as read
@@ -387,7 +387,8 @@ function ClientLayoutInner({ children }: { children: React.ReactNode }) {
           </div>
         </header>
 
-        <main className="relative flex-1 p-4 sm:p-6">
+        <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:top-3 focus:left-3 focus:z-50 focus:rounded-md focus:bg-primary focus:px-3 focus:py-2 focus:text-sm focus:text-primary-foreground focus:outline-none">Skip to content</a>
+        <main id="main-content" className="relative flex-1 p-4 sm:p-6">
           <div className="pointer-events-none absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-primary/5 to-transparent" />
           <div className="relative">{children}</div>
         </main>

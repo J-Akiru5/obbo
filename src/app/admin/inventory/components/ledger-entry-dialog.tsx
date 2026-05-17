@@ -87,40 +87,40 @@ export function LedgerEntryDialog({ open, onOpenChange, entry, onSubmit }: Ledge
                     {/* Row 1: Date, PO#, DR# */}
                     <div className="grid grid-cols-3 gap-3">
                         <div className="space-y-1.5">
-                            <Label className="text-xs">Date</Label>
-                            <Input type="date" value={form.date} onChange={e => set("date", e.target.value)} className="h-9" />
+                            <Label className="text-xs" htmlFor="ledger-date">Date</Label>
+                            <Input id="ledger-date" type="date" value={form.date} onChange={e => set("date", e.target.value)} className="h-9" />
                         </div>
                         <div className="space-y-1.5">
-                            <Label className="text-xs">PO #</Label>
-                            <Input value={form.po_number} onChange={e => set("po_number", e.target.value)} placeholder="PO-XXXX" className="h-9" />
+                            <Label className="text-xs" htmlFor="ledger-po">PO #</Label>
+                            <Input id="ledger-po" value={form.po_number} onChange={e => set("po_number", e.target.value)} placeholder="PO-XXXX" className="h-9" />
                         </div>
                         <div className="space-y-1.5">
-                            <Label className="text-xs">DR #</Label>
-                            <Input value={form.dr_number} onChange={e => set("dr_number", e.target.value)} placeholder="DR-XXXX" className="h-9" />
+                            <Label className="text-xs" htmlFor="ledger-dr">DR #</Label>
+                            <Input id="ledger-dr" value={form.dr_number} onChange={e => set("dr_number", e.target.value)} placeholder="DR-XXXX" className="h-9" />
                         </div>
                     </div>
 
                     {/* Row 2: Client, Driver, Plate */}
                     <div className="grid grid-cols-3 gap-3">
                         <div className="space-y-1.5">
-                            <Label className="text-xs">Client Name</Label>
-                            <Input value={form.client_name} onChange={e => set("client_name", e.target.value)} className="h-9" />
+                            <Label className="text-xs" htmlFor="ledger-client">Client Name</Label>
+                            <Input id="ledger-client" value={form.client_name} onChange={e => set("client_name", e.target.value)} className="h-9" />
                         </div>
                         <div className="space-y-1.5">
-                            <Label className="text-xs">Driver Name</Label>
-                            <Input value={form.driver_name} onChange={e => set("driver_name", e.target.value)} className="h-9" />
+                            <Label className="text-xs" htmlFor="ledger-driver">Driver Name</Label>
+                            <Input id="ledger-driver" value={form.driver_name} onChange={e => set("driver_name", e.target.value)} className="h-9" />
                         </div>
                         <div className="space-y-1.5">
-                            <Label className="text-xs">Plate #</Label>
-                            <Input value={form.plate_number} onChange={e => set("plate_number", e.target.value)} className="h-9" />
+                            <Label className="text-xs" htmlFor="ledger-plate">Plate #</Label>
+                            <Input id="ledger-plate" value={form.plate_number} onChange={e => set("plate_number", e.target.value)} className="h-9" />
                         </div>
                     </div>
 
                     {/* Row 3: Destination, Service */}
                     <div className="grid grid-cols-3 gap-3">
                         <div className="space-y-1.5 col-span-2">
-                            <Label className="text-xs">Destination</Label>
-                            <Input value={form.destination} onChange={e => set("destination", e.target.value)} placeholder="Client address" className="h-9" />
+                            <Label className="text-xs" htmlFor="ledger-destination">Destination</Label>
+                            <Input id="ledger-destination" value={form.destination} onChange={e => set("destination", e.target.value)} placeholder="Client address" className="h-9" />
                         </div>
                         <div className="space-y-1.5">
                             <Label className="text-xs">Service Type</Label>
@@ -137,12 +137,12 @@ export function LedgerEntryDialog({ open, onOpenChange, entry, onSubmit }: Ledge
                     {/* Row 4: JB, SB, Total (auto) */}
                     <div className="grid grid-cols-3 gap-3">
                         <div className="space-y-1.5">
-                            <Label className="text-xs">Total JB (out)</Label>
-                            <Input type="number" min={0} value={form.jb || ""} placeholder="0" onChange={e => set("jb", parseInt(e.target.value) || 0)} className="h-9" />
+                            <Label className="text-xs" htmlFor="ledger-jb">Total JB (out)</Label>
+                            <Input id="ledger-jb" type="number" min={0} value={form.jb || ""} placeholder="0" onChange={e => set("jb", parseInt(e.target.value) || 0)} className="h-9" />
                         </div>
                         <div className="space-y-1.5">
-                            <Label className="text-xs">Total SB (out)</Label>
-                            <Input type="number" min={0} value={form.sb || ""} placeholder="0" onChange={e => set("sb", parseInt(e.target.value) || 0)} className="h-9" />
+                            <Label className="text-xs" htmlFor="ledger-sb">Total SB (out)</Label>
+                            <Input id="ledger-sb" type="number" min={0} value={form.sb || ""} placeholder="0" onChange={e => set("sb", parseInt(e.target.value) || 0)} className="h-9" />
                         </div>
                         <div className="space-y-1.5">
                             <Label className="text-xs text-muted-foreground">Total Bags (auto)</Label>
@@ -166,13 +166,13 @@ export function LedgerEntryDialog({ open, onOpenChange, entry, onSubmit }: Ledge
                         </div>
                         {form.payment_method === "check" && (
                             <div className="space-y-1.5">
-                                <Label className="text-xs">Check No.</Label>
-                                <Input value={form.check_number} onChange={e => set("check_number", e.target.value)} className="h-9" />
+                                <Label className="text-xs" htmlFor="ledger-check-no">Check No.</Label>
+                                <Input id="ledger-check-no" value={form.check_number} onChange={e => set("check_number", e.target.value)} className="h-9" />
                             </div>
                         )}
                         <div className="space-y-1.5">
-                            <Label className="text-xs">Amount (₱)</Label>
-                            <Input type="number" min={0} value={form.amount || ""} placeholder="0" onChange={e => set("amount", parseFloat(e.target.value) || 0)} className="h-9" />
+                            <Label className="text-xs" htmlFor="ledger-amount">Amount (₱)</Label>
+                            <Input id="ledger-amount" type="number" min={0} value={form.amount || ""} placeholder="0" onChange={e => set("amount", parseFloat(e.target.value) || 0)} className="h-9" />
                         </div>
                     </div>
 
@@ -181,8 +181,8 @@ export function LedgerEntryDialog({ open, onOpenChange, entry, onSubmit }: Ledge
                         <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Returns</p>
                         <div className="grid grid-cols-4 gap-3">
                             <div className="space-y-1.5">
-                                <Label className="text-xs">Bags Returned</Label>
-                                <Input type="number" min={0} value={form.bags_returned || ""} placeholder="0" onChange={e => set("bags_returned", parseInt(e.target.value) || 0)} className="h-9" />
+                                <Label className="text-xs" htmlFor="ledger-bags-returned">Bags Returned</Label>
+                                <Input id="ledger-bags-returned" type="number" min={0} value={form.bags_returned || ""} placeholder="0" onChange={e => set("bags_returned", parseInt(e.target.value) || 0)} className="h-9" />
                             </div>
                             <div className="space-y-1.5">
                                 <Label className="text-xs">Returned Type</Label>
@@ -217,8 +217,8 @@ export function LedgerEntryDialog({ open, onOpenChange, entry, onSubmit }: Ledge
 
                     {/* Notes */}
                     <div className="space-y-1.5">
-                        <Label className="text-xs">Notes</Label>
-                        <Input value={form.notes} onChange={e => set("notes", e.target.value)} placeholder="Optional notes" className="h-9" />
+                        <Label className="text-xs" htmlFor="ledger-notes">Notes</Label>
+                        <Input id="ledger-notes" value={form.notes} onChange={e => set("notes", e.target.value)} placeholder="Optional notes" className="h-9" />
                     </div>
                 </div>
 

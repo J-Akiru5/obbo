@@ -429,16 +429,18 @@ export function ProductCatalogTab({ products, onUpdate, onCreate, onDelete, load
                     </DialogHeader>
                     <div className="space-y-4 py-4">
                         <div className="space-y-2">
-                            <Label>Name</Label>
+                            <Label htmlFor="product-name">Name</Label>
                             <Input 
+                                id="product-name"
                                 value={formData.name} 
                                 onChange={(e) => setFormData({ ...formData, name: e.target.value })} 
                                 placeholder="Portland Cement Type 1"
                             />
                         </div>
                         <div className="space-y-2">
-                            <Label>Description</Label>
+                            <Label htmlFor="product-description">Description</Label>
                             <Input 
+                                id="product-description"
                                 value={formData.description} 
                                 onChange={(e) => setFormData({ ...formData, description: e.target.value })} 
                                 placeholder="Description"
@@ -457,8 +459,9 @@ export function ProductCatalogTab({ products, onUpdate, onCreate, onDelete, load
                         </div>
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
-                                <Label>Port Price (₱)</Label>
+                                <Label htmlFor="port-price">Port Price (₱)</Label>
                                 <Input 
+                                    id="port-price"
                                     type="number" 
                                     value={formData.port || ""} 
                                     placeholder="0"
@@ -466,8 +469,9 @@ export function ProductCatalogTab({ products, onUpdate, onCreate, onDelete, load
                                 />
                             </div>
                             <div className="space-y-2">
-                                <Label>Warehouse Price (₱)</Label>
+                                <Label htmlFor="warehouse-price">Warehouse Price (₱)</Label>
                                 <Input 
+                                    id="warehouse-price"
                                     type="number" 
                                     value={formData.warehouse || ""} 
                                     placeholder="0"
@@ -476,7 +480,7 @@ export function ProductCatalogTab({ products, onUpdate, onCreate, onDelete, load
                             </div>
                         </div>
                         <div className="space-y-2">
-                            <Label htmlFor="productImage">Product Image</Label>
+                            <Label htmlFor="product-image">Product Image</Label>
 
                             {(imagePreview || editingProduct?.image_url) && (
                                 <div className="relative w-full h-36 rounded-lg overflow-hidden border border-border bg-muted">
@@ -492,14 +496,14 @@ export function ProductCatalogTab({ products, onUpdate, onCreate, onDelete, load
                             )}
 
                             <div className="rounded-lg border border-dashed border-border p-3">
-                                <label htmlFor="productImage" className="flex cursor-pointer items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors">
+                                <label htmlFor="product-image" className="flex cursor-pointer items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors">
                                     <UploadCloud className="h-4 w-4 flex-shrink-0" />
                                     <span className="truncate">
                                         {imageFile ? imageFile.name : (editingProduct?.image_url ? "Replace existing image" : "Upload an image (JPG, PNG, WebP)")}
                                     </span>
                                 </label>
                                 <Input
-                                    id="productImage"
+                                    id="product-image"
                                     type="file"
                                     accept="image/jpeg,image/png,image/webp,image/gif"
                                     className="hidden"

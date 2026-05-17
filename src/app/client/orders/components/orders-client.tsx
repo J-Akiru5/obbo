@@ -58,11 +58,11 @@ function TrackingProgressBar({ order }: { order: Order }) {
                                         ? "bg-emerald-500 border-emerald-500 text-white"
                                         : isCurrent
                                         ? "border-primary text-primary bg-primary/10"
-                                        : "border-gray-200 text-gray-300 bg-white"
+                                        : "border-gray-200 text-muted-foreground bg-white"
                                 }`}>
                                     <StepIcon className="w-4 h-4" />
                                 </div>
-                                <span className={`text-[9px] mt-1.5 text-center leading-tight max-w-[60px] ${isCompleted ? "text-emerald-700 font-semibold" : "text-gray-400"}`}>
+                                <span className={`text-[9px] mt-1.5 text-center leading-tight max-w-[60px] ${isCompleted ? "text-emerald-700 font-semibold" : "text-muted-foreground"}`}>
                                     {step.label}
                                 </span>
                             </div>
@@ -247,7 +247,7 @@ export default function OrdersClient({ orders }: { orders: Order[] }) {
                                  </Badge>
                              )}
                             {order.status === "awaiting_check" && <Badge className="bg-status-pending-bg text-status-pending-text border-status-pending-border whitespace-normal text-center">Upload Check</Badge>}
-                            {order.status === "pending_final_confirmation" && <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 whitespace-normal text-center">✅ Payment Submitted</Badge>}
+                            {order.status === "pending_final_confirmation" && <Badge className="bg-status-success-bg text-status-success-text border-status-success-border whitespace-normal text-center">✅ Payment Submitted</Badge>}
                             {order.status === "dispatched" && (
                                 <Badge className="bg-status-success-bg text-status-success-text border-status-success-border/20 whitespace-normal text-center">
                                     {order.tracking_status === "in_transit" ? "In Transit" : "Dispatched"}
@@ -288,15 +288,15 @@ export default function OrdersClient({ orders }: { orders: Order[] }) {
 
                     {/* Approved / Ready for Dispatch Banner (For Cash COD or Verified Check) */}
                     {type === "active" && order.status === "approved" && (
-                        <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-lg space-y-2">
+                        <div className="p-3 bg-status-success-bg border border-status-success-border rounded-lg space-y-2">
                             <div className="flex items-start gap-2">
-                                <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
+                                <CheckCircle2 className="w-5 h-5 text-status-success-text shrink-0 mt-0.5" />
                                 <div>
-                                    <span className="text-sm text-emerald-800 font-bold">Your order has been approved.</span>
+                                    <span className="text-sm text-status-success-text font-bold">Your order has been approved.</span>
                                     {order.shipping_fee > 0 && (
-                                        <span className="text-sm text-emerald-700"> Shipping Fee: <strong>₱{order.shipping_fee.toLocaleString()}</strong>.</span>
+                                        <span className="text-sm text-status-success-text"> Shipping Fee: <strong>₱{order.shipping_fee.toLocaleString()}</strong>.</span>
                                     )}
-                                    <p className="text-xs text-emerald-600 mt-1">
+                                    <p className="text-xs text-status-success-text mt-1">
                                         Your order is queued for dispatch. {order.payment_method === 'cash' 
                                             ? "Please prepare the cash payment for collection upon delivery." 
                                             : "Your check payment has been verified."}
@@ -308,8 +308,8 @@ export default function OrdersClient({ orders }: { orders: Order[] }) {
 
                     {/* Awaiting admin verification (Both cash & check) */}
                     {type === "active" && order.status === "pending_final_confirmation" && (
-                        <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-lg text-sm text-emerald-700 flex items-center gap-2">
-                            <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                        <div className="p-3 bg-status-success-bg border border-status-success-border rounded-lg text-sm text-status-success-text flex items-center gap-2">
+                            <CheckCircle2 className="w-4 h-4 text-status-success-text" />
                             <span>Payment Submitted – Awaiting Admin Confirmation.</span>
                         </div>
                     )}
@@ -331,8 +331,8 @@ export default function OrdersClient({ orders }: { orders: Order[] }) {
 
                     {/* Rejection reason */}
                     {order.status === "rejected" && order.rejection_reason && (
-                        <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-900 flex items-start gap-2">
-                            <AlertCircle className="w-4 h-4 mt-0.5 shrink-0 text-red-600" />
+                        <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-lg text-sm text-destructive flex items-start gap-2">
+                            <AlertCircle className="w-4 h-4 mt-0.5 shrink-0 text-destructive" />
                             <div>
                                 <span className="font-medium">Rejection Reason:</span> {order.rejection_reason}
                             </div>
@@ -465,7 +465,7 @@ export default function OrdersClient({ orders }: { orders: Order[] }) {
                             </div>
                             <DialogFooter>
                                 <Button variant="outline" onClick={() => setIsPaymentOpen(false)} disabled={isSubmitting}>Cancel</Button>
-                                <Button className="bg-emerald-600 hover:bg-emerald-700" onClick={handleConfirmCash} disabled={isSubmitting}>
+                                <Button className="bg-primary hover:bg-primary/90" onClick={handleConfirmCash} disabled={isSubmitting}>
                                     <CheckCircle2 className="w-4 h-4 mr-2" />
                                     Confirm Cash Payment
                                 </Button>
@@ -474,12 +474,12 @@ export default function OrdersClient({ orders }: { orders: Order[] }) {
                     ) : (
                         <form onSubmit={handleSubmitCheck} className="space-y-4 py-4">
                             <div className="space-y-2">
-                                <Label>Check Number <span className="text-red-500">*</span></Label>
-                                <Input required value={checkNumber} onChange={e => setCheckNumber(e.target.value)} placeholder="Enter exact check number" />
+                                <Label htmlFor="check-number">Check Number <span className="text-red-500">*</span></Label>
+                                <Input id="check-number" required value={checkNumber} onChange={e => setCheckNumber(e.target.value)} placeholder="Enter exact check number" />
                             </div>
                             <div className="space-y-2">
-                                <Label>Upload Picture of Check <span className="text-red-500">*</span></Label>
-                                <Input type="file" accept="image/*,.pdf" onChange={handleFileChange} required />
+                                <Label htmlFor="check-upload">Upload Picture of Check <span className="text-red-500">*</span></Label>
+                                <Input id="check-upload" type="file" accept="image/*,.pdf" onChange={handleFileChange} required />
                                 <p className="text-[10px] text-muted-foreground">Please ensure all details are clearly visible.</p>
                             </div>
                             <DialogFooter className="pt-4">

@@ -18,6 +18,7 @@ export default function ProfileClient({ profile, email }: { profile: any; email:
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirm, setShowConfirm] = useState(false);
     const [isUpdating, setIsUpdating] = useState(false);
+    const [passwordError, setPasswordError] = useState("");
 
     // Notification preferences
     const defaultPrefs = profile?.notification_preferences || {
@@ -36,13 +37,16 @@ export default function ProfileClient({ profile, email }: { profile: any; email:
     const handleUpdatePassword = async (e: React.FormEvent) => {
         e.preventDefault();
         if (password !== confirmPassword) {
+            setPasswordError("Passwords do not match.");
             toast.error("Passwords do not match.");
             return;
         }
         if (password.length < 6) {
+            setPasswordError("Password must be at least 6 characters.");
             toast.error("Password must be at least 6 characters.");
             return;
         }
+        setPasswordError("");
 
         setIsUpdating(true);
         const supabase = createClient();
@@ -179,16 +183,19 @@ export default function ProfileClient({ profile, email }: { profile: any; email:
                         <CardDescription className="text-muted-foreground">Update your password to keep your account secure.</CardDescription>
                     </CardHeader>
                     <CardContent>
+                        <div className="sr-only" aria-live="polite" role="status"></div>
                         <form onSubmit={handleUpdatePassword} className="space-y-4">
                             <div className="space-y-2">
-                                <Label>New Password</Label>
+                                <Label htmlFor="new-password">New Password</Label>
                                 <div className="relative">
                                     <Input
+                                        id="new-password"
                                         type={showPassword ? "text" : "password"}
                                         value={password}
                                         onChange={e => setPassword(e.target.value)}
                                         required
                                         className="pr-10"
+                                        aria-describedby="password-error"
                                     />
                                     <button
                                         type="button"
@@ -200,14 +207,16 @@ export default function ProfileClient({ profile, email }: { profile: any; email:
                                 </div>
                             </div>
                             <div className="space-y-2">
-                                <Label>Confirm New Password</Label>
+                                <Label htmlFor="confirm-password">Confirm New Password</Label>
                                 <div className="relative">
                                     <Input
+                                        id="confirm-password"
                                         type={showConfirm ? "text" : "password"}
                                         value={confirmPassword}
                                         onChange={e => setConfirmPassword(e.target.value)}
                                         required
                                         className="pr-10"
+                                        aria-describedby="password-error"
                                     />
                                     <button
                                         type="button"
@@ -218,6 +227,7 @@ export default function ProfileClient({ profile, email }: { profile: any; email:
                                     </button>
                                 </div>
                             </div>
+                            {passwordError && <p id="password-error" className="text-destructive text-sm">{passwordError}</p>}
                             <Button type="submit" className="w-full bg-primary" disabled={isUpdating}>
                                 {isUpdating ? "Updating..." : "Change Password"}
                             </Button>

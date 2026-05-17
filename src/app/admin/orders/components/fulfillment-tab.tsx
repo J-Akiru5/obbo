@@ -269,25 +269,25 @@ export function FulfillmentTab({ orders, shipments, onDispatch, loading }: {
                             </div>
 
                             <div className="space-y-2">
-                                <Label>DR Number <span className="text-red-500">*</span></Label>
-                                <Input value={drNumber} onChange={(e) => setDrNumber(e.target.value)} />
+                                <Label htmlFor="dr-number">DR Number <span className="text-red-500">*</span></Label>
+                                <Input id="dr-number" value={drNumber} onChange={(e) => setDrNumber(e.target.value)} />
                             </div>
 
                             {selectedOrder.service_type === 'deliver' && (
                                 <div className="grid grid-cols-2 gap-4">
                                     <div className="space-y-2">
-                                        <Label>Driver Name <span className="text-red-500">*</span></Label>
-                                        <Input value={driverName} onChange={(e) => setDriverName(e.target.value)} />
+                                        <Label htmlFor="driver-name">Driver Name <span className="text-red-500">*</span></Label>
+                                        <Input id="driver-name" value={driverName} onChange={(e) => setDriverName(e.target.value)} />
                                     </div>
                                     <div className="space-y-2">
-                                        <Label>Plate Number <span className="text-red-500">*</span></Label>
-                                        <Input value={plateNumber} onChange={(e) => setPlateNumber(e.target.value)} />
+                                        <Label htmlFor="plate-number">Plate Number <span className="text-red-500">*</span></Label>
+                                        <Input id="plate-number" value={plateNumber} onChange={(e) => setPlateNumber(e.target.value)} />
                                     </div>
                                 </div>
                             )}
 
                             <div className="space-y-2 pt-2 border-t mt-4">
-                                <Label>
+                                <Label htmlFor="dr-image-upload">
                                     DR Picture
                                     <span className="text-red-500 ml-1">*</span>
                                 </Label>

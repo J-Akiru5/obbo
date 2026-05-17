@@ -321,7 +321,7 @@ export function NewRequestsTab({ orders, onApprove, onReject, onConfirmCheck, lo
                                                 <Check className="w-4 h-4 mr-2" /> Review & Confirm
                                             </Button>
                                         ) : order.status === "awaiting_check" ? (
-                                            <Button disabled className="w-full bg-gray-200 text-gray-500 border-gray-300">
+                                            <Button disabled className="w-full bg-muted text-muted-foreground border-border">
                                                 <Clock className="w-4 h-4 mr-2" /> Waiting...
                                             </Button>
                                         ) : (
@@ -386,8 +386,9 @@ export function NewRequestsTab({ orders, onApprove, onReject, onConfirmCheck, lo
                                             <p className="text-xs text-muted-foreground">Requested: {item.requested_qty}</p>
                                         </div>
                                         <div className="w-32">
-                                            <Label className="text-xs mb-1 block">Approve Qty</Label>
+                                            <Label className="text-xs mb-1 block" htmlFor={`approve-qty-${item.id}`}>Approve Qty</Label>
                                             <Input 
+                                                id={`approve-qty-${item.id}`}
                                                 type="number" 
                                                 min="0" 
                                                 max={item.requested_qty}
@@ -402,8 +403,9 @@ export function NewRequestsTab({ orders, onApprove, onReject, onConfirmCheck, lo
 
                             {selectedOrder.service_type === 'deliver' && (
                                 <div className="space-y-2 pt-2 border-t">
-                                    <Label>Shipping Fee (₱)</Label>
+                                    <Label htmlFor="shipping-fee">Shipping Fee (₱)</Label>
                                     <Input 
+                                        id="shipping-fee"
                                         type="number" 
                                         value={shippingFee || ""}
                                         placeholder="0"
@@ -435,8 +437,9 @@ export function NewRequestsTab({ orders, onApprove, onReject, onConfirmCheck, lo
 
                     {selectedOrder && actionType === "reject" && (
                         <div className="space-y-2 py-4">
-                            <Label>Reason for Rejection <span className="text-red-500">*</span></Label>
+                            <Label htmlFor="rejection-reason">Reason for Rejection <span className="text-red-500">*</span></Label>
                             <Textarea 
+                                id="rejection-reason"
                                 placeholder="e.g. Insufficient stock, Invalid PO, etc."
                                 value={rejectionReason}
                                 onChange={(e) => setRejectionReason(e.target.value)}

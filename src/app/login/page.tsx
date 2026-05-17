@@ -65,20 +65,22 @@ export default function LoginPage() {
                         Sign in
                     </div>
                     <div className="space-y-2">
-                        <h2 className="text-3xl font-semibold tracking-tight text-balance text-foreground">
+                        <h1 className="text-3xl font-semibold tracking-tight text-balance text-foreground">
                             Access your dashboard
-                        </h2>
+                        </h1>
                         <p className="text-sm leading-6 text-muted-foreground">
                             Use your registered email and password to continue.
                         </p>
                     </div>
                 </div>
 
+                <div className="sr-only" aria-live="polite" role="status"></div>
                 <form onSubmit={handleLogin} className="space-y-5">
                     <div className="space-y-2">
                         <Label htmlFor="email">Email</Label>
                         <Input id="email" type="email" placeholder="you@company.com" value={email} onChange={(e) => setEmail(e.target.value)} required className="h-11" />
                     </div>
+                    <p id="email-error" className="sr-only" role="alert"></p>
                     <div className="space-y-2">
                         <div className="flex items-center justify-between gap-3">
                             <Label htmlFor="password">Password</Label>
@@ -90,6 +92,7 @@ export default function LoginPage() {
                             </button>
                         </div>
                     </div>
+                    <p id="password-error" className="sr-only" role="alert"></p>
                     <Button type="submit" className="h-12 w-full bg-primary text-primary-foreground hover:bg-primary/90 font-semibold" disabled={loading}>
                         {loading ? "Signing in..." : "Sign In"}
                     </Button>

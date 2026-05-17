@@ -194,13 +194,13 @@ export default function AdminSettingsPage() {
     };
 
     return (
-        <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 py-4 md:px-6 lg:px-8">
+        <div className="mx-auto flex w-full max-w-7xl flex-col gap-6">
             <header className="space-y-2">
                 <div className="inline-flex items-center gap-2 rounded-full border border-primary/15 bg-primary/8 px-3 py-1 text-xs font-semibold uppercase tracking-[0.28em] text-primary">
                     Settings
                 </div>
                 <div>
-                    <h2 className="text-3xl font-semibold tracking-tight text-foreground">System controls</h2>
+                    <h2 className="text-2xl font-bold tracking-tight text-foreground">System controls</h2>
                     <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">
                         Manage appearance, contact information, login security visibility, immutable audit trails, and your own admin account.
                     </p>
@@ -220,7 +220,7 @@ export default function AdminSettingsPage() {
                 </TabsList>
 
                 <TabsContent value="appearance" className="mt-6">
-                    <Card className="border-border/70 shadow-sm">
+                    <Card className="border-border shadow-sm">
                         <CardHeader>
                             <CardTitle className="flex items-center gap-2 text-base">
                                 <Palette className="h-4 w-4" /> Appearance
@@ -257,7 +257,7 @@ export default function AdminSettingsPage() {
                                         { icon: <Database className="h-4 w-4 text-emerald-500" />, label: "Database", value: "Supabase" },
                                         { icon: <Settings className="h-4 w-4 text-amber-500" />, label: "Version", value: `V. 1.${GIT_SHA}` },
                                     ].map((item) => (
-                                        <div key={item.label} className="flex items-center gap-3 rounded-xl border border-border/70 bg-muted/30 px-3 py-3">
+                                        <div key={item.label} className="flex items-center gap-3 rounded-xl border border-border bg-muted/30 px-3 py-3">
                                             {item.icon}
                                             <div>
                                                 <p className="text-xs text-muted-foreground">{item.label}</p>
@@ -272,7 +272,7 @@ export default function AdminSettingsPage() {
                 </TabsContent>
 
                 <TabsContent value="contact" className="mt-6">
-                    <Card className="border-border/70 shadow-sm">
+                    <Card className="border-border shadow-sm">
                         <CardHeader>
                             <CardTitle className="flex items-center gap-2 text-base">
                                 <Globe className="h-5 w-5 text-primary" /> Public contact information
@@ -282,21 +282,21 @@ export default function AdminSettingsPage() {
                         <CardContent className="space-y-4">
                             <div className="grid gap-4 md:grid-cols-2">
                                 <div className="space-y-2">
-                                    <Label>Support email</Label>
-                                    <Input value={contactInfo.email} onChange={(event) => setContactInfo({ ...contactInfo, email: event.target.value })} placeholder="support@obbo.com" />
+                                    <Label htmlFor="support-email">Support email</Label>
+                                    <Input id="support-email" value={contactInfo.email} onChange={(event) => setContactInfo({ ...contactInfo, email: event.target.value })} placeholder="support@obbo.com" />
                                 </div>
                                 <div className="space-y-2">
-                                    <Label>Support phone</Label>
-                                    <Input value={contactInfo.phone} onChange={(event) => setContactInfo({ ...contactInfo, phone: event.target.value })} placeholder="+63 912 345 6789" />
+                                    <Label htmlFor="support-phone">Support phone</Label>
+                                    <Input id="support-phone" value={contactInfo.phone} onChange={(event) => setContactInfo({ ...contactInfo, phone: event.target.value })} placeholder="+63 912 345 6789" />
                                 </div>
                             </div>
                             <div className="space-y-2">
-                                <Label>Physical address</Label>
-                                <Input value={contactInfo.address} onChange={(event) => setContactInfo({ ...contactInfo, address: event.target.value })} placeholder="123 Industrial Ave" />
+                                <Label htmlFor="physical-address">Physical address</Label>
+                                <Input id="physical-address" value={contactInfo.address} onChange={(event) => setContactInfo({ ...contactInfo, address: event.target.value })} placeholder="123 Industrial Ave" />
                             </div>
                             <div className="space-y-2">
-                                <Label>Business hours</Label>
-                                <Input value={contactInfo.businessHours} onChange={(event) => setContactInfo({ ...contactInfo, businessHours: event.target.value })} placeholder="Mon - Fri, 8:00 AM - 5:00 PM" />
+                                <Label htmlFor="business-hours">Business hours</Label>
+                                <Input id="business-hours" value={contactInfo.businessHours} onChange={(event) => setContactInfo({ ...contactInfo, businessHours: event.target.value })} placeholder="Mon - Fri, 8:00 AM - 5:00 PM" />
                             </div>
                             <Button onClick={handleSaveContact} disabled={isSavingContact} className="bg-primary hover:bg-primary/90">
                                 <Save className="mr-2 h-4 w-4" /> {isSavingContact ? "Saving..." : "Save contact info"}
@@ -306,7 +306,7 @@ export default function AdminSettingsPage() {
                 </TabsContent>
 
                 <TabsContent value="security" className="mt-6">
-                    <Card className="border-border/70 shadow-sm">
+                    <Card className="border-border shadow-sm">
                         <CardHeader>
                             <CardTitle className="flex items-center gap-2 text-base">
                                 <ShieldAlert className="h-5 w-5 text-primary" /> Login security
@@ -317,13 +317,13 @@ export default function AdminSettingsPage() {
                             {loadingLogs ? (
                                 <div className="py-8 text-center text-sm text-muted-foreground">Loading security events...</div>
                             ) : securityEvents.length === 0 ? (
-                                <div className="rounded-xl border border-dashed border-border/70 py-10 text-center text-sm text-muted-foreground">
+                                <div className="rounded-xl border border-dashed border-border py-10 text-center text-sm text-muted-foreground">
                                     No security events were recorded in the audit trail.
                                 </div>
                             ) : (
                                 <div className="space-y-3">
                                     {securityEvents.slice(0, 10).map((entry) => (
-                                        <div key={entry.id} className="flex items-start justify-between gap-4 rounded-xl border border-border/70 px-4 py-3">
+                                        <div key={entry.id} className="flex items-start justify-between gap-4 rounded-xl border border-border px-4 py-3">
                                             <div>
                                                 <p className="text-sm font-medium text-foreground">{entry.action.replace(/_/g, " ")}</p>
                                                 <p className="text-xs text-muted-foreground">
@@ -340,7 +340,7 @@ export default function AdminSettingsPage() {
                 </TabsContent>
 
                 <TabsContent value="audit" className="mt-6">
-                    <Card className="border-border/70 shadow-sm">
+                    <Card className="border-border shadow-sm">
                         <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                             <div>
                                 <CardTitle className="flex items-center gap-2 text-base">
@@ -361,7 +361,7 @@ export default function AdminSettingsPage() {
                             {loadingLogs ? (
                                 <div className="py-8 text-center text-sm text-muted-foreground">Loading audit logs...</div>
                             ) : (
-                                <div className="overflow-x-auto rounded-xl border border-border/70">
+                                <div className="overflow-x-auto rounded-xl border border-border">
                                     <Table>
                                         <TableHeader className="bg-muted/40">
                                             <TableRow>
@@ -407,7 +407,7 @@ export default function AdminSettingsPage() {
                 </TabsContent>
 
                 <TabsContent value="account" className="mt-6">
-                    <Card className="border-border/70 shadow-sm">
+                    <Card className="border-border shadow-sm">
                         <CardHeader>
                             <CardTitle className="flex items-center gap-2 text-base">
                                 <KeyRound className="h-5 w-5 text-primary" /> Admin account
@@ -421,18 +421,18 @@ export default function AdminSettingsPage() {
                                 <>
                                     <div className="grid gap-4 md:grid-cols-2">
                                         <div className="space-y-2">
-                                            <Label className="flex items-center gap-1.5"><User className="h-3.5 w-3.5" /> Full name</Label>
-                                            <Input value={fullName} onChange={(event) => setFullName(event.target.value)} />
+                                            <Label htmlFor="full-name" className="flex items-center gap-1.5"><User className="h-3.5 w-3.5" /> Full name</Label>
+                                            <Input id="full-name" value={fullName} onChange={(event) => setFullName(event.target.value)} />
                                         </div>
                                         <div className="space-y-2">
-                                            <Label className="flex items-center gap-1.5"><Phone className="h-3.5 w-3.5" /> Phone</Label>
-                                            <Input value={phone} onChange={(event) => setPhone(event.target.value)} placeholder="+63 ..." />
+                                            <Label htmlFor="phone" className="flex items-center gap-1.5"><Phone className="h-3.5 w-3.5" /> Phone</Label>
+                                            <Input id="phone" value={phone} onChange={(event) => setPhone(event.target.value)} placeholder="+63 ..." />
                                         </div>
                                     </div>
 
                                     <div className="space-y-2">
-                                        <Label className="flex items-center gap-1.5"><Mail className="h-3.5 w-3.5" /> Email</Label>
-                                        <Input value={profile.email} disabled className="bg-muted" />
+                                        <Label htmlFor="email" className="flex items-center gap-1.5"><Mail className="h-3.5 w-3.5" /> Email</Label>
+                                        <Input id="email" value={profile.email} disabled className="bg-muted" />
                                         <p className="text-xs text-muted-foreground">Email changes are handled separately by the authentication provider.</p>
                                     </div>
 
@@ -447,7 +447,7 @@ export default function AdminSettingsPage() {
 
                                     <Separator />
 
-                                    <div className="space-y-3 rounded-xl border border-border/70 bg-muted/20 p-4">
+                                    <div className="space-y-3 rounded-xl border border-border bg-muted/20 p-4">
                                         <div>
                                             <p className="flex items-center gap-2 text-sm font-semibold text-foreground">
                                                 <Lock className="h-4 w-4 text-primary" /> Change password
@@ -470,7 +470,7 @@ export default function AdminSettingsPage() {
                 </TabsContent>
 
                 <TabsContent value="app" className="mt-6">
-                    <Card className="border-border/70 shadow-sm">
+                    <Card className="border-border shadow-sm">
                         <CardHeader>
                             <CardTitle className="flex items-center gap-2 text-base">
                                 <Smartphone className="h-4 w-4" /> App Installation

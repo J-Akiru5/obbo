@@ -319,7 +319,7 @@ export function PoListTab({ purchaseOrders, loading, onReload }: { purchaseOrder
                                 No purchase orders found.
                             </div>
                         ) : filtered.map(po => (
-                            <Card key={po.id} className="overflow-hidden group hover:shadow-md transition-shadow border-muted">
+                            <Card key={po.id} className="overflow-hidden group hover:shadow-md transition-shadow border-border">
                                 <div className="aspect-[4/3] relative bg-muted flex items-center justify-center overflow-hidden">
                                     {po.photo_url ? (
                                         <img src={po.photo_url} alt={po.po_number} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
@@ -348,7 +348,7 @@ export function PoListTab({ purchaseOrders, loading, onReload }: { purchaseOrder
                                         {po.order_id && <Badge variant="outline" className="text-[9px] bg-primary/5 text-primary border-primary/10 h-5 shrink-0">AUTO</Badge>}
                                     </div>
                                     
-                                    <div className="flex items-center gap-3 py-2 border-y border-muted/50">
+                                    <div className="flex items-center gap-3 py-2 border-y border-border/50">
                                         <div className="flex-1">
                                             <p className="text-[9px] text-muted-foreground font-bold uppercase">Quantity</p>
                                             <p className="text-sm font-bold">{po.jb + po.sb}</p>
@@ -397,8 +397,8 @@ export function PoListTab({ purchaseOrders, loading, onReload }: { purchaseOrder
                     </DialogHeader>
                     <div className="space-y-4 py-4">
                         <div className="space-y-2">
-                            <Label>PO Number <span className="text-red-500">*</span></Label>
-                            <Input value={poNumber} onChange={e => setPoNumber(e.target.value)} placeholder="e.g. PO-2026-001" />
+                            <Label htmlFor="po-number">PO Number <span className="text-red-500">*</span></Label>
+                            <Input id="po-number" value={poNumber} onChange={e => setPoNumber(e.target.value)} placeholder="e.g. PO-2026-001" />
                         </div>
                         <div className="space-y-2">
                             <Label>Client Name</Label>
@@ -469,8 +469,9 @@ export function PoListTab({ purchaseOrders, loading, onReload }: { purchaseOrder
                         </div>
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
-                                <Label>Quantity JB (Jumbo Bag)</Label>
+                                <Label htmlFor="po-jb-quantity">Quantity JB (Jumbo Bag)</Label>
                                 <Input 
+                                    id="po-jb-quantity"
                                     type="number" 
                                     min="0" 
                                     value={jbQty || ""} 
@@ -480,8 +481,9 @@ export function PoListTab({ purchaseOrders, loading, onReload }: { purchaseOrder
                                 />
                             </div>
                             <div className="space-y-2">
-                                <Label>Quantity SB (Sling Bag)</Label>
+                                <Label htmlFor="po-sb-quantity">Quantity SB (Sling Bag)</Label>
                                 <Input 
+                                    id="po-sb-quantity"
                                     type="number" 
                                     min="0" 
                                     value={sbQty || ""} 
@@ -496,12 +498,12 @@ export function PoListTab({ purchaseOrders, loading, onReload }: { purchaseOrder
                             <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Payment Details</p>
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-2">
-                                    <Label>Check No.</Label>
-                                    <Input value={checkNumber} onChange={e => setCheckNumber(e.target.value)} placeholder="Check number" />
+                                    <Label htmlFor="po-check-number">Check No.</Label>
+                                    <Input id="po-check-number" value={checkNumber} onChange={e => setCheckNumber(e.target.value)} placeholder="Check number" />
                                 </div>
                                 <div className="space-y-2">
-                                    <Label>Check Amount (₱)</Label>
-                                    <Input type="number" min="0" value={checkAmount || ""} placeholder="0" onChange={e => {
+                                    <Label htmlFor="po-check-amount">Check Amount (₱)</Label>
+                                    <Input id="po-check-amount" type="number" min="0" value={checkAmount || ""} placeholder="0" onChange={e => {
                                         const val = parseFloat(e.target.value) || 0;
                                         setCheckAmount(val);
                                         if (val > 0) setCashAmount(0);
@@ -509,8 +511,8 @@ export function PoListTab({ purchaseOrders, loading, onReload }: { purchaseOrder
                                 </div>
                             </div>
                             <div className="space-y-2">
-                                <Label>Cash Amount (₱)</Label>
-                                <Input type="number" min="0" value={cashAmount || ""} placeholder="0" onChange={e => {
+                                <Label htmlFor="po-cash-amount">Cash Amount (₱)</Label>
+                                <Input id="po-cash-amount" type="number" min="0" value={cashAmount || ""} placeholder="0" onChange={e => {
                                     const val = parseFloat(e.target.value) || 0;
                                     setCashAmount(val);
                                     if (val > 0) {
@@ -523,7 +525,7 @@ export function PoListTab({ purchaseOrders, loading, onReload }: { purchaseOrder
 
                         {/* Photo Upload */}
                         <div className="space-y-2">
-                            <Label>PO Photo <span className="text-red-500">*</span></Label>
+                            <Label htmlFor="po-photo-upload">PO Photo <span className="text-red-500">*</span></Label>
                             {photoFile ? (
                                 <div className="flex items-center gap-3 p-3 border border-emerald-200 bg-emerald-50 rounded-lg">
                                     <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />

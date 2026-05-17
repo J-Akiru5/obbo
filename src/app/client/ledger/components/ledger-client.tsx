@@ -241,8 +241,8 @@ export default function LedgerClient({ balances, summary }: { balances: Customer
                     </CardHeader>
                     <CardContent className="p-0">
                         {pendingBalances.length === 0 ? (
-                            <div className="p-8 text-center text-gray-500">
-                                <Info className="w-8 h-8 mx-auto mb-2 text-gray-300" />
+                            <div className="py-12 text-center border-2 border-dashed border-border rounded-xl text-muted-foreground">
+                                <Info className="w-12 h-12 mx-auto mb-3 opacity-40" />
                                 <p>You have no outstanding balances.</p>
                             </div>
                         ) : (
@@ -307,7 +307,7 @@ export default function LedgerClient({ balances, summary }: { balances: Customer
                     </CardHeader>
                     <CardContent className="p-0">
                         {fulfilledBalances.length === 0 ? (
-                            <div className="p-8 text-center text-gray-500">
+                            <div className="p-8 text-center text-muted-foreground">
                                 <p>No completed balances yet.</p>
                             </div>
                         ) : (
@@ -391,8 +391,8 @@ export default function LedgerClient({ balances, summary }: { balances: Customer
                             {/* Order Details */}
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-2">
-                                    <Label>PO Number <span className="text-red-500">*</span></Label>
-                                    <Input value={poNumber} readOnly className="bg-muted/30 cursor-not-allowed border-dashed" />
+                                    <Label htmlFor="redelivery-po-number">PO Number <span className="text-red-500">*</span></Label>
+                                    <Input id="redelivery-po-number" value={poNumber} readOnly className="bg-muted/30 cursor-not-allowed border-dashed" />
                                     <p className="text-[10px] text-muted-foreground">This PO is linked to your original purchase.</p>
                                 </div>
                                 <div className="space-y-2">
@@ -406,8 +406,8 @@ export default function LedgerClient({ balances, summary }: { balances: Customer
                                     </Select>
                                 </div>
                                 <div className="space-y-2 col-span-2">
-                                    <Label>Redelivery Authorization Document <span className="text-xs text-muted-foreground ml-1">(Optional — original PO image will be used if not provided)</span></Label>
-                                    <Input type="file" accept="image/*,.pdf" onChange={handleFileChange} className="cursor-pointer" />
+                                    <Label htmlFor="redelivery-doc">Redelivery Authorization Document <span className="text-xs text-muted-foreground ml-1">(Optional — original PO image will be used if not provided)</span></Label>
+                                    <Input id="redelivery-doc" type="file" accept="image/*,.pdf" onChange={handleFileChange} className="cursor-pointer" />
                                 </div>
                             </div>
 
@@ -417,16 +417,16 @@ export default function LedgerClient({ balances, summary }: { balances: Customer
                                     <h4 className="text-sm font-semibold text-amber-600 dark:text-amber-500">Pick-up Details</h4>
                                     <div className="grid grid-cols-2 gap-4">
                                         <div className="space-y-2">
-                                            <Label>Driver Name <span className="text-red-500">*</span></Label>
-                                            <Input required value={driverName} onChange={(e) => setDriverName(e.target.value)} />
+                                            <Label htmlFor="driver-name">Driver Name <span className="text-red-500">*</span></Label>
+                                            <Input id="driver-name" required value={driverName} onChange={(e) => setDriverName(e.target.value)} />
                                         </div>
                                         <div className="space-y-2">
-                                            <Label>Plate Number <span className="text-red-500">*</span></Label>
-                                            <Input required value={plateNumber} onChange={(e) => setPlateNumber(e.target.value)} />
+                                            <Label htmlFor="plate-number">Plate Number <span className="text-red-500">*</span></Label>
+                                            <Input id="plate-number" required value={plateNumber} onChange={(e) => setPlateNumber(e.target.value)} />
                                         </div>
                                         <div className="space-y-2 col-span-2">
-                                            <Label>Preferred Date of Pick-up</Label>
-                                            <Input type="date" value={pickupDate} onChange={(e) => setPickupDate(e.target.value)} />
+                                            <Label htmlFor="pickup-date">Preferred Date of Pick-up</Label>
+                                            <Input id="pickup-date" type="date" value={pickupDate} onChange={(e) => setPickupDate(e.target.value)} />
                                         </div>
                                     </div>
                                 </div>
@@ -446,8 +446,9 @@ export default function LedgerClient({ balances, summary }: { balances: Customer
                                 </div>
                                 {wantsSplit && (
                                     <div className="pt-2 space-y-2 border-t border-border/50">
-                                        <Label className="text-foreground">How many individual bags do you want to receive now?</Label>
+                                        <Label htmlFor="deliver-now-qty" className="text-foreground">How many individual bags do you want to receive now?</Label>
                                         <Input 
+                                            id="deliver-now-qty"
                                             type="number" 
                                             min="1" 
                                             max={selectedBalance.remaining_qty} 

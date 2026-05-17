@@ -501,7 +501,10 @@ export default function CatalogClient({ products }: { products: Product[] }) {
                                             </p>
                                         </div>
                                     </div>
-                                    <input type="checkbox" checked={wantsSplit} onChange={e => setWantsSplit(e.target.checked)} className="w-5 h-5 text-blue-600 rounded border-blue-500/30 focus:ring-blue-500 bg-background" />
+                                    <label className="flex items-center cursor-pointer">
+                                        <input type="checkbox" checked={wantsSplit} onChange={e => setWantsSplit(e.target.checked)} className="w-5 h-5 text-blue-600 rounded border-blue-500/30 focus:ring-blue-500 bg-background" />
+                                        <span className="sr-only">Enable split delivery</span>
+                                    </label>
                                 </div>
                                 {wantsSplit && (
                                     <div className="pt-3 space-y-4 border-t border-blue-500/20">

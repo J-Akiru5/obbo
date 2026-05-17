@@ -58,17 +58,17 @@ function getAddressLine(profile: Profile) {
 
 function KycBadge({ status }: { status: string }) {
     if (status === "verified") {
-        return <Badge className="border-emerald-200 bg-emerald-100 text-emerald-800 hover:bg-emerald-100">Verified</Badge>;
+        return <Badge className="border-status-success-border bg-status-success-bg text-status-success-text hover:bg-emerald-100">Verified</Badge>;
     }
     if (status === "rejected") {
-        return <Badge className="border-red-200 bg-red-100 text-red-800 hover:bg-red-100">Rejected</Badge>;
+        return <Badge className="border-destructive/20 bg-destructive/10 text-destructive hover:bg-red-100">Rejected</Badge>;
     }
-    return <Badge className="border-amber-200 bg-amber-100 text-amber-800 hover:bg-amber-100">Pending</Badge>;
+    return <Badge className="border-status-pending-border bg-status-pending-bg text-status-pending-text hover:bg-amber-100">Pending</Badge>;
 }
 
 function SummaryCard({ title, value, description, icon: Icon }: { title: string; value: string; description: string; icon: ComponentType<{ className?: string }>; }) {
     return (
-        <Card className="border-border/70 shadow-sm">
+        <Card className="border-border shadow-sm">
             <CardContent className="flex items-start justify-between gap-4 p-5">
                 <div className="space-y-2">
                     <p className="text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">{title}</p>
@@ -145,7 +145,7 @@ function KycDialog({
                 </DialogHeader>
 
                 <div className="space-y-4">
-                    <div className="flex items-center gap-3 rounded-xl border border-border/70 bg-muted/30 p-4">
+                    <div className="flex items-center gap-3 rounded-xl border border-border bg-muted/30 p-4">
                         <Avatar className="h-12 w-12">
                             <AvatarImage src={profile.avatar_url || ""} alt={profile.full_name} />
                             <AvatarFallback className="bg-primary text-sm font-bold text-primary-foreground">{initials}</AvatarFallback>
@@ -160,7 +160,7 @@ function KycDialog({
                         </div>
                     </div>
 
-                    <div className="grid gap-3 rounded-xl border border-border/70 p-4 sm:grid-cols-2">
+                    <div className="grid gap-3 rounded-xl border border-border p-4 sm:grid-cols-2">
                         <div className="space-y-1">
                             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">Phone</p>
                             <p className="text-sm text-foreground">{profile.phone || "-"}</p>
@@ -187,7 +187,7 @@ function KycDialog({
                         {profile.kyc_documents && profile.kyc_documents.length > 0 ? (
                             <div className="space-y-2">
                                 {profile.kyc_documents.map((doc, index) => (
-                                    <div key={`${doc}-${index}`} className="flex items-center justify-between gap-3 rounded-lg border border-border/70 bg-card px-3 py-2">
+                                    <div key={`${doc}-${index}`} className="flex items-center justify-between gap-3 rounded-lg border border-border bg-card px-3 py-2">
                                         <div className="flex min-w-0 items-center gap-2">
                                             <FileText className="h-4 w-4 text-primary" />
                                             <span className="truncate text-sm text-foreground">{doc.split("/").pop()}</span>
@@ -204,7 +204,7 @@ function KycDialog({
                                 ))}
                             </div>
                         ) : (
-                            <div className="rounded-lg border border-dashed border-border/70 px-4 py-6 text-center text-sm text-muted-foreground">
+                            <div className="rounded-lg border border-dashed border-border px-4 py-6 text-center text-sm text-muted-foreground">
                                 No documents submitted.
                             </div>
                         )}
@@ -222,7 +222,7 @@ function KycDialog({
                             />
                         </div>
                     ) : (
-                        <div className="rounded-xl border border-border/70 bg-muted/30 px-4 py-3 text-sm text-muted-foreground">
+                        <div className="rounded-xl border border-border bg-muted/30 px-4 py-3 text-sm text-muted-foreground">
                             Read-only review mode.
                         </div>
                     )}
@@ -235,7 +235,7 @@ function KycDialog({
                             <Button variant="outline" className="border-red-200 text-red-700 hover:bg-red-50" onClick={handleReject} disabled={saving}>
                                 {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <XCircle className="mr-2 h-4 w-4" />} Reject
                             </Button>
-                            <Button className="bg-emerald-600 hover:bg-emerald-700" onClick={handleApprove} disabled={saving}>
+                            <Button className="bg-primary hover:bg-primary/90" onClick={handleApprove} disabled={saving}>
                                 {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle2 className="mr-2 h-4 w-4" />} Approve
                             </Button>
                         </>
@@ -452,7 +452,7 @@ function ClientDetailDialog({
                 </DialogHeader>
 
                 <div className="space-y-4">
-                    <div className="flex items-center gap-3 rounded-xl border border-border/70 bg-muted/30 p-4">
+                    <div className="flex items-center gap-3 rounded-xl border border-border bg-muted/30 p-4">
                         <Avatar className="h-12 w-12">
                             <AvatarImage src={profile.avatar_url || ""} alt={profile.full_name} />
                             <AvatarFallback className="bg-primary text-sm font-bold text-primary-foreground">{getInitials(profile.full_name)}</AvatarFallback>
@@ -467,7 +467,7 @@ function ClientDetailDialog({
                         </div>
                     </div>
 
-                    <div className="grid gap-3 rounded-xl border border-border/70 p-4 sm:grid-cols-2">
+                    <div className="grid gap-3 rounded-xl border border-border p-4 sm:grid-cols-2">
                         <div className="flex items-start gap-2">
                             <Phone className="mt-0.5 h-4 w-4 text-muted-foreground" />
                             <div>
@@ -503,7 +503,7 @@ function ClientDetailDialog({
                             <p className="mb-2 flex items-center gap-2 text-sm font-semibold text-foreground">
                                 <ShieldAlert className="h-4 w-4 text-amber-500" /> Outstanding balances
                             </p>
-                            <div className="rounded-lg border border-border/70 overflow-hidden">
+                            <div className="rounded-lg border border-border overflow-hidden">
                                 <Table>
                                     <TableHeader className="bg-muted/30">
                                         <TableRow className="hover:bg-transparent">
@@ -536,13 +536,13 @@ function ClientDetailDialog({
                             <Badge variant="outline" className="text-xs">{orders.length} orders</Badge>
                         </div>
                         {loading ? (
-                            <div className="rounded-lg border border-dashed border-border/70 py-8 text-center text-sm text-muted-foreground">Loading history...</div>
+                            <div className="rounded-lg border border-dashed border-border py-8 text-center text-sm text-muted-foreground">Loading history...</div>
                         ) : orders.length === 0 ? (
-                            <div className="rounded-lg border border-dashed border-border/70 py-8 text-center text-sm text-muted-foreground">No orders yet.</div>
+                            <div className="rounded-lg border border-dashed border-border py-8 text-center text-sm text-muted-foreground">No orders yet.</div>
                         ) : (
                             <div className="space-y-2">
                                 {orders.slice(0, 5).map((order) => (
-                                    <div key={order.id} className="flex items-center justify-between gap-3 rounded-lg border border-border/70 px-3 py-2">
+                                    <div key={order.id} className="flex items-center justify-between gap-3 rounded-lg border border-border px-3 py-2">
                                         <div>
                                             <p className="text-sm font-medium">#{order.id.slice(0, 8).toUpperCase()}</p>
                                             <p className="text-xs text-muted-foreground">{new Date(order.created_at).toLocaleDateString()}</p>
@@ -649,14 +649,14 @@ function ClientsContent() {
     const canManageClients = currentUserRole === "admin";
 
     return (
-        <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 py-4 md:px-6 lg:px-8">
-            <header className="flex flex-col gap-4 rounded-2xl border border-border/70 bg-card p-5 shadow-sm lg:flex-row lg:items-end lg:justify-between">
+        <div className="mx-auto flex w-full max-w-7xl flex-col gap-6">
+            <header className="flex flex-col gap-4 rounded-2xl border border-border bg-card p-5 shadow-sm lg:flex-row lg:items-end lg:justify-between">
                 <div className="space-y-2">
                     <div className="inline-flex items-center gap-2 rounded-full border border-primary/15 bg-primary/8 px-3 py-1 text-xs font-semibold uppercase tracking-[0.28em] text-primary">
                         Clients
                     </div>
                     <div>
-                        <h2 className="text-3xl font-semibold tracking-tight text-foreground">Verification hub and directory</h2>
+                        <h2 className="text-2xl font-bold tracking-tight text-foreground">Verification hub and directory</h2>
                         <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">
                             Admins can approve or reject KYC, add walk-in clients manually, and review verified customer details.
                         </p>
@@ -675,7 +675,7 @@ function ClientsContent() {
                 <SummaryCard title="Verified clients" value={verified.length.toString()} description="Clients ready for portal use." icon={UserCheck} />
             </section>
 
-            <Card className="border-border/70 shadow-sm">
+            <Card className="border-border shadow-sm">
                 <CardContent className="p-5">
                     {loading ? (
                         <div className="py-16 text-center text-sm text-muted-foreground">Loading clients...</div>
@@ -691,7 +691,7 @@ function ClientsContent() {
 
                             <TabsContent value="kyc" className="mt-6 space-y-3">
                                 {pending.length === 0 ? (
-                                    <Card className="border-border/70 shadow-sm">
+                                    <Card className="border-border shadow-sm">
                                         <CardContent className="py-16 text-center text-muted-foreground">
                                             <UserCheck className="mx-auto mb-3 h-10 w-10 opacity-30" />
                                             <p className="text-sm font-medium">All clients have been verified.</p>
@@ -720,7 +720,7 @@ function ClientsContent() {
                                                                 <Eye className="h-3.5 w-3.5" /> Review
                                                             </Button>
                                                             {canManageClients && (
-                                                                <Button size="sm" className="h-8 gap-1 bg-emerald-600 text-xs hover:bg-emerald-700" onClick={() => handleKycAction(profile.id, "verified")}>
+                                                                <Button size="sm" className="h-8 gap-1 bg-primary text-xs hover:bg-primary/90" onClick={() => handleKycAction(profile.id, "verified")}>
                                                                     <CheckCircle2 className="h-3.5 w-3.5" /> Approve
                                                                 </Button>
                                                             )}
@@ -735,7 +735,7 @@ function ClientsContent() {
 
                             <TabsContent value="directory" className="mt-6 space-y-3">
                                 {verified.length === 0 ? (
-                                    <Card className="border-border/70 shadow-sm">
+                                    <Card className="border-border shadow-sm">
                                         <CardContent className="py-16 text-center text-muted-foreground">
                                             <Users className="mx-auto mb-3 h-10 w-10 opacity-30" />
                                             <p className="text-sm font-medium">No verified clients yet.</p>
@@ -744,7 +744,7 @@ function ClientsContent() {
                                 ) : (
                                     <div className="grid gap-3 lg:grid-cols-2">
                                         {verified.map((profile) => (
-                                            <Card key={profile.id} className="cursor-pointer border-border/70 shadow-sm transition-colors hover:border-primary/35 hover:bg-primary/5" onClick={() => { setDetailTarget(profile); setDetailOpen(true); }}>
+                                            <Card key={profile.id} className="cursor-pointer border-border shadow-sm transition-colors hover:border-primary/35 hover:bg-primary/5" onClick={() => { setDetailTarget(profile); setDetailOpen(true); }}>
                                                 <CardContent className="p-4">
                                                     <div className="flex items-start gap-3">
                                                         <Avatar className="h-10 w-10 flex-shrink-0">
@@ -775,7 +775,7 @@ function ClientsContent() {
             </Card>
 
             {rejected.length > 0 && (
-                <Card className="border-border/70 shadow-sm">
+                <Card className="border-border shadow-sm">
                     <CardHeader className="pb-3">
                         <CardTitle className="flex items-center gap-2 text-base">
                             <AlertTriangle className="h-4 w-4 text-red-500" /> Rejected registrations
@@ -784,7 +784,7 @@ function ClientsContent() {
                     </CardHeader>
                     <CardContent className="space-y-2">
                         {rejected.map((profile) => (
-                            <div key={profile.id} className="flex items-center justify-between gap-3 rounded-lg border border-border/70 px-3 py-2 text-sm">
+                            <div key={profile.id} className="flex items-center justify-between gap-3 rounded-lg border border-border px-3 py-2 text-sm">
                                 <div>
                                     <p className="font-medium text-foreground">{profile.full_name}</p>
                                     <p className="text-xs text-muted-foreground">{profile.email}</p>
