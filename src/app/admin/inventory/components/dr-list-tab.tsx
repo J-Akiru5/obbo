@@ -32,6 +32,8 @@ export function DrListTab({
 }) {
     const [viewMode, setViewMode] = useState<"list" | "grid">("list");
     const [isViewOpen, setIsViewOpen] = useState(false);
+    const [drDateFrom, setDrDateFrom] = useState("");
+    const [drDateTo, setDrDateTo] = useState("");
     const [viewingDr, setViewingDr] = useState<DeliveryReceipt | null>(null);
     const [poSearch, setPoSearch] = useState("");
     const [isPoOpen, setIsPoOpen] = useState(false);
@@ -120,11 +122,14 @@ export function DrListTab({
         }
     };
 
-    const filtered = deliveryReceipts.filter(dr =>
-        dr.dr_number.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (dr.client_name || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (dr.po_number || "").toLowerCase().includes(searchQuery.toLowerCase())
-    );
+    const filtered = deliveryReceipts.filter(dr => {
+        const matchSearch = dr.dr_number.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            (dr.client_name || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+            (dr.po_number || "").toLowerCase().includes(searchQuery.toLowerCase());
+        const matchDateFrom = !drDateFrom || dr.received_date >= drDateFrom;
+        const matchDateTo = !drDateTo || dr.received_date <= drDateTo;
+        return matchSearch && matchDateFrom && matchDateTo;
+    });
 
     if (loading) return <div className="py-8 text-center text-muted-foreground animate-pulse">Loading DR list...</div>;
 
@@ -161,6 +166,16 @@ export function DrListTab({
                             <Plus className="w-4 h-4 mr-2" /> Add Manual DR
                         </Button>
                     </div>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                    <Input type="date" value={drDateFrom} onChange={e => setDrDateFrom(e.target.value)} className="h-8 w-[130px] text-xs" placeholder="From" />
+                    <span className="text-xs text-muted-foreground">—</span>
+                    <Input type="date" value={drDateTo} onChange={e => setDrDateTo(e.target.value)} className="h-8 w-[130px] text-xs" placeholder="To" />
+                    {(drDateFrom || drDateTo) && (
+                        <Button variant="ghost" size="sm" className="h-8 text-xs text-muted-foreground" onClick={() => { setDrDateFrom(""); setDrDateTo(""); }}>
+                            <X className="w-3 h-3 mr-1" /> Clear
+                        </Button>
+                    )}
                 </div>
 
                 {viewMode === "list" ? (

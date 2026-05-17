@@ -23,6 +23,8 @@ export function ShipmentsTab({ shipments, loading, onReload }: { shipments: Ship
     const [newBatchName, setNewBatchName] = useState("");
     const [newJbBags, setNewJbBags] = useState(0);
     const [newSbBags, setNewSbBags] = useState(0);
+    const [newDamagedJb, setNewDamagedJb] = useState(0);
+    const [newDamagedSb, setNewDamagedSb] = useState(0);
     const [newArrivalDate, setNewArrivalDate] = useState(new Date().toISOString().split("T")[0]);
 
     // Edit batch dialog
@@ -60,9 +62,9 @@ export function ShipmentsTab({ shipments, loading, onReload }: { shipments: Ship
         if (totalBags <= 0) return toast.error("Total bags must be greater than 0.");
         setIsCreating(true);
         try {
-            await createShipment(newBatchName, newJbBags, newSbBags, newArrivalDate);
+            await createShipment(newBatchName, newJbBags, newSbBags, newArrivalDate, newDamagedJb, newDamagedSb);
             toast.success("Shipment batch created.");
-            setNewBatchName(""); setNewJbBags(0); setNewSbBags(0);
+            setNewBatchName(""); setNewJbBags(0); setNewSbBags(0); setNewDamagedJb(0); setNewDamagedSb(0);
             setNewArrivalDate(new Date().toISOString().split("T")[0]);
             onReload();
         } catch (e: any) { toast.error(e.message || "Failed to create batch."); }
@@ -177,11 +179,34 @@ export function ShipmentsTab({ shipments, loading, onReload }: { shipments: Ship
                                     <Input type="number" min={0} value={newSbBags || ""} onChange={e => setNewSbBags(parseInt(e.target.value) || 0)} placeholder="Standard Bags" />
                                 </div>
                             </div>
+                            <div className="border-t border-border/50 pt-4">
+                                <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Damaged (optional)</p>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <Label>Damaged JB</Label>
+                                        <Input type="number" min={0} value={newDamagedJb || ""} onChange={e => setNewDamagedJb(Math.min(parseInt(e.target.value) || 0, newJbBags))} placeholder="0" />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label>Damaged SB</Label>
+                                        <Input type="number" min={0} value={newDamagedSb || ""} onChange={e => setNewDamagedSb(Math.min(parseInt(e.target.value) || 0, newSbBags))} placeholder="0" />
+                                    </div>
+                                </div>
+                            </div>
                             <div className="bg-muted p-3 rounded-lg border border-dashed border-border">
                                 <div className="flex justify-between items-center text-sm font-medium">
                                     <span className="text-muted-foreground">Calculated Total:</span>
                                     <span className="text-foreground">{newJbBags + newSbBags} bags</span>
                                 </div>
+                                <div className="flex justify-between items-center text-xs text-muted-foreground mt-1">
+                                    <span>Good stock:</span>
+                                    <span>{(newJbBags - newDamagedJb) + (newSbBags - newDamagedSb)} bags</span>
+                                </div>
+                                {(newDamagedJb > 0 || newDamagedSb > 0) && (
+                                    <div className="flex justify-between items-center text-xs text-red-500 mt-0.5">
+                                        <span>Damaged:</span>
+                                        <span>{newDamagedJb + newDamagedSb} bags ({newDamagedJb} JB / {newDamagedSb} SB)</span>
+                                    </div>
+                                )}
                             </div>
                             <div className="space-y-2">
                                 <Label>Arrival Date</Label>

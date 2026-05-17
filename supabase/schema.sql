@@ -118,6 +118,8 @@ create table if not exists public.shipments (
   remaining_sb     integer not null default 0,
   arrival_date     date not null,
   notes            text,
+  damaged_jb       integer not null default 0,
+  damaged_sb       integer not null default 0,
   created_at       timestamptz not null default now()
 );
 -- For existing DBs
@@ -127,6 +129,8 @@ alter table public.shipments add column if not exists remaining_jb integer not n
 alter table public.shipments add column if not exists remaining_sb integer not null default 0;
 alter table public.shipments alter column product_id drop not null;
 alter table public.shipments alter column bag_type   drop not null;
+alter table public.shipments add column if not exists damaged_jb integer not null default 0;
+alter table public.shipments add column if not exists damaged_sb integer not null default 0;
 
 -- ── SHIPMENT LEDGER ──────────────────────────────────────────
 create table if not exists public.shipment_ledger (

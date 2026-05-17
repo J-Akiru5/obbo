@@ -3,7 +3,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { generateGlobalNextPoNumber } from "./po-utils";
-import { createRoleNotification } from "./notification-actions";
+import { createRoleNotification, createUserNotification } from "./notification-actions";
 import type { WarehouseReport } from "@/lib/types/database";
 
 // ─── Helper: ensure caller is admin or warehouse manager ─────
@@ -217,6 +217,17 @@ export async function approveOrder(orderId: string, approvedItems: { itemId: str
         approvedItems,
         splitDeliveryApplied: Boolean(order.is_split_delivery),
     });
+
+    // Notify warehouse manager that order is ready for fulfillment
+    const poNumber = order.po_number || orderId.slice(0, 8).toUpperCase();
+    await createRoleNotification({
+        targetRole: "warehouse_manager",
+        title: "Order Ready for Fulfillment",
+        message: `PO ${poNumber} has been approved. Review and dispatch from inventory.`,
+        href: "/admin/orders?tab=fulfillment",
+        severity: "info"
+    });
+
     return { success: true, newStatus };
 }
 
@@ -450,23 +461,37 @@ export async function fetchShipments() {
     return data ?? [];
 }
 
-export async function createShipment(batchName: string, totalJb: number, totalSb: number, arrivalDate?: string) {
+export async function createShipment(batchName: string, totalJb: number, totalSb: number, arrivalDate?: string, damagedJb: number = 0, damagedSb: number = 0) {
     const { supabase, userId } = await requireAdmin();
     const totalBags = totalJb + totalSb;
+    const goodJb = totalJb - damagedJb;
+    const goodSb = totalSb - damagedSb;
     
     const { data, error } = await supabase.from("shipments").insert({
         batch_name: batchName,
         total_jb: totalJb,
         total_sb: totalSb,
-        remaining_jb: totalJb,
-        remaining_sb: totalSb,
+        remaining_jb: goodJb,
+        remaining_sb: goodSb,
         initial_quantity: totalBags,
-        good_stock: totalBags,
-        damaged_stock: 0,
+        good_stock: goodJb + goodSb,
+        damaged_stock: damagedJb + damagedSb,
+        damaged_jb: damagedJb,
+        damaged_sb: damagedSb,
         arrival_date: arrivalDate ?? new Date().toISOString().split("T")[0],
     }).select().single();
     if (error) throw new Error(error.message);
-    await logActivity(supabase, userId, "shipment_created", "shipment", data.id, { batchName, totalJb, totalSb });
+    await logActivity(supabase, userId, "shipment_created", "shipment", data.id, { batchName, totalJb, totalSb, damagedJb, damagedSb });
+
+    // Notify warehouse manager about new shipment
+    await createRoleNotification({
+        targetRole: "warehouse_manager",
+        title: "New Shipment Arrived",
+        message: `Batch "${batchName}" with ${totalJb} JB / ${totalSb} SB bags has been recorded.`,
+        href: "/admin/inventory?tab=shipments",
+        severity: "info"
+    });
+
     return data;
 }
 
@@ -1138,6 +1163,12 @@ export async function fetchPendingKyc() {
     export async function approveKyc(profileId: string) {
         const { supabase, userId } = await requireAdmin();
 
+        const { data: profile } = await supabase
+            .from("profiles")
+            .select("full_name, email")
+            .eq("id", profileId)
+            .single();
+
         const { error } = await supabase
             .from("profiles")
             .update({ kyc_status: "verified", updated_at: new Date().toISOString() })
@@ -1147,6 +1178,15 @@ export async function fetchPendingKyc() {
 
         await logActivity(supabase, userId, "kyc_approved", "profile", profileId, {
             status: "verified",
+        });
+
+        // Notify client about KYC approval
+        await createUserNotification({
+            userId: profileId,
+            title: "KYC Approved",
+            message: "Your account has been verified. You can now place orders and access all portal features.",
+            href: "/client/dashboard",
+            severity: "success"
         });
 
         return { success: true };
@@ -1168,6 +1208,15 @@ export async function fetchPendingKyc() {
         await logActivity(supabase, userId, "kyc_rejected", "profile", profileId, {
             reason,
             status: "rejected",
+        });
+
+        // Notify client about KYC rejection
+        await createUserNotification({
+            userId: profileId,
+            title: "KYC Rejected",
+            message: `Your verification was not approved. Reason: ${reason}. Please contact support or re-submit your documents.`,
+            href: "/client/profile",
+            severity: "warning"
         });
 
         return { success: true };

@@ -19,6 +19,10 @@ import { createClient } from "@/lib/supabase/client";
 export function PoListTab({ purchaseOrders, loading, onReload }: { purchaseOrders: PurchaseOrder[], loading: boolean, onReload: () => void }) {
     const [viewMode, setViewMode] = useState<"list" | "grid">("list");
     const [searchQuery, setSearchQuery] = useState("");
+    const [statusFilter, setStatusFilter] = useState("all");
+    const [sourceFilter, setSourceFilter] = useState("all");
+    const [dateFrom, setDateFrom] = useState("");
+    const [dateTo, setDateTo] = useState("");
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [isViewOpen, setIsViewOpen] = useState(false);
     const [viewingPo, setViewingPo] = useState<PurchaseOrder | null>(null);
@@ -150,10 +154,15 @@ export function PoListTab({ purchaseOrders, loading, onReload }: { purchaseOrder
         }
     };
 
-    const filtered = purchaseOrders.filter(po =>
-        po.po_number.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (po.client_name || "").toLowerCase().includes(searchQuery.toLowerCase())
-    );
+    const filtered = purchaseOrders.filter(po => {
+        const matchSearch = po.po_number.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            (po.client_name || "").toLowerCase().includes(searchQuery.toLowerCase());
+        const matchStatus = statusFilter === "all" || po.status === statusFilter;
+        const matchSource = sourceFilter === "all" || po.source === sourceFilter;
+        const matchDateFrom = !dateFrom || po.date >= dateFrom;
+        const matchDateTo = !dateTo || po.date <= dateTo;
+        return matchSearch && matchStatus && matchSource && matchDateFrom && matchDateTo;
+    });
 
     if (loading) return <div className="py-8 text-center text-muted-foreground animate-pulse">Loading PO list...</div>;
 
@@ -188,6 +197,35 @@ export function PoListTab({ purchaseOrders, loading, onReload }: { purchaseOrder
                         </div>
                         <Button onClick={openCreate} className="bg-primary shrink-0 flex-1 sm:flex-none"><Plus className="w-4 h-4 mr-2" /> Add Manual PO</Button>
                     </div>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                    <Select value={statusFilter} onValueChange={(v) => v && setStatusFilter(v)}>
+                        <SelectTrigger className="h-8 w-[130px] text-xs"><SelectValue placeholder="Status" /></SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all">All Status</SelectItem>
+                            <SelectItem value="pending">Pending</SelectItem>
+                            <SelectItem value="dispatched">Dispatched</SelectItem>
+                            <SelectItem value="completed">Completed</SelectItem>
+                        </SelectContent>
+                    </Select>
+                    <Select value={sourceFilter} onValueChange={(v) => v && setSourceFilter(v)}>
+                        <SelectTrigger className="h-8 w-[130px] text-xs"><SelectValue placeholder="Source" /></SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all">All Sources</SelectItem>
+                            <SelectItem value="warehouse">Warehouse</SelectItem>
+                            <SelectItem value="port">Port</SelectItem>
+                        </SelectContent>
+                    </Select>
+                    <div className="flex items-center gap-1">
+                        <Input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} className="h-8 w-[130px] text-xs" placeholder="From" />
+                        <span className="text-xs text-muted-foreground">—</span>
+                        <Input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} className="h-8 w-[130px] text-xs" placeholder="To" />
+                    </div>
+                    {(statusFilter !== "all" || sourceFilter !== "all" || dateFrom || dateTo) && (
+                        <Button variant="ghost" size="sm" className="h-8 text-xs text-muted-foreground" onClick={() => { setStatusFilter("all"); setSourceFilter("all"); setDateFrom(""); setDateTo(""); }}>
+                            <X className="w-3 h-3 mr-1" /> Clear
+                        </Button>
+                    )}
                 </div>
 
                 {viewMode === "list" ? (

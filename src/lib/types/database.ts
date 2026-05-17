@@ -79,6 +79,8 @@ export interface Shipment {
     remaining_sb: number;
     arrival_date: string;
     notes: string | null;
+    damaged_jb: number;
+    damaged_sb: number;
     created_at: string;
 }
 

@@ -191,7 +191,7 @@ export default function RegisterPage() {
                 targetRole: "admin",
                 title: "New Client Registration",
                 message: `${metaData.full_name} has registered and is pending KYC verification.`,
-                href: "/admin/clients?tab=verification",
+                href: "/admin/clients?tab=kyc",
                 severity: "info"
             });
 
