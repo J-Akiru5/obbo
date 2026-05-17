@@ -131,7 +131,7 @@ export function ShipmentsTab({ shipments, loading, onReload }: { shipments: Ship
             await updateLedgerEntry(
                 editingEntry.id,
                 activeShipmentId,
-                { jb: editingEntry.jb, sb: editingEntry.sb, bags_returned: editingEntry.bags_returned, bag_returned_type: editingEntry.bag_returned_type },
+                { jb: editingEntry.jb, sb: editingEntry.sb, bags_returned: editingEntry.bags_returned, bag_returned_type: editingEntry.bag_returned_type, return_reason: editingEntry.return_reason },
                 data as any
             );
             toast.success("Ledger entry updated.");
@@ -285,14 +285,15 @@ export function ShipmentsTab({ shipments, loading, onReload }: { shipments: Ship
                                                 <TableHead className="text-[10px] text-right">Amount</TableHead>
                                                 <TableHead className="text-[10px] text-right text-emerald-600">Returns</TableHead>
                                                 <TableHead className="text-[10px]">Ret. Type</TableHead>
+                                                <TableHead className="text-[10px]">Reason</TableHead>
                                                 <TableHead className="text-right w-[70px]"></TableHead>
                                             </TableRow>
                                         </TableHeader>
                                         <TableBody>
                                             {!ledgerData[shipment.id] ? (
-                                                <TableRow><TableCell colSpan={17} className="text-center py-4 text-xs text-muted-foreground">Loading...</TableCell></TableRow>
+                                                <TableRow><TableCell colSpan={18} className="text-center py-4 text-xs text-muted-foreground">Loading...</TableCell></TableRow>
                                             ) : ledgerData[shipment.id].length === 0 ? (
-                                                <TableRow><TableCell colSpan={17} className="text-center py-4 text-xs text-muted-foreground">No ledger entries yet.</TableCell></TableRow>
+                                                <TableRow><TableCell colSpan={18} className="text-center py-4 text-xs text-muted-foreground">No ledger entries yet.</TableCell></TableRow>
                                             ) : ledgerData[shipment.id].map(e => (
                                                 <TableRow key={e.id}>
                                                     <TableCell className="text-[11px] whitespace-nowrap">{new Date(e.date).toLocaleDateString()}</TableCell>
@@ -311,6 +312,13 @@ export function ShipmentsTab({ shipments, loading, onReload }: { shipments: Ship
                                                     <TableCell className="text-[11px] text-right">{e.amount ? `₱${Number(e.amount).toLocaleString()}` : "—"}</TableCell>
                                                     <TableCell className="text-[11px] text-right font-bold text-emerald-600">{e.bags_returned > 0 ? `+${e.bags_returned}` : "—"}</TableCell>
                                                     <TableCell className="text-[10px]">{e.bag_returned_type || "—"}</TableCell>
+                                                    <TableCell className="text-[10px]">
+                                                        {e.bags_returned > 0 ? (
+                                                            <span className={e.return_reason === "return" || !e.return_reason ? "text-emerald-600 font-medium" : "text-red-500 font-medium"}>
+                                                                {e.return_reason === "waste" ? "Waste" : e.return_reason === "damage" ? "Damage" : "Return"}
+                                                            </span>
+                                                        ) : "—"}
+                                                    </TableCell>
                                                     <TableCell className="text-right whitespace-nowrap">
                                                         <Button variant="ghost" size="icon" className="h-6 w-6 text-primary" onClick={() => openEditEntry(e, shipment.id)}><Edit2 className="w-3 h-3" /></Button>
                                                     </TableCell>

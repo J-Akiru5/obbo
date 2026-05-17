@@ -21,7 +21,7 @@ const EMPTY = {
     service_type: "pickup",
     jb: 0, sb: 0,
     payment_method: "cash", check_number: "", amount: 0,
-    bags_returned: 0, bag_returned_type: "", notes: "",
+    bags_returned: 0, bag_returned_type: "", return_reason: "return", notes: "",
 };
 
 export function LedgerEntryDialog({ open, onOpenChange, entry, onSubmit }: LedgerEntryDialogProps) {
@@ -46,6 +46,7 @@ export function LedgerEntryDialog({ open, onOpenChange, entry, onSubmit }: Ledge
                 amount: entry.amount ? Number(entry.amount) : 0,
                 bags_returned: entry.bags_returned ?? 0,
                 bag_returned_type: entry.bag_returned_type ?? "",
+                return_reason: entry.return_reason ?? "return",
                 notes: entry.notes ?? "",
             });
         } else {
@@ -66,6 +67,7 @@ export function LedgerEntryDialog({ open, onOpenChange, entry, onSubmit }: Ledge
                 bags_returned: Number(form.bags_returned) || 0,
                 check_number: form.payment_method === "check" ? form.check_number : null,
                 bag_returned_type: Number(form.bags_returned) > 0 ? (form.bag_returned_type || "SB") : null,
+                return_reason: Number(form.bags_returned) > 0 ? (form.return_reason || "return") : null,
             });
             onOpenChange(false);
         } catch { /* toast handled upstream */ } finally { setSaving(false); }
@@ -177,7 +179,7 @@ export function LedgerEntryDialog({ open, onOpenChange, entry, onSubmit }: Ledge
                     {/* Row 6: Returns */}
                     <div className="border-t pt-3">
                         <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Returns</p>
-                        <div className="grid grid-cols-3 gap-3">
+                        <div className="grid grid-cols-4 gap-3">
                             <div className="space-y-1.5">
                                 <Label className="text-xs">Bags Returned</Label>
                                 <Input type="number" min={0} value={form.bags_returned || ""} placeholder="0" onChange={e => set("bags_returned", parseInt(e.target.value) || 0)} className="h-9" />
@@ -192,10 +194,23 @@ export function LedgerEntryDialog({ open, onOpenChange, entry, onSubmit }: Ledge
                                     </SelectContent>
                                 </Select>
                             </div>
+                            <div className="space-y-1.5">
+                                <Label className="text-xs">Return Reason</Label>
+                                <Select value={form.return_reason || "return"} onValueChange={v => set("return_reason", v)} disabled={!Number(form.bags_returned)}>
+                                    <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="return">Return</SelectItem>
+                                        <SelectItem value="waste">Waste</SelectItem>
+                                        <SelectItem value="damage">Damage</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
                         </div>
                         {Number(form.bags_returned) > 0 && (
-                            <p className="text-xs text-emerald-600 mt-2">
-                                ✓ {form.bags_returned} {form.bag_returned_type || "bags"} will be added back to the batch remaining stock.
+                            <p className={`text-xs mt-2 ${form.return_reason === "return" ? "text-emerald-600" : "text-red-600"}`}>
+                                {form.return_reason === "return"
+                                    ? `✓ ${form.bags_returned} ${form.bag_returned_type || "bags"} will be added back to the batch remaining stock.`
+                                    : `⚠ ${form.bags_returned} ${form.bag_returned_type || "bags"} marked as ${form.return_reason} — will be written off and NOT added to physical stock.`}
                             </p>
                         )}
                     </div>

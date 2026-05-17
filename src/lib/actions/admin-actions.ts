@@ -513,6 +513,7 @@ export async function addLedgerEntry(shipmentId: string, entry: {
     amount?: number;
     bags_returned?: number;
     bag_returned_type?: string;
+    return_reason?: string;
     notes?: string;
 }) {
     const { supabase, userId } = await requireAdmin();
@@ -520,6 +521,7 @@ export async function addLedgerEntry(shipmentId: string, entry: {
     const sbOut = entry.sb ?? 0;
     const returned = entry.bags_returned ?? 0;
     const returnedType = entry.bag_returned_type ?? null;
+    const returnReason = entry.return_reason ?? "return";
 
     // Insert the ledger row
     const { data, error } = await supabase.from("shipment_ledger").insert({
@@ -530,10 +532,12 @@ export async function addLedgerEntry(shipmentId: string, entry: {
     if (error) throw new Error(error.message);
 
     // Adjust shipment remaining stock
+    // Only 'return' reason adds bags back to stock; 'waste'/'damage' are write-offs
     const { data: shipment } = await supabase.from("shipments").select("remaining_jb, remaining_sb, good_stock").eq("id", shipmentId).single();
     if (shipment) {
-        const jbReturned = returned > 0 && returnedType === "JB" ? returned : 0;
-        const sbReturned = returned > 0 && returnedType === "SB" ? returned : 0;
+        const restockReturned = returnReason === "return" && returned > 0;
+        const jbReturned = restockReturned && returnedType === "JB" ? returned : 0;
+        const sbReturned = restockReturned && returnedType === "SB" ? returned : 0;
         const newRemainingJb = Math.max(0, (shipment.remaining_jb ?? 0) - jbOut + jbReturned);
         const newRemainingSb = Math.max(0, (shipment.remaining_sb ?? 0) - sbOut + sbReturned);
         await supabase.from("shipments").update({
@@ -550,12 +554,12 @@ export async function addLedgerEntry(shipmentId: string, entry: {
 export async function updateLedgerEntry(
     id: string,
     shipmentId: string,
-    oldEntry: { jb: number; sb: number; bags_returned: number; bag_returned_type: string | null },
+    oldEntry: { jb: number; sb: number; bags_returned: number; bag_returned_type: string | null; return_reason: string | null },
     updates: Partial<{
         date: string; po_number: string; dr_number: string; client_name: string;
         driver_name: string; plate_number: string; destination: string; service_type: string;
         jb: number; sb: number; payment_method: string; check_number: string; amount: number;
-        bags_returned: number; bag_returned_type: string; notes: string;
+        bags_returned: number; bag_returned_type: string; return_reason: string; notes: string;
     }>
 ) {
     const { supabase, userId } = await requireAdmin();
@@ -563,16 +567,21 @@ export async function updateLedgerEntry(
     if (error) throw new Error(error.message);
 
     // Recalculate stock delta: reverse old, apply new
+    // Only 'return' reason affects stock; 'waste'/'damage' are write-offs
+    const wasRestockable = oldEntry.return_reason === "return" || !oldEntry.return_reason;
+    const newReturnReason = updates.return_reason ?? oldEntry.return_reason ?? "return";
+    const isRestockable = newReturnReason === "return";
+
     const { data: shipment } = await supabase.from("shipments").select("remaining_jb, remaining_sb").eq("id", shipmentId).single();
     if (shipment) {
-        const oldJbReturned = oldEntry.bags_returned > 0 && oldEntry.bag_returned_type === "JB" ? oldEntry.bags_returned : 0;
-        const oldSbReturned = oldEntry.bags_returned > 0 && oldEntry.bag_returned_type === "SB" ? oldEntry.bags_returned : 0;
+        const oldJbReturned = wasRestockable && oldEntry.bags_returned > 0 && oldEntry.bag_returned_type === "JB" ? oldEntry.bags_returned : 0;
+        const oldSbReturned = wasRestockable && oldEntry.bags_returned > 0 && oldEntry.bag_returned_type === "SB" ? oldEntry.bags_returned : 0;
         const newJbOut = updates.jb ?? oldEntry.jb;
         const newSbOut = updates.sb ?? oldEntry.sb;
         const newReturned = updates.bags_returned ?? oldEntry.bags_returned;
         const newReturnedType = updates.bag_returned_type ?? oldEntry.bag_returned_type;
-        const newJbReturned = newReturned > 0 && newReturnedType === "JB" ? newReturned : 0;
-        const newSbReturned = newReturned > 0 && newReturnedType === "SB" ? newReturned : 0;
+        const newJbReturned = isRestockable && newReturned > 0 && newReturnedType === "JB" ? newReturned : 0;
+        const newSbReturned = isRestockable && newReturned > 0 && newReturnedType === "SB" ? newReturned : 0;
 
         // Reverse old effect, apply new effect
         const correctedJb = (shipment.remaining_jb ?? 0)
@@ -760,9 +769,18 @@ export async function generateDailyReportData(date: string) {
     
     let returned_jb = 0;
     let returned_sb = 0;
+    let waste_jb = 0;
+    let waste_sb = 0;
     ledger?.forEach(l => {
-        if (l.bags_returned && l.bag_returned_type === "JB") returned_jb += l.bags_returned;
-        if (l.bags_returned && l.bag_returned_type === "SB") returned_sb += l.bags_returned;
+        const isWaste = l.return_reason === "waste" || l.return_reason === "damage";
+        if (l.bags_returned && l.bag_returned_type === "JB") {
+            if (isWaste) waste_jb += l.bags_returned;
+            else returned_jb += l.bags_returned;
+        }
+        if (l.bags_returned && l.bag_returned_type === "SB") {
+            if (isWaste) waste_sb += l.bags_returned;
+            else returned_sb += l.bags_returned;
+        }
     });
 
     // 4. Get today's dispatches for Module 2
@@ -802,7 +820,7 @@ export async function generateDailyReportData(date: string) {
         received_jb, received_sb,
         dispatched_jb, dispatched_sb,
         returned_jb, returned_sb,
-        waste_jb: 0, waste_sb: 0,
+        waste_jb, waste_sb,
         dispatches,
         balances
     };

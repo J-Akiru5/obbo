@@ -100,6 +100,7 @@ export interface ShipmentLedgerEntry {
     amount: number | null;
     bags_returned: number;
     bag_returned_type: BagType | null;
+    return_reason: string | null;
     notes: string | null;
     created_at: string;
     updated_at: string;
