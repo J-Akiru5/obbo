@@ -23,6 +23,7 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "https://obbo-imanage.vercel.app"),
   title: "OBBO iManage — Digitizing Cement Distribution",
   description:
     "Cloud-based ordering, inventory, and sales solution for cement distribution. Real-time tracking, secure ordering, transparent delivery management.",

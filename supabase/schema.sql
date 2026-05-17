@@ -154,6 +154,8 @@ create table if not exists public.shipment_ledger (
   amount            numeric(14, 2),
   bags_returned     integer not null default 0,
   bag_returned_type text check (bag_returned_type in ('JB', 'SB')),
+  return_reason     text not null default 'return' check (return_reason in ('return', 'waste', 'damage')),
+  client_reason     text,
   notes             text,
   created_at        timestamptz not null default now(),
   updated_at        timestamptz not null default now()
@@ -167,6 +169,10 @@ alter table public.shipment_ledger add column if not exists payment_method    te
 alter table public.shipment_ledger add column if not exists check_number      text;
 alter table public.shipment_ledger add column if not exists amount            numeric(14, 2);
 alter table public.shipment_ledger add column if not exists bag_returned_type text;
+alter table public.shipment_ledger add column if not exists return_reason     text not null default 'return';
+alter table public.shipment_ledger drop constraint if exists shipment_ledger_return_reason_check;
+alter table public.shipment_ledger add constraint shipment_ledger_return_reason_check check (return_reason in ('return', 'waste', 'damage'));
+alter table public.shipment_ledger add column if not exists client_reason     text;
 
 
 -- ── DELIVERY RECEIPTS ────────────────────────────────────────
@@ -359,6 +365,19 @@ create table if not exists public.activity_log (
   created_at  timestamptz not null default now()
 );
 
+-- ── ORDER RETURNS ─────────────────────────────────────────────
+create table if not exists public.order_returns (
+  id          uuid primary key default gen_random_uuid(),
+  order_id    uuid not null references public.orders(id) on delete cascade,
+  client_id   uuid not null references public.profiles(id),
+  jb_qty      integer not null default 0,
+  sb_qty      integer not null default 0,
+  reason      text not null default '',
+  status      text not null default 'pending' check (status in ('pending', 'processed')),
+  created_at  timestamptz not null default now(),
+  updated_at  timestamptz not null default now()
+);
+
 -- ── NOTIFICATIONS ───────────────────────────────────────────
 create table if not exists public.notifications (
   id          uuid primary key default gen_random_uuid(),
@@ -383,6 +402,7 @@ alter table public.order_items       enable row level security;
 alter table public.customer_balances enable row level security;
 alter table public.purchase_orders   enable row level security;
 alter table public.warehouse_reports enable row level security;
+alter table public.order_returns     enable row level security;
 alter table public.admin_settings    enable row level security;
 alter table public.activity_log      enable row level security;
 alter table public.notifications     enable row level security;
@@ -475,6 +495,16 @@ create policy "purchase_orders: admin all" on public.purchase_orders for all usi
 -- warehouse_reports
 drop policy if exists "warehouse_reports: admin all" on public.warehouse_reports;
 create policy "warehouse_reports: admin all" on public.warehouse_reports for all using (public.is_admin());
+
+-- order_returns
+drop policy if exists "order_returns: client own" on public.order_returns;
+drop policy if exists "order_returns: admin all" on public.order_returns;
+create policy "order_returns: client own"
+  on public.order_returns for select using (client_id = auth.uid());
+create policy "order_returns: client insert own"
+  on public.order_returns for insert with check (client_id = auth.uid());
+create policy "order_returns: admin all"
+  on public.order_returns for all using (public.is_admin());
 
 -- admin_settings
 drop policy if exists "admin_settings: admin all" on public.admin_settings;

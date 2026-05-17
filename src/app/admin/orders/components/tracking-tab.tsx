@@ -186,7 +186,7 @@ export function TrackingTab({ orders, onUpdateTracking, loading }: {
                                         <Input id="sb-returned" type="number" min="0" value={sbReturned || ""} placeholder="0" onChange={(e) => setSbReturned(parseInt(e.target.value) || 0)} />
                                     </div>
                                 </div>
-                                <p className="text-xs text-primary/70">These will be added back to the warehouse physical count in reports.</p>
+                                <p className="text-xs text-primary/70">Automatically creates a shipment ledger entry — bags will be added back to warehouse physical stock and reflected in reports.</p>
                             </div>
                         )}
 

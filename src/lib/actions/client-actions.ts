@@ -315,6 +315,39 @@ export async function submitPaymentDetails(orderId: string, paymentMethod: strin
     return { success: true };
 }
 
+export async function submitOrderReturn(orderId: string, jbQty: number, sbQty: number, reason: string) {
+    const { supabase, user } = await requireClient();
+    if (jbQty <= 0 && sbQty <= 0) throw new Error("Please enter at least one bag quantity to return.");
+
+    const { data: order } = await supabase.from("orders").select("id, po_number, status").eq("id", orderId).eq("client_id", user.id).single();
+    if (!order) throw new Error("Order not found or not yours.");
+    if (order.status !== "dispatched" && order.status !== "completed") {
+        throw new Error("Returns can only be requested for dispatched or completed orders.");
+    }
+
+    const { error } = await supabase.from("order_returns").insert({
+        order_id: orderId,
+        client_id: user.id,
+        jb_qty: jbQty,
+        sb_qty: sbQty,
+        reason: reason.trim(),
+        status: "pending",
+    });
+    if (error) throw new Error(error.message);
+
+    // Notify warehouse manager
+    await createRoleNotification({
+        targetRole: "warehouse_manager",
+        title: "Customer Return Request",
+        message: `Return request for PO ${order.po_number || orderId.slice(0, 8).toUpperCase()}: ${jbQty} JB / ${sbQty} SB. Reason: ${reason.trim().slice(0, 80)}`,
+        href: "/admin/inventory?tab=returns",
+        severity: "warning"
+    });
+
+    revalidatePath("/client/orders");
+    return { success: true };
+}
+
 // ═══════════════════════════════════════════════════════════════
 // LEDGER / BALANCES
 // ═══════════════════════════════════════════════════════════════
