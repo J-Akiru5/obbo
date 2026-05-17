@@ -107,8 +107,8 @@ export function DrListTab({
                 await createDeliveryReceipt({
                     dr_number: drNumber, shipment_id: shipmentId, client_name: clientName,
                     po_number: poNumber, jb: jbQty, sb: sbQty, driver, plate_number: plateNumber,
-                    shipping_fee: shippingFee,
-                    ...(drImageUrl ? { dr_image_url: drImageUrl } as any : {}),
+                    shipping_fee: shippingFee, destination: destination || undefined,
+                    ...(drImageUrl ? { dr_image_url: drImageUrl } : {}),
                 });
                 toast.success("DR created and ledger updated");
             }
@@ -188,6 +188,7 @@ export function DrListTab({
                                     <TableHead>DR #</TableHead>
                                     <TableHead>Client Name</TableHead>
                                     <TableHead>PO# Link</TableHead>
+                                    <TableHead>Order</TableHead>
                                     <TableHead>Driver Name</TableHead>
                                     <TableHead>Plate #</TableHead>
                                     <TableHead className="text-right">Total Bags</TableHead>
@@ -196,7 +197,7 @@ export function DrListTab({
                             </TableHeader>
                             <TableBody>
                                 {filtered.length === 0 ? (
-                                    <TableRow><TableCell colSpan={9} className="text-center py-6 text-muted-foreground">No delivery receipts found.</TableCell></TableRow>
+                                    <TableRow><TableCell colSpan={10} className="text-center py-6 text-muted-foreground">No delivery receipts found.</TableCell></TableRow>
                                 ) : filtered.map(dr => (
                                     <TableRow key={dr.id} className={dr.order_id ? "bg-primary/5" : ""}>
                                         <TableCell>
@@ -228,6 +229,16 @@ export function DrListTab({
                                                 <Badge variant="outline" className="text-xs font-mono cursor-default">{dr.po_number}</Badge>
                                             ) : (
                                                 <span className="text-xs text-muted-foreground">—</span>
+                                            )}
+                                        </TableCell>
+                                        <TableCell className="text-sm">
+                                            {dr.order ? (
+                                                <div className="flex items-center gap-1.5">
+                                                    <Badge variant="outline" className="text-[10px] capitalize bg-primary/5 border-primary/20">{dr.order.status}</Badge>
+                                                    <span className="text-[10px] text-muted-foreground font-mono">{dr.order.id.slice(0, 8)}</span>
+                                                </div>
+                                            ) : (
+                                                <span className="text-muted-foreground text-xs">—</span>
                                             )}
                                         </TableCell>
                                         <TableCell className="text-sm">{dr.driver || "—"}</TableCell>
@@ -295,6 +306,16 @@ export function DrListTab({
                                                 <Badge variant="outline" className="text-[10px] font-mono">{dr.po_number || "NONE"}</Badge>
                                             </div>
                                         </div>
+
+                                        {dr.order && (
+                                            <div className="flex items-center justify-between text-[10px]">
+                                                <span className="text-muted-foreground uppercase font-bold">Order</span>
+                                                <div className="flex items-center gap-1">
+                                                    <Badge variant="outline" className="text-[9px] capitalize bg-primary/5 border-primary/20">{dr.order.status}</Badge>
+                                                    <span className="text-muted-foreground font-mono">{dr.order.id.slice(0, 8)}</span>
+                                                </div>
+                                            </div>
+                                        )}
 
                                         <div className="grid grid-cols-2 gap-2 py-2 border-y border-border">
                                             <div>

@@ -129,6 +129,12 @@ export interface DeliveryReceipt {
     destination: string | null;
     order_id: string | null;
     created_at: string;
+    order?: {
+        id: string;
+        status: string;
+        po_number: string | null;
+        dr_number: string | null;
+    } | null;
 }
 
 export interface Order {
@@ -218,6 +224,12 @@ export interface PurchaseOrder {
     photo_url: string | null;
     created_at: string;
     updated_at: string;
+    order?: {
+        id: string;
+        status: string;
+        po_number: string | null;
+        dr_number: string | null;
+    } | null;
 }
 
 export interface OrderReturn {

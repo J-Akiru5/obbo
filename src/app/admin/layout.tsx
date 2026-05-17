@@ -255,41 +255,27 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) return;
 
-            // Fetch last 20 notifications — Role Aware
-            const query = supabase
+            // Fetch last 20 notifications — by user_id only
+            const { data: notifs } = await supabase
                 .from("notifications")
                 .select("*")
+                .eq("user_id", user.id)
                 .order("created_at", { ascending: false })
                 .limit(20);
-
-            if (adminRole) {
-                query.or(`user_id.eq.${user.id},target_role.eq.${adminRole}`);
-            } else {
-                query.eq("user_id", user.id);
-            }
-
-            const { data: notifs } = await query;
             
-            // Fetch TOTAL unread count — Role Aware
-            const unreadQuery = supabase
+            // Fetch TOTAL unread count — by user_id only
+            const { count: unread } = await supabase
                 .from("notifications")
                 .select("*", { count: "exact", head: true })
+                .eq("user_id", user.id)
                 .eq("is_read", false);
-
-            if (adminRole) {
-                unreadQuery.or(`user_id.eq.${user.id},target_role.eq.${adminRole}`);
-            } else {
-                unreadQuery.eq("user_id", user.id);
-            }
-
-            const { count: unread } = await unreadQuery;
 
             setNotifications(notifs ?? []);
             setUnreadCount(unread ?? 0);
         } catch (e) {
             console.error("Error loading notifications:", e);
         }
-    }, [adminRole]);
+    }, []);
     const navItems = adminRole === "admin"
         ? ADMIN_NAV_ITEMS
         : adminRole === "warehouse_manager"
@@ -405,15 +391,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) return;
 
-            const query = supabase.from("notifications").update({ is_read: true }).eq("is_read", false);
-            
-            if (adminRole) {
-                query.or(`user_id.eq.${user.id},target_role.eq.${adminRole}`);
-            } else {
-                query.eq("user_id", user.id);
-            }
-
-            await query;
+            await supabase.from("notifications").update({ is_read: true }).eq("user_id", user.id).eq("is_read", false);
             setUnreadCount(0);
             setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
         } catch {

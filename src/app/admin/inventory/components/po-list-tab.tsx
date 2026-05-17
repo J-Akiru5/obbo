@@ -239,6 +239,7 @@ export function PoListTab({ purchaseOrders, loading, onReload }: { purchaseOrder
                                     <TableHead>Service</TableHead>
                                     <TableHead className="text-right">Quantity</TableHead>
                                     <TableHead>Type</TableHead>
+                                    <TableHead>Order</TableHead>
                                     <TableHead>Check No.</TableHead>
                                     <TableHead>Cash</TableHead>
                                     <TableHead>Image</TableHead>
@@ -247,7 +248,7 @@ export function PoListTab({ purchaseOrders, loading, onReload }: { purchaseOrder
                             </TableHeader>
                             <TableBody>
                                 {filtered.length === 0 ? (
-                                    <TableRow><TableCell colSpan={10} className="text-center py-6 text-muted-foreground">No purchase orders found.</TableCell></TableRow>
+                                    <TableRow><TableCell colSpan={11} className="text-center py-6 text-muted-foreground">No purchase orders found.</TableCell></TableRow>
                                 ) : filtered.map(po => (
                                     <TableRow key={po.id} className={po.order_id ? "bg-primary/5" : ""}>
                                         <TableCell className="text-sm whitespace-nowrap">{new Date(po.date).toLocaleDateString()}</TableCell>
@@ -267,6 +268,16 @@ export function PoListTab({ purchaseOrders, loading, onReload }: { purchaseOrder
                                         <TableCell className="text-right font-bold text-sm">{po.jb + po.sb}</TableCell>
                                         <TableCell className="text-sm">
                                             <Badge variant="outline" className="font-mono text-[10px]">{po.jb > 0 ? "JB" : "SB"}</Badge>
+                                        </TableCell>
+                                        <TableCell className="text-sm">
+                                            {po.order ? (
+                                                <div className="flex items-center gap-1.5">
+                                                    <Badge variant="outline" className="text-[10px] capitalize bg-primary/5 border-primary/20">{po.order.status}</Badge>
+                                                    <span className="text-[10px] text-muted-foreground font-mono">{po.order.id.slice(0, 8)}</span>
+                                                </div>
+                                            ) : (
+                                                <span className="text-muted-foreground text-xs">—</span>
+                                            )}
                                         </TableCell>
                                         <TableCell className="text-sm">
                                             {po.check_number ? (
@@ -367,6 +378,15 @@ export function PoListTab({ purchaseOrders, loading, onReload }: { purchaseOrder
                                         </div>
                                     </div>
 
+                                    {po.order && (
+                                        <div className="flex items-center justify-between py-1.5 border-b border-border/50">
+                                            <span className="text-[9px] text-muted-foreground uppercase font-bold">Order</span>
+                                            <div className="flex items-center gap-1.5">
+                                                <Badge variant="outline" className="text-[9px] capitalize bg-primary/5 border-primary/20">{po.order.status}</Badge>
+                                                <span className="text-[9px] text-muted-foreground font-mono">{po.order.id.slice(0, 8)}</span>
+                                            </div>
+                                        </div>
+                                    )}
                                     <div className="flex items-center justify-between">
                                         <div className="text-[10px]">
                                             {po.check_number ? (

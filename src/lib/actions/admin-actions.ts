@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import { generateGlobalNextPoNumber } from "./po-utils";
 import { createRoleNotification, createUserNotification } from "./notification-actions";
-import type { WarehouseReport } from "@/lib/types/database";
+import type { WarehouseReport, OrderSource, ServiceType, PaymentMethod, OrderStatus, OrderType } from "@/lib/types/database";
 
 // ─── Helper: ensure caller is admin or warehouse manager ─────
 async function requireAdmin() {
@@ -704,13 +704,116 @@ export async function updateLedgerEntry(
     return { success: true };
 }
 
+// ─── Helper: create order record for client portal from manual PO/DR ──
+async function createOrderForClientPortal(
+    supabase: Awaited<ReturnType<typeof createClient>>,
+    params: {
+        clientId: string;
+        poNumber: string;
+        jbQty: number;
+        sbQty: number;
+        source: OrderSource;
+        serviceType: ServiceType;
+        checkNumber: string | null;
+        checkAmount: number | null;
+        cashAmount: number | null;
+        photoUrl: string | null;
+        status: OrderStatus;
+        drNumber?: string | null;
+        drImageUrl?: string | null;
+        driverName?: string | null;
+        plateNumber?: string | null;
+        shipmentId?: string | null;
+        shippingFee?: number;
+    }
+) {
+    const { data: products } = await supabase
+        .from("products")
+        .select("*")
+        .eq("is_active", true)
+        .in("bag_type", ["JB", "SB"]);
+
+    const jbProduct = products?.find(p => p.bag_type === "JB");
+    const sbProduct = products?.find(p => p.bag_type === "SB");
+
+    const paymentMethod: PaymentMethod =
+        params.checkNumber && params.checkAmount && params.checkAmount > 0 ? "check" : "cash";
+
+    let totalAmount = (params.checkAmount || 0) + (params.cashAmount || 0);
+    if (totalAmount === 0 && params.jbQty + params.sbQty > 0) {
+        const jbPrice = params.source === "port"
+            ? (jbProduct?.price_port || jbProduct?.price_per_bag || 0)
+            : (jbProduct?.price_warehouse || jbProduct?.price_per_bag || 0);
+        const sbPrice = params.source === "port"
+            ? (sbProduct?.price_port || sbProduct?.price_per_bag || 0)
+            : (sbProduct?.price_warehouse || sbProduct?.price_per_bag || 0);
+        totalAmount = (params.jbQty * jbPrice) + (params.sbQty * sbPrice);
+    }
+
+    const { data: orderData, error: orderError } = await supabase
+        .from("orders")
+        .insert({
+            client_id: params.clientId,
+            status: params.status,
+            total_amount: totalAmount,
+            payment_method: paymentMethod,
+            po_number: params.poNumber,
+            po_image_url: params.photoUrl,
+            source: params.source,
+            service_type: params.serviceType,
+            check_number: params.checkNumber || null,
+            dr_number: params.drNumber || null,
+            dr_image_url: params.drImageUrl || null,
+            driver_name: params.driverName || null,
+            plate_number: params.plateNumber || null,
+            shipment_id: params.shipmentId || null,
+            shipping_fee: params.shippingFee || 0,
+            tracking_status: params.status === "dispatched" ? "pending_dispatch" : "pending_dispatch",
+            order_type: "new",
+        })
+        .select()
+        .single();
+
+    if (orderError || !orderData) {
+        throw new Error(orderError?.message || "Failed to create order");
+    }
+
+    const isDispatched = params.status === "dispatched";
+    const orderItems: any[] = [];
+    if (params.jbQty > 0 && jbProduct) {
+        orderItems.push({
+            order_id: orderData.id,
+            product_id: jbProduct.id,
+            bag_type: "JB",
+            requested_qty: params.jbQty,
+            approved_qty: params.jbQty,
+            dispatched_qty: isDispatched ? params.jbQty : 0,
+        });
+    }
+    if (params.sbQty > 0 && sbProduct) {
+        orderItems.push({
+            order_id: orderData.id,
+            product_id: sbProduct.id,
+            bag_type: "SB",
+            requested_qty: params.sbQty,
+            approved_qty: params.sbQty,
+            dispatched_qty: isDispatched ? params.sbQty : 0,
+        });
+    }
+    if (orderItems.length > 0) {
+        await supabase.from("order_items").insert(orderItems);
+    }
+
+    return orderData;
+}
+
 // ═══════════════════════════════════════════════════════════════
 // PO LIST
 // ═══════════════════════════════════════════════════════════════
 
 export async function fetchPurchaseOrders() {
     const { supabase } = await requireAdmin();
-    const { data } = await supabase.from("purchase_orders").select("*").order("date", { ascending: false });
+    const { data } = await supabase.from("purchase_orders").select("*, order:orders(id, status, po_number, dr_number)").order("date", { ascending: false });
     return data ?? [];
 }
 
@@ -734,8 +837,8 @@ export async function createPurchaseOrder(po: {
     }
 
     // Map quantity and bag_type to legacy jb/sb columns
-    const jb = po.jb ?? (po.bag_type === "JB" ? po.quantity : 0);
-    const sb = po.sb ?? (po.bag_type === "SB" ? po.quantity : 0);
+    const jb = po.jb ?? (po.bag_type === "JB" ? (po.quantity ?? 0) : 0);
+    const sb = po.sb ?? (po.bag_type === "SB" ? (po.quantity ?? 0) : 0);
 
     const { data, error } = await supabase.from("purchase_orders").insert({
         ...po,
@@ -744,6 +847,44 @@ export async function createPurchaseOrder(po: {
         po_number: finalPoNumber
     }).select().single();
     if (error) throw new Error(error.message);
+
+    // If a verified client is selected, auto-create an order so it reflects in the client portal
+    if (data.client_id) {
+        try {
+            const orderData = await createOrderForClientPortal(supabase, {
+                clientId: data.client_id,
+                poNumber: finalPoNumber,
+                jbQty: jb,
+                sbQty: sb,
+                source: (po.source || "warehouse") as OrderSource,
+                serviceType: (po.service_type || "pickup") as ServiceType,
+                checkNumber: po.check_number ?? null,
+                checkAmount: po.check_amount ?? null,
+                cashAmount: po.cash_amount ?? null,
+                photoUrl: po.photo_url ?? null,
+                status: "approved",
+            });
+
+            await supabase.from("purchase_orders")
+                .update({ order_id: orderData.id })
+                .eq("id", data.id);
+            data.order_id = orderData.id;
+
+            await createUserNotification({
+                userId: data.client_id,
+                title: "Order Created",
+                message: `Order PO-${finalPoNumber} (${jb} JB / ${sb} SB) has been created for your account by the warehouse.`,
+                href: "/client/orders",
+                severity: "success",
+            });
+
+            revalidatePath("/client/orders");
+            revalidatePath("/client/dashboard");
+        } catch (e) {
+            console.error("Failed to create client portal order from manual PO:", e);
+        }
+    }
+
     await logActivity(supabase, userId, "po_created", "purchase_order", data.id, po);
     return data;
 }
@@ -770,15 +911,15 @@ export async function updatePurchaseOrder(id: string, updates: any) {
 
 export async function fetchDeliveryReceipts() {
     const { supabase } = await requireAdmin();
-    const { data } = await supabase.from("delivery_receipts").select("*, shipment:shipments(batch_name)").order("received_date", { ascending: false });
+    const { data } = await supabase.from("delivery_receipts").select("*, shipment:shipments(batch_name), order:orders(id, status, po_number, dr_number)").order("received_date", { ascending: false });
     return data ?? [];
 }
 
 export async function createDeliveryReceipt(dr: {
-    shipment_id: string; dr_number: string; quantity: number; bag_type: string;
-    received_date?: string; po_number?: string; client_name?: string; jb?: number;
-    sb?: number; driver?: string; plate_number?: string; shipping_fee?: number;
-    destination?: string;
+    shipment_id: string; dr_number: string; quantity?: number; bag_type?: string;
+    received_date?: string; po_number?: string; client_name?: string; client_id?: string | null;
+    jb?: number; sb?: number; driver?: string; plate_number?: string; shipping_fee?: number;
+    destination?: string; dr_image_url?: string;
 }) {
     const { supabase, userId } = await requireAdmin();
 
@@ -790,19 +931,21 @@ export async function createDeliveryReceipt(dr: {
     }
 
     const clientName = dr.client_name || poData?.client_name || "Unknown";
+    const effectiveClientId = dr.client_id || poData?.client_id || null;
 
     // Map quantity and bag_type to legacy jb/sb columns
-    const jb = dr.jb ?? (dr.bag_type === "JB" ? dr.quantity : 0);
-    const sb = dr.sb ?? (dr.bag_type === "SB" ? dr.quantity : 0);
+    const jb = dr.jb ?? (dr.bag_type === "JB" ? (dr.quantity ?? 0) : 0);
+    const sb = dr.sb ?? (dr.bag_type === "SB" ? (dr.quantity ?? 0) : 0);
 
     // 2. Create the DR record
     const { data, error } = await supabase.from("delivery_receipts").insert({
         ...dr,
         client_name: clientName,
+        client_id: effectiveClientId,
         jb,
         sb,
-        quantity: dr.quantity,
-        bag_type: dr.bag_type,
+        quantity: dr.quantity ?? jb + sb,
+        bag_type: dr.bag_type ?? (jb > 0 ? "JB" : "SB"),
         received_date: dr.received_date ?? new Date().toISOString().split("T")[0],
     }).select().single();
     if (error) throw new Error(error.message);
@@ -813,7 +956,7 @@ export async function createDeliveryReceipt(dr: {
         po_number: dr.po_number,
         date: dr.received_date,
         client_name: clientName,
-        destination: dr.destination, // DR destination
+        destination: dr.destination,
         service_type: poData?.service_type || "pickup",
         jb,
         sb,
@@ -823,6 +966,100 @@ export async function createDeliveryReceipt(dr: {
         check_number: poData?.check_number,
         amount: poData ? (Number(poData.check_amount) || Number(poData.cash_amount) || undefined) : undefined,
     });
+
+    // 4. If linked PO has a verified client, sync with client portal
+    if (effectiveClientId) {
+        try {
+            if (poData?.order_id) {
+                // Update existing order (created during manual PO step)
+                await supabase.from("orders").update({
+                    status: "dispatched",
+                    tracking_status: "pending_dispatch",
+                    dr_number: dr.dr_number,
+                    dr_image_url: dr.dr_image_url || null,
+                    driver_name: dr.driver || null,
+                    plate_number: dr.plate_number || null,
+                    shipment_id: dr.shipment_id,
+                    shipping_fee: dr.shipping_fee || 0,
+                    updated_at: new Date().toISOString(),
+                }).eq("id", poData.order_id);
+
+                // Update dispatched_qty on order items
+                const { data: orderItems } = await supabase
+                    .from("order_items")
+                    .select("id, bag_type")
+                    .eq("order_id", poData.order_id);
+                if (orderItems) {
+                    for (const item of orderItems) {
+                        const dispatchedQty = item.bag_type === "JB" ? jb : sb;
+                        if (dispatchedQty > 0) {
+                            await supabase.from("order_items")
+                                .update({ dispatched_qty: dispatchedQty })
+                                .eq("id", item.id);
+                        }
+                    }
+                }
+
+                await supabase.from("delivery_receipts")
+                    .update({ order_id: poData.order_id })
+                    .eq("id", data.id);
+                data.order_id = poData.order_id;
+
+                await createUserNotification({
+                    userId: effectiveClientId,
+                    title: "Order Dispatched",
+                    message: `Your order PO-${dr.po_number} has been dispatched. DR: ${dr.dr_number}.`,
+                    href: "/client/orders",
+                    severity: "success",
+                });
+            } else {
+                // No existing order - create one with dispatched status
+                const orderData = await createOrderForClientPortal(supabase, {
+                    clientId: effectiveClientId,
+                    poNumber: poData?.po_number || dr.po_number || "",
+                    jbQty: jb,
+                    sbQty: sb,
+                    source: (poData?.source || "warehouse") as OrderSource,
+                    serviceType: (poData?.service_type || "pickup") as ServiceType,
+                    checkNumber: poData?.check_number || null,
+                    checkAmount: poData?.check_amount || null,
+                    cashAmount: poData?.cash_amount || null,
+                    photoUrl: poData?.photo_url || null,
+                    status: "dispatched",
+                    drNumber: dr.dr_number,
+                    drImageUrl: dr.dr_image_url || null,
+                    driverName: dr.driver || null,
+                    plateNumber: dr.plate_number || null,
+                    shipmentId: dr.shipment_id,
+                    shippingFee: dr.shipping_fee || 0,
+                });
+
+                // Link PO to order
+                if (poData?.id) {
+                    await supabase.from("purchase_orders")
+                        .update({ order_id: orderData.id })
+                        .eq("id", poData.id);
+                }
+                await supabase.from("delivery_receipts")
+                    .update({ order_id: orderData.id })
+                    .eq("id", data.id);
+                data.order_id = orderData.id;
+
+                await createUserNotification({
+                    userId: effectiveClientId,
+                    title: "Order Created & Dispatched",
+                    message: `Order PO-${dr.po_number} (DR: ${dr.dr_number}) has been created and dispatched for your account by the warehouse.`,
+                    href: "/client/orders",
+                    severity: "success",
+                });
+            }
+
+            revalidatePath("/client/orders");
+            revalidatePath("/client/dashboard");
+        } catch (e) {
+            console.error("Failed to sync client portal order from manual DR:", e);
+        }
+    }
 
     await logActivity(supabase, userId, "dr_created", "delivery_receipt", data.id, dr);
     return data;
