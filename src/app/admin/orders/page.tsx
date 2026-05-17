@@ -108,9 +108,9 @@ function OrdersContent() {
         }
     };
 
-    const handleTrackingUpdate = async (orderId: string, status: string, jbReturned?: number, sbReturned?: number) => {
+    const handleTrackingUpdate = async (orderId: string, status: string, jbReturned?: number, sbReturned?: number, reason?: string) => {
         try {
-            await updateTrackingStatus(orderId, status, jbReturned, sbReturned);
+            await updateTrackingStatus(orderId, status, jbReturned, sbReturned, reason);
             toast.success("Tracking status updated.");
             loadData();
         } catch (e: any) {

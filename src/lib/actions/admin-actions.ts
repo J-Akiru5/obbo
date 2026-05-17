@@ -478,21 +478,24 @@ export async function dispatchOrder(
     return { success: true };
 }
 
-export async function updateTrackingStatus(orderId: string, trackingStatus: string, bagsReturnedJb?: number, bagsReturnedSb?: number) {
+export async function updateTrackingStatus(orderId: string, trackingStatus: string, bagsReturnedJb?: number, bagsReturnedSb?: number, returnReason?: string) {
     const { supabase, userId } = await requireAdmin();
     const updates: Record<string, unknown> = { tracking_status: trackingStatus, updated_at: new Date().toISOString() };
-    if (trackingStatus === "bags_returned") {
-        if (bagsReturnedJb !== undefined) updates.bags_returned_jb = bagsReturnedJb;
-        if (bagsReturnedSb !== undefined) updates.bags_returned_sb = bagsReturnedSb;
+    
+    const isReturn = trackingStatus === "bags_returned" || trackingStatus === "returned_good" || trackingStatus === "returned_waste";
+    
+    if (isReturn) {
+        if (bagsReturnedJb !== undefined) updates.bags_returned_jb = (updates.bags_returned_jb as number || 0) + bagsReturnedJb;
+        if (bagsReturnedSb !== undefined) updates.bags_returned_sb = (updates.bags_returned_sb as number || 0) + bagsReturnedSb;
     }
-    if (trackingStatus === "delivered" || trackingStatus === "bags_returned") {
+    if (trackingStatus === "delivered" || isReturn) {
         updates.status = "completed";
     }
     await supabase.from("orders").update(updates).eq("id", orderId);
     await logActivity(supabase, userId, "tracking_updated", "order", orderId, { trackingStatus });
 
     // If bags were returned, auto-create a shipment ledger entry so it reflects in stock and reports
-    if (trackingStatus === "bags_returned" && (bagsReturnedJb || bagsReturnedSb)) {
+    if (isReturn && (bagsReturnedJb || bagsReturnedSb)) {
         const { data: order } = await supabase.from("orders").select("shipment_id, po_number, dr_number, client_id").eq("id", orderId).single();
         if (order?.shipment_id) {
             let clientLabel = "Unknown";
@@ -500,6 +503,8 @@ export async function updateTrackingStatus(orderId: string, trackingStatus: stri
                 const { data: profile } = await supabase.from("profiles").select("full_name, company_name").eq("id", order.client_id).single();
                 clientLabel = profile?.company_name || profile?.full_name || "Unknown";
             }
+            // Determine return_reason based on status
+            const reason = trackingStatus === "returned_waste" ? "waste" : "return";
             await addLedgerEntry(order.shipment_id, {
                 date: new Date().toISOString().split("T")[0],
                 po_number: order.po_number,
@@ -509,7 +514,8 @@ export async function updateTrackingStatus(orderId: string, trackingStatus: stri
                 sb: 0,
                 bags_returned: (bagsReturnedJb || 0) + (bagsReturnedSb || 0),
                 bag_returned_type: bagsReturnedJb ? "JB" : "SB",
-                return_reason: "return",
+                return_reason: reason,
+                client_reason: returnReason || undefined,
             });
         }
     }

@@ -231,7 +231,7 @@ create table if not exists public.orders (
   plate_number         text,
   rejection_reason     text,
   tracking_status      text not null default 'pending_dispatch'
-                         check (tracking_status in ('pending_dispatch','in_transit','delivered','bags_returned')),
+                         check (tracking_status in ('pending_dispatch','in_transit','delivered','bags_returned','returned_good','returned_waste')),
   bags_returned_jb     integer not null default 0,
   bags_returned_sb     integer not null default 0,
   shipment_id          uuid references public.shipments(id) on delete set null,
