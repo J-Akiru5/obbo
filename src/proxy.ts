@@ -66,11 +66,10 @@ export async function proxy(request: NextRequest) {
             return NextResponse.redirect(new URL('/login', request.url));
         }
 
-        if (!role || !kycStatus) {
-            const profile = await getProfile();
-            role = profile?.role;
-            kycStatus = profile?.kyc_status;
-        }
+        // Always fetch fresh profile for kyc_status — JWT metadata can be stale
+        const profile = await getProfile();
+        role = profile?.role;
+        kycStatus = profile?.kyc_status;
 
         // Redirect admins away from client portal
         if (role === 'admin' || role === 'warehouse_manager') {
@@ -102,11 +101,9 @@ export async function proxy(request: NextRequest) {
 
     // ── Redirect logged-in users away from /login and /register
     if ((pathname === '/login' || pathname === '/register') && user) {
-        if (!role || !kycStatus) {
-            const profile = await getProfile();
-            role = profile?.role;
-            kycStatus = profile?.kyc_status;
-        }
+        const profile = await getProfile();
+        role = profile?.role;
+        kycStatus = profile?.kyc_status;
         if (role === 'admin' || role === 'warehouse_manager') {
             return NextResponse.redirect(new URL('/admin/dashboard', request.url));
         }
