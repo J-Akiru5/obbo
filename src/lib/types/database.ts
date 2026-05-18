@@ -87,6 +87,7 @@ export interface Shipment {
 export interface ShipmentLedgerEntry {
     id: string;
     shipment_id: string;
+    delivery_receipt_id: string | null;
     date: string;
     po_number: string | null;
     dr_number: string | null;

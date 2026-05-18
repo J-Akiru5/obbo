@@ -453,7 +453,7 @@ export async function dispatchOrder(
     }
 
     // ── AUTO-GENERATE DR RECORD ──────────────────────────────
-    const { error: drError } = await supabase.from("delivery_receipts").upsert({
+    const { data: drRecord, error: drError } = await supabase.from("delivery_receipts").upsert({
         dr_number: drNumber,
         shipment_id: shipmentId,
         client_name: clientName,
@@ -470,9 +470,17 @@ export async function dispatchOrder(
         dr_image_url: drImageUrl,
         destination: destination,
         order_id: orderId,
-    }, { onConflict: "dr_number" });
+    }, { onConflict: "dr_number" }).select().single();
 
     if (drError) throw new Error(`Failed to auto-generate DR record: ${drError.message}`);
+
+    // Link the ledger entry to the DR via FK
+    if (drRecord?.id) {
+        await supabase.from("shipment_ledger")
+            .update({ delivery_receipt_id: drRecord.id })
+            .eq("dr_number", drNumber)
+            .eq("shipment_id", shipmentId);
+    }
 
     await logActivity(supabase, userId, "order_dispatched", "order", orderId, {
         shipment: shipment.batch_name, dr: drNumber, jb: jbQty, sb: sbQty,
@@ -508,6 +516,8 @@ export async function updateTrackingStatus(orderId: string, trackingStatus: stri
             }
             // Determine return_reason based on status
             const reason = trackingStatus === "returned_waste" ? "waste" : "return";
+            const { data: drRecord } = await supabase.from("delivery_receipts")
+                .select("id").eq("dr_number", order.dr_number).maybeSingle();
             await addLedgerEntry(order.shipment_id, {
                 date: new Date().toISOString().split("T")[0],
                 po_number: order.po_number,
@@ -519,6 +529,7 @@ export async function updateTrackingStatus(orderId: string, trackingStatus: stri
                 bag_returned_type: bagsReturnedJb ? "JB" : "SB",
                 return_reason: reason,
                 client_reason: returnReason || undefined,
+                delivery_receipt_id: drRecord?.id || null,
             });
         }
     }
@@ -617,6 +628,7 @@ export async function addLedgerEntry(shipmentId: string, entry: {
     return_reason?: string;
     client_reason?: string;
     notes?: string;
+    delivery_receipt_id?: string | null;
 }) {
     const { supabase, userId } = await requireAdmin();
     const jbOut = entry.jb ?? 0;
@@ -965,6 +977,7 @@ export async function createDeliveryReceipt(dr: {
         payment_method: poData?.check_number ? "check" : (poData?.cash_amount ? "cash" : undefined),
         check_number: poData?.check_number,
         amount: poData ? (Number(poData.check_amount) || Number(poData.cash_amount) || undefined) : undefined,
+        delivery_receipt_id: data.id,
     });
 
     // 4. If linked PO has a verified client, sync with client portal
@@ -1068,14 +1081,124 @@ export async function createDeliveryReceipt(dr: {
 export async function updateDeliveryReceipt(id: string, updates: any) {
     const { supabase, userId } = await requireAdmin();
 
+    // Fetch existing DR for old values
+    const { data: oldDr } = await supabase.from("delivery_receipts").select("*").eq("id", id).single();
+    if (!oldDr) throw new Error("Delivery receipt not found");
+
     // Handle unified quantity mapping if provided
     if (updates.quantity !== undefined && updates.bag_type !== undefined) {
         updates.jb = updates.bag_type === "JB" ? updates.quantity : 0;
         updates.sb = updates.bag_type === "SB" ? updates.quantity : 0;
     }
 
+    const newJb = updates.jb ?? oldDr.jb;
+    const newSb = updates.sb ?? oldDr.sb;
+    const newDrNumber = updates.dr_number ?? oldDr.dr_number;
+    const newShipmentId = updates.shipment_id ?? oldDr.shipment_id;
+
+    // Update the DR record
     const { error } = await supabase.from("delivery_receipts").update(updates).eq("id", id);
     if (error) throw new Error(error.message);
+
+    // Sync with ledger entry if quantities changed or key fields changed
+    if (updates.jb !== undefined || updates.sb !== undefined || updates.dr_number !== undefined ||
+        updates.client_name !== undefined || updates.driver !== undefined || updates.plate_number !== undefined) {
+
+        // Find the corresponding ledger entry: prefer FK, fall back to dr_number + shipment_id
+        let { data: ledgerEntry } = await supabase
+            .from("shipment_ledger")
+            .select("*")
+            .eq("delivery_receipt_id", id)
+            .order("created_at", { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+        if (!ledgerEntry && oldDr.dr_number) {
+            const { data: fallback } = await supabase
+                .from("shipment_ledger")
+                .select("*")
+                .eq("dr_number", oldDr.dr_number)
+                .eq("shipment_id", oldDr.shipment_id)
+                .order("created_at", { ascending: false })
+                .limit(1)
+                .maybeSingle();
+            ledgerEntry = fallback;
+            // Backfill the FK for future lookups
+            if (fallback) {
+                await supabase.from("shipment_ledger")
+                    .update({ delivery_receipt_id: id })
+                    .eq("id", fallback.id);
+            }
+        }
+
+        if (ledgerEntry) {
+            // Reverse old stock deduction, apply new deduction
+            const { data: shipment } = await supabase
+                .from("shipments")
+                .select("remaining_jb, remaining_sb")
+                .eq("id", oldDr.shipment_id)
+                .single();
+
+            if (shipment) {
+                const correctedJb = Math.max(0, (shipment.remaining_jb ?? 0)
+                    + (oldDr.jb || 0)   // undo old deduction
+                    - newJb);            // apply new deduction
+                const correctedSb = Math.max(0, (shipment.remaining_sb ?? 0)
+                    + (oldDr.sb || 0)
+                    - newSb);
+
+                await supabase.from("shipments").update({
+                    remaining_jb: correctedJb,
+                    remaining_sb: correctedSb,
+                    good_stock: correctedJb + correctedSb,
+                }).eq("id", oldDr.shipment_id);
+            }
+
+            // If shipment changed, also need to deduct from new shipment
+            if (updates.shipment_id && updates.shipment_id !== oldDr.shipment_id) {
+                const { data: newShipment } = await supabase
+                    .from("shipments")
+                    .select("remaining_jb, remaining_sb")
+                    .eq("id", newShipmentId)
+                    .single();
+                if (newShipment) {
+                    const newRemJb = Math.max(0, (newShipment.remaining_jb ?? 0) - newJb);
+                    const newRemSb = Math.max(0, (newShipment.remaining_sb ?? 0) - newSb);
+                    await supabase.from("shipments").update({
+                        remaining_jb: newRemJb,
+                        remaining_sb: newRemSb,
+                        good_stock: newRemJb + newRemSb,
+                    }).eq("id", newShipmentId);
+                }
+            }
+
+            // Update the ledger entry
+            await supabase.from("shipment_ledger").update({
+                dr_number: newDrNumber,
+                shipment_id: newShipmentId,
+                jb: newJb,
+                sb: newSb,
+                client_name: updates.client_name ?? ledgerEntry.client_name,
+                driver_name: updates.driver ?? ledgerEntry.driver_name,
+                plate_number: updates.plate_number ?? ledgerEntry.plate_number,
+                date: updates.received_date ?? ledgerEntry.date,
+                updated_at: new Date().toISOString(),
+            }).eq("id", ledgerEntry.id);
+        } else if (updates.jb !== undefined || updates.sb !== undefined) {
+            // No existing ledger entry found but quantities changed — create one
+            await addLedgerEntry(newShipmentId, {
+                dr_number: newDrNumber,
+                client_name: updates.client_name ?? oldDr.client_name ?? "Unknown",
+                jb: newJb,
+                sb: newSb,
+                driver_name: updates.driver ?? oldDr.driver,
+                plate_number: updates.plate_number ?? oldDr.plate_number,
+                date: updates.received_date ?? oldDr.received_date,
+                delivery_receipt_id: id,
+            });
+        }
+    }
+
     await logActivity(supabase, userId, "dr_updated", "delivery_receipt", id, updates);
     return { success: true };
 }
@@ -1128,7 +1251,7 @@ export async function generateDailyReportData(date: string) {
     waste_jb += shipmentDamagedJb;
     waste_sb += shipmentDamagedSb;
 
-    // 4. Get today's dispatches for Module 2
+    // 4. Get today's dispatches for Module 2 from orders
     const { data: orders } = await supabase
         .from("orders")
         .select("*, client:profiles!orders_client_id_fkey(full_name, company_name), items:order_items(*)")
@@ -1146,6 +1269,23 @@ export async function generateDailyReportData(date: string) {
             jb, sb,
         };
     });
+
+    // 4b. Also include DRs from delivery_receipts not already covered by orders
+    const drNumbersInOrders = new Set(orders?.map(o => o.dr_number).filter(Boolean) || []);
+    const { data: drs } = await supabase
+        .from("delivery_receipts")
+        .select("*")
+        .eq("received_date", date);
+    for (const dr of (drs || [])) {
+        if (!dr.dr_number || drNumbersInOrders.has(dr.dr_number)) continue;
+        dispatches.push({
+            client: dr.client_name || "Walk-in",
+            dr: dr.dr_number,
+            service: dr.jb > 0 ? "JB" : "SB",
+            jb: dr.jb || 0,
+            sb: dr.sb || 0,
+        });
+    }
 
     // 5. Get pending balances for Module 3
     const { data: customerBalances } = await supabase

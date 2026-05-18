@@ -59,8 +59,12 @@ export function ReportsTab() {
     const loadReportData = async () => {
         setLoading(true);
         try {
+            const submitted = await checkReportSubmission(reportDate);
+            setIsSubmitted(submitted);
+
             const report = await fetchWarehouseReport(reportDate);
-            if (report) {
+
+            if (submitted && report) {
                 setPhysical({
                     yesterday_jb: report.yesterday_jb, yesterday_sb: report.yesterday_sb,
                     received_jb: report.received_jb, received_sb: report.received_sb,
@@ -69,45 +73,65 @@ export function ReportsTab() {
                     waste_jb: report.waste_jb, waste_sb: report.waste_sb,
                 });
             } else {
+                const generated = await generateDailyReportData(reportDate);
                 setPhysical({
-                    yesterday_jb: 0, yesterday_sb: 0, received_jb: 0, received_sb: 0,
-                    dispatched_jb: 0, dispatched_sb: 0, returned_jb: 0, returned_sb: 0,
-                    waste_jb: 0, waste_sb: 0,
+                    yesterday_jb: generated.yesterday_jb,
+                    yesterday_sb: generated.yesterday_sb,
+                    received_jb: generated.received_jb,
+                    received_sb: generated.received_sb,
+                    dispatched_jb: generated.dispatched_jb,
+                    dispatched_sb: generated.dispatched_sb,
+                    returned_jb: generated.returned_jb,
+                    returned_sb: generated.returned_sb,
+                    waste_jb: generated.waste_jb,
+                    waste_sb: generated.waste_sb,
                 });
+                if (generated.dispatches.length > 0) {
+                    setTodayDispatches(generated.dispatches);
+                }
+                if (generated.balances.length > 0) {
+                    setBalances(generated.balances.map((b: any) => {
+                        const randomId = Math.random().toString();
+                        return {
+                            id: randomId,
+                            client: { company_name: b.client, full_name: b.client } as Profile,
+                            product: { name: b.product } as Product,
+                            remaining_qty: b.qty,
+                            bag_type: b.bag_type,
+                            client_id: "",
+                            order_id: "",
+                            product_id: "",
+                            status: "pending",
+                            created_at: new Date().toISOString()
+                        } as CustomerBalance;
+                    }));
+                }
+                setIsAutoFilled(true);
             }
 
-            // Load today's dispatches for Module 2
-            const orders = await fetchOrders("dispatched") as Order[];
-            const completed = await fetchOrders("completed") as Order[];
-            const todayOrders = [...orders, ...completed].filter(o =>
-                o.updated_at.startsWith(reportDate) && (o.status === "dispatched" || o.status === "completed")
-            );
-            const dispatches = todayOrders.map(o => {
-                const jb = o.items.filter((i: OrderItem) => i.bag_type === "JB").reduce((s: number, i: OrderItem) => s + i.dispatched_qty, 0);
-                const sb = o.items.filter((i: OrderItem) => i.bag_type === "SB").reduce((s: number, i: OrderItem) => s + i.dispatched_qty, 0);
-                return {
-                    client: o.client?.company_name || o.client?.full_name || "Unknown",
-                    dr: o.dr_number,
-                    service: o.service_type,
-                    jb, sb,
-                };
-            });
-            setTodayDispatches(dispatches);
+            if (!submitted) {
+                // Load today's dispatches for Module 2
+                const orders = await fetchOrders("dispatched") as Order[];
+                const completed = await fetchOrders("completed") as Order[];
+                const todayOrders = [...orders, ...completed].filter(o =>
+                    o.updated_at.startsWith(reportDate) && (o.status === "dispatched" || o.status === "completed")
+                );
+                const dispatches = todayOrders.map(o => {
+                    const jb = o.items.filter((i: OrderItem) => i.bag_type === "JB").reduce((s: number, i: OrderItem) => s + i.dispatched_qty, 0);
+                    const sb = o.items.filter((i: OrderItem) => i.bag_type === "SB").reduce((s: number, i: OrderItem) => s + i.dispatched_qty, 0);
+                    return {
+                        client: o.client?.company_name || o.client?.full_name || "Unknown",
+                        dr: o.dr_number,
+                        service: o.service_type,
+                        jb, sb,
+                    };
+                });
+                setTodayDispatches(dispatches);
 
-            // Auto-fill dispatched from orders if not set
-            if (!report && dispatches.length > 0) {
-                const totalDispJb = dispatches.reduce((s, d) => s + d.jb, 0);
-                const totalDispSb = dispatches.reduce((s, d) => s + d.sb, 0);
-                setPhysical(p => ({ ...p, dispatched_jb: totalDispJb, dispatched_sb: totalDispSb }));
+                // Load balances for Module 3
+                const bals = await fetchCustomerBalances();
+                setBalances(bals as CustomerBalance[]);
             }
-
-            // Check if already submitted
-            const submitted = await checkReportSubmission(reportDate);
-            setIsSubmitted(submitted);
-
-            // Load balances for Module 3
-            const bals = await fetchCustomerBalances();
-            setBalances(bals as CustomerBalance[]);
         } catch (e) {
             console.error(e);
             toast.error("Failed to load report data");
