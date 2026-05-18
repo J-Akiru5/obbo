@@ -369,7 +369,7 @@ export async function fetchClientBalances() {
     const { supabase, user } = await requireClient();
     const { data } = await supabase
         .from("customer_balances")
-        .select("*, product:products(name, price_per_bag, bag_type), order:orders(po_number, created_at)")
+        .select("*, product:products(name, price_per_bag, bag_type), order:orders(po_number, po_image_url, created_at)")
         .eq("client_id", user.id)
         .order("created_at", { ascending: false });
     return data ?? [];
@@ -459,7 +459,6 @@ export async function submitRedeliveryRequest(balanceId: string, orderData: {
     const linkedPo = balance.order?.po_number || "";
     const effectivePoNumber = linkedPo;
     if (!effectivePoNumber) throw new Error("PO number is required for re-delivery.");
-    if (!orderData.po_image_url?.trim()) throw new Error("PO image is required for re-delivery.");
     if (orderData.service_type === "pickup") {
         if (!orderData.driver_name?.trim()) throw new Error("Driver name is required for pick-up orders.");
         if (!orderData.plate_number?.trim()) throw new Error("Plate number is required for pick-up orders.");
@@ -478,7 +477,7 @@ export async function submitRedeliveryRequest(balanceId: string, orderData: {
         total_amount: 0, // Re-delivery: bags already paid, only shipping fee (set by admin)
         payment_method: orderData.payment_method,
         po_number: effectivePoNumber,
-        po_image_url: orderData.po_image_url,
+        po_image_url: orderData.po_image_url?.trim() || null,
         source: orderData.source,
         service_type: orderData.service_type,
         driver_name: orderData.driver_name,

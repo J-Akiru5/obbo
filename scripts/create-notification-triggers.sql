@@ -33,6 +33,19 @@ ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS notification_preferences js
 -- ── 2. Enable Realtime for notifications table ───────────────
 -- Allows the client portal to receive live push updates
 -- when new notification rows are inserted for a user.
+do $$
+begin
+  if exists (
+    select 1 from pg_publication_rel pr
+    join pg_publication p on p.oid = pr.prpubid
+    join pg_class c on c.oid = pr.prrelid
+    join pg_namespace n on n.oid = c.relnamespace
+    where p.pubname = 'supabase_realtime' and c.relname = 'notifications' and n.nspname = 'public'
+  ) then
+    alter publication supabase_realtime drop table public.notifications;
+  end if;
+end $$;
+
 ALTER PUBLICATION supabase_realtime ADD TABLE public.notifications;
 
 -- ── 2. Notification trigger function ────────────────────────

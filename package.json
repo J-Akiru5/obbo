@@ -10,11 +10,16 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "admin:create": "node scripts/create-admin.mjs",
-    "seed:all": "node scripts/seed-mock-data.mjs && node scripts/seed-shipments.mjs && node scripts/seed-transactions.mjs"
+    "seed:all": "node scripts/seed-mock-data.mjs && node scripts/seed-shipments.mjs && node scripts/seed-transactions.mjs",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate:prod": "prisma migrate deploy",
+    "prisma:db:push": "prisma db push --no-erase",
+    "seed:historical": "node scripts/seed-historical-po-dr.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.4.1",
     "@hookform/resolvers": "^5.2.2",
+    "@prisma/client": "^7.8.0",
     "@serwist/next": "^9.5.11",
     "@serwist/precaching": "^9.5.11",
     "@serwist/sw": "^9.5.11",
@@ -54,6 +59,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.2.4",
     "jsdom": "^29.1.1",
+    "prisma": "^7.8.0",
     "tailwindcss": "^4",
     "typescript": "^5",
     "vitest": "^4.1.6"
