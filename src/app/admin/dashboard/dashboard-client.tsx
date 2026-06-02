@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import {
     ShoppingCart, Truck, Users, ArrowUpRight,
     Clock, CheckCircle2, AlertCircle, UserPlus, PackagePlus,
-    Package, AlertTriangle, ShieldAlert,
+    Package, AlertTriangle, ShieldAlert, TrendingUp, DollarSign,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
@@ -226,6 +226,59 @@ export default function DashboardClient({
                                 </div>
                                 <div className="space-y-1 mt-4">
                                     <p className="text-[13px] font-medium text-muted-foreground">Physical - Balances</p>
+                                    <p className="text-[12px] font-semibold text-transparent select-none">&nbsp;</p>
+                                </div>
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+            </div>
+
+            {/* Financial KPI Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6">
+                {/* Today's Revenue */}
+                <Card className="border-border shadow-sm bg-card rounded-xl overflow-hidden relative">
+                    <div className="absolute top-0 left-0 right-0 h-1 bg-emerald-500" />
+                    <CardContent className="p-6">
+                        <div className="flex items-start justify-between">
+                            <div className="space-y-4 w-full">
+                                <p className="text-[13px] font-medium text-muted-foreground uppercase tracking-wide">Today&apos;s Revenue</p>
+                                <div className="flex items-baseline justify-between w-full">
+                                    <p className="text-3xl sm:text-[38px] font-bold tracking-tight text-foreground leading-none">
+                                        ₱{kpis.todayRevenue?.toLocaleString() ?? "0"}
+                                    </p>
+                                    <div className="w-10 h-10 rounded-lg bg-emerald-500/10 flex items-center justify-center">
+                                        <DollarSign className="w-5 h-5 text-emerald-500" />
+                                    </div>
+                                </div>
+                                <div className="space-y-1">
+                                    <p className="text-[13px] font-medium text-muted-foreground">Total sales today</p>
+                                    <p className="text-[12px] font-semibold text-emerald-500">
+                                        Gross: ₱{kpis.todayGrossProfit?.toLocaleString() ?? "0"}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+
+                {/* Today's Net Profit */}
+                <Card className="border-border shadow-sm bg-card rounded-xl overflow-hidden relative">
+                    <div className="absolute top-0 left-0 right-0 h-1 bg-blue-500" />
+                    <CardContent className="p-6">
+                        <div className="flex items-start justify-between">
+                            <div className="space-y-4 w-full">
+                                <p className="text-[13px] font-medium text-muted-foreground uppercase tracking-wide">Today&apos;s Net Profit</p>
+                                <div className="flex items-baseline justify-between w-full">
+                                    <p className="text-3xl sm:text-[38px] font-bold tracking-tight text-foreground leading-none">
+                                        ₱{kpis.todayNetProfit?.toLocaleString() ?? "0"}
+                                    </p>
+                                    <div className="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center">
+                                        <TrendingUp className="w-5 h-5 text-blue-500" />
+                                    </div>
+                                </div>
+                                <div className="space-y-1">
+                                    <p className="text-[13px] font-medium text-muted-foreground">Owner&apos;s income today</p>
                                     <p className="text-[12px] font-semibold text-transparent select-none">&nbsp;</p>
                                 </div>
                             </div>

@@ -64,19 +64,27 @@ async function logActivity(
 export async function fetchDashboardKPIs() {
     const { supabase } = await requireAdmin();
 
-    const [shipments, balances, pendingOrders, pendingKyc, activeClients, pendingFulfillment] = await Promise.all([
+    const today = new Date().toISOString().split("T")[0];
+
+    const [shipments, balances, pendingOrders, pendingKyc, activeClients, pendingFulfillment, todayLedger] = await Promise.all([
         supabase.from("shipments").select("remaining_jb, remaining_sb, total_jb, total_sb"),
         supabase.from("customer_balances").select("bag_type, remaining_qty").eq("status", "pending"),
         supabase.from("orders").select("id", { count: "exact", head: true }).eq("status", "pending"),
         supabase.from("profiles").select("id", { count: "exact", head: true }).eq("kyc_status", "pending_verification").eq("role", "client"),
         supabase.from("profiles").select("id", { count: "exact", head: true }).eq("kyc_status", "verified").eq("role", "client"),
         supabase.from("orders").select("id", { count: "exact", head: true }).in("status", ["approved", "partially_approved", "awaiting_check"]),
+        supabase.from("shipment_ledger").select("total_sales, gross_profit, net_profit").eq("date", today),
     ]);
 
     const totalJB = shipments.data?.reduce((s, r) => s + (r.remaining_jb ?? 0), 0) ?? 0;
     const totalSB = shipments.data?.reduce((s, r) => s + (r.remaining_sb ?? 0), 0) ?? 0;
     const jbBalance = balances.data?.filter(b => b.bag_type === "JB").reduce((s, b) => s + b.remaining_qty, 0) ?? 0;
     const sbBalance = balances.data?.filter(b => b.bag_type === "SB").reduce((s, b) => s + b.remaining_qty, 0) ?? 0;
+
+    const todayRows = todayLedger.data ?? [];
+    const todayRevenue = todayRows.reduce((s, r) => s + (Number(r.total_sales) || 0), 0);
+    const todayGrossProfit = todayRows.reduce((s, r) => s + (Number(r.gross_profit) || 0), 0);
+    const todayNetProfit = todayRows.reduce((s, r) => s + (Number(r.net_profit) || 0), 0);
 
     return {
         jbGood: totalJB, sbGood: totalSB,
@@ -89,6 +97,9 @@ export async function fetchDashboardKPIs() {
         pendingKyc: pendingKyc.count ?? 0,
         activeClients: activeClients.count ?? 0,
         pendingFulfillment: pendingFulfillment.count ?? 0,
+        todayRevenue,
+        todayGrossProfit,
+        todayNetProfit,
     };
 }
 
@@ -302,6 +313,14 @@ export async function dispatchOrder(
     const poNumber = order.po_number || `SYS-${orderId.slice(0, 8).toUpperCase()}`;
     const dispatchDate = new Date().toISOString().split("T")[0];
 
+    // Compute profit values
+    const costConfig = await getCostConfig();
+    const totalBags = (jbQty * 25) + (sbQty * 50);
+    const totalSales = Number(order.total_amount) || 0;
+    const sellingPricePerBag = totalBags > 0 ? Math.round((totalSales / totalBags) * 100) / 100 : 0;
+    const grossProfit = Math.round((totalSales - (totalBags * costConfig.landed_cost_per_bag)) * 100) / 100;
+    const netProfit = Math.round((totalSales - (totalBags * (costConfig.landed_cost_per_bag + costConfig.local_expenses_per_bag))) * 100) / 100;
+
     const { error: ledgerError } = await supabase.from("shipment_ledger").insert({
         shipment_id: shipmentId,
         dr_number: drNumber,
@@ -315,7 +334,13 @@ export async function dispatchOrder(
         sb: sbQty,
         payment_method: order.payment_method,
         check_number: order.payment_method === "check" ? order.check_number : null,
-        amount: Number(order.total_amount) || null,
+        amount: totalSales || null,
+        total_sales: totalSales,
+        gross_profit: grossProfit,
+        net_profit: netProfit,
+        selling_price_per_bag: sellingPricePerBag,
+        landed_cost_per_bag: costConfig.landed_cost_per_bag,
+        local_expenses_per_bag: costConfig.local_expenses_per_bag,
     });
     if (ledgerError) throw new Error(`Failed to create ledger entry: ${ledgerError.message}`);
 
@@ -638,9 +663,22 @@ export async function addLedgerEntry(shipmentId: string, entry: {
     const returnReason = entry.return_reason ?? "return";
 
     // Insert the ledger row
+    const isDispatch = !entry.bags_returned || entry.bags_returned === 0;
+    let profitFields = {};
+    if (isDispatch && (jbOut > 0 || sbOut > 0)) {
+        const costConfig = await getCostConfig();
+        const totalBags = (jbOut * 25) + (sbOut * 50);
+        const totalSales = entry.amount ?? 0;
+        const sellingPricePerBag = totalBags > 0 ? Math.round((totalSales / totalBags) * 100) / 100 : 0;
+        const grossProfit = Math.round((totalSales - (totalBags * costConfig.landed_cost_per_bag)) * 100) / 100;
+        const netProfit = Math.round((totalSales - (totalBags * (costConfig.landed_cost_per_bag + costConfig.local_expenses_per_bag))) * 100) / 100;
+        profitFields = { total_sales: totalSales, gross_profit: grossProfit, net_profit: netProfit, selling_price_per_bag: sellingPricePerBag, landed_cost_per_bag: costConfig.landed_cost_per_bag, local_expenses_per_bag: costConfig.local_expenses_per_bag };
+    }
+
     const { data, error } = await supabase.from("shipment_ledger").insert({
         shipment_id: shipmentId,
         ...entry,
+        ...profitFields,
         date: entry.date ?? new Date().toISOString().split("T")[0],
     }).select().single();
     if (error) throw new Error(error.message);
@@ -1568,6 +1606,74 @@ export async function saveAdminSetting(key: string, value: Record<string, unknow
     if (error) throw new Error(error.message);
     await logActivity(supabase, userId, "setting_updated", "admin_settings", key, { key });
     return { success: true };
+}
+
+// ═══════════════════════════════════════════════════════════════
+// COST CONFIGURATION & PROFIT HELPERS
+// ═══════════════════════════════════════════════════════════════
+
+export interface CostConfig {
+    landed_cost_per_bag: number;
+    local_expenses_per_bag: number;
+}
+
+const DEFAULT_COST_CONFIG: CostConfig = {
+    landed_cost_per_bag: 147.64,
+    local_expenses_per_bag: 20.00,
+};
+
+export async function getCostConfig(): Promise<CostConfig> {
+    const { supabase } = await requireAdmin();
+    const { data } = await supabase.from("admin_settings").select("value").eq("key", "cost_config").single();
+    if (!data?.value) return DEFAULT_COST_CONFIG;
+    const v = data.value as Record<string, unknown>;
+    return {
+        landed_cost_per_bag: Number(v.landed_cost_per_bag) || DEFAULT_COST_CONFIG.landed_cost_per_bag,
+        local_expenses_per_bag: Number(v.local_expenses_per_bag) || DEFAULT_COST_CONFIG.local_expenses_per_bag,
+    };
+}
+
+export async function saveCostConfig(config: CostConfig) {
+    const { supabase, userId } = await requireAdmin();
+    const { error } = await supabase.from("admin_settings").upsert(
+        { key: "cost_config", value: config, updated_at: new Date().toISOString() },
+        { onConflict: "key" },
+    );
+    if (error) throw new Error(error.message);
+    await logActivity(supabase, userId, "setting_updated", "admin_settings", "cost_config", config as unknown as Record<string, unknown>);
+    return { success: true };
+}
+
+export async function fetchDashboardFinancials() {
+    const { supabase } = await requireAdmin();
+    const today = new Date().toISOString().split("T")[0];
+    const { data } = await supabase
+        .from("shipment_ledger")
+        .select("total_sales, gross_profit, net_profit")
+        .eq("date", today);
+    const rows = data ?? [];
+    return {
+        todayRevenue: rows.reduce((s, r) => s + (Number(r.total_sales) || 0), 0),
+        todayGrossProfit: rows.reduce((s, r) => s + (Number(r.gross_profit) || 0), 0),
+        todayNetProfit: rows.reduce((s, r) => s + (Number(r.net_profit) || 0), 0),
+    };
+}
+
+export async function fetchSalesProfitReport(dateFrom: string, dateTo: string) {
+    const { supabase } = await requireAdmin();
+    const { data } = await supabase
+        .from("shipment_ledger")
+        .select("date, total_sales, gross_profit, net_profit, jb, sb, client_name, dr_number, po_number")
+        .gte("date", dateFrom)
+        .lte("date", dateTo)
+        .order("date", { ascending: false });
+    const rows = data ?? [];
+    return {
+        totalSales: rows.reduce((s, r) => s + (Number(r.total_sales) || 0), 0),
+        totalGrossProfit: rows.reduce((s, r) => s + (Number(r.gross_profit) || 0), 0),
+        totalNetProfit: rows.reduce((s, r) => s + (Number(r.net_profit) || 0), 0),
+        entries: rows,
+    };
 }
 
 export async function fetchAuditLog(page: number = 1, perPage: number = 50) {

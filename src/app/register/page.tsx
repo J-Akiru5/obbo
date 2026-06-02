@@ -1,124 +1,165 @@
 "use client";
 
-import Link from "next/link";
+import { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
-import { Eye, EyeOff, CheckCircle2, Loader2, Mail } from "lucide-react";
+import { ChevronRight, ChevronLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
 import { AuthShell } from "@/components/auth/auth-shell";
 import { createRoleNotificationAdmin } from "@/lib/actions/notification-actions";
+import { usePersistedForm } from "@/lib/hooks/use-persisted-form";
+import { StepIndicator } from "@/components/ui/step-indicator";
+import { StepAccountType } from "@/components/auth/register/step-account-type";
+import { StepCredentials } from "@/components/auth/register/step-credentials";
+import { StepProfileDetails } from "@/components/auth/register/step-profile-details";
+import { StepDocuments } from "@/components/auth/register/step-documents";
+import { StepReview } from "@/components/auth/register/step-review";
+import {
+    accountTypeSchema,
+    credentialsSchema,
+    getProfileSchema,
+    getDocumentSchema,
+} from "@/components/auth/register/register-schema";
+
+const STEPS = ["Account Type", "Credentials", "Profile", "Documents", "Review"];
+
+const INITIAL_FORM = {
+    account_type: "individual" as "individual" | "company",
+    email: "",
+    password: "",
+    confirm_password: "",
+    otp_verified: false,
+    first_name: "",
+    surname: "",
+    contact_number: "",
+    company_name: "",
+    contact_person_first_name: "",
+    contact_person_surname: "",
+    contact_person_number: "",
+    business_permit_no: "",
+    tin_no: "",
+    street: "",
+    city: "",
+    province: "",
+    postal_code: "",
+};
 
 export default function RegisterPage() {
     const router = useRouter();
-    const [accountType, setAccountType] = useState<"individual" | "company">("individual");
-
-    // Email OTP state
-    const [otpSent, setOtpSent] = useState(false);
-    const [otpVerified, setOtpVerified] = useState(false);
-    const [otpCode, setOtpCode] = useState("");
-    const [sendingOtp, setSendingOtp] = useState(false);
-    const [verifyingOtp, setVerifyingOtp] = useState(false);
-
-    const [form, setForm] = useState({
-        email: "",
-        password: "",
-        street: "",
-        city: "",
-        province: "",
-        postal_code: "",
-        // Individual
-        first_name: "",
-        surname: "",
-        contact_number: "",
-        // Company
-        company_name: "",
-        contact_person_first_name: "",
-        contact_person_surname: "",
-        contact_person_number: "",
-        business_permit_no: "",
-        tin_no: "",
-    });
-
-    const [validIdFile, setValidIdFile] = useState<File | null>(null);
-    const [businessPermitFile, setBusinessPermitFile] = useState<File | null>(null);
-    const [showPassword, setShowPassword] = useState(false);
+    const [form, updateForm, clearForm] = usePersistedForm("obbo-register-form", INITIAL_FORM);
+    const [currentStep, setCurrentStep] = useState(0);
+    const [completedSteps, setCompletedSteps] = useState<Set<number>>(new Set());
+    const [errors, setErrors] = useState<Record<string, string>>({});
     const [loading, setLoading] = useState(false);
 
-    function updateField(field: string, value: string) {
-        setForm((prev) => ({ ...prev, [field]: value }));
-        if (field === "email") {
-            setOtpSent(false);
-            setOtpVerified(false);
-            setOtpCode("");
-        }
-    }
+    // Files are NOT persisted (File objects can't serialize)
+    const [validIdFile, setValidIdFile] = useState<File | null>(null);
+    const [businessPermitFile, setBusinessPermitFile] = useState<File | null>(null);
 
-    async function handleSendOtp() {
-        if (!form.email) { toast.error("Please enter your email first."); return; }
-        setSendingOtp(true);
-        try {
-            const res = await fetch("/api/auth/send-otp", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ email: form.email }),
+    const updateField = useCallback(
+        (field: string, value: string | boolean) => {
+            updateForm({ [field]: value } as Partial<typeof INITIAL_FORM>);
+            // Clear field error on change
+            setErrors((prev) => {
+                if (prev[field]) {
+                    const next = { ...prev };
+                    delete next[field];
+                    return next;
+                }
+                return prev;
             });
-            const data = await res.json();
-            if (!res.ok || data.error) {
-                toast.error(data.error || "Failed to send code.");
-            } else {
-                setOtpSent(true);
-                toast.success(`Verification code sent to ${form.email}`);
-            }
-        } catch {
-            toast.error("Failed to send code. Please try again.");
-        } finally {
-            setSendingOtp(false);
-        }
-    }
+        },
+        [updateForm],
+    );
 
-    async function handleVerifyOtp() {
-        if (!otpCode || otpCode.length !== 6) { toast.error("Please enter the 6-digit code."); return; }
-        setVerifyingOtp(true);
-        try {
-            const res = await fetch("/api/auth/verify-otp", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ email: form.email, code: otpCode }),
+    function validateStep(step: number): boolean {
+        const newErrors: Record<string, string> = {};
+
+        if (step === 0) {
+            const result = accountTypeSchema.safeParse({ account_type: form.account_type });
+            if (!result.success) {
+                for (const issue of result.error.issues) {
+                    newErrors[issue.path[0] as string] = issue.message;
+                }
+            }
+        }
+
+        if (step === 1) {
+            const result = credentialsSchema.safeParse({
+                email: form.email,
+                password: form.password,
+                confirm_password: form.confirm_password,
+                otp_verified: form.otp_verified,
             });
-            const data = await res.json();
-            if (data.valid) {
-                setOtpVerified(true);
-                toast.success("Email verified!");
-            } else {
-                toast.error(data.error || "Invalid code. Please try again.");
+            if (!result.success) {
+                for (const issue of result.error.issues) {
+                    const key = issue.path[0] as string;
+                    if (!newErrors[key]) newErrors[key] = issue.message;
+                }
             }
-        } catch {
-            toast.error("Verification failed. Please try again.");
-        } finally {
-            setVerifyingOtp(false);
+        }
+
+        if (step === 2) {
+            const schema = getProfileSchema(form.account_type);
+            const result = schema.safeParse(form);
+            if (!result.success) {
+                for (const issue of result.error.issues) {
+                    const key = issue.path[0] as string;
+                    if (!newErrors[key]) newErrors[key] = issue.message;
+                }
+            }
+        }
+
+        if (step === 3) {
+            const schema = getDocumentSchema(form.account_type);
+            const result = schema.safeParse({
+                valid_id_file: validIdFile,
+                business_permit_file: businessPermitFile,
+            });
+            if (!result.success) {
+                for (const issue of result.error.issues) {
+                    const key = issue.path[0] as string;
+                    if (!newErrors[key]) newErrors[key] = issue.message;
+                }
+            }
+        }
+
+        setErrors(newErrors);
+        if (Object.keys(newErrors).length > 0) {
+            toast.error("Please fix the errors before continuing.");
+            return false;
+        }
+        return true;
+    }
+
+    function goNext() {
+        if (!validateStep(currentStep)) return;
+        setCompletedSteps((prev) => new Set(prev).add(currentStep));
+        setCurrentStep((s) => Math.min(s + 1, STEPS.length - 1));
+        setErrors({});
+    }
+
+    function goBack() {
+        setCurrentStep((s) => Math.max(s - 1, 0));
+        setErrors({});
+    }
+
+    function goToStep(step: number) {
+        // Only allow going back to completed steps
+        if (step < currentStep || completedSteps.has(step)) {
+            setCurrentStep(step);
+            setErrors({});
         }
     }
 
-    async function handleRegister(e: React.FormEvent) {
-        e.preventDefault();
-        if (!otpVerified) { toast.error("Please verify your email first."); return; }
-        if (form.password.length < 6) { toast.error("Password must be at least 6 characters."); return; }
-        if (!validIdFile) { toast.error("Please upload a valid ID."); return; }
-        if (accountType === "company" && !businessPermitFile) {
-            toast.error("Please upload your business permit."); return;
-        }
-
+    async function handleSubmit() {
         setLoading(true);
         try {
             const supabase = createClient();
 
             const metaData: Record<string, string> = {
-                account_type: accountType,
+                account_type: form.account_type,
                 address_street: form.street,
                 address_city: form.city,
                 address_province: form.province,
@@ -127,7 +168,7 @@ export default function RegisterPage() {
                 kyc_status: "pending_verification",
             };
 
-            if (accountType === "individual") {
+            if (form.account_type === "individual") {
                 metaData.first_name = form.first_name;
                 metaData.surname = form.surname;
                 metaData.phone = form.contact_number;
@@ -149,26 +190,30 @@ export default function RegisterPage() {
                 options: { data: metaData },
             });
 
-            if (signUpError) { toast.error(signUpError.message); return; }
+            if (signUpError) {
+                toast.error(signUpError.message);
+                return;
+            }
             const userId = authData.user?.id;
-            if (!userId) { toast.error("Registration failed. Please try again."); return; }
-
-            // 2. Upload KYC documents to Storage
-            const kycPaths: string[] = [];
-
-            const idExt = validIdFile.name.split(".").pop();
-            const idPath = `${userId}/valid-id.${idExt}`;
-            const { error: idUploadErr } = await supabase.storage
-                .from("kyc-documents")
-                .upload(idPath, validIdFile, { upsert: true });
-
-            if (idUploadErr) {
-                console.error("ID upload error:", idUploadErr);
-            } else {
-                kycPaths.push(idPath);
+            if (!userId) {
+                toast.error("Registration failed. Please try again.");
+                return;
             }
 
-            if (accountType === "company" && businessPermitFile) {
+            // 2. Upload KYC documents
+            const kycPaths: string[] = [];
+
+            if (validIdFile) {
+                const idExt = validIdFile.name.split(".").pop();
+                const idPath = `${userId}/valid-id.${idExt}`;
+                const { error: idUploadErr } = await supabase.storage
+                    .from("kyc-documents")
+                    .upload(idPath, validIdFile, { upsert: true });
+
+                if (!idUploadErr) kycPaths.push(idPath);
+            }
+
+            if (form.account_type === "company" && businessPermitFile) {
                 const bpExt = businessPermitFile.name.split(".").pop();
                 const bpPath = `${userId}/business-permit.${bpExt}`;
                 const { error: bpUploadErr } = await supabase.storage
@@ -180,10 +225,7 @@ export default function RegisterPage() {
 
             // 3. Update profile with document paths
             if (kycPaths.length > 0) {
-                await supabase
-                    .from("profiles")
-                    .update({ kyc_documents: kycPaths })
-                    .eq("id", userId);
+                await supabase.from("profiles").update({ kyc_documents: kycPaths }).eq("id", userId);
             }
 
             // Trigger Admin Notification (uses service-role client to bypass RLS)
@@ -192,12 +234,13 @@ export default function RegisterPage() {
                 title: "New Client Registration",
                 message: `${metaData.full_name} has registered and is pending KYC verification.`,
                 href: "/admin/clients?tab=kyc",
-                severity: "info"
+                severity: "info",
             });
 
-            // 4. Redirect to the limited client portal (user stays signed in)
-            toast.success("Account created! Browse the portal while your KYC is reviewed.");
-            router.push("/client/dashboard");
+            // 5. Sign out and redirect to login
+            await supabase.auth.signOut();
+            clearForm();
+            router.push("/login?registered=true");
         } catch {
             toast.error("An unexpected error occurred. Please try again.");
         } finally {
@@ -235,204 +278,103 @@ export default function RegisterPage() {
                             Start your client profile
                         </h1>
                         <p className="text-sm leading-6 text-muted-foreground">
-                            Complete the details below to request access to the portal.
+                            Complete the steps below to request access to the portal.
                         </p>
                     </div>
                 </div>
 
-                <div className="sr-only" aria-live="polite" role="status"></div>
-                <form onSubmit={handleRegister} className="flex flex-col">
-                    <div className="grid grid-cols-1 gap-8 md:gap-10 lg:grid-cols-2">
+                {/* Step Indicator */}
+                <StepIndicator
+                    steps={STEPS}
+                    currentStep={currentStep}
+                    completedSteps={completedSteps}
+                    onStepClick={goToStep}
+                />
 
-                        {/* LEFT COLUMN */}
-                        <div className="space-y-6">
-                            {/* Account Type */}
-                            <div>
-                                <h3 className="font-semibold text-lg mb-4 text-foreground">Account type</h3>
-                                <Select value={accountType} onValueChange={(v) => setAccountType(v as "individual" | "company")}>
-                                    <SelectTrigger className="h-11">
-                                        <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="individual">Individual</SelectItem>
-                                        <SelectItem value="company">Company</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                            </div>
-
-                            {/* Email + OTP */}
-                            <div>
-                                <h3 className="font-semibold text-lg mb-4 text-foreground">Email verification</h3>
-                                <div className="space-y-3">
-                                    <div className="space-y-1.5">
-                                        <Label htmlFor="email" className="text-sm font-medium">Email address</Label>
-                                        <div className="flex flex-col gap-2 sm:flex-row">
-                                            <Input
-                                                id="email"
-                                                type="email"
-                                                placeholder="you@example.com"
-                                                value={form.email}
-                                                onChange={(e) => updateField("email", e.target.value)}
-                                                required
-                                                disabled={otpVerified}
-                                                className="h-11 flex-1"
-                                            />
-                                            <Button
-                                                type="button"
-                                                variant="outline"
-                                                className="h-11 flex-shrink-0"
-                                                onClick={handleSendOtp}
-                                                disabled={sendingOtp || otpVerified || !form.email}
-                                            >
-                                                {sendingOtp ? <Loader2 className="w-4 h-4 animate-spin" /> :
-                                                    otpVerified ? <><CheckCircle2 className="w-4 h-4 mr-1 text-emerald-500" /> Verified</> :
-                                                        otpSent ? "Resend" : "Send code"}
-                                            </Button>
-                                        </div>
-                                    </div>
-
-                                    {otpSent && !otpVerified && (
-                                        <div className="space-y-1.5">
-                                            <Label htmlFor="verification-code" className="text-sm font-medium">Verification code</Label>
-                                            <div className="flex flex-col gap-2 sm:flex-row">
-                                                    <Input
-                                                    id="verification-code"
-                                                    type="text"
-                                                    placeholder="6-digit code"
-                                                    value={otpCode}
-                                                    onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
-                                                    maxLength={6}
-                                                    className="h-11 tracking-[0.35em] text-center font-mono text-base"
-                                                />
-                                                <Button
-                                                    type="button"
-                                                    className="h-11 bg-primary text-primary-foreground font-semibold hover:bg-primary/90"
-                                                    onClick={handleVerifyOtp}
-                                                    disabled={verifyingOtp || otpCode.length !== 6}
-                                                >
-                                                    {verifyingOtp ? <Loader2 className="w-4 h-4 animate-spin" /> : "Verify"}
-                                                </Button>
-                                            </div>
-                                            <p className="text-xs text-muted-foreground flex items-center gap-1">
-                                                <Mail className="w-3 h-3" /> Check your inbox and spam folder.
-                                            </p>
-                                        </div>
-                                    )}
-
-                                    {/* Password */}
-                                    <div className="space-y-1.5">
-                                        <Label htmlFor="password" className="text-sm font-medium">Password</Label>
-                                        <div className="relative">
-                                                <Input
-                                                id="password"
-                                                type={showPassword ? "text" : "password"}
-                                                placeholder="••••••••"
-                                                value={form.password}
-                                                onChange={(e) => updateField("password", e.target.value)}
-                                                required
-                                                className="h-11 pr-10"
-                                            />
-                                            <button type="button" className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground transition-colors hover:text-foreground"
-                                                onClick={() => setShowPassword(!showPassword)}>
-                                                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                                            </button>
-                                        </div>
-                                    </div>
-                                    <p id="password-error" className="sr-only" role="alert"></p>
-                                </div>
-                            </div>
-
-                            {/* Address */}
-                            <div>
-                                <h3 className="font-semibold text-lg mb-4 text-foreground">Address</h3>
-                                <div className="grid grid-cols-1 gap-3">
-                                    <div><Label htmlFor="street-address" className="mb-1.5 block text-sm font-medium">Street Address</Label><Input id="street-address" value={form.street} onChange={(e) => updateField("street", e.target.value)} className="h-11" required /></div>
-                                    <div><Label htmlFor="municipality" className="mb-1.5 block text-sm font-medium">Municipality</Label><Input id="municipality" value={form.city} onChange={(e) => updateField("city", e.target.value)} className="h-11" required /></div>
-                                    <div><Label htmlFor="province" className="mb-1.5 block text-sm font-medium">Province</Label><Input id="province" value={form.province} onChange={(e) => updateField("province", e.target.value)} className="h-11" required /></div>
-                                    <div><Label htmlFor="postal-code" className="mb-1.5 block text-sm font-medium">Postal code</Label><Input id="postal-code" value={form.postal_code} onChange={(e) => updateField("postal_code", e.target.value)} className="h-11" required /></div>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* RIGHT COLUMN */}
-                        <div className="space-y-6 lg:border-l lg:border-border lg:pl-10">
-                            {accountType === "individual" ? (
-                                <div>
-                                    <h3 className="font-semibold text-lg mb-4 text-foreground">Personal information</h3>
-                                    <div className="space-y-4">
-                                        <div><Label htmlFor="first-name" className="mb-1.5 block text-sm font-medium">First name</Label><Input id="first-name" value={form.first_name} onChange={(e) => updateField("first_name", e.target.value)} className="h-11" required /></div>
-                                        <div><Label htmlFor="surname" className="mb-1.5 block text-sm font-medium">Surname</Label><Input id="surname" value={form.surname} onChange={(e) => updateField("surname", e.target.value)} className="h-11" required /></div>
-                                        <div><Label htmlFor="contact-number" className="mb-1.5 block text-sm font-medium">Contact number</Label><Input id="contact-number" value={form.contact_number} onChange={(e) => updateField("contact_number", e.target.value)} className="h-11" required /></div>
-                                        <div className="space-y-1.5">
-                                            <Label className="text-sm font-medium">Valid ID (photo)</Label>
-                                            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-                                                <Button type="button" variant="outline" className="bg-accent text-accent-foreground font-semibold hover:bg-accent/90 shadow-sm"
-                                                    onClick={() => document.getElementById("valid-id-upload")?.click()}>
-                                                    Choose file
-                                                </Button>
-                                                <span className="text-sm text-muted-foreground truncate">{validIdFile ? validIdFile.name : "No file chosen"}</span>
-                                                <input id="valid-id-upload" type="file" className="hidden" accept="image/*,.pdf"
-                                                    onChange={(e) => setValidIdFile(e.target.files?.[0] || null)} />
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            ) : (
-                                <div>
-                                    <h3 className="font-semibold text-lg mb-4 text-foreground">Company information</h3>
-                                    <div className="space-y-4">
-                                        <div><Label htmlFor="company-name" className="mb-1.5 block text-sm font-medium">Company name</Label><Input id="company-name" value={form.company_name} onChange={(e) => updateField("company_name", e.target.value)} className="h-11" required /></div>
-                                        <div><Label htmlFor="contact-first-name" className="mb-1.5 block text-sm font-medium">Contact person first name</Label><Input id="contact-first-name" value={form.contact_person_first_name} onChange={(e) => updateField("contact_person_first_name", e.target.value)} className="h-11" required /></div>
-                                        <div><Label htmlFor="contact-surname" className="mb-1.5 block text-sm font-medium">Contact person surname</Label><Input id="contact-surname" value={form.contact_person_surname} onChange={(e) => updateField("contact_person_surname", e.target.value)} className="h-11" required /></div>
-                                        <div><Label htmlFor="contact-person-number" className="mb-1.5 block text-sm font-medium">Contact person number</Label><Input id="contact-person-number" value={form.contact_person_number} onChange={(e) => updateField("contact_person_number", e.target.value)} className="h-11" required /></div>
-
-                                        <div className="space-y-1.5 pt-2">
-                                            <Label className="text-sm font-medium">Contact person valid ID</Label>
-                                            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-                                                <Button type="button" variant="outline" className="bg-accent text-accent-foreground font-semibold hover:bg-accent/90 shadow-sm"
-                                                    onClick={() => document.getElementById("contact-valid-id-upload")?.click()}>
-                                                    Choose file
-                                                </Button>
-                                                <span className="text-sm text-muted-foreground truncate">{validIdFile ? validIdFile.name : "No file chosen"}</span>
-                                                <input id="contact-valid-id-upload" type="file" className="hidden" accept="image/*,.pdf"
-                                                    onChange={(e) => setValidIdFile(e.target.files?.[0] || null)} />
-                                            </div>
-                                        </div>
-
-                                        <div><Label htmlFor="business-permit-no" className="mb-1.5 block text-sm font-medium">Business permit no.</Label><Input id="business-permit-no" value={form.business_permit_no} onChange={(e) => updateField("business_permit_no", e.target.value)} className="h-11" required /></div>
-
-                                        <div className="space-y-1.5 pt-2">
-                                            <Label className="text-sm font-medium">Business permit (photo)</Label>
-                                            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-                                                <Button type="button" variant="outline" className="bg-accent text-accent-foreground font-semibold hover:bg-accent/90 shadow-sm"
-                                                    onClick={() => document.getElementById("business-permit-upload")?.click()}>
-                                                    Choose file
-                                                </Button>
-                                                <span className="text-sm text-muted-foreground truncate">{businessPermitFile ? businessPermitFile.name : "No file chosen"}</span>
-                                                <input id="business-permit-upload" type="file" className="hidden" accept="image/*,.pdf"
-                                                    onChange={(e) => setBusinessPermitFile(e.target.files?.[0] || null)} />
-                                            </div>
-                                        </div>
-
-                                        <div><Label htmlFor="tin-no" className="mb-1.5 block text-sm font-medium">TIN no.</Label><Input id="tin-no" value={form.tin_no} onChange={(e) => updateField("tin_no", e.target.value)} className="h-11" required /></div>
-                                    </div>
-                                </div>
-                            )}
-                        </div>
+                {/* Step Content with slide animation */}
+                <div className="relative overflow-hidden">
+                    <div
+                        key={currentStep}
+                        className="animate-slide-in-right"
+                    >
+                        {currentStep === 0 && (
+                            <StepAccountType
+                                value={form.account_type}
+                                onChange={(v) => updateField("account_type", v)}
+                                error={errors.account_type}
+                            />
+                        )}
+                        {currentStep === 1 && (
+                            <StepCredentials
+                                form={form}
+                                updateField={updateField}
+                                errors={errors}
+                            />
+                        )}
+                        {currentStep === 2 && (
+                            <StepProfileDetails
+                                form={form}
+                                updateField={updateField}
+                                errors={errors}
+                                accountType={form.account_type}
+                            />
+                        )}
+                        {currentStep === 3 && (
+                            <StepDocuments
+                                files={{ valid_id_file: validIdFile, business_permit_file: businessPermitFile }}
+                                onFilesChange={(f) => {
+                                    if (f.valid_id_file !== undefined) setValidIdFile(f.valid_id_file);
+                                    if (f.business_permit_file !== undefined) setBusinessPermitFile(f.business_permit_file);
+                                }}
+                                errors={errors}
+                                accountType={form.account_type}
+                            />
+                        )}
+                        {currentStep === 4 && (
+                            <StepReview
+                                form={form}
+                                files={{ valid_id_file: validIdFile, business_permit_file: businessPermitFile }}
+                                onEditStep={goToStep}
+                                onSubmit={handleSubmit}
+                                loading={loading}
+                            />
+                        )}
                     </div>
+                </div>
 
-                    <div className="mt-10 space-y-3">
-                        <Button type="submit" disabled={loading} className="h-12 w-full rounded-xl bg-primary text-primary-foreground font-semibold shadow-sm hover:bg-primary/90">
-                            {loading ? "Signing up..." : "Sign Up"}
+                {/* Navigation Buttons — hidden on review step (it has its own submit) */}
+                {currentStep < 4 && (
+                    <div className="flex justify-between pt-2">
+                        {currentStep > 0 ? (
+                            <Button
+                                type="button"
+                                variant="outline"
+                                className="h-11 gap-1"
+                                onClick={goBack}
+                            >
+                                <ChevronLeft className="w-4 h-4" />
+                                Back
+                            </Button>
+                        ) : (
+                            <div />
+                        )}
+                        <Button
+                            type="button"
+                            className="h-11 gap-2 bg-primary text-primary-foreground font-semibold hover:bg-primary/90"
+                            onClick={goNext}
+                        >
+                            Continue
+                            <ChevronRight className="w-4 h-4" />
                         </Button>
-                        <p className="text-center text-sm text-muted-foreground">
-                            Already have an account?{" "}
-                            <Link href="/login" className="font-semibold text-primary hover:underline">
-                                Sign in
-                            </Link>
-                        </p>
                     </div>
-                </form>
+                )}
+
+                <p className="text-center text-sm text-muted-foreground">
+                    Already have an account?{" "}
+                    <a href="/login" className="font-semibold text-primary hover:underline">
+                        Sign in
+                    </a>
+                </p>
             </div>
         </AuthShell>
     );

@@ -1,241 +1,507 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { Package, CreditCard, CheckCircle2, ChevronRight, Loader2, Upload, X } from "lucide-react";
+import { ChevronRight, ChevronLeft, ShieldAlert } from "lucide-react";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
+import { useClientKyc } from "@/lib/context/client-kyc-context";
+import { usePersistedForm } from "@/lib/hooks/use-persisted-form";
+import { StepIndicator } from "@/components/ui/step-indicator";
+import { StepProducts } from "@/components/orders/wizard/step-products";
+import { StepSource } from "@/components/orders/wizard/step-source";
+import { StepServiceType } from "@/components/orders/wizard/step-service-type";
+import { StepPoPayment } from "@/components/orders/wizard/step-po-payment";
+import { StepOrderReview } from "@/components/orders/wizard/step-review";
+import { submitOrder, saveOrderDraft, generateNextPoNumber } from "@/lib/actions/client-actions";
+import {
+    productsSchema,
+    sourceSchema,
+    serviceTypeSchema,
+    poPaymentSchema,
+    getSplitSchema,
+} from "@/components/orders/wizard/order-schema";
 import type { Product } from "@/lib/types/database";
 
-type CartItem = { product: Product; qty: number };
-const STEPS = ["Select Products", "Payment", "Review & Confirm"];
+const STEPS = ["Products", "Source", "Service", "PO & Payment", "Review"];
+
+const INITIAL_FORM = {
+    jb_qty: 0,
+    sb_qty: 0,
+    source: "warehouse" as "port" | "warehouse",
+    service_type: "pickup" as "pickup" | "deliver",
+    driver_name: "",
+    plate_number: "",
+    preferred_pickup_date: "",
+    po_number: "",
+    supplier_name: "OBBO",
+    payment_method: "cash" as "cash" | "check",
+    wants_split: false,
+    deliver_now_jb: 0,
+    deliver_now_sb: 0,
+};
 
 export default function NewOrderPage() {
     const router = useRouter();
-    const [step, setStep] = useState(0);
+    const { kycStatus } = useClientKyc();
+    const isVerified = kycStatus === "verified";
+
+    const [form, updateForm, clearForm] = usePersistedForm("obbo-order-form", INITIAL_FORM);
+    const [currentStep, setCurrentStep] = useState(0);
+    const [completedSteps, setCompletedSteps] = useState<Set<number>>(new Set());
+    const [errors, setErrors] = useState<Record<string, string>>({});
+    const [loading, setLoading] = useState(false);
+    const [draftLoading, setDraftLoading] = useState(false);
     const [products, setProducts] = useState<Product[]>([]);
-    const [cart, setCart] = useState<CartItem[]>([]);
-    const [paymentMethod, setPaymentMethod] = useState<"cash" | "check">("cash");
-    const [checkFile, setCheckFile] = useState<File | null>(null);
-    const [notes, setNotes] = useState("");
-    const [submitting, setSubmitting] = useState(false);
     const [loadingProducts, setLoadingProducts] = useState(true);
 
+    // Files — not persisted
+    const [poFile, setPoFile] = useState<File | null>(null);
+    const [checkFile, setCheckFile] = useState<File | null>(null);
+
     useEffect(() => {
-        createClient().from("products").select("*").eq("is_active", true).order("name")
-            .then(({ data }) => { setProducts(data ?? []); setLoadingProducts(false); });
+        createClient()
+            .from("products")
+            .select("*")
+            .eq("is_active", true)
+            .order("name")
+            .then(({ data }) => {
+                setProducts(data ?? []);
+                setLoadingProducts(false);
+            });
     }, []);
 
-    function setQty(product: Product, qty: number) {
-        if (qty <= 0) {
-            setCart((p) => p.filter((c) => c.product.id !== product.id));
-        } else {
-            setCart((p) => {
-                const ex = p.find((c) => c.product.id === product.id);
-                if (ex) return p.map((c) => c.product.id === product.id ? { ...c, qty } : c);
-                return [...p, { product, qty }];
+    // Auto-generate PO number on mount
+    useEffect(() => {
+        if (!form.po_number) {
+            generateNextPoNumber().then((po) => {
+                updateForm({ po_number: po });
             });
+        }
+    }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+    const updateField = useCallback(
+        (field: string, value: string | boolean | number) => {
+            updateForm({ [field]: value } as Partial<typeof INITIAL_FORM>);
+            setErrors((prev) => {
+                if (prev[field]) {
+                    const next = { ...prev };
+                    delete next[field];
+                    return next;
+                }
+                return prev;
+            });
+        },
+        [updateForm],
+    );
+
+    function validateStep(step: number): boolean {
+        const newErrors: Record<string, string> = {};
+
+        if (step === 0) {
+            const result = productsSchema.safeParse({ jb_qty: form.jb_qty, sb_qty: form.sb_qty });
+            if (!result.success) {
+                for (const issue of result.error.issues) {
+                    newErrors[issue.path[0] as string] = issue.message;
+                }
+            }
+        }
+
+        if (step === 1) {
+            const result = sourceSchema.safeParse({ source: form.source });
+            if (!result.success) {
+                for (const issue of result.error.issues) {
+                    newErrors[issue.path[0] as string] = issue.message;
+                }
+            }
+        }
+
+        if (step === 2) {
+            const result = serviceTypeSchema.safeParse({
+                service_type: form.service_type,
+                driver_name: form.driver_name,
+                plate_number: form.plate_number,
+                preferred_pickup_date: form.preferred_pickup_date,
+            });
+            if (!result.success) {
+                for (const issue of result.error.issues) {
+                    const key = issue.path[0] as string;
+                    if (!newErrors[key]) newErrors[key] = issue.message;
+                }
+            }
+        }
+
+        if (step === 3) {
+            const result = poPaymentSchema.safeParse({
+                po_number: form.po_number,
+                po_file: poFile,
+                supplier_name: form.supplier_name,
+                payment_method: form.payment_method,
+                check_file: checkFile,
+                wants_split: form.wants_split,
+                deliver_now_jb: form.deliver_now_jb,
+                deliver_now_sb: form.deliver_now_sb,
+            });
+            if (!result.success) {
+                for (const issue of result.error.issues) {
+                    const key = issue.path[0] as string;
+                    if (!newErrors[key]) newErrors[key] = issue.message;
+                }
+            }
+            // Also validate split quantities
+            if (form.wants_split) {
+                const splitResult = getSplitSchema(form.jb_qty, form.sb_qty).safeParse({
+                    wants_split: form.wants_split,
+                    deliver_now_jb: form.deliver_now_jb,
+                    deliver_now_sb: form.deliver_now_sb,
+                });
+                if (!splitResult.success) {
+                    for (const issue of splitResult.error.issues) {
+                        const key = issue.path[0] as string;
+                        if (!newErrors[key]) newErrors[key] = issue.message;
+                    }
+                }
+            }
+        }
+
+        setErrors(newErrors);
+        if (Object.keys(newErrors).length > 0) {
+            toast.error("Please fix the errors before continuing.");
+            return false;
+        }
+        return true;
+    }
+
+    function goNext() {
+        if (!validateStep(currentStep)) return;
+        setCompletedSteps((prev) => new Set(prev).add(currentStep));
+        setCurrentStep((s) => Math.min(s + 1, STEPS.length - 1));
+        setErrors({});
+    }
+
+    function goBack() {
+        setCurrentStep((s) => Math.max(s - 1, 0));
+        setErrors({});
+    }
+
+    function goToStep(step: number) {
+        if (step < currentStep || completedSteps.has(step)) {
+            setCurrentStep(step);
+            setErrors({});
         }
     }
 
-    const getQty = (id: string) => cart.find((c) => c.product.id === id)?.qty ?? 0;
-    const totalAmount = cart.reduce((s, c) => s + Number(c.product.price_per_bag) * c.qty, 0);
+    async function uploadFile(file: File, prefix: string): Promise<string> {
+        const supabase = createClient();
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) throw new Error("Not authenticated");
+
+        const ext = file.name.split(".").pop() || "jpg";
+        const timestamp = Date.now();
+        const randomId = Math.random().toString(36).substring(7);
+        const path = `${user.id}/${prefix}_${timestamp}_${randomId}.${ext}`;
+
+        const { error } = await supabase.storage
+            .from("order-attachments")
+            .upload(path, file, { upsert: true, contentType: file.type });
+        if (error) throw new Error(`Upload failed: ${error.message}`);
+
+        const { data: { publicUrl } } = supabase.storage
+            .from("order-attachments")
+            .getPublicUrl(path);
+        return publicUrl;
+    }
 
     async function handleSubmit() {
-        if (cart.length === 0) { toast.error("Please add at least one product."); return; }
-        if (paymentMethod === "check" && !checkFile) { toast.error("Please upload a check image."); return; }
-        setSubmitting(true);
+        setLoading(true);
         try {
-            const supabase = createClient();
-            const { data: { user } } = await supabase.auth.getUser();
-            if (!user) throw new Error("Not authenticated");
-            let checkImageUrl: string | null = null;
-            if (paymentMethod === "check" && checkFile) {
-                const ext = checkFile.name.split(".").pop();
-                const path = `${user.id}/check-${checkFile.lastModified}.${ext}`;
-                const { error } = await supabase.storage.from("order-attachments").upload(path, checkFile);
-                if (error) throw error;
-                checkImageUrl = path;
+            if (!poFile) {
+                toast.error("PO image is required.");
+                return;
             }
-            const { data: order, error: oErr } = await supabase.from("orders")
-                .insert({ client_id: user.id, status: "pending", total_amount: totalAmount, payment_method: paymentMethod, check_image_url: checkImageUrl, notes: notes || null })
-                .select().single();
-            if (oErr) throw oErr;
-            const { error: iErr } = await supabase.from("order_items").insert(
-                cart.map((c) => ({ order_id: order.id, product_id: c.product.id, bag_type: c.product.bag_type, requested_qty: c.qty, approved_qty: 0, dispatched_qty: 0 }))
-            );
-            if (iErr) throw iErr;
-            await supabase.from("activity_log").insert({ actor_id: user.id, action: "order_placed", entity_type: "order", entity_id: order.id, metadata: { total: totalAmount } });
-            toast.success("Order placed successfully!");
-            router.push(`/client/orders/${order.id}`);
+
+            // Upload PO image
+            const poImageUrl = await uploadFile(poFile, "po");
+
+            // Upload check image if payment method is check
+            let checkImageUrl: string | null = null;
+            if (form.payment_method === "check" && checkFile) {
+                checkImageUrl = await uploadFile(checkFile, "check");
+            }
+
+            // Build items
+            const items: { product_id: string; bag_type: string; requested_qty: number }[] = [];
+            const jbProduct = products.find((p) => p.bag_type === "JB");
+            const sbProduct = products.find((p) => p.bag_type === "SB");
+
+            if (form.jb_qty > 0 && jbProduct) {
+                items.push({ product_id: jbProduct.id, bag_type: "JB", requested_qty: form.jb_qty });
+            }
+            if (form.sb_qty > 0 && sbProduct) {
+                items.push({ product_id: sbProduct.id, bag_type: "SB", requested_qty: form.sb_qty });
+            }
+
+            // Calculate subtotal
+            const jbPrice = form.source === "port" ? (jbProduct?.price_port || 0) : (jbProduct?.price_warehouse || 0);
+            const sbPrice = form.source === "port" ? (sbProduct?.price_port || 0) : (sbProduct?.price_warehouse || 0);
+            const subtotal = form.jb_qty * jbPrice + form.sb_qty * sbPrice;
+
+            // Build notes
+            let notes = "";
+            if (form.service_type === "pickup" && form.preferred_pickup_date) {
+                notes = `Preferred Pick-up Date: ${form.preferred_pickup_date}`;
+            }
+            if (checkImageUrl) {
+                notes += `${notes ? "\n" : ""}Check image uploaded.`;
+            }
+
+            const orderData = {
+                source: form.source,
+                service_type: form.service_type,
+                payment_method: form.payment_method,
+                po_number: form.po_number,
+                po_image_url: poImageUrl,
+                supplier_name: form.supplier_name,
+                driver_name: form.service_type === "pickup" ? form.driver_name : null,
+                plate_number: form.service_type === "pickup" ? form.plate_number : null,
+                preferred_pickup_date: form.service_type === "pickup" ? form.preferred_pickup_date : undefined,
+                total_amount: subtotal,
+                items,
+                notes: notes.trim(),
+            };
+
+            const splitDetails = form.wants_split
+                ? {
+                      wantsSplit: true,
+                      deliverNowQty: form.deliver_now_jb + form.deliver_now_sb,
+                      deliverNowJB: form.deliver_now_jb,
+                      deliverNowSB: form.deliver_now_sb,
+                      splitNote: `Client requested ${form.deliver_now_jb + form.deliver_now_sb} bags now (${form.deliver_now_jb} JB, ${form.deliver_now_sb} SB). Service: ${form.service_type}.`,
+                  }
+                : undefined;
+
+            await submitOrder(orderData, splitDetails);
+
+            toast.success("Order submitted successfully! Pending approval.");
+            clearForm();
+            router.push("/client/orders");
         } catch (err) {
-            console.error(err);
-            toast.error("Failed to place order. Please try again.");
-        } finally { setSubmitting(false); }
+            const msg = err instanceof Error ? err.message : "An error occurred. Please try again.";
+            toast.error(msg);
+        } finally {
+            setLoading(false);
+        }
+    }
+
+    async function handleSaveDraft() {
+        setDraftLoading(true);
+        try {
+            if (!poFile && !form.po_number) {
+                toast.error("At least a PO number is required for a draft.");
+                return;
+            }
+
+            let poImageUrl: string | undefined;
+            if (poFile) {
+                poImageUrl = await uploadFile(poFile, "po");
+            }
+
+            const items: { product_id: string; bag_type: string; requested_qty: number }[] = [];
+            const jbProduct = products.find((p) => p.bag_type === "JB");
+            const sbProduct = products.find((p) => p.bag_type === "SB");
+
+            if (form.jb_qty > 0 && jbProduct) {
+                items.push({ product_id: jbProduct.id, bag_type: "JB", requested_qty: form.jb_qty });
+            }
+            if (form.sb_qty > 0 && sbProduct) {
+                items.push({ product_id: sbProduct.id, bag_type: "SB", requested_qty: form.sb_qty });
+            }
+
+            const jbPrice = form.source === "port" ? (jbProduct?.price_port || 0) : (jbProduct?.price_warehouse || 0);
+            const sbPrice = form.source === "port" ? (sbProduct?.price_port || 0) : (sbProduct?.price_warehouse || 0);
+            const subtotal = form.jb_qty * jbPrice + form.sb_qty * sbPrice;
+
+            const orderData = {
+                source: form.source,
+                service_type: form.service_type,
+                payment_method: form.payment_method,
+                po_number: form.po_number,
+                po_image_url: poImageUrl,
+                supplier_name: form.supplier_name,
+                driver_name: form.service_type === "pickup" ? form.driver_name : null,
+                plate_number: form.service_type === "pickup" ? form.plate_number : null,
+                preferred_pickup_date: form.service_type === "pickup" ? form.preferred_pickup_date : undefined,
+                total_amount: subtotal,
+                items,
+                notes: "",
+            };
+
+            const splitDetails = form.wants_split
+                ? {
+                      wantsSplit: true,
+                      deliverNowQty: form.deliver_now_jb + form.deliver_now_sb,
+                      deliverNowJB: form.deliver_now_jb,
+                      deliverNowSB: form.deliver_now_sb,
+                  }
+                : undefined;
+
+            await saveOrderDraft(orderData, splitDetails);
+
+            toast.success("Order saved as draft.");
+            clearForm();
+            router.push("/client/orders");
+        } catch (err) {
+            const msg = err instanceof Error ? err.message : "Failed to save draft.";
+            toast.error(msg);
+        } finally {
+            setDraftLoading(false);
+        }
+    }
+
+    if (!isVerified) {
+        return (
+            <div className="max-w-lg mx-auto px-4 py-16 text-center space-y-4">
+                <ShieldAlert className="w-12 h-12 mx-auto text-amber-500" />
+                <h2 className="text-xl font-bold text-foreground">Verification Required</h2>
+                <p className="text-muted-foreground">
+                    You need to be KYC verified before you can place orders.
+                </p>
+                <Link href="/client/pending-kyc">
+                    <Button variant="outline">Learn more</Button>
+                </Link>
+            </div>
+        );
+    }
+
+    if (loadingProducts) {
+        return (
+            <div className="max-w-3xl mx-auto px-4 py-16 text-center">
+                <p className="text-muted-foreground">Loading products...</p>
+            </div>
+        );
     }
 
     return (
         <div className="max-w-3xl mx-auto px-4 py-8 space-y-6">
             <div>
-                <h2 className="text-2xl font-bold">Place New Order</h2>
-                <p className="text-muted-foreground mt-1">Complete the steps below to submit your cement order.</p>
+                <h2 className="text-2xl font-bold tracking-tight">Place New Order</h2>
+                <p className="text-muted-foreground mt-1">
+                    Complete the steps below to submit your cement order.
+                </p>
             </div>
 
             {/* Step Indicator */}
-            <div className="flex items-center gap-2">
-                {STEPS.map((label, idx) => {
-                    const done = idx < step; const active = idx === step;
-                    return (
-                        <div key={idx} className="flex items-center gap-2">
-                            <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold border-2 transition-all ${done ? "bg-emerald-500 border-emerald-500 text-white" : active ? "bg-primary border-primary text-primary-foreground" : "bg-white border-border text-muted-foreground"}`}>
-                                {done ? <CheckCircle2 className="w-4 h-4" /> : idx + 1}
-                            </div>
-                            <span className={`text-sm font-medium hidden sm:block ${active ? "text-foreground" : "text-muted-foreground"}`}>{label}</span>
-                            {idx < STEPS.length - 1 && <ChevronRight className="w-4 h-4 text-muted-foreground" />}
-                        </div>
-                    );
-                })}
+            <StepIndicator
+                steps={STEPS}
+                currentStep={currentStep}
+                completedSteps={completedSteps}
+                onStepClick={goToStep}
+            />
+
+            {/* Step Content */}
+            <div className="relative overflow-hidden">
+                <div key={currentStep} className="animate-slide-in-right">
+                    {currentStep === 0 && (
+                        <StepProducts
+                            products={products}
+                            jbQty={form.jb_qty}
+                            sbQty={form.sb_qty}
+                            onQtyChange={(field, value) => updateField(field, value)}
+                            error={errors.jb_qty || errors.sb_qty}
+                        />
+                    )}
+                    {currentStep === 1 && (
+                        <StepSource
+                            value={form.source}
+                            onChange={(v) => updateField("source", v)}
+                            products={products}
+                            jbQty={form.jb_qty}
+                            sbQty={form.sb_qty}
+                            error={errors.source}
+                        />
+                    )}
+                    {currentStep === 2 && (
+                        <StepServiceType
+                            value={form.service_type}
+                            onChange={(v) => updateField("service_type", v)}
+                            driverName={form.driver_name}
+                            plateNumber={form.plate_number}
+                            pickupDate={form.preferred_pickup_date}
+                            onFieldChange={updateField}
+                            errors={errors}
+                        />
+                    )}
+                    {currentStep === 3 && (
+                        <StepPoPayment
+                            form={form}
+                            files={{ po_file: poFile, check_file: checkFile }}
+                            onFieldChange={updateField}
+                            onFileChange={(field, file) => {
+                                if (field === "po_file") setPoFile(file);
+                                else setCheckFile(file);
+                            }}
+                            errors={errors}
+                            totalJB={form.jb_qty}
+                            totalSB={form.sb_qty}
+                            totalIndividualBags={form.jb_qty * 25 + form.sb_qty * 50}
+                        />
+                    )}
+                    {currentStep === 4 && (
+                        <StepOrderReview
+                            form={form}
+                            files={{ po_file: poFile, check_file: checkFile }}
+                            products={products}
+                            onEditStep={goToStep}
+                            onSubmit={handleSubmit}
+                            onSaveDraft={handleSaveDraft}
+                            loading={loading}
+                            draftLoading={draftLoading}
+                        />
+                    )}
+                </div>
             </div>
 
-            {/* Step 0: Products */}
-            {step === 0 && (
-                <div className="space-y-4">
-                    <Card>
-                        <CardHeader className="pb-2"><CardTitle className="text-base flex items-center gap-2"><Package className="w-4 h-4 text-primary" />Select Products & Quantities</CardTitle></CardHeader>
-                        <CardContent className="space-y-3">
-                            {loadingProducts ? <p className="text-sm text-center py-4 text-muted-foreground">Loading products...</p>
-                                : products.length === 0 ? <p className="text-sm text-center py-4 text-muted-foreground">No products available.</p>
-                                : products.map((p) => {
-                                    const qty = getQty(p.id);
-                                    return (
-                                        <div key={p.id} className="flex flex-col sm:flex-row sm:items-center gap-3 p-3 border rounded-lg hover:bg-muted/30 transition-colors">
-                                            <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
-                                                <Package className="w-5 h-5 text-primary" />
-                                            </div>
-                                            <div className="flex-1 min-w-0">
-                                                <p className="text-sm font-semibold">{p.name}</p>
-                                                <p className="text-xs text-muted-foreground">{p.bag_type === "JB" ? "Jumbo Bag" : "Sling Bag"} · <span className="font-semibold text-primary">₱{Number(p.price_per_bag).toLocaleString()}</span>/bag</p>
-                                            </div>
-                                            <div className="flex items-center gap-2">
-                                                <Button type="button" size="icon" variant="outline" className="h-8 w-8" onClick={() => setQty(p, Math.max(0, qty - 1))}>−</Button>
-                                                <Input type="number" min={0} value={qty || ""} placeholder="0" onChange={(e) => setQty(p, Math.max(0, parseInt(e.target.value) || 0))} className="h-8 w-20 text-center text-sm font-semibold" />
-                                                <Button type="button" size="icon" variant="outline" className="h-8 w-8" onClick={() => setQty(p, qty + 1)}>+</Button>
-                                            </div>
-                                            {qty > 0 && <Badge className="bg-primary/10 text-primary">₱{(Number(p.price_per_bag) * qty).toLocaleString()}</Badge>}
-                                        </div>
-                                    );
-                                })}
-                        </CardContent>
-                    </Card>
-                    {cart.length > 0 && (
-                        <Card className="border-primary/30 bg-primary/5">
-                            <CardContent className="pt-4 pb-4">
-                                <p className="text-sm font-semibold text-primary mb-2">Cart Summary</p>
-                                {cart.map((c) => (<div key={c.product.id} className="flex justify-between text-sm py-1"><span>{c.product.name} × {c.qty.toLocaleString()}</span><span className="font-semibold">₱{(Number(c.product.price_per_bag) * c.qty).toLocaleString()}</span></div>))}
-                                <Separator className="my-2" />
-                                <div className="flex justify-between font-bold"><span>Total</span><span className="text-primary">₱{totalAmount.toLocaleString()}</span></div>
-                            </CardContent>
-                        </Card>
+            {/* Navigation Buttons — hidden on review step */}
+            {currentStep < 4 && (
+                <div className="flex justify-between pt-2">
+                    {currentStep > 0 ? (
+                        <Button
+                            type="button"
+                            variant="outline"
+                            className="h-11 gap-1"
+                            onClick={goBack}
+                        >
+                            <ChevronLeft className="w-4 h-4" />
+                            Back
+                        </Button>
+                    ) : (
+                        <div />
                     )}
-                    <div className="flex justify-end">
-                        <Button className="bg-primary hover:bg-primary/90 gap-2" onClick={() => { if (!cart.length) { toast.error("Add at least one product."); return; } setStep(1); }}>
-                            Continue <ChevronRight className="w-4 h-4" />
-                        </Button>
-                    </div>
+                    <Button
+                        type="button"
+                        className="h-11 gap-2 bg-primary text-primary-foreground font-semibold hover:bg-primary/90"
+                        onClick={goNext}
+                    >
+                        Continue
+                        <ChevronRight className="w-4 h-4" />
+                    </Button>
                 </div>
             )}
 
-            {/* Step 1: Payment */}
-            {step === 1 && (
-                <div className="space-y-4">
-                    <Card>
-                        <CardHeader className="pb-2"><CardTitle className="text-base flex items-center gap-2"><CreditCard className="w-4 h-4 text-primary" />Payment Method</CardTitle></CardHeader>
-                        <CardContent className="space-y-4">
-                            <RadioGroup value={paymentMethod} onValueChange={(v) => setPaymentMethod(v as "cash" | "check")} className="space-y-3">
-                                {(["cash", "check"] as const).map((method) => (
-                                    <div key={method} className={`flex items-start gap-3 p-4 border rounded-lg cursor-pointer ${paymentMethod === method ? "border-primary bg-primary/5" : "hover:bg-muted/30"}`} onClick={() => setPaymentMethod(method)}>
-                                        <RadioGroupItem value={method} id={method} />
-                                        <Label htmlFor={method} className="cursor-pointer">
-                                            <p className="font-semibold capitalize">{method}</p>
-                                            <p className="text-sm text-muted-foreground">{method === "cash" ? "Payment via cash upon delivery." : "Upload a photo of your check for verification."}</p>
-                                        </Label>
-                                    </div>
-                                ))}
-                            </RadioGroup>
-                            {paymentMethod === "check" && (
-                                <div className="space-y-2">
-                                    <Label className="text-sm font-semibold">Upload Check Image <span className="text-destructive">*</span></Label>
-                                    {checkFile ? (
-                                        <div className="flex items-center gap-3 p-3 border border-emerald-200 bg-emerald-50 rounded-lg">
-                                            <CheckCircle2 className="w-5 h-5 text-emerald-600" />
-                                            <span className="text-sm text-emerald-800 flex-1 truncate">{checkFile.name}</span>
-                                            <Button type="button" size="icon" variant="ghost" className="h-7 w-7" onClick={() => setCheckFile(null)}><X className="w-4 h-4" /></Button>
-                                        </div>
-                                    ) : (
-                                        <div className="border-2 border-dashed border-border rounded-lg p-8 text-center cursor-pointer hover:border-primary/50 hover:bg-muted/30 transition-colors" onClick={() => document.getElementById("check-upload")?.click()}>
-                                            <Upload className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
-                                            <p className="text-sm text-muted-foreground">Click to upload check image</p>
-                                            <p className="text-xs text-muted-foreground/60 mt-1">JPG, PNG, PDF · max 10MB</p>
-                                            <input id="check-upload" type="file" className="hidden" accept="image/*,.pdf" onChange={(e) => setCheckFile(e.target.files?.[0] || null)} />
-                                        </div>
-                                    )}
-                                </div>
-                            )}
-                            <div className="space-y-2">
-                                <Label className="text-sm font-semibold">Notes (optional)</Label>
-                                <Input placeholder="Delivery instructions, preferred schedule..." value={notes} onChange={(e) => setNotes(e.target.value)} className="h-11" />
-                            </div>
-                        </CardContent>
-                    </Card>
-                    <div className="flex justify-between">
-                        <Button variant="outline" onClick={() => setStep(0)}>Back</Button>
-                        <Button className="bg-primary hover:bg-primary/90 gap-2" onClick={() => { if (paymentMethod === "check" && !checkFile) { toast.error("Upload a check image."); return; } setStep(2); }}>
-                            Review Order <ChevronRight className="w-4 h-4" />
-                        </Button>
-                    </div>
-                </div>
-            )}
-
-            {/* Step 2: Review */}
-            {step === 2 && (
-                <div className="space-y-4">
-                    <Card>
-                        <CardHeader className="pb-2"><CardTitle className="text-base flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-emerald-600" />Order Summary</CardTitle></CardHeader>
-                        <CardContent className="space-y-4">
-                            <div className="space-y-2">
-                                {cart.map((c) => (
-                                    <div key={c.product.id} className="flex justify-between items-center p-3 border rounded-lg">
-                                        <div><p className="text-sm font-semibold">{c.product.name}</p><p className="text-xs text-muted-foreground">{c.qty.toLocaleString()} bags × ₱{Number(c.product.price_per_bag).toLocaleString()}</p></div>
-                                        <p className="text-sm font-bold text-primary">₱{(Number(c.product.price_per_bag) * c.qty).toLocaleString()}</p>
-                                    </div>
-                                ))}
-                            </div>
-                            <Separator />
-                            <div className="flex justify-between font-bold text-lg"><span>Total</span><span className="text-primary">₱{totalAmount.toLocaleString()}</span></div>
-                            <div className="grid grid-cols-2 gap-3 text-sm">
-                                <div className="p-3 bg-muted/50 rounded-lg"><p className="text-xs text-muted-foreground">Payment</p><p className="font-semibold capitalize mt-0.5">{paymentMethod}</p></div>
-                                {checkFile && <div className="p-3 bg-muted/50 rounded-lg"><p className="text-xs text-muted-foreground">Check File</p><p className="font-semibold mt-0.5 truncate">{checkFile.name}</p></div>}
-                                {notes && <div className="p-3 bg-muted/50 rounded-lg col-span-2"><p className="text-xs text-muted-foreground">Notes</p><p className="font-semibold mt-0.5">{notes}</p></div>}
-                            </div>
-                            <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800">
-                                <p className="font-semibold">What happens next?</p>
-                                <p className="mt-0.5">Your order will be reviewed by our team. You&apos;ll receive a status update once approved.</p>
-                            </div>
-                        </CardContent>
-                    </Card>
-                    <div className="flex justify-between">
-                        <Button variant="outline" onClick={() => setStep(1)}>Back</Button>
-                        <Button className="bg-emerald-600 hover:bg-emerald-700 gap-2 min-w-36" onClick={handleSubmit} disabled={submitting}>
-                            {submitting ? <><Loader2 className="w-4 h-4 animate-spin" />Placing...</> : <><CheckCircle2 className="w-4 h-4" />Confirm Order</>}
-                        </Button>
-                    </div>
+            {/* Back button on review step */}
+            {currentStep === 4 && (
+                <div className="flex justify-start">
+                    <Button
+                        type="button"
+                        variant="outline"
+                        className="h-11 gap-1"
+                        onClick={goBack}
+                    >
+                        <ChevronLeft className="w-4 h-4" />
+                        Back
+                    </Button>
                 </div>
             )}
         </div>

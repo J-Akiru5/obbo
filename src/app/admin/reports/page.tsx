@@ -5,8 +5,9 @@ import { Calendar } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { fetchCustomerBalances, fetchOrders, fetchWarehouseReport, fetchDashboardKPIs, autoSubmitEndOfDayReports } from "@/lib/actions/admin-actions";
+import { fetchCustomerBalances, fetchOrders, fetchWarehouseReport, fetchDashboardKPIs, autoSubmitEndOfDayReports, fetchSalesProfitReport } from "@/lib/actions/admin-actions";
 import { createClient } from "@/lib/supabase/client";
 import type { WarehouseReport } from "@/lib/types/database";
 
@@ -18,6 +19,14 @@ export default function AdminReportsPage() {
     const [balances, setBalances] = useState<Array<{ id: string; remaining_qty: number; bag_type: string; client?: { full_name: string; company_name: string | null }; product?: { name: string } }>>([]);
     const [loading, setLoading] = useState(true);
     const [notAvailable, setNotAvailable] = useState(false);
+
+    // Sales & Profit Report state
+    const today = new Date().toISOString().split("T")[0];
+    const firstOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split("T")[0];
+    const [profitDateFrom, setProfitDateFrom] = useState(firstOfMonth);
+    const [profitDateTo, setProfitDateTo] = useState(today);
+    const [profitReport, setProfitReport] = useState<{ totalSales: number; totalGrossProfit: number; totalNetProfit: number; entries: Array<Record<string, unknown>> }>({ totalSales: 0, totalGrossProfit: 0, totalNetProfit: 0, entries: [] });
+    const [loadingProfit, setLoadingProfit] = useState(false);
 
     const loadReportData = useCallback(async () => {
         setLoading(true);
@@ -63,11 +72,25 @@ export default function AdminReportsPage() {
         }
     }, [reportDate]);
 
+    const loadProfitReport = useCallback(async () => {
+        if (!profitDateFrom || !profitDateTo) return;
+        setLoadingProfit(true);
+        try {
+            const data = await fetchSalesProfitReport(profitDateFrom, profitDateTo);
+            setProfitReport(data);
+        } catch (error) {
+            console.error("Failed to load profit report:", error);
+        } finally {
+            setLoadingProfit(false);
+        }
+    }, [profitDateFrom, profitDateTo]);
+
     useEffect(() => {
         // Trigger auto-submit for past unsubmitted reports on page load
         autoSubmitEndOfDayReports().catch(() => {});
 
         loadReportData();
+        loadProfitReport();
         
         const supabase = createClient();
         const channel = supabase
@@ -253,6 +276,107 @@ export default function AdminReportsPage() {
                     </section>
                 </div>
             )}
+
+            {/* Sales & Profit Report */}
+            <div className="space-y-6 pt-6 border-t border-border">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                    <div>
+                        <h3 className="text-lg font-bold text-foreground">Sales & Profit Report</h3>
+                        <p className="text-sm text-muted-foreground">Financial performance for the selected period.</p>
+                    </div>
+                    <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-2">
+                            <Calendar className="w-4 h-4 text-muted-foreground" />
+                            <Input
+                                type="date"
+                                value={profitDateFrom}
+                                onChange={(e) => setProfitDateFrom(e.target.value)}
+                                className="h-9 w-40"
+                            />
+                        </div>
+                        <span className="text-muted-foreground text-sm">to</span>
+                        <Input
+                            type="date"
+                            value={profitDateTo}
+                            onChange={(e) => setProfitDateTo(e.target.value)}
+                            className="h-9 w-40"
+                        />
+                        <Button size="sm" onClick={loadProfitReport} disabled={loadingProfit} className="bg-primary h-9">
+                            {loadingProfit ? "Loading..." : "Generate"}
+                        </Button>
+                    </div>
+                </div>
+
+                {/* Summary Cards */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <Card className="border-border shadow-sm">
+                        <CardContent className="p-5 text-center">
+                            <p className="text-xs uppercase font-bold text-muted-foreground tracking-wider mb-2">Total Sales</p>
+                            <p className="text-3xl font-bold text-foreground">₱{profitReport.totalSales.toLocaleString()}</p>
+                        </CardContent>
+                    </Card>
+                    <Card className="border-border shadow-sm">
+                        <CardContent className="p-5 text-center">
+                            <p className="text-xs uppercase font-bold text-muted-foreground tracking-wider mb-2">Gross Profit</p>
+                            <p className="text-3xl font-bold text-emerald-600">₱{profitReport.totalGrossProfit.toLocaleString()}</p>
+                        </CardContent>
+                    </Card>
+                    <Card className="border-border shadow-sm">
+                        <CardContent className="p-5 text-center">
+                            <p className="text-xs uppercase font-bold text-muted-foreground tracking-wider mb-2">Net Profit</p>
+                            <p className={`text-3xl font-bold ${profitReport.totalNetProfit >= 0 ? "text-blue-600" : "text-red-500"}`}>
+                                ₱{profitReport.totalNetProfit.toLocaleString()}
+                            </p>
+                        </CardContent>
+                    </Card>
+                </div>
+
+                {/* Daily Breakdown Table */}
+                {profitReport.entries.length > 0 && (
+                    <Card className="border-border shadow-sm">
+                        <CardHeader className="pb-2">
+                            <CardTitle className="text-base">Dispatch Breakdown</CardTitle>
+                            <CardDescription>Individual dispatch entries in the selected period.</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <Table>
+                                <TableHeader className="bg-muted/30">
+                                    <TableRow>
+                                        <TableHead>Date</TableHead>
+                                        <TableHead>DR #</TableHead>
+                                        <TableHead>Client</TableHead>
+                                        <TableHead className="text-right">Bags</TableHead>
+                                        <TableHead className="text-right">Sales</TableHead>
+                                        <TableHead className="text-right">Gross Profit</TableHead>
+                                        <TableHead className="text-right">Net Profit</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {profitReport.entries.map((entry, idx) => (
+                                        <TableRow key={idx}>
+                                            <TableCell className="text-xs">{String(entry.date)}</TableCell>
+                                            <TableCell className="font-mono text-xs font-bold">{String(entry.dr_number || "—")}</TableCell>
+                                            <TableCell className="text-sm max-w-[150px] truncate">{String(entry.client_name || "—")}</TableCell>
+                                            <TableCell className="text-right text-sm">{((Number(entry.jb) || 0) * 25 + (Number(entry.sb) || 0) * 50).toLocaleString()}</TableCell>
+                                            <TableCell className="text-right text-sm font-medium">₱{(Number(entry.total_sales) || 0).toLocaleString()}</TableCell>
+                                            <TableCell className="text-right text-sm text-emerald-600">₱{(Number(entry.gross_profit) || 0).toLocaleString()}</TableCell>
+                                            <TableCell className={`text-right text-sm font-bold ${(Number(entry.net_profit) || 0) >= 0 ? "text-blue-600" : "text-red-500"}`}>
+                                                ₱{(Number(entry.net_profit) || 0).toLocaleString()}
+                                            </TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        </CardContent>
+                    </Card>
+                )}
+
+                {profitReport.entries.length === 0 && !loadingProfit && (
+                    <div className="text-center py-8 text-muted-foreground">
+                        No dispatch entries found for the selected period.
+                    </div>
+                )}
+            </div>
         </div>
     );
 }

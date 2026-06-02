@@ -196,6 +196,10 @@
     0%, 100% { opacity: 0.4; }
     50%      { opacity: 0.8; }
   }
+  @keyframes slide-in-right {
+    from { opacity: 0; transform: translateX(16px); }
+    to   { opacity: 1; transform: translateX(0); }
+  }
 
   .animate-fade-in-up {
     animation: fade-in-up 0.7s ease-out both;
@@ -215,6 +219,9 @@
   }
   .animate-glow-pulse {
     animation: glow-pulse 3s ease-in-out infinite;
+  }
+  .animate-slide-in-right {
+    animation: slide-in-right 0.3s ease-out both;
   }
 
   /* Stagger delays */

@@ -106,6 +106,12 @@ export interface ShipmentLedgerEntry {
     return_reason: string | null;
     client_reason: string | null;
     notes: string | null;
+    total_sales: number;
+    gross_profit: number;
+    net_profit: number;
+    selling_price_per_bag: number | null;
+    landed_cost_per_bag: number | null;
+    local_expenses_per_bag: number | null;
     created_at: string;
     updated_at: string;
 }

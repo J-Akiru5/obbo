@@ -284,6 +284,32 @@ export function ShipmentsTab({ shipments, loading, onReload }: { shipments: Ship
                                             <Pencil className="w-3 h-3 mr-1" /> Adjust
                                         </Button>
                                     </div>
+                                    {ledgerData[shipment.id] && ledgerData[shipment.id].length > 0 && (
+                                        <div className="flex items-center gap-3">
+                                            {(() => {
+                                                const entries = ledgerData[shipment.id];
+                                                const batchSales = entries.reduce((s, e) => s + (Number(e.total_sales) || 0), 0);
+                                                const batchGross = entries.reduce((s, e) => s + (Number(e.gross_profit) || 0), 0);
+                                                const batchNet = entries.reduce((s, e) => s + (Number(e.net_profit) || 0), 0);
+                                                return (
+                                                    <>
+                                                        <div className="text-right">
+                                                            <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">Sales</p>
+                                                            <p className="text-sm font-bold text-emerald-600">₱{batchSales.toLocaleString()}</p>
+                                                        </div>
+                                                        <div className="text-right">
+                                                            <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">Gross</p>
+                                                            <p className="text-sm font-bold text-blue-600">₱{batchGross.toLocaleString()}</p>
+                                                        </div>
+                                                        <div className="text-right">
+                                                            <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">Net</p>
+                                                            <p className={`text-sm font-bold ${batchNet >= 0 ? "text-emerald-600" : "text-red-500"}`}>₱{batchNet.toLocaleString()}</p>
+                                                        </div>
+                                                    </>
+                                                );
+                                            })()}
+                                        </div>
+                                    )}
                                     <Button size="sm" onClick={() => openAddEntry(shipment.id)} className="bg-primary">
                                         <Plus className="w-3.5 h-3.5 mr-1" /> Add Entry
                                     </Button>
@@ -308,6 +334,9 @@ export function ShipmentsTab({ shipments, loading, onReload }: { shipments: Ship
                                                 <TableHead className="text-[10px]">Payment</TableHead>
                                                 <TableHead className="text-[10px]">Check No.</TableHead>
                                                 <TableHead className="text-[10px] text-right">Amount</TableHead>
+                                                <TableHead className="text-[10px] text-right text-emerald-600">Sales</TableHead>
+                                                <TableHead className="text-[10px] text-right text-emerald-600">Gross</TableHead>
+                                                <TableHead className="text-[10px] text-right text-emerald-600">Net</TableHead>
                                                 <TableHead className="text-[10px] text-right text-emerald-600">Returns</TableHead>
                                                 <TableHead className="text-[10px]">Ret. Type</TableHead>
                                                 <TableHead className="text-[10px]">Reason</TableHead>
@@ -316,9 +345,9 @@ export function ShipmentsTab({ shipments, loading, onReload }: { shipments: Ship
                                         </TableHeader>
                                         <TableBody>
                                             {!ledgerData[shipment.id] ? (
-                                                <TableRow><TableCell colSpan={18} className="text-center py-4 text-xs text-muted-foreground">Loading...</TableCell></TableRow>
+                                                <TableRow><TableCell colSpan={21} className="text-center py-4 text-xs text-muted-foreground">Loading...</TableCell></TableRow>
                                             ) : ledgerData[shipment.id].length === 0 ? (
-                                                <TableRow><TableCell colSpan={18} className="text-center py-4 text-xs text-muted-foreground">No ledger entries yet.</TableCell></TableRow>
+                                                <TableRow><TableCell colSpan={21} className="text-center py-4 text-xs text-muted-foreground">No ledger entries yet.</TableCell></TableRow>
                                             ) : ledgerData[shipment.id].map(e => (
                                                 <TableRow key={e.id}>
                                                     <TableCell className="text-[11px] whitespace-nowrap">{new Date(e.date).toLocaleDateString()}</TableCell>
@@ -335,6 +364,9 @@ export function ShipmentsTab({ shipments, loading, onReload }: { shipments: Ship
                                                     <TableCell className="text-[10px] uppercase">{e.payment_method || "—"}</TableCell>
                                                     <TableCell className="text-[11px]">{e.check_number || "—"}</TableCell>
                                                     <TableCell className="text-[11px] text-right">{e.amount ? `₱${Number(e.amount).toLocaleString()}` : "—"}</TableCell>
+                                                    <TableCell className="text-[11px] text-right font-medium text-emerald-600">{e.total_sales ? `₱${Number(e.total_sales).toLocaleString()}` : "—"}</TableCell>
+                                                    <TableCell className="text-[11px] text-right font-medium">{e.gross_profit ? `₱${Number(e.gross_profit).toLocaleString()}` : "—"}</TableCell>
+                                                    <TableCell className={`text-[11px] text-right font-bold ${Number(e.net_profit) >= 0 ? "text-emerald-600" : "text-red-500"}`}>{e.net_profit ? `₱${Number(e.net_profit).toLocaleString()}` : "—"}</TableCell>
                                                     <TableCell className="text-[11px] text-right font-bold text-emerald-600">{e.bags_returned > 0 ? `+${e.bags_returned}` : "—"}</TableCell>
                                                     <TableCell className="text-[10px]">{e.bag_returned_type || "—"}</TableCell>
                                                     <TableCell className="text-[10px]">

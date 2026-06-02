@@ -1,15 +1,31 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useState } from "react";
-import { Eye, EyeOff } from "lucide-react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useState, Suspense } from "react";
+import { Eye, EyeOff, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
 import { AuthShell } from "@/components/auth/auth-shell";
+
+function RegistrationBanner() {
+    const searchParams = useSearchParams();
+    if (!searchParams.get("registered")) return null;
+    return (
+        <div className="flex items-start gap-3 rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800">
+            <CheckCircle2 className="w-5 h-5 text-emerald-600 flex-shrink-0 mt-0.5" />
+            <div>
+                <p className="font-semibold">Registration submitted!</p>
+                <p className="mt-0.5 text-emerald-700">
+                    Your account is pending admin approval. You will be able to sign in once verified.
+                </p>
+            </div>
+        </div>
+    );
+}
 
 export default function LoginPage() {
     const router = useRouter();
@@ -73,6 +89,10 @@ export default function LoginPage() {
                         </p>
                     </div>
                 </div>
+
+                <Suspense fallback={null}>
+                    <RegistrationBanner />
+                </Suspense>
 
                 <div className="sr-only" aria-live="polite" role="status"></div>
                 <form onSubmit={handleLogin} className="space-y-5">

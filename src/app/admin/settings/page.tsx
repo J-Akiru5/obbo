@@ -9,20 +9,21 @@ import {
     HardDrive,
     Info,
     KeyRound,
+    Lock,
+    Loader2,
     Mail,
     Moon,
     Monitor,
+    Package,
     Palette,
     Phone,
     Save,
     Settings,
     Shield,
+    ShieldAlert,
     Smartphone,
     Sun,
-    ShieldAlert,
     User,
-    Lock,
-    Loader2,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -33,7 +34,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
-import { fetchAuditLog, getAdminSetting, saveAdminSetting } from "@/lib/actions/admin-actions";
+import { fetchAuditLog, getAdminSetting, saveAdminSetting, getCostConfig, saveCostConfig } from "@/lib/actions/admin-actions";
 import { createClient } from "@/lib/supabase/client";
 
 import { useTheme } from "next-themes";
@@ -69,6 +70,10 @@ export default function AdminSettingsPage() {
     const [savingAccount, setSavingAccount] = useState(false);
     const [changingPassword, setChangingPassword] = useState(false);
 
+    // Cost configuration
+    const [costConfig, setCostConfig] = useState({ landed_cost_per_bag: 147.64, local_expenses_per_bag: 20.00 });
+    const [isSavingCost, setIsSavingCost] = useState(false);
+
     const GIT_SHA = "f399c95";
 
     const [installPrompt, setInstallPrompt] = useState<any>(null);
@@ -99,15 +104,17 @@ export default function AdminSettingsPage() {
         const loadSettings = async () => {
             try {
                 const supabase = createClient();
-                const [contact, logData, userData] = await Promise.all([
+                const [contact, logData, userData, costCfg] = await Promise.all([
                     getAdminSetting("contact_info"),
                     fetchAuditLog(1, 60),
                     supabase.auth.getUser(),
+                    getCostConfig(),
                 ]);
 
                 if (contact) {
                     setContactInfo(contact as any);
                 }
+                setCostConfig(costCfg);
 
                 setAuditLogs(logData.entries);
                 setSecurityEvents(
@@ -149,6 +156,18 @@ export default function AdminSettingsPage() {
             toast.error("Failed to save contact information.");
         } finally {
             setIsSavingContact(false);
+        }
+    };
+
+    const handleSaveCostConfig = async () => {
+        setIsSavingCost(true);
+        try {
+            await saveCostConfig(costConfig);
+            toast.success("Cost configuration saved.");
+        } catch (error) {
+            toast.error("Failed to save cost configuration.");
+        } finally {
+            setIsSavingCost(false);
         }
     };
 
@@ -208,12 +227,13 @@ export default function AdminSettingsPage() {
             </header>
 
             <Tabs defaultValue="appearance" className="w-full">
-                <TabsList className="flex h-auto w-full items-center justify-start gap-1 overflow-x-auto bg-muted p-1 no-scrollbar sm:grid sm:grid-cols-6 sm:gap-2">
+                <TabsList className="flex h-auto w-full items-center justify-start gap-1 overflow-x-auto bg-muted p-1 no-scrollbar sm:grid sm:grid-cols-7 sm:gap-2">
                     <TabsTrigger value="appearance" className="flex-shrink-0 px-4 py-2 sm:px-3">Appearance</TabsTrigger>
                     <TabsTrigger value="contact" className="flex-shrink-0 px-4 py-2 sm:px-3">Contact Info</TabsTrigger>
                     <TabsTrigger value="security" className="flex-shrink-0 px-4 py-2 sm:px-3">Login Security</TabsTrigger>
                     <TabsTrigger value="audit" className="flex-shrink-0 px-4 py-2 sm:px-3">System Audits</TabsTrigger>
                     <TabsTrigger value="account" className="flex-shrink-0 px-4 py-2 sm:px-3">Admin Account</TabsTrigger>
+                    <TabsTrigger value="cost" className="flex-shrink-0 px-4 py-2 sm:px-3">Cost Config</TabsTrigger>
                     <TabsTrigger value="app" className="flex-shrink-0 px-4 py-2 sm:px-3">
                         <Smartphone className="h-3.5 w-3.5 mr-1.5" /> App
                     </TabsTrigger>
@@ -465,6 +485,82 @@ export default function AdminSettingsPage() {
                             ) : (
                                 <div className="py-8 text-center text-sm text-muted-foreground">No profile loaded.</div>
                             )}
+                        </CardContent>
+                    </Card>
+                </TabsContent>
+
+                <TabsContent value="cost" className="mt-6">
+                    <Card className="border-border shadow-sm">
+                        <CardHeader>
+                            <CardTitle className="flex items-center gap-2 text-base">
+                                <Database className="h-4 w-4" /> Cost Configuration
+                            </CardTitle>
+                            <CardDescription>Set the landed cost and local expenses per 40kg bag. These values are used to calculate gross and net profit on dispatch.</CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-0">
+                            <SettingRow
+                                icon={<Package className="h-4 w-4 text-muted-foreground" />}
+                                title="Landed Cost per Bag"
+                                description="Product cost from Vietnam + freight + duties + port handling (per 40kg bag)."
+                            >
+                                <div className="flex items-center gap-2">
+                                    <span className="text-xs text-muted-foreground">₱</span>
+                                    <Input
+                                        type="number"
+                                        step="0.01"
+                                        min={0}
+                                        value={costConfig.landed_cost_per_bag}
+                                        onChange={(e) => setCostConfig({ ...costConfig, landed_cost_per_bag: parseFloat(e.target.value) || 0 })}
+                                        className="h-9 w-32 text-right"
+                                    />
+                                </div>
+                            </SettingRow>
+
+                            <SettingRow
+                                icon={<Package className="h-4 w-4 text-muted-foreground" />}
+                                title="Local Expenses per Bag"
+                                description="Delivery from port to warehouse, rent, labor, forklift drivers, taxes, office staff (per 40kg bag)."
+                            >
+                                <div className="flex items-center gap-2">
+                                    <span className="text-xs text-muted-foreground">₱</span>
+                                    <Input
+                                        type="number"
+                                        step="0.01"
+                                        min={0}
+                                        value={costConfig.local_expenses_per_bag}
+                                        onChange={(e) => setCostConfig({ ...costConfig, local_expenses_per_bag: parseFloat(e.target.value) || 0 })}
+                                        className="h-9 w-32 text-right"
+                                    />
+                                </div>
+                            </SettingRow>
+
+                            <div className="border-t border-border pt-4 mt-2 space-y-3">
+                                <div className="flex justify-between items-center p-3 bg-muted/50 rounded-lg">
+                                    <span className="text-sm font-medium text-muted-foreground">Total Cost per Bag</span>
+                                    <span className="text-lg font-bold text-foreground">
+                                        ₱{(costConfig.landed_cost_per_bag + costConfig.local_expenses_per_bag).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                    </span>
+                                </div>
+                                <div className="flex justify-between items-center p-3 bg-emerald-50 border border-emerald-200 rounded-lg">
+                                    <span className="text-sm font-medium text-emerald-700">Gross Profit per Bag (at ₱185)</span>
+                                    <span className="text-lg font-bold text-emerald-700">
+                                        ₱{(185 - costConfig.landed_cost_per_bag).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                    </span>
+                                </div>
+                                <div className="flex justify-between items-center p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                                    <span className="text-sm font-medium text-blue-700">Net Profit per Bag (at ₱185)</span>
+                                    <span className="text-lg font-bold text-blue-700">
+                                        ₱{(185 - costConfig.landed_cost_per_bag - costConfig.local_expenses_per_bag).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                    </span>
+                                </div>
+                            </div>
+
+                            <div className="flex justify-end pt-4">
+                                <Button onClick={handleSaveCostConfig} disabled={isSavingCost} className="bg-primary gap-2">
+                                    {isSavingCost ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                                    {isSavingCost ? "Saving..." : "Save Cost Configuration"}
+                                </Button>
+                            </div>
                         </CardContent>
                     </Card>
                 </TabsContent>
