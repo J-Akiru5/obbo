@@ -1,0 +1,1026 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pre-Deployment Flight-Check Report — OBBO iManage</title>
+<style>
+  :root {
+    --blue-900: #0f2440;
+    --blue-800: #152d4f;
+    --blue-700: #1e3a5f;
+    --blue-600: #264a73;
+    --blue-500: #2e5a87;
+    --blue-100: #d4e4f7;
+    --blue-50: #eef5fc;
+    --yellow-500: #f59e0b;
+    --yellow-400: #fbbf24;
+    --yellow-100: #fef3c7;
+    --yellow-50: #fffbeb;
+    --slate-900: #0f172a;
+    --slate-800: #1e293b;
+    --slate-700: #334155;
+    --slate-600: #475569;
+    --slate-500: #64748b;
+    --slate-400: #94a3b8;
+    --slate-300: #cbd5e1;
+    --slate-200: #e2e8f0;
+    --slate-100: #f1f5f9;
+    --slate-50: #f8fafc;
+    --green-600: #059669;
+    --green-100: #d1fae5;
+    --green-50: #ecfdf5;
+    --red-600: #dc2626;
+    --red-500: #ef4444;
+    --red-100: #fee2e2;
+    --red-50: #fef2f2;
+    --amber-600: #d97706;
+    --amber-100: #fef3c7;
+    --amber-50: #fffbeb;
+    --radius: 8px;
+    --radius-lg: 12px;
+    --shadow-sm: 0 1px 2px rgba(15,36,64,0.06);
+    --shadow: 0 1px 3px rgba(15,36,64,0.08), 0 1px 2px rgba(15,36,64,0.06);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: var(--slate-50);
+    color: var(--slate-800);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .container {
+    max-width: 1120px;
+    margin: 0 auto;
+    padding: 0 24px;
+  }
+
+  /* Header */
+  .report-header {
+    background: linear-gradient(135deg, var(--blue-900) 0%, var(--blue-700) 100%);
+    color: white;
+    padding: 48px 0 40px;
+    border-bottom: 4px solid var(--yellow-500);
+  }
+  .report-header .container { display: flex; align-items: flex-start; gap: 24px; flex-wrap: wrap; }
+  .header-icon {
+    width: 56px; height: 56px;
+    background: var(--yellow-500);
+    border-radius: var(--radius-lg);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 28px; flex-shrink: 0;
+  }
+  .header-content { flex: 1; min-width: 280px; }
+  .header-content h1 { font-size: 28px; font-weight: 800; letter-spacing: -0.02em; margin-bottom: 4px; }
+  .header-content .subtitle { font-size: 15px; color: var(--blue-100); margin-bottom: 16px; }
+  .header-meta { display: flex; gap: 24px; flex-wrap: wrap; }
+  .header-meta .meta-item {
+    font-size: 13px; color: var(--blue-100);
+    display: flex; align-items: center; gap: 6px;
+  }
+  .header-meta .meta-item strong { color: white; }
+
+  /* Verdict Bar */
+  .verdict-bar {
+    background: var(--red-600);
+    color: white;
+    padding: 14px 0;
+    text-align: center;
+    font-weight: 700;
+    font-size: 15px;
+    letter-spacing: 0.02em;
+    display: flex; align-items: center; justify-content: center; gap: 10px;
+  }
+
+  /* Stats Grid */
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+    gap: 16px;
+    margin: -28px 0 32px;
+    position: relative;
+    z-index: 1;
+  }
+  .stat-card {
+    background: white;
+    border: 1px solid var(--slate-200);
+    border-radius: var(--radius-lg);
+    padding: 20px;
+    box-shadow: var(--shadow);
+    text-align: center;
+  }
+  .stat-card .stat-value { font-size: 32px; font-weight: 800; letter-spacing: -0.03em; }
+  .stat-card .stat-label { font-size: 12px; color: var(--slate-500); text-transform: uppercase; letter-spacing: 0.05em; margin-top: 4px; }
+  .stat-fail .stat-value { color: var(--red-600); }
+  .stat-warn .stat-value { color: var(--amber-600); }
+  .stat-pass .stat-value { color: var(--green-600); }
+  .stat-info .stat-value { color: var(--blue-700); }
+
+  /* Main Content */
+  .main-content { padding: 0 0 64px; }
+
+  /* Section */
+  .section { margin-bottom: 40px; }
+  .section-header {
+    display: flex; align-items: center; gap: 12px;
+    margin-bottom: 20px;
+    padding-bottom: 12px;
+    border-bottom: 2px solid var(--slate-200);
+  }
+  .section-number {
+    width: 32px; height: 32px;
+    background: var(--blue-700);
+    color: white;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px; font-weight: 700;
+    flex-shrink: 0;
+  }
+  .section-header h2 { font-size: 20px; font-weight: 700; color: var(--slate-900); letter-spacing: -0.01em; }
+
+  /* Cards */
+  .card {
+    background: white;
+    border: 1px solid var(--slate-200);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+    overflow: hidden;
+    margin-bottom: 16px;
+  }
+  .card-header {
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--slate-100);
+    font-weight: 600;
+    font-size: 14px;
+    color: var(--slate-700);
+    display: flex; align-items: center; gap: 8px;
+  }
+  .card-body { padding: 20px; }
+
+  /* Tables */
+  table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+  thead th {
+    background: var(--slate-50);
+    border-bottom: 2px solid var(--slate-200);
+    padding: 10px 14px;
+    text-align: left;
+    font-weight: 600;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--slate-500);
+  }
+  tbody td {
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--slate-100);
+    vertical-align: top;
+  }
+  tbody tr:last-child td { border-bottom: none; }
+  tbody tr:hover { background: var(--slate-50); }
+
+  /* Badges */
+  .badge {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 2px 10px;
+    border-radius: 9999px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    white-space: nowrap;
+  }
+  .badge-fail { background: var(--red-100); color: var(--red-600); }
+  .badge-pass { background: var(--green-100); color: var(--green-600); }
+  .badge-warn { background: var(--amber-100); color: var(--amber-600); }
+  .badge-info { background: var(--blue-100); color: var(--blue-700); }
+  .badge-muted { background: var(--slate-100); color: var(--slate-500); }
+
+  /* Code */
+  code {
+    background: var(--slate-100);
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+    color: var(--slate-700);
+  }
+  pre {
+    background: var(--slate-900);
+    color: var(--slate-300);
+    padding: 16px 20px;
+    border-radius: var(--radius);
+    overflow-x: auto;
+    font-size: 12.5px;
+    line-height: 1.7;
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+    margin: 12px 0;
+  }
+  pre .comment { color: var(--slate-500); }
+  pre .keyword { color: var(--blue-500); }
+  pre .string { color: var(--yellow-400); }
+
+  /* Workflow Diagram */
+  .workflow {
+    background: var(--blue-50);
+    border: 1px solid var(--blue-100);
+    border-radius: var(--radius-lg);
+    padding: 20px 24px;
+    margin: 12px 0;
+    font-size: 13.5px;
+    line-height: 2;
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+    color: var(--blue-800);
+    overflow-x: auto;
+  }
+  .workflow .arrow { color: var(--blue-500); font-weight: 700; }
+  .workflow .step { color: var(--slate-700); }
+  .workflow .note { color: var(--slate-500); font-style: italic; }
+
+  /* Checklist */
+  .checklist { list-style: none; padding: 0; }
+  .checklist li {
+    padding: 8px 0;
+    border-bottom: 1px solid var(--slate-100);
+    display: flex; align-items: flex-start; gap: 10px;
+    font-size: 13.5px;
+  }
+  .checklist li:last-child { border-bottom: none; }
+  .check-box {
+    width: 18px; height: 18px;
+    border: 2px solid var(--slate-300);
+    border-radius: 4px;
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+
+  /* Action Items */
+  .action-list { list-style: none; padding: 0; }
+  .action-list li {
+    padding: 12px 16px;
+    border-left: 3px solid var(--slate-200);
+    margin-bottom: 8px;
+    background: white;
+    border-radius: 0 var(--radius) var(--radius) 0;
+    font-size: 13.5px;
+  }
+  .action-list li.p0 { border-left-color: var(--red-500); background: var(--red-50); }
+  .action-list li.p1 { border-left-color: var(--amber-600); background: var(--amber-50); }
+  .action-list li.p2 { border-left-color: var(--blue-500); background: var(--blue-50); }
+  .action-list .priority {
+    font-size: 10px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.06em; margin-bottom: 4px;
+  }
+  .action-list .p0 .priority { color: var(--red-600); }
+  .action-list .p1 .priority { color: var(--amber-600); }
+  .action-list .p2 .priority { color: var(--blue-700); }
+
+  /* Callout */
+  .callout {
+    padding: 14px 18px;
+    border-radius: var(--radius);
+    font-size: 13.5px;
+    margin: 12px 0;
+    display: flex; align-items: flex-start; gap: 10px;
+  }
+  .callout-warn { background: var(--amber-50); border: 1px solid var(--amber-100); color: var(--amber-600); }
+  .callout-fail { background: var(--red-50); border: 1px solid var(--red-100); color: var(--red-600); }
+  .callout-info { background: var(--blue-50); border: 1px solid var(--blue-100); color: var(--blue-700); }
+
+  /* Footer */
+  .report-footer {
+    background: var(--slate-900);
+    color: var(--slate-400);
+    padding: 24px 0;
+    text-align: center;
+    font-size: 12px;
+    border-top: 3px solid var(--yellow-500);
+  }
+
+  /* Print */
+  @media print {
+    body { background: white; }
+    .report-header { background: var(--blue-900) !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .verdict-bar { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .card { box-shadow: none; border: 1px solid var(--slate-300); }
+    .stats-grid { margin-top: 16px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<header class="report-header">
+  <div class="container">
+    <div class="header-icon">&#9650;</div>
+    <div class="header-content">
+      <h1>Pre-Deployment Flight-Check Report</h1>
+      <div class="subtitle">OBBO iManage &mdash; Cement Distribution Management Platform</div>
+      <div class="header-meta">
+        <div class="meta-item"><strong>Date:</strong> 2026-06-11</div>
+        <div class="meta-item"><strong>Commit:</strong> <code>94872d6</code></div>
+        <div class="meta-item"><strong>Branch:</strong> <code>develop</code></div>
+        <div class="meta-item"><strong>Target:</strong> Vercel Production</div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- Verdict -->
+<div class="verdict-bar">
+  <span>&#10006;</span> OVERALL STATUS: NOT READY FOR PRODUCTION DEPLOYMENT
+</div>
+
+<!-- Stats -->
+<div class="container">
+  <div class="stats-grid">
+    <div class="stat-card stat-fail">
+      <div class="stat-value">FAIL</div>
+      <div class="stat-label">Build Status</div>
+    </div>
+    <div class="stat-card stat-fail">
+      <div class="stat-value">136</div>
+      <div class="stat-label">Lint Problems</div>
+    </div>
+    <div class="stat-card stat-fail">
+      <div class="stat-value">N/A</div>
+      <div class="stat-label">Test Suite</div>
+    </div>
+    <div class="stat-card stat-pass">
+      <div class="stat-value">5/5</div>
+      <div class="stat-label">Bug Fixes</div>
+    </div>
+    <div class="stat-card stat-fail">
+      <div class="stat-value">28</div>
+      <div class="stat-label">Design Issues</div>
+    </div>
+    <div class="stat-card stat-fail">
+      <div class="stat-value">3</div>
+      <div class="stat-label">Critical Blockers</div>
+    </div>
+  </div>
+</div>
+
+<!-- Main Content -->
+<div class="container main-content">
+
+  <!-- Section 1: Build -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-number">1</div>
+      <h2>Deployment &amp; Build Status</h2>
+    </div>
+
+    <div class="card">
+      <div class="card-header">&#9881; Production Build (<code>npm run build</code>)</div>
+      <div class="card-body">
+        <table>
+          <thead><tr><th>Check</th><th>Status</th><th>Details</th></tr></thead>
+          <tbody>
+            <tr>
+              <td>Next.js Compilation</td>
+              <td><span class="badge badge-pass">PASS</span></td>
+              <td>Compiled successfully in 11.1s via Turbopack</td>
+            </tr>
+            <tr>
+              <td>TypeScript Type Check</td>
+              <td><span class="badge badge-fail">FAIL</span></td>
+              <td><code>prisma.config.ts:4:30</code> &mdash; Cannot find module <code>prisma/config</code></td>
+            </tr>
+            <tr>
+              <td>Serwist PWA</td>
+              <td><span class="badge badge-warn">WARN</span></td>
+              <td>Does not support Turbopack in dev mode; production build works</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div class="callout callout-fail">
+          <span>&#10006;</span>
+          <div>
+            <strong>Build Error:</strong> <code>prisma/config</code> module not found. The <code>prisma.config.ts</code> file uses <code>defineConfig</code> which cannot be resolved during Next.js type-check phase. Fix: ensure <code>prisma</code> is installed as a dev dependency or exclude <code>prisma.config.ts</code> from the TypeScript build.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">&#128274; Environment Variables</div>
+      <div class="card-body">
+        <table>
+          <thead><tr><th>Variable</th><th>Status</th><th>Location</th></tr></thead>
+          <tbody>
+            <tr><td><code>NEXT_PUBLIC_SUPABASE_URL</code></td><td><span class="badge badge-pass">PRESENT</span></td><td>.env.local</td></tr>
+            <tr><td><code>NEXT_PUBLIC_SUPABASE_ANON_KEY</code></td><td><span class="badge badge-pass">PRESENT</span></td><td>.env.local</td></tr>
+            <tr><td><code>SUPABASE_SERVICE_ROLE_KEY</code></td><td><span class="badge badge-pass">PRESENT</span></td><td>.env.local</td></tr>
+            <tr><td><code>RESEND_API_KEY</code></td><td><span class="badge badge-pass">PRESENT</span></td><td>.env.local</td></tr>
+            <tr><td><code>DATABASE_URL</code></td><td><span class="badge badge-fail">MISSING</span></td><td>Required by prisma.config.ts</td></tr>
+          </tbody>
+        </table>
+        <div class="callout callout-warn" style="margin-top:12px">
+          <span>&#9888;</span>
+          <div>No <code>.env.example</code> file exists to document required variables for new developers or CI/CD.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">&#9889; Bundle &amp; Performance Configuration</div>
+      <div class="card-body">
+        <table>
+          <thead><tr><th>Setting</th><th>Value</th></tr></thead>
+          <tbody>
+            <tr><td>Bundler</td><td>Turbopack (enabled in <code>next.config.ts</code>)</td></tr>
+            <tr><td>PWA Plugin</td><td>Serwist v9.5.11 (precaching + runtime caching)</td></tr>
+            <tr><td>Image Optimization</td><td>Remote patterns for Supabase storage</td></tr>
+            <tr><td>CSS Framework</td><td>Tailwind CSS v4 via <code>@tailwindcss/postcss</code></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Section 2: Routes -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-number">2</div>
+      <h2>Application Workflow &amp; Route Verification</h2>
+    </div>
+
+    <div class="card">
+      <div class="card-header">&#127968; Public Routes</div>
+      <div class="card-body">
+        <table>
+          <thead><tr><th>Route</th><th>File</th><th>Purpose</th><th>Status</th></tr></thead>
+          <tbody>
+            <tr><td><code>/</code></td><td>page.tsx</td><td>Landing page (Hero, Features, FAQ, CTA)</td><td><span class="badge badge-pass">Verified</span></td></tr>
+            <tr><td><code>/login</code></td><td>login/page.tsx</td><td>Email/password login via Supabase Auth</td><td><span class="badge badge-pass">Verified</span></td></tr>
+            <tr><td><code>/register</code></td><td>register/page.tsx</td><td>5-step registration wizard with KYC</td><td><span class="badge badge-pass">Verified</span></td></tr>
+            <tr><td><code>/pending</code></td><td>pending/page.tsx</td><td>Post-registration "under review" page</td><td><span class="badge badge-pass">Verified</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">&#128736; Admin Portal (<code>/admin/*</code>)</div>
+      <div class="card-body">
+        <table>
+          <thead><tr><th>Route</th><th>Purpose</th><th>Status</th></tr></thead>
+          <tbody>
+            <tr><td><code>/admin</code></td><td>Redirects to /admin/dashboard</td><td><span class="badge badge-pass">Verified</span></td></tr>
+            <tr><td><code>/admin/dashboard</code></td><td>KPIs, activity feed, shipments, orders</td><td><span class="badge badge-pass">Verified</span></td></tr>
+            <tr><td><code>/admin/clients</code></td><td>Client directory + KYC approval hub</td><td><span class="badge badge-pass">Verified</span></td></tr>
+            <tr><td><code>/admin/orders</code></td><td>4-tab order lifecycle management</td><td><span class="badge badge-pass">Verified</span></td></tr>
+            <tr><td><code>/admin/products</code></td><td>Product CRUD management</td><td><span class="badge badge-pass">Verified</span></td></tr>
+            <tr><td><code>/admin/inventory</code></td><td>Shipments, PO List, DR List tabs</td><td><span class="badge badge-pass">Verified</span></td></tr>
+            <tr><td><code>/admin/reports</code></td><td>Warehouse, customer, sales/profit reports</td><td><span class="badge badge-pass">Verified</span></td></tr>
+            <tr><td><code>/admin/reports/warehouse-manager</code></td><td>Daily warehouse reports</td><td><span class="badge badge-pass">Verified</span></td></tr>
+            <tr><td><code>/admin/profile</code></td><td>Admin profile + avatar upload</td><td><span class="badge badge-pass">Verified</span></td></tr>
+            <tr><td><code>/admin/settings</code></td><td>7-tab settings panel</td><td><span class="badge badge-pass">Verified</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">&#128100; Client Portal (<code>/client/*</code>)</div>
+      <div class="card-body">
+        <table>
+          <thead><tr><th>Route</th><th>Purpose</th><th>Status</th></tr></thead>
+          <tbody>
+            <tr><td><code>/client</code></td><td>Redirects to /client/dashboard</td><td><span class="badge badge-pass">Verified</span></td></tr>
+            <tr><td><code>/client/dashboard</code></td><td>KPIs, notifications, recent orders</td><td><span class="badge badge-pass">Verified</span></td></tr>
+            <tr><td><code>/client/catalog</code></td><td>Product catalog browsing</td><td><span class="badge badge-pass">Verified</span></td></tr>
+            <tr><td><code>/client/orders</code></td><td>Order list view</td><td><span class="badge badge-pass">Verified</span></td></tr>
+            <tr><td><code>/client/orders/new</code></td><td>5-step order wizard</td><td><span class="badge badge-pass">Verified</span></td></tr>
+            <tr><td><code>/client/orders/[id]</code></td><td>Dynamic order detail + status timeline</td><td><span class="badge badge-pass">Verified</span></td></tr>
+            <tr><td><code>/client/ledger</code></td><td>Balance ledger (KYC-gated)</td><td><span class="badge badge-pass">Verified</span></td></tr>
+            <tr><td><code>/client/pending-kyc</code></td><td>KYC pending explanation page</td><td><span class="badge badge-pass">Verified</span></td></tr>
+            <tr><td><code>/client/profile</code></td><td>Client profile &amp; settings</td><td><span class="badge badge-pass">Verified</span></td></tr>
+            <tr><td><code>/client/contact-admin</code></td><td>Contact info display</td><td><span class="badge badge-pass">Verified</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">&#128640; API Routes</div>
+      <div class="card-body">
+        <table>
+          <thead><tr><th>Route</th><th>Method</th><th>Purpose</th><th>Auth</th></tr></thead>
+          <tbody>
+            <tr><td><code>/api/auth/send-otp</code></td><td>POST</td><td>Generate &amp; email OTP via Resend</td><td><span class="badge badge-muted">Public (rate-limited)</span></td></tr>
+            <tr><td><code>/api/auth/verify-otp</code></td><td>POST</td><td>Validate OTP code</td><td><span class="badge badge-muted">Public</span></td></tr>
+            <tr><td><code>/api/admin/kyc-document</code></td><td>GET</td><td>Download KYC document from storage</td><td><span class="badge badge-info">Admin/WM only</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">&#128165; Missing Next.js Special Routes</div>
+      <div class="card-body">
+        <table>
+          <thead><tr><th>File Type</th><th>Status</th><th>Impact</th></tr></thead>
+          <tbody>
+            <tr><td><code>middleware.ts</code></td><td><span class="badge badge-fail">MISSING</span></td><td>No source-level middleware; auth guards rely on component-level checks</td></tr>
+            <tr><td><code>loading.tsx</code></td><td><span class="badge badge-fail">MISSING</span></td><td>No loading UI for any route; users see blank during data fetch</td></tr>
+            <tr><td><code>error.tsx</code></td><td><span class="badge badge-fail">MISSING</span></td><td>No error boundaries; unhandled errors show default Next.js error</td></tr>
+            <tr><td><code>not-found.tsx</code></td><td><span class="badge badge-fail">MISSING</span></td><td>No custom 404 page</td></tr>
+            <tr><td>Route groups <code>()</code></td><td><span class="badge badge-fail">MISSING</span></td><td>No layout sharing between related routes</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">&#128274; Authentication Workflow</div>
+      <div class="card-body">
+        <div class="workflow">
+<span class="step">Landing (/)</span>
+  <span class="arrow">&rarr;</span> <span class="step">Register (/register) &mdash; 5-step wizard</span>
+      <span class="note">Step 1:</span> Account Type (Individual / Company)
+      <span class="note">Step 2:</span> Credentials (Email + Password + OTP via Resend)
+      <span class="note">Step 3:</span> Profile Details (Name, phone, address, business permit, TIN)
+      <span class="note">Step 4:</span> Documents (Valid ID, business permit upload)
+      <span class="note">Step 5:</span> Review &amp; Submit
+  <span class="arrow">&rarr;</span> <span class="step">Supabase Auth signUp()</span> <span class="note">(role: "client", kyc_status: "pending_verification")</span>
+  <span class="arrow">&rarr;</span> <span class="step">Upload KYC docs</span> <span class="note">(Supabase Storage: kyc-documents bucket)</span>
+  <span class="arrow">&rarr;</span> <span class="step">Sign out</span> <span class="arrow">&rarr;</span> <span class="step">/login?registered=true</span>
+
+<span class="step">Login (/login)</span>
+  <span class="arrow">&rarr;</span> <span class="step">supabase.auth.signInWithPassword()</span>
+  <span class="arrow">&rarr;</span> <span class="step">router.refresh() + router.replace("/client/dashboard")</span>
+  <span class="arrow">&rarr;</span> <span class="step">Layout-level role/KYC checks redirect accordingly</span>
+
+<span class="step">Admin Approval</span>
+  <span class="arrow">&rarr;</span> <span class="step">Admin reviews KYC in /admin/clients</span>
+  <span class="arrow">&rarr;</span> <span class="step">Approve/Reject</span> <span class="arrow">&rarr;</span> <span class="step">updates kyc_status in profiles table</span>
+  <span class="arrow">&rarr;</span> <span class="step">Real-time notification to client via Supabase Realtime</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">&#128272; Role-Based Access Control (RBAC)</div>
+      <div class="card-body">
+        <table>
+          <thead><tr><th>Role</th><th>Portal</th><th>Access</th></tr></thead>
+          <tbody>
+            <tr><td><code>admin</code></td><td>Admin</td><td>Full access: dashboard, products, clients, reports, settings</td></tr>
+            <tr><td><code>warehouse_manager</code></td><td>Admin</td><td>Dashboard, orders, products, inventory, warehouse reports, clients (read-only)</td></tr>
+            <tr><td><code>client</code></td><td>Client</td><td>Dashboard, catalog, orders, ledger (KYC-gated), profile, contact admin</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">&#128722; Order Lifecycle Workflow</div>
+      <div class="card-body">
+        <div class="workflow">
+<span class="step">Client: Browse Catalog (/client/catalog)</span>
+  <span class="arrow">&rarr;</span> <span class="step">New Order (/client/orders/new) &mdash; 5-step wizard</span>
+      <span class="note">Step 1:</span> Products (select products, quantities)
+      <span class="note">Step 2:</span> Source (select warehouse/supplier)
+      <span class="note">Step 3:</span> Service Type (delivery/pickup)
+      <span class="note">Step 4:</span> PO &amp; Payment (PO number, payment method, check details)
+      <span class="note">Step 5:</span> Review &amp; Submit
+  <span class="arrow">&rarr;</span> <span class="step">Order created: status "pending"</span>
+
+<span class="step">Admin: New Requests (/admin/orders?tab=new)</span>
+  <span class="arrow">&rarr;</span> <span class="step">Approve</span> <span class="arrow">&rarr;</span> <span class="step">status: "approved"</span> <span class="note">(or "partially_approved")</span>
+  <span class="arrow">&rarr;</span> <span class="step">Reject</span> <span class="arrow">&rarr;</span> <span class="step">status: "rejected"</span>
+  <span class="arrow">&rarr;</span> <span class="step">[Check Payment]</span> <span class="arrow">&rarr;</span> <span class="step">Confirm Check</span> <span class="arrow">&rarr;</span> <span class="step">status: "approved"</span>
+
+<span class="step">Admin: Fulfillment (/admin/orders?tab=fulfillment)</span>
+  <span class="arrow">&rarr;</span> <span class="step">Dispatch</span> <span class="arrow">&rarr;</span> <span class="step">status: "dispatched" + shipment created</span>
+
+<span class="step">Admin: Tracking (/admin/orders?tab=tracking)</span>
+  <span class="arrow">&rarr;</span> <span class="step">"in_transit" &rarr; "delivered" &rarr; "completed"</span>
+
+<span class="step">Client: My Orders (/client/orders)</span>
+  <span class="arrow">&rarr;</span> <span class="step">View detail (/client/orders/[id])</span>
+  <span class="arrow">&rarr;</span> <span class="step">Status timeline: pending &rarr; approved &rarr; dispatched &rarr; completed</span>
+
+<span class="note">After partial delivery:</span>
+  <span class="arrow">&rarr;</span> <span class="step">customer_balances record created</span>
+  <span class="arrow">&rarr;</span> <span class="step">Client views Balance Ledger (/client/ledger)</span>
+  <span class="arrow">&rarr;</span> <span class="step">Requests re-delivery</span> <span class="arrow">&rarr;</span> <span class="step">New order (order_type: "redelivery")</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Section 3: Database -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-number">3</div>
+      <h2>Database &amp; Prisma ORM Health</h2>
+    </div>
+
+    <div class="card">
+      <div class="card-header">&#128451; Schema Overview (14 Models)</div>
+      <div class="card-body">
+        <table>
+          <thead><tr><th>Model</th><th>Table</th><th>Description</th></tr></thead>
+          <tbody>
+            <tr><td><code>Profile</code></td><td>profiles</td><td>Users (admin, client, warehouse_manager) with KYC fields</td></tr>
+            <tr><td><code>Product</code></td><td>products</td><td>Cement products (JB/SB bag types, port/warehouse pricing)</td></tr>
+            <tr><td><code>Shipment</code></td><td>shipments</td><td>Inventory batches with JB/SB stock tracking</td></tr>
+            <tr><td><code>ShipmentLedger</code></td><td>shipment_ledger</td><td>Transaction log per shipment</td></tr>
+            <tr><td><code>DeliveryReceipt</code></td><td>delivery_receipts</td><td>DR records linked to shipments</td></tr>
+            <tr><td><code>Order</code></td><td>orders</td><td>Client orders with status workflow, split delivery, tracking</td></tr>
+            <tr><td><code>OrderItem</code></td><td>order_items</td><td>Line items per order</td></tr>
+            <tr><td><code>CustomerBalance</code></td><td>customer_balances</td><td>Remaining bags per client/order</td></tr>
+            <tr><td><code>PurchaseOrder</code></td><td>purchase_orders</td><td>PO records with payment details</td></tr>
+            <tr><td><code>WarehouseReport</code></td><td>warehouse_reports</td><td>Daily warehouse inventory reports</td></tr>
+            <tr><td><code>AdminSetting</code></td><td>admin_settings</td><td>Key-value JSON config store</td></tr>
+            <tr><td><code>ActivityLog</code></td><td>activity_log</td><td>Audit trail for all actions</td></tr>
+            <tr><td><code>OrderReturn</code></td><td>order_returns</td><td>Return requests per order</td></tr>
+            <tr><td><code>Notification</code></td><td>notifications</td><td>User notifications with severity + read status</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">&#128203; Migration Status</div>
+      <div class="card-body">
+        <table>
+          <thead><tr><th>Check</th><th>Status</th><th>Details</th></tr></thead>
+          <tbody>
+            <tr><td>Prisma Migrations</td><td><span class="badge badge-warn">EMPTY</span></td><td><code>prisma/migrations/</code> directory has no migration files</td></tr>
+            <tr><td>SQL Migrations</td><td><span class="badge badge-info">17 files</span></td><td><code>.agents/migrations/</code> contains SQL scripts (002-017)</td></tr>
+            <tr><td>Supabase Migrations</td><td><span class="badge badge-info">7 files</span></td><td><code>supabase/migrations/</code> contains incremental SQL</td></tr>
+            <tr><td>Migration Strategy</td><td><span class="badge badge-warn">db push</span></td><td>Uses <code>--no-erase</code> flag; schema pushed directly to DB</td></tr>
+          </tbody>
+        </table>
+        <div class="callout callout-warn" style="margin-top:12px">
+          <span>&#9888;</span>
+          <div><strong>Risk:</strong> No Prisma migration history means <code>prisma migrate deploy</code> (the <code>prisma:migrate:prod</code> script) will have nothing to deploy. The schema state is managed via SQL scripts and <code>db push</code>, which is not recommended for production.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Section 4: Tests & Quality -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-number">4</div>
+      <h2>Test Suite &amp; Code Quality</h2>
+    </div>
+
+    <div class="card">
+      <div class="card-header">&#129513; Vitest Test Suite</div>
+      <div class="card-body">
+        <table>
+          <thead><tr><th>Metric</th><th>Value</th></tr></thead>
+          <tbody>
+            <tr><td>Status</td><td><span class="badge badge-fail">UNAVAILABLE</span></td></tr>
+            <tr><td>Config</td><td><code>vitest.config.ts</code> (jsdom, globals, React plugin)</td></tr>
+            <tr><td>Setup</td><td><code>vitest.setup.ts</code> (jest-dom/vitest matchers)</td></tr>
+            <tr><td>Test Files Found</td><td>2</td></tr>
+          </tbody>
+        </table>
+        <div class="callout callout-fail" style="margin-top:12px">
+          <span>&#10006;</span>
+          <div><strong>Error:</strong> <code>npx vitest run</code> fails with <code>Cannot find module 'vitest/config'</code>. Dev dependencies are not installed or not resolvable.</div>
+        </div>
+        <p style="margin-top:12px;font-size:13px;color:var(--slate-600)"><strong>Test Files:</strong></p>
+        <ol style="margin-top:6px;padding-left:20px;font-size:13px;color:var(--slate-600)">
+          <li><code>src/app/client/ledger/components/ledger-client.test.tsx</code> &mdash; Client ledger component tests</li>
+          <li><code>src/lib/actions/client-actions.test.ts</code> &mdash; Client actions unit tests</li>
+        </ol>
+        <p style="margin-top:12px;font-size:13px;color:var(--slate-500)">Coverage: Minimal &mdash; only 2 test files for a codebase with 50+ components and 20+ routes.</p>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">&#128269; ESLint Results (136 Problems)</div>
+      <div class="card-body">
+        <table>
+          <thead><tr><th>Rule</th><th>Count</th><th>Type</th><th>Severity</th></tr></thead>
+          <tbody>
+            <tr><td><code>@typescript-eslint/no-explicit-any</code></td><td><strong>61</strong></td><td>Error</td><td><span class="badge badge-fail">High</span></td></tr>
+            <tr><td><code>@typescript-eslint/no-unused-vars</code></td><td><strong>45</strong></td><td>Warning</td><td><span class="badge badge-muted">Low</span></td></tr>
+            <tr><td><code>react-hooks/set-state-in-effect</code></td><td><strong>14</strong></td><td>Error</td><td><span class="badge badge-warn">Medium</span></td></tr>
+            <tr><td><code>react/no-unescaped-entities</code></td><td><strong>12</strong></td><td>Error</td><td><span class="badge badge-muted">Low</span></td></tr>
+            <tr><td><code>@next/next/no-img-element</code></td><td><strong>2</strong></td><td>Warning</td><td><span class="badge badge-muted">Low</span></td></tr>
+            <tr><td><code>react-hooks/exhaustive-deps</code></td><td><strong>1</strong></td><td>Warning</td><td><span class="badge badge-warn">Medium</span></td></tr>
+          </tbody>
+        </table>
+        <p style="margin-top:12px;font-size:13px;color:var(--slate-600)"><strong>Top Offending Files:</strong></p>
+        <table style="margin-top:6px">
+          <thead><tr><th>File</th><th>Errors</th><th>Warnings</th></tr></thead>
+          <tbody>
+            <tr><td><code>admin/settings/page.tsx</code></td><td>8</td><td>3</td></tr>
+            <tr><td><code>admin/orders/page.tsx</code></td><td>7</td><td>1</td></tr>
+            <tr><td><code>lib/actions/admin-actions.ts</code></td><td>6</td><td>2</td></tr>
+            <tr><td><code>admin/reports/page.tsx</code></td><td>6</td><td>3</td></tr>
+            <tr><td><code>admin/inventory/components/shipments-tab.tsx</code></td><td>5</td><td>2</td></tr>
+            <tr><td><code>admin/inventory/components/po-list-tab.tsx</code></td><td>5</td><td>0</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">&#127912; shadcn/ui Components</div>
+      <div class="card-body">
+        <table>
+          <thead><tr><th>Setting</th><th>Value</th></tr></thead>
+          <tbody>
+            <tr><td>Style</td><td><code>base-nova</code></td></tr>
+            <tr><td>Base Color</td><td><code>neutral</code></td></tr>
+            <tr><td>CSS Variables</td><td>Enabled</td></tr>
+            <tr><td>Icon Library</td><td><code>lucide</code></td></tr>
+            <tr><td>Components Installed</td><td>22 (avatar, badge, button, card, command, dialog, dropdown-menu, input, label, optimized-image, popover, radio-group, select, separator, sheet, skeleton, sonner, step-indicator, table, tabs, textarea)</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Section 5: Bug Fixes -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-number">5</div>
+      <h2>Bug Fix Plan Status (bug_fix_plan01.md)</h2>
+    </div>
+
+    <div class="card">
+      <div class="card-header">&#10004; All 5 Bugs Verified as FIXED</div>
+      <div class="card-body">
+        <table>
+          <thead><tr><th>Bug</th><th>Title</th><th>Status</th><th>Evidence</th></tr></thead>
+          <tbody>
+            <tr>
+              <td>#1</td>
+              <td>Dynamic Sidebar Notification Badges</td>
+              <td><span class="badge badge-pass">FIXED</span></td>
+              <td><code>admin/layout.tsx</code> uses <code>pendingOrderCount</code>/<code>pendingKycCount</code> state with real-time Supabase subscriptions</td>
+            </tr>
+            <tr>
+              <td>#2</td>
+              <td>Searchable Client Dropdown for Manual PO</td>
+              <td><span class="badge badge-pass">FIXED</span></td>
+              <td><code>po-list-tab.tsx</code> uses <code>Popover</code> + <code>Command</code> (cmdk) searchable dropdown</td>
+            </tr>
+            <tr>
+              <td>#3</td>
+              <td>Required Fields &mdash; PO Number &amp; PO Photo</td>
+              <td><span class="badge badge-pass">FIXED</span></td>
+              <td>Both fields have required markers; <code>handleSubmit</code> validates with toast errors</td>
+            </tr>
+            <tr>
+              <td>#4</td>
+              <td>Check Payment Details in Fulfillment</td>
+              <td><span class="badge badge-pass">FIXED</span></td>
+              <td><code>fulfillment-tab.tsx</code> displays payment method, check number, check image, amount</td>
+            </tr>
+            <tr>
+              <td>#5</td>
+              <td>Remove "Save as Draft" from Client Ordering</td>
+              <td><span class="badge badge-pass">FIXED</span></td>
+              <td>Button and <code>handleSaveDraft</code> function fully removed from <code>catalog-client.tsx</code></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Section 6: Design Audit -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-number">6</div>
+      <h2>Design System Audit (Re-Audit June 11, 2026)</h2>
+    </div>
+
+    <div class="callout callout-fail">
+      <span>&#10006;</span>
+      <div><strong>Previous audit (May 18):</strong> 30 issues found. <strong>Current status:</strong> 2 FIXED, 28 STILL PRESENT. <strong>Fix rate: 7%.</strong></div>
+    </div>
+
+    <div class="card">
+      <div class="card-header" style="color:var(--red-600)">&#128308; CRITICAL &mdash; Dark Mode Broken (4 Remaining)</div>
+      <div class="card-body">
+        <table>
+          <thead><tr><th>#</th><th>File</th><th>Line</th><th>Issue</th><th>Status</th></tr></thead>
+          <tbody>
+            <tr><td>1</td><td><code>admin/clients/page.tsx</code></td><td>708</td><td><code>bg-amber-200 text-amber-900</code> on pending KYC avatar</td><td><span class="badge badge-fail">STILL PRESENT</span></td></tr>
+            <tr><td>2</td><td><code>admin/profile/page.tsx</code></td><td>112</td><td><code>bg-emerald-100 text-emerald-800 border-emerald-200</code> on KYC badge</td><td><span class="badge badge-fail">STILL PRESENT</span></td></tr>
+            <tr><td>3</td><td><code>client/orders/new/page.tsx</code></td><td>97</td><td><code>bg-white</code> on inactive step indicator</td><td><span class="badge badge-pass">FIXED</span></td></tr>
+            <tr><td>4</td><td><code>client/orders/new/page.tsx</code></td><td>227</td><td><code>bg-amber-50 border-amber-200 text-amber-800</code> info box</td><td><span class="badge badge-pass">FIXED</span></td></tr>
+            <tr><td>5</td><td><code>client/orders/components/orders-client.tsx</code></td><td>61</td><td><code>bg-white</code> on inactive tracking step</td><td><span class="badge badge-fail">STILL PRESENT</span></td></tr>
+            <tr><td>6</td><td><code>admin/inventory/components/dr-list-tab.tsx</code></td><td>430</td><td><code>bg-white/90 hover:bg-white</code> image overlay</td><td><span class="badge badge-fail">STILL PRESENT</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header" style="color:var(--amber-600)">&#128309; HIGH &mdash; Accessibility (2 Remaining)</div>
+      <div class="card-body">
+        <table>
+          <thead><tr><th>#</th><th>File</th><th>Line</th><th>Issue</th><th>Status</th></tr></thead>
+          <tbody>
+            <tr><td>7</td><td><code>layout.tsx</code></td><td>21-22</td><td><code>maximumScale: 1, userScalable: false</code> blocks pinch-to-zoom (WCAG 2.1 SC 1.4.4)</td><td><span class="badge badge-fail">STILL PRESENT</span></td></tr>
+            <tr><td>8</td><td><code>real-time-clock.tsx</code></td><td>20</td><td><code>text-white</code> hardcoded &mdash; breaks outside sidebar context</td><td><span class="badge badge-fail">STILL PRESENT</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header" style="color:var(--amber-600)">&#128992; MEDIUM &mdash; Significant Issues (13 Remaining)</div>
+      <div class="card-body">
+        <table>
+          <thead><tr><th>#</th><th>File</th><th>Line</th><th>Issue</th><th>Status</th></tr></thead>
+          <tbody>
+            <tr><td>9</td><td><code>admin/layout.tsx</code></td><td>187</td><td><code>bg-red-500 text-white</code> KYC badge</td><td><span class="badge badge-fail">STILL PRESENT</span></td></tr>
+            <tr><td>10</td><td><code>admin/dashboard/dashboard-client.tsx</code></td><td>327-329</td><td><code>fill="#1dd1a1"</code>, <code>fill="#feca57"</code>, <code>fill="#3b82f6"</code> hardcoded hex</td><td><span class="badge badge-fail">STILL PRESENT</span></td></tr>
+            <tr><td>11</td><td><code>admin/dashboard/dashboard-client.tsx</code></td><td>148,172,194,216</td><td><code>bg-[#ff9f43]</code>, <code>bg-[#feca57]</code> KPI accent bars</td><td><span class="badge badge-fail">STILL PRESENT</span></td></tr>
+            <tr><td>12</td><td><code>admin/clients/page.tsx</code></td><td>64</td><td><code>hover:bg-red-100</code> on rejected badge</td><td><span class="badge badge-fail">STILL PRESENT</span></td></tr>
+            <tr><td>13</td><td><code>admin/clients/page.tsx</code></td><td>235</td><td><code>border-red-200 text-red-700 hover:bg-red-50</code> Reject button</td><td><span class="badge badge-fail">STILL PRESENT</span></td></tr>
+            <tr><td>14</td><td><code>admin/clients/page.tsx</code></td><td>703</td><td><code>border-amber-200 bg-amber-50/40</code> pending KYC card</td><td><span class="badge badge-fail">STILL PRESENT</span></td></tr>
+            <tr><td>15</td><td><code>client/layout.tsx</code></td><td>383</td><td>Sign-out button missing <code>focus-visible:ring</code></td><td><span class="badge badge-fail">STILL PRESENT</span></td></tr>
+            <tr><td>16</td><td><code>client/dashboard/page.tsx</code></td><td>199,281</td><td><code>text-gray-300</code>, <code>text-gray-600</code> hardcoded</td><td><span class="badge badge-fail">STILL PRESENT</span></td></tr>
+            <tr><td>17</td><td><code>client/ledger/components/ledger-client.tsx</code></td><td>352</td><td><code>text-emerald-600 border-emerald-200 bg-emerald-50</code> fulfilled badge</td><td><span class="badge badge-fail">STILL PRESENT</span></td></tr>
+            <tr><td>18</td><td><code>client/profile/components/profile-client.tsx</code></td><td>95,171</td><td><code>text-gray-500</code>, <code>text-emerald-700</code> hardcoded</td><td><span class="badge badge-fail">STILL PRESENT</span></td></tr>
+            <tr><td>19</td><td><code>client/orders/components/orders-client.tsx</code></td><td>65,70</td><td><code>text-emerald-700</code>, <code>bg-gray-200</code> tracking labels</td><td><span class="badge badge-fail">STILL PRESENT</span></td></tr>
+            <tr><td>20</td><td><code>bottom-navbar.tsx</code></td><td>55</td><td><code>pb-safe</code> &mdash; dead CSS class, not defined anywhere</td><td><span class="badge badge-fail">STILL PRESENT</span></td></tr>
+            <tr><td>21</td><td><code>globals.css</code></td><td>60-67</td><td><code>--color-industrial-*</code> vars have no <code>.dark</code> overrides</td><td><span class="badge badge-fail">STILL PRESENT</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">&#129001; LOW &mdash; Minor/Cosmetic (9 Remaining)</div>
+      <div class="card-body">
+        <table>
+          <thead><tr><th>#</th><th>Issue</th><th>Status</th></tr></thead>
+          <tbody>
+            <tr><td>22-24</td><td>Hardcoded <code>bg-white</code> in orders-client.tsx, dr-list-tab.tsx</td><td><span class="badge badge-fail">STILL PRESENT</span></td></tr>
+            <tr><td>25-27</td><td>Touch target sizes below 44px WCAG minimum (sign-out buttons <code>py-1.5</code>/<code>py-2.5</code>)</td><td><span class="badge badge-fail">STILL PRESENT</span></td></tr>
+            <tr><td>28-30</td><td><code>window.location.href = "/login"</code> instead of <code>router.push()</code> in client layout</td><td><span class="badge badge-fail">STILL PRESENT</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">&#128200; Audit Summary</div>
+      <div class="card-body">
+        <table>
+          <thead><tr><th>Severity</th><th>Total</th><th>Fixed</th><th>Remaining</th><th>Fix Rate</th></tr></thead>
+          <tbody>
+            <tr><td><span class="badge badge-fail">CRITICAL</span></td><td>6</td><td>2</td><td>4</td><td>33%</td></tr>
+            <tr><td><span class="badge badge-warn">HIGH</span></td><td>2</td><td>0</td><td>2</td><td>0%</td></tr>
+            <tr><td><span class="badge badge-info">MEDIUM</span></td><td>13</td><td>0</td><td>13</td><td>0%</td></tr>
+            <tr><td><span class="badge badge-muted">LOW</span></td><td>9</td><td>0</td><td>9</td><td>0%</td></tr>
+            <tr style="font-weight:700"><td>TOTAL</td><td>30</td><td>2</td><td>28</td><td>7%</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Section 7: Workspace -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-number">7</div>
+      <h2>Development Workspace &amp; Agent State</h2>
+    </div>
+
+    <div class="card">
+      <div class="card-body">
+        <table>
+          <thead><tr><th>File</th><th>Status</th><th>Purpose</th></tr></thead>
+          <tbody>
+            <tr><td><code>AGENTS.md</code></td><td><span class="badge badge-pass">Present</span></td><td>Project agent instructions, references design system rules</td></tr>
+            <tr><td><code>CLAUDE.md</code></td><td><span class="badge badge-pass">Present</span></td><td>References AGENTS.md</td></tr>
+            <tr><td><code>bug_fix_plan01.md</code></td><td><span class="badge badge-pass">COMPLETE</span></td><td>All 5 bugs verified fixed</td></tr>
+            <tr><td><code>.agents/rules/design-system.md</code></td><td><span class="badge badge-pass">Present</span></td><td>Clean Industrial design rules</td></tr>
+            <tr><td><code>.agents/reports/system-audit-2026-05-18.md</code></td><td><span class="badge badge-warn">28 open</span></td><td>Previous audit (30 issues, 28 still open)</td></tr>
+            <tr><td><code>.github/instructions/clean-industrial.instructions.md</code></td><td><span class="badge badge-pass">Present</span></td><td>Auto-applied frontend instructions</td></tr>
+            <tr><td><code>.github/skills/</code></td><td><span class="badge badge-pass">Present</span></td><td>4 SKILL.md files for UI, audit, INP, page-load</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Section 8: Smoke Tests -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-number">8</div>
+      <h2>Post-Deployment Smoke Tests</h2>
+    </div>
+
+    <div class="card">
+      <div class="card-header">&#128225; Infrastructure</div>
+      <div class="card-body">
+        <ul class="checklist">
+          <li><div class="check-box"></div> Domain resolves under HTTPS without redirection loops</li>
+          <li><div class="check-box"></div> Vercel deployment logs show no build errors</li>
+          <li><div class="check-box"></div> Environment variables are set in Vercel dashboard (all 5)</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">&#128274; Authentication Flow</div>
+      <div class="card-body">
+        <ul class="checklist">
+          <li><div class="check-box"></div> Registration wizard completes all 5 steps successfully</li>
+          <li><div class="check-box"></div> OTP email arrives via Resend</li>
+          <li><div class="check-box"></div> Login redirects to correct portal based on role</li>
+          <li><div class="check-box"></div> KYC approval flow works end-to-end</li>
+          <li><div class="check-box"></div> Sign-out redirects to <code>/login</code> without errors</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">&#9881; Core Workflows</div>
+      <div class="card-body">
+        <ul class="checklist">
+          <li><div class="check-box"></div> Admin dashboard loads with real KPI data</li>
+          <li><div class="check-box"></div> Client catalog displays products</li>
+          <li><div class="check-box"></div> Order wizard completes all 5 steps and creates order</li>
+          <li><div class="check-box"></div> Admin can approve/reject orders</li>
+          <li><div class="check-box"></div> Fulfillment tab shows payment details correctly</li>
+          <li><div class="check-box"></div> Real-time notifications deliver to both portals</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">&#128226; PWA</div>
+      <div class="card-body">
+        <ul class="checklist">
+          <li><div class="check-box"></div> Service worker registers and activates</li>
+          <li><div class="check-box"></div> Manifest loads with correct app name and icons</li>
+          <li><div class="check-box"></div> App is installable on mobile devices</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">&#127769; Dark Mode</div>
+      <div class="card-body">
+        <ul class="checklist">
+          <li><div class="check-box"></div> Landing page renders correctly in dark mode</li>
+          <li><div class="check-box"></div> Admin portal renders correctly in dark mode</li>
+          <li><div class="check-box"></div> Client portal renders correctly in dark mode</li>
+          <li><div class="check-box"></div> Theme toggle persists across page navigation</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- Section 9: Action Items -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-number">9</div>
+      <h2>Pre-Deployment Action Items</h2>
+    </div>
+
+    <div class="card">
+      <div class="card-body">
+        <ul class="action-list">
+          <li class="p0"><div class="priority">P0 &mdash; Must Fix Before Deployment</div><strong>Fix build failure:</strong> Resolve <code>prisma/config</code> module error in <code>prisma.config.ts</code></li>
+          <li class="p0"><div class="priority">P0</div><strong>Fix test dependencies:</strong> Run <code>npm install</code> to ensure vitest and testing-library are installed</li>
+          <li class="p0"><div class="priority">P0</div><strong>Fix critical dark mode issues:</strong> 4 remaining hardcoded color issues in admin/clients, admin/profile, client/orders</li>
+          <li class="p1"><div class="priority">P1 &mdash; Should Fix Before Deployment</div><strong>Add <code>loading.tsx</code></strong> to admin and client route groups for better UX during data fetch</li>
+          <li class="p1"><div class="priority">P1</div><strong>Add <code>error.tsx</code> and <code>not-found.tsx</code></strong> for proper error handling</li>
+          <li class="p1"><div class="priority">P1</div><strong>Fix <code>maximumScale</code>/<code>userScalable</code></strong> in root layout for WCAG compliance</li>
+          <li class="p1"><div class="priority">P1</div><strong>Reduce <code>no-explicit-any</code> errors</strong> (61 occurrences) &mdash; most are in admin-actions.ts and admin pages</li>
+          <li class="p2"><div class="priority">P2 &mdash; Fix Soon After Deployment</div><strong>Add Prisma migrations</strong> for production-safe schema management</li>
+          <li class="p2"><div class="priority">P2</div><strong>Expand test coverage</strong> beyond 2 test files</li>
+          <li class="p2"><div class="priority">P2</div><strong>Create <code>.env.example</code></strong> for developer onboarding</li>
+          <li class="p2"><div class="priority">P2</div><strong>Fix remaining 28 design system audit issues</strong></li>
+          <li class="p2"><div class="priority">P2</div><strong>Resolve <code>set-state-in-effect</code> lint errors</strong> (14 occurrences) to prevent cascading renders</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Footer -->
+<footer class="report-footer">
+  <div class="container">
+    <p>Pre-Deployment Flight-Check Report &mdash; OBBO iManage &mdash; Generated 2026-06-11 &mdash; Commit <code style="color:var(--slate-300)">94872d6</code> &mdash; Branch <code style="color:var(--slate-300)">develop</code></p>
+    <p style="margin-top:4px;color:var(--slate-500)">Automated pre-deployment flight-check system</p>
+  </div>
+</footer>
+
+</body>
+</html>

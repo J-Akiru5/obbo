@@ -1,0 +1,1315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OBBO Fix Guide — For Junior Devs</title>
+<style>
+  :root {
+    --blue-900: #0f2440;
+    --blue-700: #1e3a5f;
+    --blue-100: #d4e4f7;
+    --blue-50: #eef5fc;
+    --yellow-500: #f59e0b;
+    --yellow-100: #fef3c7;
+    --yellow-50: #fffbeb;
+    --slate-900: #0f172a;
+    --slate-700: #334155;
+    --slate-600: #475569;
+    --slate-500: #64748b;
+    --slate-300: #cbd5e1;
+    --slate-200: #e2e8f0;
+    --slate-100: #f1f5f9;
+    --slate-50: #f8fafc;
+    --green-700: #15803d;
+    --green-600: #16a34a;
+    --green-100: #dcfce7;
+    --green-50: #f0fdf4;
+    --red-600: #dc2626;
+    --red-100: #fee2e2;
+    --red-50: #fef2f2;
+    --amber-600: #d97706;
+    --amber-100: #fef3c7;
+    --amber-50: #fffbeb;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+    background: var(--slate-50);
+    color: var(--slate-700);
+    line-height: 1.7;
+  }
+  .container { max-width: 900px; margin: 0 auto; padding: 0 20px; }
+
+  /* Header */
+  .hero {
+    background: linear-gradient(135deg, var(--blue-900), var(--blue-700));
+    color: white;
+    padding: 48px 0 40px;
+    border-bottom: 4px solid var(--yellow-500);
+    text-align: center;
+  }
+  .hero h1 { font-size: 32px; font-weight: 800; margin-bottom: 8px; }
+  .hero p { font-size: 16px; color: var(--blue-100); max-width: 600px; margin: 0 auto; }
+  .hero .tag {
+    display: inline-block;
+    background: var(--yellow-500);
+    color: var(--blue-900);
+    padding: 4px 14px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 700;
+    margin-bottom: 16px;
+    letter-spacing: 0.05em;
+  }
+
+  /* Progress bar */
+  .progress-section {
+    background: white;
+    border: 1px solid var(--slate-200);
+    border-radius: 12px;
+    padding: 24px;
+    margin: -24px auto 32px;
+    position: relative;
+    z-index: 1;
+    max-width: 900px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  }
+  .progress-section h3 { font-size: 14px; color: var(--slate-500); margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.05em; }
+  .progress-bar {
+    height: 12px;
+    background: var(--slate-100);
+    border-radius: 999px;
+    overflow: hidden;
+    margin-bottom: 8px;
+  }
+  .progress-fill {
+    height: 100%;
+    border-radius: 999px;
+    transition: width 0.3s;
+  }
+  .progress-labels { display: flex; justify-content: space-between; font-size: 12px; color: var(--slate-500); }
+
+  /* Section */
+  .section { margin-bottom: 40px; }
+  .section-title {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 20px;
+    padding-bottom: 12px;
+    border-bottom: 2px solid var(--slate-200);
+  }
+  .section-icon {
+    width: 40px; height: 40px;
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px;
+    flex-shrink: 0;
+  }
+  .section-icon.red { background: var(--red-100); }
+  .section-icon.amber { background: var(--amber-100); }
+  .section-icon.blue { background: var(--blue-100); }
+  .section-title h2 { font-size: 22px; font-weight: 700; color: var(--slate-900); }
+  .section-title .badge {
+    font-size: 11px;
+    font-weight: 700;
+    padding: 2px 10px;
+    border-radius: 999px;
+    margin-left: auto;
+  }
+  .badge-critical { background: var(--red-100); color: var(--red-600); }
+  .badge-important { background: var(--amber-100); color: var(--amber-600); }
+  .badge-later { background: var(--blue-100); color: var(--blue-700); }
+
+  /* Task Card */
+  .task {
+    background: white;
+    border: 1px solid var(--slate-200);
+    border-radius: 12px;
+    margin-bottom: 16px;
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  .task.task-done {
+    border-color: var(--green-100);
+    box-shadow: 0 1px 3px rgba(22,163,74,0.08);
+  }
+  .task.task-done .task-info h3 {
+    text-decoration: line-through;
+    color: var(--slate-400);
+  }
+  .task.task-done .task-info p {
+    color: var(--slate-300);
+  }
+  .task.task-done .task-num.red { background: var(--green-600); }
+  .task.task-done .task-num.amber { background: var(--green-600); }
+  .task.task-done .task-num.blue { background: var(--green-600); }
+  .task-header {
+    padding: 16px 20px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    cursor: pointer;
+    user-select: none;
+  }
+  .task-header:hover { background: var(--slate-50); }
+  .task-check {
+    width: 24px; height: 24px;
+    border: 2px solid var(--slate-300);
+    border-radius: 6px;
+    flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    background: white;
+  }
+  .task-check:hover {
+    border-color: var(--green-600);
+    background: var(--green-50);
+  }
+  .task-check.checked {
+    background: var(--green-600);
+    border-color: var(--green-600);
+  }
+  .task-check.checked::after {
+    content: '\2713';
+    color: white;
+    font-size: 14px;
+    font-weight: 700;
+    line-height: 1;
+  }
+  .task-num {
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; font-weight: 700;
+    flex-shrink: 0;
+    color: white;
+  }
+  .task-num.red { background: var(--red-600); }
+  .task-num.amber { background: var(--amber-600); }
+  .task-num.blue { background: var(--blue-700); }
+  .task-info { flex: 1; }
+  .task-info h3 { font-size: 15px; font-weight: 600; color: var(--slate-900); transition: color 0.2s, text-decoration 0.2s; }
+  .task-info p { font-size: 13px; color: var(--slate-500); margin-top: 2px; transition: color 0.2s; }
+  .task-type {
+    font-size: 11px;
+    font-weight: 600;
+    padding: 3px 10px;
+    border-radius: 999px;
+    white-space: nowrap;
+  }
+  .type-ai { background: var(--green-100); color: var(--green-700); }
+  .type-manual { background: var(--yellow-100); color: var(--amber-600); }
+  .type-both { background: var(--blue-100); color: var(--blue-700); }
+
+  .task-body {
+    padding: 0 20px 20px;
+    border-top: 1px solid var(--slate-100);
+  }
+
+  /* Steps */
+  .step {
+    display: flex;
+    gap: 12px;
+    margin-top: 16px;
+    padding: 14px 16px;
+    border-radius: 8px;
+    background: var(--slate-50);
+    border: 1px solid var(--slate-100);
+  }
+  .step-icon {
+    width: 24px; height: 24px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px;
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+  .step-icon.human { background: var(--yellow-100); color: var(--amber-600); }
+  .step-icon.robot { background: var(--green-100); color: var(--green-700); }
+  .step-icon.check { background: var(--blue-100); color: var(--blue-700); }
+  .step-content { flex: 1; }
+  .step-content h4 { font-size: 13px; font-weight: 600; color: var(--slate-700); margin-bottom: 4px; }
+  .step-content p { font-size: 13px; color: var(--slate-600); }
+
+  /* Prompt Box */
+  .prompt-box {
+    background: var(--slate-900);
+    border-radius: 8px;
+    margin-top: 12px;
+    overflow: hidden;
+  }
+  .prompt-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 14px;
+    background: rgba(255,255,255,0.05);
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+  }
+  .prompt-header span { font-size: 11px; color: var(--slate-300); font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; }
+  .copy-btn {
+    background: rgba(255,255,255,0.1);
+    border: none;
+    color: var(--slate-300);
+    padding: 4px 10px;
+    border-radius: 4px;
+    font-size: 11px;
+    cursor: pointer;
+    font-weight: 600;
+  }
+  .copy-btn:hover { background: rgba(255,255,255,0.2); }
+  .copy-btn.copied { background: var(--green-700); color: white; }
+  .prompt-body {
+    padding: 14px;
+    font-family: 'Consolas', 'Fira Code', monospace;
+    font-size: 12.5px;
+    line-height: 1.7;
+    color: var(--slate-300);
+    white-space: pre-wrap;
+    word-break: break-word;
+    max-height: 400px;
+    overflow-y: auto;
+  }
+
+  /* Code inline */
+  code {
+    background: var(--slate-100);
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-family: 'Consolas', 'Fira Code', monospace;
+    color: var(--slate-700);
+  }
+
+  /* File path */
+  .file-path {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: var(--blue-50);
+    border: 1px solid var(--blue-100);
+    padding: 2px 10px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-family: 'Consolas', monospace;
+    color: var(--blue-700);
+  }
+
+  /* Verify box */
+  .verify {
+    background: var(--green-50);
+    border: 1px solid var(--green-100);
+    border-radius: 8px;
+    padding: 12px 16px;
+    margin-top: 12px;
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    font-size: 13px;
+  }
+  .verify strong { color: var(--green-700); }
+
+  /* Warning box */
+  .warn-box {
+    background: var(--amber-50);
+    border: 1px solid var(--amber-100);
+    border-radius: 8px;
+    padding: 12px 16px;
+    margin-top: 12px;
+    font-size: 13px;
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  /* Checklist */
+  .checklist { list-style: none; padding: 0; margin-top: 12px; }
+  .checklist li {
+    padding: 6px 0;
+    display: flex; align-items: center; gap: 8px;
+    font-size: 13px;
+  }
+  .check-box {
+    width: 16px; height: 16px;
+    border: 2px solid var(--slate-300);
+    border-radius: 3px;
+    flex-shrink: 0;
+  }
+
+  /* Footer */
+  .footer {
+    background: var(--slate-900);
+    color: var(--slate-400);
+    padding: 24px 0;
+    text-align: center;
+    font-size: 12px;
+    border-top: 3px solid var(--yellow-500);
+    margin-top: 40px;
+  }
+
+  /* Print */
+  @media print {
+    body { background: white; }
+    .task-body { display: block !important; }
+    .copy-btn { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<!-- HERO -->
+<header class="hero">
+  <div class="container">
+    <div class="tag">FIX GUIDE</div>
+    <h1>OBBO iManage — Fix-It Checklist</h1>
+    <p>Everything you need to get OBBO ready for production. Follow the tasks in order. Each task tells you exactly what to do.</p>
+  </div>
+</header>
+
+<!-- PROGRESS -->
+<div class="container">
+  <div class="progress-section">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+      <h3 style="margin:0">Overall Progress</h3>
+      <button onclick="resetProgress()" style="background:none;border:1px solid var(--slate-300);color:var(--slate-500);padding:4px 12px;border-radius:6px;font-size:11px;cursor:pointer;font-weight:600" onmouseover="this.style.borderColor='var(--red-600)';this.style.color='var(--red-600)'" onmouseout="this.style.borderColor='var(--slate-300)';this.style.color='var(--slate-500)'">Reset All</button>
+    </div>
+    <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:0%; background: linear-gradient(90deg, var(--red-600) 0%, var(--amber-600) 50%, var(--green-600) 100%);"></div></div>
+    <div class="progress-labels">
+      <span id="progressLabel">0 / 12 tasks done</span>
+      <span id="progressPercent">0%</span>
+    </div>
+  </div>
+</div>
+
+<!-- MAIN CONTENT -->
+<div class="container">
+
+  <!-- ==================== P0 ==================== -->
+  <div class="section">
+    <div class="section-title">
+      <div class="section-icon red">&#128680;</div>
+      <h2>Priority 0 — Fix These First</h2>
+      <span class="badge badge-critical">BLOCKS DEPLOYMENT</span>
+    </div>
+    <p style="margin-bottom:20px;font-size:14px;color:var(--slate-600)">The app <strong>will not build</strong> until these 3 tasks are done. Do them first, in order.</p>
+
+    <!-- P0-1 -->
+    <div class="task" id="task-p0-1">
+      <div class="task-header" onclick="toggleTask('p0-1')">
+        <div class="task-check" data-task="p0-1" onclick="event.stopPropagation(); toggleDone('p0-1')"></div>
+        <div class="task-num red">1</div>
+        <div class="task-info">
+          <h3>Fix the Build Error (prisma/config)</h3>
+          <p>The app fails to build because of a TypeScript error in prisma.config.ts</p>
+        </div>
+        <span class="task-type type-ai">AI Agent</span>
+      </div>
+      <div class="task-body" id="task-p0-1-body" style="display:none">
+        <div class="step">
+          <div class="step-icon robot">AI</div>
+          <div class="step-content">
+            <h4>Step 1 — Copy this prompt and give it to your AI agent</h4>
+            <p>The agent will fix the build error for you. You don't need to touch any code.</p>
+          </div>
+        </div>
+
+        <div class="prompt-box">
+          <div class="prompt-header">
+            <span>AI Agent Prompt</span>
+            <button class="copy-btn" onclick="copyPrompt(this)">Copy</button>
+          </div>
+          <div class="prompt-body">Fix the Next.js production build error in this project.
+
+The build fails with:
+  ./prisma.config.ts:4:30
+  Type error: Cannot find module 'prisma/config' or its corresponding type declarations.
+
+What to do:
+1. Read the file prisma.config.ts
+2. Check if 'prisma' is in devDependencies in package.json
+3. The fix should be ONE of these (try in order):
+   a. Add "prisma" to devDependencies if missing, then run: npm install
+   b. OR add "prisma.config.ts" to the "exclude" array in tsconfig.json
+   c. OR rename prisma.config.ts to prisma.config.mts so TypeScript doesn't include it in the build
+4. After the fix, run: npm run build
+5. Confirm the build succeeds with "Compiled successfully"
+
+Do NOT change any application code. Only fix the build configuration.</div>
+        </div>
+
+        <div class="verify">
+          <span>&#9989;</span>
+          <div><strong>Verify:</strong> Run <code>npm run build</code> in your terminal. You should see "Compiled successfully" with no errors.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- P0-2 -->
+    <div class="task" id="task-p0-2">
+      <div class="task-header" onclick="toggleTask('p0-2')">
+        <div class="task-check" data-task="p0-2" onclick="event.stopPropagation(); toggleDone('p0-2')"></div>
+        <div class="task-num red">2</div>
+        <div class="task-info">
+          <h3>Fix the Test Suite (Vitest won't run)</h3>
+          <p>Running tests gives "Cannot find module 'vitest/config'"</p>
+        </div>
+        <span class="task-type type-manual">Manual</span>
+      </div>
+      <div class="task-body" id="task-p0-2-body" style="display:none">
+        <p style="font-size:14px;color:var(--slate-600);margin-bottom:12px">This one is simple — the test dependencies aren't installed. Just run one command:</p>
+
+        <div class="step">
+          <div class="step-icon human">YOU</div>
+          <div class="step-content">
+            <h4>Step 1 — Open your terminal in the project folder</h4>
+            <p>Make sure you're in the <code>obbo</code> root directory (where package.json is).</p>
+          </div>
+        </div>
+
+        <div class="step">
+          <div class="step-icon human">YOU</div>
+          <div class="step-content">
+            <h4>Step 2 — Install dependencies</h4>
+            <p>Run this command:</p>
+          </div>
+        </div>
+
+        <div class="prompt-box">
+          <div class="prompt-header">
+            <span>Terminal Command</span>
+            <button class="copy-btn" onclick="copyPrompt(this)">Copy</button>
+          </div>
+          <div class="prompt-body">npm install</div>
+        </div>
+
+        <div class="step">
+          <div class="step-icon human">YOU</div>
+          <div class="step-content">
+            <h4>Step 3 — Run the tests</h4>
+            <p>After install completes, run:</p>
+          </div>
+        </div>
+
+        <div class="prompt-box">
+          <div class="prompt-header">
+            <span>Terminal Command</span>
+            <button class="copy-btn" onclick="copyPrompt(this)">Copy</button>
+          </div>
+          <div class="prompt-body">npm run test</div>
+        </div>
+
+        <div class="verify">
+          <span>&#9989;</span>
+          <div><strong>Verify:</strong> You should see test results (pass/fail counts). If it says "Cannot find module" again, run <code>npm install --save-dev vitest @vitejs/plugin-react @testing-library/react @testing-library/jest-dom</code> explicitly.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- P0-3 -->
+    <div class="task" id="task-p0-3">
+      <div class="task-header" onclick="toggleTask('p0-3')">
+        <div class="task-check" data-task="p0-3" onclick="event.stopPropagation(); toggleDone('p0-3')"></div>
+        <div class="task-num red">3</div>
+        <div class="task-info">
+          <h3>Fix Dark Mode Bugs (4 broken screens)</h3>
+          <p>Some pages look broken in dark mode — white boxes, invisible text, wrong colors</p>
+        </div>
+        <span class="task-type type-ai">AI Agent</span>
+      </div>
+      <div class="task-body" id="task-p0-3-body" style="display:none">
+        <div class="step">
+          <div class="step-icon robot">AI</div>
+          <div class="step-content">
+            <h4>Step 1 — Copy this prompt and give it to your AI agent</h4>
+            <p>The agent will fix all 4 critical dark mode issues in one go.</p>
+          </div>
+        </div>
+
+        <div class="prompt-box">
+          <div class="prompt-header">
+            <span>AI Agent Prompt</span>
+            <button class="copy-btn" onclick="copyPrompt(this)">Copy</button>
+          </div>
+          <div class="prompt-body">Fix 4 critical dark mode bugs in this Next.js project. These pages look broken when the user switches to dark mode.
+
+IMPORTANT: This project uses Tailwind CSS v4 with a "Clean Industrial" design system. Use semantic color tokens from the theme instead of hardcoded colors. The correct tokens are:
+  - Background: bg-background, bg-card, bg-muted
+  - Text: text-foreground, text-muted-foreground
+  - Border: border-border
+  - For status colors, use opacity-based patterns like: bg-amber-500/10 text-amber-500
+
+BUG 1 — File: src/app/admin/clients/page.tsx, around line 708
+Problem: AvatarFallback has `bg-amber-200 text-amber-900` — invisible in dark mode
+Fix: Change to `bg-amber-500/10 text-amber-500`
+
+BUG 2 — File: src/app/admin/profile/page.tsx, around line 112
+Problem: KYC verified badge has `bg-emerald-100 text-emerald-800 border-emerald-200` — broken in dark mode
+Fix: Change to `bg-emerald-500/10 text-emerald-500 border-emerald-500/20`
+
+BUG 3 — File: src/app/client/orders/components/orders-client.tsx, around line 61
+Problem: Inactive tracking step has `bg-white` — bright white circle in dark mode
+Fix: Change to `bg-background border-border text-muted-foreground`
+
+BUG 4 — File: src/app/admin/inventory/components/dr-list-tab.tsx, around line 430
+Problem: "Full Resolution" button has `bg-white/90 hover:bg-white` — hardcoded white
+Fix: Change to `bg-background/90 hover:bg-background backdrop-blur-sm`
+
+For each file:
+1. Read the file first
+2. Find the exact line with the hardcoded color
+3. Replace ONLY the color classes, keep everything else
+4. Make sure you don't break any surrounding code
+
+After all 4 fixes, run: npm run build
+Confirm it still compiles successfully.</div>
+        </div>
+
+        <div class="verify">
+          <span>&#9989;</span>
+          <div><strong>Verify:</strong> After the agent finishes, run <code>npm run dev</code>, switch your browser to dark mode, and check these 4 pages: Admin Clients, Admin Profile, Client Orders, Admin Inventory DR List. No white boxes or invisible text should appear.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== P1 ==================== -->
+  <div class="section">
+    <div class="section-title">
+      <div class="section-icon amber">&#9888;&#65039;</div>
+      <h2>Priority 1 — Fix Before Launch</h2>
+      <span class="badge badge-important">SHOULD FIX</span>
+    </div>
+    <p style="margin-bottom:20px;font-size:14px;color:var(--slate-600)">These won't block the build, but they make the app better. Fix them after P0 is done.</p>
+
+    <!-- P1-1 -->
+    <div class="task" id="task-p1-1">
+      <div class="task-header" onclick="toggleTask('p1-1')">
+        <div class="task-check" data-task="p1-1" onclick="event.stopPropagation(); toggleDone('p1-1')"></div>
+        <div class="task-num amber">4</div>
+        <div class="task-info">
+          <h3>Add Loading Screens</h3>
+          <p>Right now users see a blank page while data loads. Add loading spinners.</p>
+        </div>
+        <span class="task-type type-ai">AI Agent</span>
+      </div>
+      <div class="task-body" id="task-p1-1-body" style="display:none">
+        <div class="prompt-box">
+          <div class="prompt-header">
+            <span>AI Agent Prompt</span>
+            <button class="copy-btn" onclick="copyPrompt(this)">Copy</button>
+          </div>
+          <div class="prompt-body">Add loading.tsx files to the admin and client route groups in this Next.js App Router project.
+
+Create these 2 files:
+
+FILE 1: src/app/admin/loading.tsx
+FILE 2: src/app/client/loading.tsx
+
+Each file should export a default function component that shows a centered loading spinner. Use Tailwind CSS classes. Keep it simple:
+- Full height container (min-h-screen)
+- Centered flex layout
+- A spinning circle (animate-spin rounded-full border-4 border-muted border-t-primary)
+- "Loading..." text below in muted color
+
+Make sure both files:
+- Use "export default function Loading()" 
+- Are client components if they use any hooks (they shouldn't need to be)
+- Follow the existing code style in the project (look at other page.tsx files for reference)
+
+After creating both files, run: npm run build
+Confirm it compiles successfully.</div>
+        </div>
+
+        <div class="verify">
+          <span>&#9989;</span>
+          <div><strong>Verify:</strong> Run <code>npm run dev</code>, navigate to <code>/admin/dashboard</code> and <code>/client/dashboard</code>. You should briefly see a spinner before the page loads.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- P1-2 -->
+    <div class="task" id="task-p1-2">
+      <div class="task-header" onclick="toggleTask('p1-2')">
+        <div class="task-check" data-task="p1-2" onclick="event.stopPropagation(); toggleDone('p1-2')"></div>
+        <div class="task-num amber">5</div>
+        <div class="task-info">
+          <h3>Add Error & 404 Pages</h3>
+          <p>If something goes wrong, users see a generic Next.js error. Add friendly error pages.</p>
+        </div>
+        <span class="task-type type-ai">AI Agent</span>
+      </div>
+      <div class="task-body" id="task-p1-2-body" style="display:none">
+        <div class="prompt-box">
+          <div class="prompt-header">
+            <span>AI Agent Prompt</span>
+            <button class="copy-btn" onclick="copyPrompt(this)">Copy</button>
+          </div>
+          <div class="prompt-body">Add error.tsx and not-found.tsx files to this Next.js App Router project.
+
+Create these files:
+
+FILE 1: src/app/not-found.tsx
+- A friendly 404 page
+- Show "Page Not Found" heading
+- Show "The page you're looking for doesn't exist." message
+- Add a "Go Home" button that links to "/"
+- Use Tailwind CSS, center everything vertically
+- Match the project's Clean Industrial design (use bg-background, text-foreground, etc.)
+
+FILE 2: src/app/error.tsx
+- This MUST be a client component ("use client")
+- Export default function Error({ error, reset })
+- Show "Something went wrong" heading
+- Show error.message if available
+- Add a "Try Again" button that calls reset()
+- Add a "Go Home" button that links to "/"
+- Use Tailwind CSS, center everything vertically
+
+FILE 3: src/app/admin/error.tsx
+FILE 4: src/app/client/error.tsx
+- Same pattern as the root error.tsx but wrapped in the admin/client layout context
+- These should also be client components with "use client"
+
+After creating all files, run: npm run build
+Confirm it compiles successfully.</div>
+        </div>
+
+        <div class="verify">
+          <span>&#9989;</span>
+          <div><strong>Verify:</strong> Run <code>npm run dev</code>, go to <code>/this-page-does-not-exist</code>. You should see a styled 404 page instead of the default Next.js error.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- P1-3 -->
+    <div class="task" id="task-p1-3">
+      <div class="task-header" onclick="toggleTask('p1-3')">
+        <div class="task-check" data-task="p1-3" onclick="event.stopPropagation(); toggleDone('p1-3')"></div>
+        <div class="task-num amber">6</div>
+        <div class="task-info">
+          <h3>Fix Pinch-to-Zoom (Accessibility)</h3>
+          <p>Mobile users can't zoom in. This is required for accessibility (WCAG).</p>
+        </div>
+        <span class="task-type type-manual">Manual</span>
+      </div>
+      <div class="task-body" id="task-p1-3-body" style="display:none">
+        <p style="font-size:14px;color:var(--slate-600);margin-bottom:12px">This is a quick 1-line fix. You just need to change 2 words in one file.</p>
+
+        <div class="step">
+          <div class="step-icon human">YOU</div>
+          <div class="step-content">
+            <h4>Step 1 — Open this file</h4>
+            <p><span class="file-path">src/app/layout.tsx</span></p>
+          </div>
+        </div>
+
+        <div class="step">
+          <div class="step-icon human">YOU</div>
+          <div class="step-content">
+            <h4>Step 2 — Find the viewport section (around line 21-22)</h4>
+            <p>Look for this code:</p>
+          </div>
+        </div>
+
+        <div class="prompt-box">
+          <div class="prompt-header">
+            <span>Code to Find</span>
+            <button class="copy-btn" onclick="copyPrompt(this)">Copy</button>
+          </div>
+          <div class="prompt-body">maximumScale: 1,
+userScalable: false,</div>
+        </div>
+
+        <div class="step">
+          <div class="step-icon human">YOU</div>
+          <div class="step-content">
+            <h4>Step 3 — Replace with this</h4>
+            <p>Delete both lines (or comment them out). That's it.</p>
+          </div>
+        </div>
+
+        <div class="prompt-box">
+          <div class="prompt-header">
+            <span>Replace With</span>
+            <button class="copy-btn" onclick="copyPrompt(this)">Copy</button>
+          </div>
+          <div class="prompt-body">// Removed maximumScale and userScalable to allow pinch-to-zoom (WCAG 2.1 SC 1.4.4)</div>
+        </div>
+
+        <div class="warn-box">
+          <span>&#9888;&#65039;</span>
+          <div><strong>Why?</strong> Disabling zoom is an accessibility violation. People with low vision need to zoom in to read text. This is required by law in many countries.</div>
+        </div>
+
+        <div class="verify">
+          <span>&#9989;</span>
+          <div><strong>Verify:</strong> Open the app on your phone. You should be able to pinch-to-zoom on any page.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- P1-4 -->
+    <div class="task" id="task-p1-4">
+      <div class="task-header" onclick="toggleTask('p1-4')">
+        <div class="task-check" data-task="p1-4" onclick="event.stopPropagation(); toggleDone('p1-4')"></div>
+        <div class="task-num amber">7</div>
+        <div class="task-info">
+          <h3>Reduce TypeScript "any" Errors</h3>
+          <p>61 places use <code>any</code> type — this makes bugs harder to catch</p>
+        </div>
+        <span class="task-type type-ai">AI Agent</span>
+      </div>
+      <div class="task-body" id="task-p1-4-body" style="display:none">
+        <div class="prompt-box">
+          <div class="prompt-header">
+            <span>AI Agent Prompt</span>
+            <button class="copy-btn" onclick="copyPrompt(this)">Copy</button>
+          </div>
+          <div class="prompt-body">Fix the @typescript-eslint/no-explicit-any ESLint errors in this project. There are about 61 occurrences.
+
+Strategy:
+1. First run: npm run lint 2>&1 | Select-String "no-explicit-any" to see all occurrences
+2. For each occurrence, read the file and understand the context
+3. Replace `any` with proper types. Common patterns:
+   - Supabase query results: use the generated Prisma types from src/generated/prisma or create interfaces in src/lib/types/database.ts
+   - Event handlers: use React.ChangeEvent&lt;HTMLInputElement&gt;, React.MouseEvent&lt;HTMLButtonElement&gt;, etc.
+   - Function parameters: look at what the function actually receives and type it properly
+   - If the type is truly unknown, use `unknown` instead of `any` (it's safer)
+   - If it's a Supabase .from() result, you can use the table types from the Prisma generated client
+4. After fixing, run: npm run lint
+5. Confirm the no-explicit-any count is significantly reduced (aim for under 10)
+
+IMPORTANT: Do NOT use `// eslint-disable-next-line` as a fix. Actually type the code properly.
+If a type is genuinely complex and you can't determine it, use `unknown` and add a comment explaining why.</div>
+        </div>
+
+        <div class="warn-box">
+          <span>&#9888;&#65039;</span>
+          <div><strong>Note:</strong> This is a big task. The agent might not fix all 61 in one go. That's okay — even reducing from 61 to under 20 is a big win. You can run this prompt multiple times.</div>
+        </div>
+
+        <div class="verify">
+          <span>&#9989;</span>
+          <div><strong>Verify:</strong> Run <code>npm run lint</code> and count the <code>no-explicit-any</code> errors. It should be much lower than 61.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== P2 ==================== -->
+  <div class="section">
+    <div class="section-title">
+      <div class="section-icon blue">&#128736;&#65039;</div>
+      <h2>Priority 2 — Nice to Have</h2>
+      <span class="badge badge-later">FIX LATER</span>
+    </div>
+    <p style="margin-bottom:20px;font-size:14px;color:var(--slate-600)">These improve quality but aren't urgent. Fix them when you have time.</p>
+
+    <!-- P2-1 -->
+    <div class="task" id="task-p2-1">
+      <div class="task-header" onclick="toggleTask('p2-1')">
+        <div class="task-check" data-task="p2-1" onclick="event.stopPropagation(); toggleDone('p2-1')"></div>
+        <div class="task-num blue">8</div>
+        <div class="task-info">
+          <h3>Create .env.example File</h3>
+          <p>New developers don't know what environment variables they need</p>
+        </div>
+        <span class="task-type type-manual">Manual</span>
+      </div>
+      <div class="task-body" id="task-p2-1-body" style="display:none">
+        <div class="step">
+          <div class="step-icon human">YOU</div>
+          <div class="step-content">
+            <h4>Step 1 — Create a new file in the project root</h4>
+            <p>Name it <span class="file-path">.env.example</span></p>
+          </div>
+        </div>
+
+        <div class="step">
+          <div class="step-icon human">YOU</div>
+          <div class="step-content">
+            <h4>Step 2 — Paste this content</h4>
+            <p>This lists all required environment variables with placeholder values.</p>
+          </div>
+        </div>
+
+        <div class="prompt-box">
+          <div class="prompt-header">
+            <span>File Content — .env.example</span>
+            <button class="copy-btn" onclick="copyPrompt(this)">Copy</button>
+          </div>
+          <div class="prompt-body"># Supabase — Get these from your Supabase project dashboard
+# Settings > API > Project URL and Project API keys
+NEXT_PUBLIC_SUPABASE_URL=https://your-project-id.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key-here
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key-here
+
+# Database — Get this from Supabase dashboard
+# Settings > Database > Connection string > URI
+DATABASE_URL=postgresql://postgres:your-password@db.your-project-id.supabase.co:5432/postgres
+
+# Resend — Get this from resend.com API keys
+# https://resend.com/api-keys
+RESEND_API_KEY=re_your_api_key_here</div>
+        </div>
+
+        <div class="verify">
+          <span>&#9989;</span>
+          <div><strong>Verify:</strong> The file exists and lists 5 variables. Make sure it's committed to git (it has no real secrets, just placeholders).</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- P2-2 -->
+    <div class="task" id="task-p2-2">
+      <div class="task-header" onclick="toggleTask('p2-2')">
+        <div class="task-check" data-task="p2-2" onclick="event.stopPropagation(); toggleDone('p2-2')"></div>
+        <div class="task-num blue">9</div>
+        <div class="task-info">
+          <h3>Fix Remaining Dark Mode Issues</h3>
+          <p>28 more dark mode issues (not critical, but noticeable)</p>
+        </div>
+        <span class="task-type type-ai">AI Agent</span>
+      </div>
+      <div class="task-body" id="task-p2-2-body" style="display:none">
+        <div class="prompt-box">
+          <div class="prompt-header">
+            <span>AI Agent Prompt</span>
+            <button class="copy-btn" onclick="copyPrompt(this)">Copy</button>
+          </div>
+          <div class="prompt-body">Fix the remaining dark mode issues in this Next.js project. There are about 28 issues remaining from a design system audit.
+
+Read the audit report at: .agents/reports/system-audit-2026-05-18.md
+
+For each issue marked "STILL PRESENT":
+1. Read the file
+2. Find the hardcoded color class
+3. Replace with the correct Tailwind semantic token
+
+Common replacements:
+  bg-white        -> bg-background
+  bg-gray-200     -> bg-muted
+  text-gray-500   -> text-muted-foreground
+  text-gray-600   -> text-muted-foreground
+  text-white      -> text-foreground (or text-primary-foreground if on a colored bg)
+  bg-red-500      -> bg-destructive
+  text-red-700    -> text-destructive
+  border-red-200  -> border-destructive/20
+  bg-emerald-50   -> bg-emerald-500/10
+  text-emerald-700 -> text-emerald-500
+  bg-amber-50     -> bg-amber-500/10
+  text-amber-800  -> text-amber-500
+  hover:bg-red-100 -> hover:bg-destructive/10
+
+Also fix:
+  - The `pb-safe` class in bottom-navbar.tsx — replace with `pb-[env(safe-area-inset-bottom)]`
+  - Add dark mode overrides for --color-industrial-* in globals.css
+
+After fixing, run: npm run build
+Confirm it compiles successfully.</div>
+        </div>
+
+        <div class="verify">
+          <span>&#9989;</span>
+          <div><strong>Verify:</strong> Toggle dark mode in the browser. All pages should look correct with no white boxes, invisible text, or wrong colors.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- P2-3 -->
+    <div class="task" id="task-p2-3">
+      <div class="task-header" onclick="toggleTask('p2-3')">
+        <div class="task-check" data-task="p2-3" onclick="event.stopPropagation(); toggleDone('p2-3')"></div>
+        <div class="task-num blue">10</div>
+        <div class="task-info">
+          <h3>Fix React setState-in-Effect Warnings</h3>
+          <p>14 places call setState inside useEffect — can cause extra re-renders</p>
+        </div>
+        <span class="task-type type-ai">AI Agent</span>
+      </div>
+      <div class="task-body" id="task-p2-3-body" style="display:none">
+        <div class="prompt-box">
+          <div class="prompt-header">
+            <span>AI Agent Prompt</span>
+            <button class="copy-btn" onclick="copyPrompt(this)">Copy</button>
+          </div>
+          <div class="prompt-body">Fix the react-hooks/set-state-in-effect ESLint errors in this project. There are about 14 occurrences.
+
+Run: npm run lint 2>&1 | Select-String "set-state-in-effect"
+
+For each file with this error, the pattern is usually:
+  useEffect(() => {
+    someFunction(); // someFunction calls setState
+  }, []);
+
+Common fixes:
+1. If it's loading data on mount, use React.use() or move the data fetching to a Server Component
+2. If it's syncing with external state (like Supabase realtime), keep the useEffect but extract the setState into the callback, not the effect body
+3. If it's for hydration (like setMounted(true)), this is acceptable — add an eslint-disable comment:
+   // eslint-disable-next-line react-hooks/set-state-in-effect
+
+Focus on the files:
+- src/app/admin/layout.tsx
+- src/app/admin/orders/page.tsx
+- src/app/admin/inventory/page.tsx
+- src/app/admin/products/page.tsx
+- src/app/admin/reports/page.tsx
+- src/app/client/layout.tsx
+- src/components/real-time-clock.tsx
+- src/components/theme-toggle.tsx
+- src/lib/context/client-kyc-context.tsx
+
+After fixing, run: npm run build and npm run lint
+Confirm both pass.</div>
+        </div>
+
+        <div class="verify">
+          <span>&#9989;</span>
+          <div><strong>Verify:</strong> Run <code>npm run lint</code>. The <code>set-state-in-effect</code> count should be 0 or very low (some are acceptable with comments).</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- P2-4 -->
+    <div class="task" id="task-p2-4">
+      <div class="task-header" onclick="toggleTask('p2-4')">
+        <div class="task-check" data-task="p2-4" onclick="event.stopPropagation(); toggleDone('p2-4')"></div>
+        <div class="task-num blue">11</div>
+        <div class="task-info">
+          <h3>Fix Hardcoded White Clock Text</h3>
+          <p>The real-time clock component uses text-white — breaks outside the sidebar</p>
+        </div>
+        <span class="task-type type-manual">Manual</span>
+      </div>
+      <div class="task-body" id="task-p2-4-body" style="display:none">
+        <div class="step">
+          <div class="step-icon human">YOU</div>
+          <div class="step-content">
+            <h4>Step 1 — Open this file</h4>
+            <p><span class="file-path">src/components/real-time-clock.tsx</span></p>
+          </div>
+        </div>
+
+        <div class="step">
+          <div class="step-icon human">YOU</div>
+          <div class="step-content">
+            <h4>Step 2 — Find line 20</h4>
+            <p>Look for: <code>text-2xl font-bold text-white tabular-nums tracking-tight</code></p>
+          </div>
+        </div>
+
+        <div class="step">
+          <div class="step-icon human">YOU</div>
+          <div class="step-content">
+            <h4>Step 3 — Change <code>text-white</code> to <code>text-foreground</code></h4>
+            <p>The clock will now use the theme's text color instead of always being white.</p>
+          </div>
+        </div>
+
+        <div class="verify">
+          <span>&#9989;</span>
+          <div><strong>Verify:</strong> The clock should be visible in both light and dark mode wherever it's used.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- P2-5 -->
+    <div class="task" id="task-p2-5">
+      <div class="task-header" onclick="toggleTask('p2-5')">
+        <div class="task-check" data-task="p2-5" onclick="event.stopPropagation(); toggleDone('p2-5')"></div>
+        <div class="task-num blue">12</div>
+        <div class="task-info">
+          <h3>Set Up Prisma Migrations</h3>
+          <p>Currently using db push — not safe for production. Set up proper migrations.</p>
+        </div>
+        <span class="task-type type-manual">Manual</span>
+      </div>
+      <div class="task-body" id="task-p2-5-body" style="display:none">
+        <div class="warn-box">
+          <span>&#9888;&#65039;</span>
+          <div><strong>Important:</strong> Only do this when you have time to test carefully. Prisma migrations are a big change. Make sure you have a database backup first.</div>
+        </div>
+
+        <div class="step">
+          <div class="step-icon human">YOU</div>
+          <div class="step-content">
+            <h4>Step 1 — Make sure DATABASE_URL is set</h4>
+            <p>Check that <code>DATABASE_URL</code> is in your <code>.env.local</code> file. If not, get it from Supabase dashboard &rarr; Settings &rarr; Database &rarr; Connection string.</p>
+          </div>
+        </div>
+
+        <div class="step">
+          <div class="step-icon human">YOU</div>
+          <div class="step-content">
+            <h4>Step 2 — Create the initial migration</h4>
+            <p>Run this command to create a migration from the current schema state:</p>
+          </div>
+        </div>
+
+        <div class="prompt-box">
+          <div class="prompt-header">
+            <span>Terminal Command</span>
+            <button class="copy-btn" onclick="copyPrompt(this)">Copy</button>
+          </div>
+          <div class="prompt-body">npx prisma migrate dev --name init_baseline</div>
+        </div>
+
+        <div class="step">
+          <div class="step-icon human">YOU</div>
+          <div class="step-content">
+            <h4>Step 3 — If it asks about existing tables</h4>
+            <p>Prisma may ask if you want to reset the database. Say <strong>No</strong> if you have real data. Instead, use <code>--create-only</code> and manually mark the migration as applied:</p>
+          </div>
+        </div>
+
+        <div class="prompt-box">
+          <div class="prompt-header">
+            <span>Terminal Command (alternative)</span>
+            <button class="copy-btn" onclick="copyPrompt(this)">Copy</button>
+          </div>
+          <div class="prompt-body">npx prisma migrate dev --name init_baseline --create-only
+npx prisma migrate resolve --applied init_baseline</div>
+        </div>
+
+        <div class="step">
+          <div class="step-icon human">YOU</div>
+          <div class="step-content">
+            <h4>Step 4 — Update the deploy script</h4>
+            <p>Change the <code>prisma:migrate:prod</code> script in package.json to <code>prisma migrate deploy</code> (it already is, but verify).</p>
+          </div>
+        </div>
+
+        <div class="verify">
+          <span>&#9989;</span>
+          <div><strong>Verify:</strong> Run <code>npx prisma migrate status</code>. It should say all migrations are applied and the schema is in sync.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== SETUP GUIDE ==================== -->
+  <div class="section">
+    <div class="section-title">
+      <div class="section-icon blue">&#128196;</div>
+      <h2>Environment Setup Guide</h2>
+    </div>
+    <p style="margin-bottom:20px;font-size:14px;color:var(--slate-600)">If you're setting up the project for the first time, follow these steps.</p>
+
+    <div class="task">
+      <div class="task-header" onclick="toggleTask('setup')" style="cursor:pointer">
+        <div class="task-num blue">&#9881;</div>
+        <div class="task-info">
+          <h3>First-Time Project Setup</h3>
+          <p>Get the project running on your machine from scratch</p>
+        </div>
+        <span class="task-type type-manual">Manual</span>
+      </div>
+      <div class="task-body" id="task-setup-body" style="display:none">
+
+        <div class="step">
+          <div class="step-icon human">1</div>
+          <div class="step-content">
+            <h4>Clone the repo and install dependencies</h4>
+          </div>
+        </div>
+        <div class="prompt-box">
+          <div class="prompt-header"><span>Terminal</span><button class="copy-btn" onclick="copyPrompt(this)">Copy</button></div>
+          <div class="prompt-body">git clone &lt;repo-url&gt;
+cd obbo
+npm install</div>
+        </div>
+
+        <div class="step" style="margin-top:16px">
+          <div class="step-icon human">2</div>
+          <div class="step-content">
+            <h4>Create your .env.local file</h4>
+            <p>Copy the example and fill in your values:</p>
+          </div>
+        </div>
+        <div class="prompt-box">
+          <div class="prompt-header"><span>Terminal</span><button class="copy-btn" onclick="copyPrompt(this)">Copy</button></div>
+          <div class="prompt-body">cp .env.example .env.local</div>
+        </div>
+
+        <div class="step" style="margin-top:16px">
+          <div class="step-icon human">3</div>
+          <div class="step-content">
+            <h4>Get your Supabase credentials</h4>
+            <p>Go to <strong>supabase.com</strong> &rarr; your project &rarr; Settings &rarr; API:</p>
+            <ul class="checklist">
+              <li><div class="check-box"></div> Copy <strong>Project URL</strong> &rarr; paste as <code>NEXT_PUBLIC_SUPABASE_URL</code></li>
+              <li><div class="check-box"></div> Copy <strong>anon public</strong> key &rarr; paste as <code>NEXT_PUBLIC_SUPABASE_ANON_KEY</code></li>
+              <li><div class="check-box"></div> Copy <strong>service_role</strong> key &rarr; paste as <code>SUPABASE_SERVICE_ROLE_KEY</code></li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="step">
+          <div class="step-icon human">4</div>
+          <div class="step-content">
+            <h4>Get your Database URL</h4>
+            <p>Go to Supabase &rarr; Settings &rarr; Database &rarr; Connection string &rarr; URI tab:</p>
+            <ul class="checklist">
+              <li><div class="check-box"></div> Copy the connection string &rarr; paste as <code>DATABASE_URL</code></li>
+              <li><div class="check-box"></div> Replace <code>[YOUR-PASSWORD]</code> with your actual database password</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="step">
+          <div class="step-icon human">5</div>
+          <div class="step-content">
+            <h4>Get your Resend API key</h4>
+            <p>Go to <strong>resend.com</strong> &rarr; API Keys &rarr; Create API Key:</p>
+            <ul class="checklist">
+              <li><div class="check-box"></div> Copy the key &rarr; paste as <code>RESEND_API_KEY</code></li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="step">
+          <div class="step-icon human">6</div>
+          <div class="step-content">
+            <h4>Generate Prisma client and start the dev server</h4>
+          </div>
+        </div>
+        <div class="prompt-box">
+          <div class="prompt-header"><span>Terminal</span><button class="copy-btn" onclick="copyPrompt(this)">Copy</button></div>
+          <div class="prompt-body">npx prisma generate
+npm run dev</div>
+        </div>
+
+        <div class="verify">
+          <span>&#9989;</span>
+          <div><strong>Verify:</strong> Open <code>http://localhost:3000</code> in your browser. You should see the landing page.</div>
+        </div>
+
+        <div class="warn-box" style="margin-top:12px">
+          <span>&#128161;</span>
+          <div><strong>Tip:</strong> If you don't have Supabase credentials yet, you can still run <code>npm run dev</code> — the app will start but pages that need the database will show errors. Get the credentials from your team lead.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- FOOTER -->
+<footer class="footer">
+  <div class="container">
+    <p>OBBO iManage — Fix-It Guide — Generated 2026-06-11</p>
+    <p style="margin-top:4px">Questions? Ask your team lead or check <code style="color:var(--slate-300)">AGENTS.md</code></p>
+  </div>
+</footer>
+
+<!-- SCRIPTS -->
+<script>
+const TOTAL_TASKS = 12;
+const STORAGE_KEY = 'obbo-fix-progress';
+
+const allTaskIds = [
+  'p0-1','p0-2','p0-3',
+  'p1-1','p1-2','p1-3','p1-4',
+  'p2-1','p2-2','p2-3','p2-4','p2-5'
+];
+
+function getProgress() {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    return saved ? JSON.parse(saved) : {};
+  } catch { return {}; }
+}
+
+function saveProgress(progress) {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(progress));
+  } catch {}
+}
+
+function toggleTask(id) {
+  const body = document.getElementById('task-' + id + '-body');
+  if (body) {
+    body.style.display = body.style.display === 'none' ? 'block' : 'none';
+  }
+}
+
+function toggleDone(id) {
+  const progress = getProgress();
+  const checkbox = document.querySelector('.task-check[data-task="' + id + '"]');
+  const taskCard = document.getElementById('task-' + id);
+
+  if (progress[id]) {
+    delete progress[id];
+    if (checkbox) checkbox.classList.remove('checked');
+    if (taskCard) taskCard.classList.remove('task-done');
+  } else {
+    progress[id] = Date.now();
+    if (checkbox) checkbox.classList.add('checked');
+    if (taskCard) taskCard.classList.add('task-done');
+  }
+
+  saveProgress(progress);
+  updateProgressBar();
+}
+
+function updateProgressBar() {
+  const progress = getProgress();
+  const done = allTaskIds.filter(id => progress[id]).length;
+  const pct = Math.round((done / TOTAL_TASKS) * 100);
+
+  const fill = document.getElementById('progressFill');
+  const label = document.getElementById('progressLabel');
+  const percent = document.getElementById('progressPercent');
+
+  if (fill) fill.style.width = pct + '%';
+  if (label) label.textContent = done + ' / ' + TOTAL_TASKS + ' tasks done';
+  if (percent) percent.textContent = pct + '%';
+}
+
+function restoreProgress() {
+  const progress = getProgress();
+  allTaskIds.forEach(id => {
+    if (progress[id]) {
+      const checkbox = document.querySelector('.task-check[data-task="' + id + '"]');
+      const taskCard = document.getElementById('task-' + id);
+      if (checkbox) checkbox.classList.add('checked');
+      if (taskCard) taskCard.classList.add('task-done');
+    }
+  });
+  updateProgressBar();
+}
+
+function resetProgress() {
+  if (!confirm('Reset all progress? This cannot be undone.')) return;
+  localStorage.removeItem(STORAGE_KEY);
+  allTaskIds.forEach(id => {
+    const checkbox = document.querySelector('.task-check[data-task="' + id + '"]');
+    const taskCard = document.getElementById('task-' + id);
+    if (checkbox) checkbox.classList.remove('checked');
+    if (taskCard) taskCard.classList.remove('task-done');
+  });
+  updateProgressBar();
+}
+
+function copyPrompt(btn) {
+  const promptBody = btn.closest('.prompt-box').querySelector('.prompt-body');
+  const text = promptBody.textContent || promptBody.innerText;
+  navigator.clipboard.writeText(text).then(() => {
+    btn.textContent = 'Copied!';
+    btn.classList.add('copied');
+    setTimeout(() => {
+      btn.textContent = 'Copy';
+      btn.classList.remove('copied');
+    }, 2000);
+  });
+}
+
+document.addEventListener('DOMContentLoaded', restoreProgress);
+</script>
+
+</body>
+</html>
