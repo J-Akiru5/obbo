@@ -58,16 +58,20 @@ function TrackingProgressBar({ order }: { order: Order }) {
                                         ? "bg-emerald-500 border-emerald-500 text-white"
                                         : isCurrent
                                         ? "border-primary text-primary bg-primary/10"
-                                        : "border-gray-200 text-muted-foreground bg-white"
+                                        : "bg-background border-border text-muted-foreground"
                                 }`}>
                                     <StepIcon className="w-4 h-4" />
                                 </div>
-                                <span className={`text-[9px] mt-1.5 text-center leading-tight max-w-[60px] ${isCompleted ? "text-emerald-700 font-semibold" : "text-muted-foreground"}`}>
+                                <span className={`text-[9px] mt-1.5 text-center leading-tight max-w-[60px] ${
+                                    isCompleted 
+                                        ? "text-emerald-500 font-semibold" 
+                                        : "text-muted-foreground"
+                                }`}>
                                     {step.label}
                                 </span>
                             </div>
                             {idx < TRACKING_STEPS.length - 1 && (
-                                <div className={`flex-1 h-0.5 mx-1.5 mt-[-14px] ${idx < activeStep ? "bg-emerald-400" : "bg-gray-200"}`} />
+                                <div className={`flex-1 h-0.5 mx-1.5 mt-[-14px] ${idx < activeStep ? "bg-emerald-500" : "bg-muted"}`} />
                             )}
                         </div>
                     );
@@ -301,7 +305,7 @@ export default function OrdersClient({ orders }: { orders: Order[] }) {
                         <Button
                             variant="outline"
                             size="sm"
-                            className="w-full gap-2 border-amber-200 text-amber-700 hover:bg-amber-50 dark:border-amber-800 dark:text-amber-400 dark:hover:bg-amber-950"
+                            className="w-full gap-2 border-border text-foreground hover:bg-muted"
                             onClick={() => handleOpenReturn(order)}
                         >
                             <CornerDownLeft className="w-4 h-4" />
@@ -403,8 +407,8 @@ export default function OrdersClient({ orders }: { orders: Order[] }) {
                                         </div>
                                         <div className="text-right text-xs text-muted-foreground shrink-0">
                                             <div>Requested: {item.requested_qty}</div>
-                                            {item.approved_qty > 0 && <div className="text-emerald-600">Approved: {item.approved_qty}</div>}
-                                            {item.dispatched_qty > 0 && <div className="text-blue-600">Dispatched: {item.dispatched_qty}</div>}
+                                            {item.approved_qty > 0 && <div className="text-emerald-500 font-medium">Approved: {item.approved_qty}</div>}
+                                            {item.dispatched_qty > 0 && <div className="text-blue-500 font-medium">Dispatched: {item.dispatched_qty}</div>}
                                         </div>
                                     </div>
                                 ))}

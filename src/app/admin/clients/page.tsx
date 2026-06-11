@@ -58,12 +58,12 @@ function getAddressLine(profile: Profile) {
 
 function KycBadge({ status }: { status: string }) {
     if (status === "verified") {
-        return <Badge className="border-status-success-border bg-status-success-bg text-status-success-text hover:bg-emerald-100">Verified</Badge>;
+        return <Badge className="border-status-success-border bg-status-success-bg text-status-success-text hover:bg-emerald-500/10">Verified</Badge>;
     }
     if (status === "rejected") {
-        return <Badge className="border-destructive/20 bg-destructive/10 text-destructive hover:bg-red-100">Rejected</Badge>;
+        return <Badge className="border-destructive/20 bg-destructive/10 text-destructive hover:bg-destructive/10">Rejected</Badge>;
     }
-    return <Badge className="border-status-pending-border bg-status-pending-bg text-status-pending-text hover:bg-amber-100">Pending</Badge>;
+    return <Badge className="border-status-pending-border bg-status-pending-bg text-status-pending-text hover:bg-amber-500/10">Pending</Badge>;
 }
 
 function SummaryCard({ title, value, description, icon: Icon }: { title: string; value: string; description: string; icon: ComponentType<{ className?: string }>; }) {
@@ -195,6 +195,7 @@ function KycDialog({
                                         <a
                                             href={`/api/admin/kyc-document?path=${encodeURIComponent(doc)}`}
                                             target="_blank"
+                                            network-boundary="true"
                                             rel="noreferrer"
                                             className="text-xs font-medium text-primary hover:underline"
                                         >
@@ -232,7 +233,7 @@ function KycDialog({
                     <Button variant="outline" onClick={onClose}>Close</Button>
                     {canManage && (
                         <>
-                            <Button variant="outline" className="border-red-200 text-red-700 hover:bg-red-50" onClick={handleReject} disabled={saving}>
+                            <Button variant="outline" className="border-destructive/20 text-destructive hover:bg-destructive/10" onClick={handleReject} disabled={saving}>
                                 {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <XCircle className="mr-2 h-4 w-4" />} Reject
                             </Button>
                             <Button className="bg-primary hover:bg-primary/90" onClick={handleApprove} disabled={saving}>
@@ -700,12 +701,12 @@ function ClientsContent() {
                                 ) : (
                                     <div className="space-y-3">
                                         {pending.map((profile) => (
-                                            <Card key={profile.id} className="border-amber-200 bg-amber-50/40 shadow-sm">
+                                            <Card key={profile.id} className="border-border bg-amber-500/5 shadow-sm">
                                                 <CardContent className="p-4">
                                                     <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
                                                         <Avatar className="h-10 w-10 flex-shrink-0">
                                                             <AvatarImage src={profile.avatar_url || ""} alt={profile.full_name} />
-                                                            <AvatarFallback className="bg-amber-200 text-xs font-bold text-amber-900">{getInitials(profile.full_name)}</AvatarFallback>
+                                                            <AvatarFallback className="bg-amber-500/10 text-xs font-bold text-amber-500">{getInitials(profile.full_name)}</AvatarFallback>
                                                         </Avatar>
                                                         <div className="min-w-0 flex-1">
                                                             <div className="flex flex-wrap items-center gap-2">
@@ -778,7 +779,7 @@ function ClientsContent() {
                 <Card className="border-border shadow-sm">
                     <CardHeader className="pb-3">
                         <CardTitle className="flex items-center gap-2 text-base">
-                            <AlertTriangle className="h-4 w-4 text-red-500" /> Rejected registrations
+                            <AlertTriangle className="h-4 w-4 text-destructive" /> Rejected registrations
                         </CardTitle>
                         <CardDescription>Blocked profiles remain visible for audit and support tracing.</CardDescription>
                     </CardHeader>

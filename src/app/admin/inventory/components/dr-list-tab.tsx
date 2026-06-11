@@ -1,3 +1,5 @@
+"use client";
+
 import { useState } from "react";
 import { DeliveryReceipt, Shipment } from "@/lib/types/database";
 import { OptimizedImage } from "@/components/ui/optimized-image";
@@ -292,7 +294,7 @@ export function DrListTab({
                                         )}
                                         <div className="absolute top-2 right-2 flex gap-1">
                                             {dr.order_id && <Badge className="bg-primary text-primary-foreground border-none text-[9px]">AUTO</Badge>}
-                                            <Badge variant="secondary" className="bg-white/80 backdrop-blur-sm text-foreground text-[10px] font-mono border-none">{new Date(dr.received_date).toLocaleDateString()}</Badge>
+                                            <Badge variant="secondary" className="bg-background/80 backdrop-blur-sm text-foreground text-[10px] font-mono border-none">{new Date(dr.received_date).toLocaleDateString()}</Badge>
                                         </div>
                                     </div>
                                     <CardContent className="p-4 space-y-3">
@@ -427,7 +429,7 @@ export function DrListTab({
                                         href={viewingDr.dr_image_url} 
                                         target="_blank" 
                                         rel="noreferrer" 
-                                        className="absolute bottom-4 right-4 bg-white/90 backdrop-blur-sm text-primary px-3 py-1.5 rounded-lg text-[10px] font-bold shadow-lg hover:bg-white transition-colors flex items-center gap-1.5"
+                                        className="absolute bottom-4 right-4 bg-background/90 hover:bg-background backdrop-blur-sm text-foreground px-3 py-1.5 rounded-lg text-[10px] font-bold shadow-lg transition-colors flex items-center gap-1.5"
                                     >
                                         <FileImage className="w-3.5 h-3.5" /> Full Resolution
                                     </a>
@@ -530,7 +532,6 @@ export function DrListTab({
                                                     <div className="p-2 text-xs text-center text-muted-foreground">No PO found</div>
                                                 )}
                                                 
-                                                {/* Allow manual entry if not found */}
                                                 {poSearch && !purchaseOrders.some(po => po.po_number === poSearch) && (
                                                     <div
                                                         className="mt-1 p-2 text-xs border-t cursor-pointer hover:bg-accent text-blue-600 font-medium"

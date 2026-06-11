@@ -109,7 +109,7 @@ export default function AdminProfilePage() {
                                 <Badge className="bg-primary hover:bg-primary text-primary-foreground text-xs capitalize">
                                     <Shield className="w-3 h-3 mr-1" /> {profile.role}
                                 </Badge>
-                                <Badge variant="outline" className="text-xs bg-emerald-100 text-emerald-800 border-emerald-200 hover:bg-emerald-100 capitalize">
+                                <Badge variant="outline" className="text-xs bg-emerald-500/10 text-emerald-500 border-emerald-500/20 hover:bg-emerald-500/10 capitalize">
                                     {profile.kyc_status.replace(/_/g, " ")}
                                 </Badge>
                             </div>
