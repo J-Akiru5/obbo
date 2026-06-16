@@ -1,3 +1,5 @@
+"use client";
+
 import { useState } from "react";
 import { PurchaseOrder, Profile } from "@/lib/types/database";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -5,7 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Search, Edit2, MapPin, Truck, UploadCloud, CheckCircle2, X, FileImage, AlertTriangle, Eye, LayoutGrid, List, Check, ChevronsUpDown } from "lucide-react";
+import { Plus, Search, Edit2, MapPin, Truck, UploadCloud, CheckCircle2, X, FileImage, AlertTriangle, Eye, LayoutGrid, List, Check, ChevronsUpDown, ShoppingBag, Clock, FileText } from "lucide-react";
 import { createPurchaseOrder, updatePurchaseOrder, generateAdminPoNumber } from "@/lib/actions/admin-actions";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
@@ -62,16 +64,16 @@ export function PoListTab({ purchaseOrders, loading, onReload }: { purchaseOrder
         }
     };
 
-     const openCreate = async () => {
+    const openCreate = async () => {
         setEditingPo(null);
         setJbQty(0); setSbQty(0);
         setClientName("");
         setClientId(null);
         setPhotoFile(null);
+        setCheckNumber(""); setCheckAmount(0); setCashAmount(0);
         fetchClients();
         setIsDialogOpen(true);
         
-        // Fetch next PO number as a suggestion
         const nextPo = await generateAdminPoNumber();
         setPoNumber(nextPo);
     };
@@ -104,7 +106,6 @@ export function PoListTab({ purchaseOrders, loading, onReload }: { purchaseOrder
         }
         setIsSubmitting(true);
         try {
-            // Upload photo if provided
             let photoUrl: string | undefined;
             if (photoFile) {
                 const supabase = createClient();
@@ -164,247 +165,314 @@ export function PoListTab({ purchaseOrders, loading, onReload }: { purchaseOrder
         return matchSearch && matchStatus && matchSource && matchDateFrom && matchDateTo;
     });
 
+    // ── FIXED CORRECTION: REAL-TIME PO ANALYTICS ACCUMULATOR SUMMARY ──
+    const poMetrics = filtered.reduce(
+        (acc, po) => {
+            acc.totalBags += (po.jb || 0) + (po.sb || 0);
+            acc.totalValue += (Number(po.cash_amount) || 0) + (Number(po.check_amount) || 0);
+            if (po.status === "pending") acc.pendingCount += 1;
+            return acc;
+        },
+        { totalBags: 0, totalValue: 0, pendingCount: 0 }
+    );
+
+    // Dynamic color indicator parser for PO Status badges
+    const getStatusBadge = (status: string) => {
+        switch (status?.toLowerCase()) {
+            case "pending":
+                return <Badge className="bg-amber-500/10 text-amber-500 border border-amber-500/20 capitalize font-semibold px-2 py-0.5 rounded-md">Pending</Badge>;
+            case "dispatched":
+                return <Badge className="bg-blue-500/10 text-blue-500 border border-blue-500/20 capitalize font-semibold px-2 py-0.5 rounded-md">Dispatched</Badge>;
+            case "completed":
+                return <Badge className="bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 capitalize font-semibold px-2 py-0.5 rounded-md">Completed</Badge>;
+            default:
+                return <Badge variant="outline" className="capitalize font-semibold px-2 py-0.5 rounded-md">{status}</Badge>;
+        }
+    };
+
     if (loading) return <div className="py-8 text-center text-muted-foreground animate-pulse">Loading PO list...</div>;
 
     return (
-        <Card>
-            <CardContent className="p-4 space-y-4">
-                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-                    <div className="relative w-full max-w-sm">
-                        <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                        <Input type="search" placeholder="Search PO or Client..." className="pl-8" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
-                    </div>
-                    <div className="flex items-center gap-2 w-full sm:w-auto">
-                        <div className="flex items-center border rounded-md p-1 bg-muted/30">
-                            <Button 
-                                variant={viewMode === "list" ? "secondary" : "ghost"} 
-                                size="sm" 
-                                className="h-8 w-8 p-0" 
-                                onClick={() => setViewMode("list")}
-                                title="List View"
-                            >
-                                <List className="h-4 w-4" />
-                            </Button>
-                            <Button 
-                                variant={viewMode === "grid" ? "secondary" : "ghost"} 
-                                size="sm" 
-                                className="h-8 w-8 p-0" 
-                                onClick={() => setViewMode("grid")}
-                                title="Grid View"
-                            >
-                                <LayoutGrid className="h-4 w-4" />
-                            </Button>
-                        </div>
-                        <Button onClick={openCreate} className="bg-primary shrink-0 flex-1 sm:flex-none"><Plus className="w-4 h-4 mr-2" /> Add Manual PO</Button>
-                    </div>
-                </div>
-                <div className="flex flex-wrap items-center gap-2">
-                    <Select value={statusFilter} onValueChange={(v) => v && setStatusFilter(v)}>
-                        <SelectTrigger className="h-8 w-[130px] text-xs"><SelectValue placeholder="Status" /></SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="all">All Status</SelectItem>
-                            <SelectItem value="pending">Pending</SelectItem>
-                            <SelectItem value="dispatched">Dispatched</SelectItem>
-                            <SelectItem value="completed">Completed</SelectItem>
-                        </SelectContent>
-                    </Select>
-                    <Select value={sourceFilter} onValueChange={(v) => v && setSourceFilter(v)}>
-                        <SelectTrigger className="h-8 w-[130px] text-xs"><SelectValue placeholder="Source" /></SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="all">All Sources</SelectItem>
-                            <SelectItem value="warehouse">Warehouse</SelectItem>
-                            <SelectItem value="port">Port</SelectItem>
-                        </SelectContent>
-                    </Select>
-                    <div className="flex items-center gap-1">
-                        <Input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} className="h-8 w-[130px] text-xs" placeholder="From" />
-                        <span className="text-xs text-muted-foreground">—</span>
-                        <Input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} className="h-8 w-[130px] text-xs" placeholder="To" />
-                    </div>
-                    {(statusFilter !== "all" || sourceFilter !== "all" || dateFrom || dateTo) && (
-                        <Button variant="ghost" size="sm" className="h-8 text-xs text-muted-foreground" onClick={() => { setStatusFilter("all"); setSourceFilter("all"); setDateFrom(""); setDateTo(""); }}>
-                            <X className="w-3 h-3 mr-1" /> Clear
-                        </Button>
-                    )}
-                </div>
-
-                {viewMode === "list" ? (
-                    <div className="border rounded-lg overflow-x-auto">
-                        <Table>
-                            <TableHeader className="bg-muted/50">
-                                <TableRow>
-                                    <TableHead>Date</TableHead>
-                                    <TableHead>PO #</TableHead>
-                                    <TableHead>Client Name</TableHead>
-                                    <TableHead>Service</TableHead>
-                                    <TableHead className="text-right">Quantity</TableHead>
-                                    <TableHead>Type</TableHead>
-                                    <TableHead>Order</TableHead>
-                                    <TableHead>Check No.</TableHead>
-                                    <TableHead>Cash</TableHead>
-                                    <TableHead>Image</TableHead>
-                                    <TableHead className="text-right">Actions</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {filtered.length === 0 ? (
-                                    <TableRow><TableCell colSpan={11} className="text-center py-6 text-muted-foreground">No purchase orders found.</TableCell></TableRow>
-                                ) : filtered.map(po => (
-                                    <TableRow key={po.id} className={po.order_id ? "bg-primary/5" : ""}>
-                                        <TableCell className="text-sm whitespace-nowrap">{new Date(po.date).toLocaleDateString()}</TableCell>
-                                        <TableCell>
-                                            <span className="font-semibold text-sm">{po.po_number}</span>
-                                            {po.order_id && (
-                                                <Badge variant="outline" className="ml-2 text-[9px] border-primary/20 text-primary bg-primary/5">AUTO</Badge>
-                                            )}
-                                        </TableCell>
-                                        <TableCell className="text-sm">{po.client_name || "—"}</TableCell>
-                                        <TableCell>
-                                            <div className="flex items-center gap-1 text-[10px] text-muted-foreground uppercase font-bold whitespace-nowrap">
-                                                {po.service_type === 'deliver' ? <Truck className="w-3 h-3" /> : <MapPin className="w-3 h-3" />}
-                                                {po.service_type === 'deliver' ? 'Delivery' : 'Pick-up'}
-                                            </div>
-                                        </TableCell>
-                                        <TableCell className="text-right font-bold text-sm">{po.jb + po.sb}</TableCell>
-                                        <TableCell className="text-sm">
-                                            <Badge variant="outline" className="font-mono text-[10px]">{po.jb > 0 ? "JB" : "SB"}</Badge>
-                                        </TableCell>
-                                        <TableCell className="text-sm">
-                                            {po.order ? (
-                                                <div className="flex items-center gap-1.5">
-                                                    <Badge variant="outline" className="text-[10px] capitalize bg-primary/5 border-primary/20">{po.order.status}</Badge>
-                                                    <span className="text-[10px] text-muted-foreground font-mono">{po.order.id.slice(0, 8)}</span>
-                                                </div>
-                                            ) : (
-                                                <span className="text-muted-foreground text-xs">—</span>
-                                            )}
-                                        </TableCell>
-                                        <TableCell className="text-sm">
-                                            {po.check_number ? (
-                                                <div>
-                                                    <span className="font-medium">{po.check_number}</span>
-                                                    {po.check_amount ? (
-                                                        <p className="text-[10px] text-muted-foreground">₱{Number(po.check_amount).toLocaleString()}</p>
-                                                    ) : null}
-                                                </div>
-                                            ) : (
-                                                <span className="text-muted-foreground">—</span>
-                                            )}
-                                        </TableCell>
-                                        <TableCell className="text-sm">
-                                            {po.cash_amount ? (
-                                                <span className="font-medium">₱{Number(po.cash_amount).toLocaleString()}</span>
-                                            ) : (
-                                                <span className="text-muted-foreground">—</span>
-                                            )}
-                                        </TableCell>
-                                        <TableCell className="text-sm">
-                                            {po.photo_url ? (
-                                                <a href={po.photo_url} target="_blank" rel="noreferrer" className="inline-flex items-center justify-center h-8 w-8 text-primary hover:text-primary/90 hover:bg-primary/10 rounded-md">
-                                                    <FileImage className="w-4 h-4" />
-                                                </a>
-                                            ) : (
-                                                <span className="text-muted-foreground">—</span>
-                                            )}
-                                        </TableCell>
-                                        <TableCell className="text-right whitespace-nowrap">
-                                            <Button 
-                                                variant="ghost" 
-                                                size="icon" 
-                                                onClick={() => { setViewingPo(po); setIsViewOpen(true); }} 
-                                                className="h-8 w-8 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50"
-                                            >
-                                                <Eye className="w-4 h-4" />
-                                            </Button>
-                                            <Button variant="ghost" size="icon" onClick={() => openEdit(po)} className="h-8 w-8 text-primary hover:text-primary/90 hover:bg-primary/10"><Edit2 className="w-4 h-4" /></Button>
-                                        </TableCell>
-                                    </TableRow>
-                                ))}
-                            </TableBody>
-                        </Table>
-                    </div>
-                ) : (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                        {filtered.length === 0 ? (
-                            <div className="col-span-full text-center py-12 text-muted-foreground border-2 border-dashed rounded-xl">
-                                No purchase orders found.
+        <div className="space-y-6">
+            {/* ── NEW PO LIVE SUMMARY ANALYTICS SUMMARY CARDS ── */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {/* Total Ordered Cement Volume */}
+                <Card className="border border-border shadow-sm bg-card rounded-2xl overflow-hidden relative">
+                    <div className="absolute top-0 left-0 right-0 h-1 bg-primary" />
+                    <CardContent className="p-5 flex items-center justify-between">
+                        <div className="space-y-1.5">
+                            <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider block">Total PO Bag Volume</span>
+                            <div className="text-2xl font-extrabold text-foreground tracking-tight">
+                                {poMetrics.totalBags.toLocaleString()} <span className="text-sm font-medium text-muted-foreground">bags</span>
                             </div>
-                        ) : filtered.map(po => (
-                            <Card key={po.id} className="overflow-hidden group hover:shadow-md transition-shadow border-border">
-                                <div className="aspect-[4/3] relative bg-muted flex items-center justify-center overflow-hidden">
-                                    {po.photo_url ? (
-                                        <img src={po.photo_url} alt={po.po_number} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
-                                    ) : (
-                                        <div className="flex flex-col items-center text-muted-foreground/40">
-                                            <FileImage className="w-10 h-10 mb-2" />
-                                            <span className="text-[10px] font-bold uppercase tracking-widest">No Document</span>
-                                        </div>
-                                    )}
-                                    <div className="absolute top-2 right-2 flex gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                                        <Button size="icon" variant="secondary" className="h-8 w-8 shadow-sm" onClick={() => { setViewingPo(po); setIsViewOpen(true); }}><Eye className="h-4 w-4 text-emerald-600" /></Button>
-                                        <Button size="icon" variant="secondary" className="h-8 w-8 shadow-sm" onClick={() => openEdit(po)}><Edit2 className="h-4 w-4 text-primary" /></Button>
-                                    </div>
-                                    <div className="absolute top-2 left-2">
-                                        <Badge variant="secondary" className="bg-white/90 backdrop-blur-sm text-foreground border-none text-[10px] shadow-sm">
-                                            {new Date(po.date).toLocaleDateString()}
-                                        </Badge>
-                                    </div>
-                                </div>
-                                <CardContent className="p-3 space-y-3">
-                                    <div className="flex justify-between items-start gap-2">
-                                        <div className="min-w-0">
-                                            <p className="text-sm font-bold truncate text-foreground">{po.po_number}</p>
-                                            <p className="text-xs text-muted-foreground truncate">{po.client_name || "Unknown Client"}</p>
-                                        </div>
-                                        {po.order_id && <Badge variant="outline" className="text-[9px] bg-primary/5 text-primary border-primary/10 h-5 shrink-0">AUTO</Badge>}
-                                    </div>
-                                    
-                                    <div className="flex items-center gap-3 py-2 border-y border-border/50">
-                                        <div className="flex-1">
-                                            <p className="text-[9px] text-muted-foreground font-bold uppercase">Quantity</p>
-                                            <p className="text-sm font-bold">{po.jb + po.sb}</p>
-                                        </div>
-                                        <div className="w-px h-6 bg-muted"></div>
-                                        <div className="flex-1">
-                                            <p className="text-[9px] text-muted-foreground font-bold uppercase">Type</p>
-                                            <Badge variant="outline" className="text-[9px] font-mono h-4 px-1">{po.jb > 0 ? "JB" : "SB"}</Badge>
-                                        </div>
-                                        <div className="w-px h-6 bg-muted"></div>
-                                        <div className="flex-1 text-right">
-                                            <div className="inline-flex items-center text-[10px] text-muted-foreground font-bold uppercase">
-                                                {po.service_type === 'deliver' ? <Truck className="w-3 h-3 mr-1" /> : <MapPin className="w-3 h-3 mr-1" />}
-                                                {po.service_type === 'deliver' ? 'DLV' : 'PCK'}
-                                            </div>
-                                        </div>
-                                    </div>
+                            <span className="text-[11px] text-muted-foreground block font-medium">Accumulated cement units inside current filter</span>
+                        </div>
+                        <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center shadow-sm">
+                            <ShoppingBag className="w-6 h-6 text-primary" />
+                        </div>
+                    </CardContent>
+                </Card>
 
-                                    {po.order && (
-                                        <div className="flex items-center justify-between py-1.5 border-b border-border/50">
-                                            <span className="text-[9px] text-muted-foreground uppercase font-bold">Order</span>
-                                            <div className="flex items-center gap-1.5">
-                                                <Badge variant="outline" className="text-[9px] capitalize bg-primary/5 border-primary/20">{po.order.status}</Badge>
-                                                <span className="text-[9px] text-muted-foreground font-mono">{po.order.id.slice(0, 8)}</span>
+                {/* Pending Orders Counter */}
+                <Card className="border border-border shadow-sm bg-card rounded-2xl overflow-hidden relative">
+                    <div className="absolute top-0 left-0 right-0 h-1 bg-amber-500" />
+                    <CardContent className="p-5 flex items-center justify-between">
+                        <div className="space-y-1.5">
+                            <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider block">Active Pending POs</span>
+                            <div className="text-2xl font-extrabold text-amber-500 tracking-tight">
+                                {poMetrics.pendingCount} <span className="text-sm font-medium text-muted-foreground">orders</span>
+                            </div>
+                            <span className="text-[11px] text-muted-foreground block font-medium">Orders waiting for dispatch confirmation</span>
+                        </div>
+                        <div className="w-12 h-12 rounded-xl bg-amber-500/10 flex items-center justify-center shadow-sm">
+                            <Clock className="w-6 h-6 text-amber-500" />
+                        </div>
+                    </CardContent>
+                </Card>
+
+                {/* Financial Transaction Valuation Value */}
+                <Card className="border border-border shadow-sm bg-card rounded-2xl overflow-hidden relative">
+                    <div className="absolute top-0 left-0 right-0 h-1 bg-blue-500" />
+                    <CardContent className="p-5 flex items-center justify-between">
+                        <div className="space-y-1.5">
+                            <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider block">Total PO Financial Value</span>
+                            <div className="text-2xl font-extrabold text-foreground tracking-tight">
+                                ₱{poMetrics.totalValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </div>
+                            <span className="text-[11px] text-muted-foreground block font-medium">Combined cash and check clearing amount</span>
+                        </div>
+                        <div className="w-12 h-12 rounded-xl bg-blue-500/10 flex items-center justify-center shadow-sm">
+                            <FileText className="w-6 h-6 text-blue-500" />
+                        </div>
+                    </CardContent>
+                </Card>
+            </div>
+
+            <Card>
+                <CardContent className="p-4 space-y-4">
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                        <div className="relative w-full max-w-sm">
+                            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                            <Input type="search" placeholder="Search PO or Client..." className="pl-8" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
+                        </div>
+                        <div className="flex items-center gap-2 w-full sm:w-auto">
+                            <div className="flex items-center border rounded-md p-1 bg-muted/30">
+                                <Button 
+                                    variant={viewMode === "list" ? "secondary" : "ghost"} 
+                                    size="sm" 
+                                    className="h-8 w-8 p-0" 
+                                    onClick={() => setViewMode("list")}
+                                    title="List View"
+                                >
+                                    <List className="h-4 w-4" />
+                                </Button>
+                                <Button 
+                                    variant={viewMode === "grid" ? "secondary" : "ghost"} 
+                                    size="sm" 
+                                    className="h-8 w-8 p-0" 
+                                    onClick={() => setViewMode("grid")}
+                                    title="Grid View"
+                                >
+                                    <LayoutGrid className="h-4 w-4" />
+                                </Button>
+                            </div>
+                            <Button onClick={openCreate} className="bg-primary shrink-0 flex-1 sm:flex-none"><Plus className="w-4 h-4 mr-2" /> Add Manual PO</Button>
+                        </div>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                        <Select value={statusFilter} onValueChange={(v) => v && setStatusFilter(v)}>
+                            <SelectTrigger className="h-8 w-[130px] text-xs"><SelectValue placeholder="Status" /></SelectTrigger>
+                            <SelectContent>
+                                <SelectContent>
+                                    <SelectItem value="all">All Status</SelectItem>
+                                    <SelectItem value="pending">Pending</SelectItem>
+                                    <SelectItem value="dispatched">Dispatched</SelectItem>
+                                    <SelectItem value="completed">Completed</SelectItem>
+                                </SelectContent>
+                            </SelectContent>
+                        </Select>
+                        <Select value={sourceFilter} onValueChange={(v) => v && setSourceFilter(v)}>
+                            <SelectTrigger className="h-8 w-[130px] text-xs"><SelectValue placeholder="Source" /></SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all">All Sources</SelectItem>
+                                <SelectItem value="warehouse">Warehouse</SelectItem>
+                                <SelectItem value="port">Port</SelectItem>
+                            </SelectContent>
+                        </Select>
+                        <div className="flex items-center gap-1">
+                            <Input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} className="h-8 w-[130px] text-xs" placeholder="From" />
+                            <span className="text-xs text-muted-foreground">—</span>
+                            <Input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} className="h-8 w-[130px] text-xs" placeholder="To" />
+                        </div>
+                        {(statusFilter !== "all" || sourceFilter !== "all" || dateFrom || dateTo) && (
+                            <Button variant="ghost" size="sm" className="h-8 text-xs text-muted-foreground" onClick={() => { setStatusFilter("all"); setSourceFilter("all"); setDateFrom(""); setDateTo(""); }}>
+                                <X className="w-3 h-3 mr-1" /> Clear
+                            </Button>
+                        )}
+                    </div>
+
+                    {viewMode === "list" ? (
+                        <div className="border rounded-lg overflow-x-auto">
+                            <Table>
+                                <TableHeader className="bg-muted/50">
+                                    <TableRow>
+                                        <TableHead className="text-xs">Date</TableHead>
+                                        <TableHead className="text-xs">PO #</TableHead>
+                                        <TableHead className="text-xs">Client Name</TableHead>
+                                        <TableHead className="text-xs">Service</TableHead>
+                                        <TableHead className="text-xs text-right">Quantity</TableHead>
+                                        <TableHead className="text-xs">Type</TableHead>
+                                        <TableHead className="text-xs">Status</TableHead>
+                                        <TableHead className="text-xs">Check No.</TableHead>
+                                        <TableHead className="text-xs">Cash</TableHead>
+                                        <TableHead className="text-xs">Image</TableHead>
+                                        <TableHead className="text-right text-xs w-[100px]">Actions</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {filtered.length === 0 ? (
+                                        <TableRow><TableCell colSpan={11} className="text-center py-6 text-xs text-muted-foreground">No purchase orders found.</TableCell></TableRow>
+                                    ) : filtered.map(po => (
+                                        <TableRow key={po.id} className={po.order_id ? "bg-primary/5" : ""}>
+                                            <TableCell className="text-xs whitespace-nowrap">{new Date(po.date).toLocaleDateString()}</TableCell>
+                                            <TableCell>
+                                                <span className="font-semibold text-xs">{po.po_number}</span>
+                                                {po.order_id && (
+                                                    <Badge variant="outline" className="ml-2 text-[9px] border-primary/20 text-primary bg-primary/5">AUTO</Badge>
+                                                )}
+                                            </TableCell>
+                                            <TableCell className="text-xs font-medium">{po.client_name || "—"}</TableCell>
+                                            <TableCell>
+                                                <div className="flex items-center gap-1 text-[10px] text-muted-foreground uppercase font-bold whitespace-nowrap">
+                                                    {po.service_type === 'deliver' ? <Truck className="w-3 h-3" /> : <MapPin className="w-3 h-3" />}
+                                                    {po.service_type === 'deliver' ? 'Delivery' : 'Pick-up'}
+                                                </div>
+                                            </TableCell>
+                                            <TableCell className="text-right font-bold text-xs">{(po.jb || 0) + (po.sb || 0)}</TableCell>
+                                            <TableCell className="text-xs">
+                                                <Badge variant="outline" className="font-mono text-[9px] px-1 h-4">{po.jb > 0 ? "JB" : "SB"}</Badge>
+                                            </TableCell>
+                                            <TableCell className="text-xs">
+                                                {getStatusBadge(po.status)}
+                                            </TableCell>
+                                            <TableCell className="text-xs">
+                                                {po.check_number ? (
+                                                    <div>
+                                                        <span className="font-medium text-xs">{po.check_number}</span>
+                                                        {po.check_amount ? (
+                                                            <p className="text-[10px] text-muted-foreground">₱{Number(po.check_amount).toLocaleString()}</p>
+                                                        ) : null}
+                                                    </div>
+                                                ) : (
+                                                    <span className="text-muted-foreground text-xs">—</span>
+                                                )}
+                                            </TableCell>
+                                            <TableCell className="text-xs">
+                                                {po.cash_amount ? (
+                                                    <span className="font-medium text-xs">₱{Number(po.cash_amount).toLocaleString()}</span>
+                                                ) : (
+                                                    <span className="text-muted-foreground text-xs">—</span>
+                                                )}
+                                            </TableCell>
+                                            <TableCell className="text-xs">
+                                                {po.photo_url ? (
+                                                    <a href={po.photo_url} target="_blank" rel="noreferrer" className="inline-flex items-center justify-center h-7 w-7 text-primary hover:text-primary/90 hover:bg-primary/10 rounded-md">
+                                                        <FileImage className="w-4 h-4" />
+                                                    </a>
+                                                ) : (
+                                                    <span className="text-muted-foreground text-xs">—</span>
+                                                )}
+                                            </TableCell>
+                                            <TableCell className="text-right whitespace-nowrap">
+                                                <Button 
+                                                    variant="ghost" 
+                                                    size="icon" 
+                                                    onClick={() => { setViewingPo(po); setIsViewOpen(true); }} 
+                                                    className="h-7 w-7 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 mr-1"
+                                                >
+                                                    <Eye className="w-3.5 h-3.5" />
+                                                </Button>
+                                                <Button variant="ghost" size="icon" onClick={() => openEdit(po)} className="h-7 w-7 text-primary hover:text-primary/90 hover:bg-primary/10"><Edit2 className="w-3.5 h-3.5" /></Button>
+                                            </TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        </div>
+                    ) : (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                            {filtered.length === 0 ? (
+                                <div className="col-span-full text-center py-12 text-muted-foreground border-2 border-dashed rounded-xl text-xs">
+                                    No purchase orders found.
+                                </div>
+                            ) : filtered.map(po => (
+                                <Card key={po.id} className="overflow-hidden group hover:shadow-md transition-shadow border-border">
+                                    <div className="aspect-[4/3] relative bg-muted flex items-center justify-center overflow-hidden">
+                                        {po.photo_url ? (
+                                            <img src={po.photo_url} alt={po.po_number} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                                        ) : (
+                                            <div className="flex flex-col items-center text-muted-foreground/40">
+                                                <FileImage className="w-10 h-10 mb-2" />
+                                                <span className="text-[10px] font-bold uppercase tracking-widest">No Document</span>
+                                            </div>
+                                        )}
+                                        <div className="absolute top-2 right-2 flex gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <Button size="icon" variant="secondary" className="h-8 w-8 shadow-sm" onClick={() => { setViewingPo(po); setIsViewOpen(true); }}><Eye className="h-4 w-4 text-emerald-600" /></Button>
+                                            <Button size="icon" variant="secondary" className="h-8 w-8 shadow-sm" onClick={() => openEdit(po)}><Edit2 className="h-4 w-4 text-primary" /></Button>
+                                        </div>
+                                        <div className="absolute top-2 left-2">
+                                            <Badge variant="secondary" className="bg-white/90 backdrop-blur-sm text-foreground border-none text-[10px] shadow-sm font-semibold">
+                                                {new Date(po.date).toLocaleDateString()}
+                                            </Badge>
+                                        </div>
+                                    </div>
+                                    <CardContent className="p-3 space-y-3">
+                                        <div className="flex justify-between items-start gap-2">
+                                            <div className="min-w-0">
+                                                <p className="text-sm font-bold truncate text-foreground">{po.po_number}</p>
+                                                <p className="text-xs text-muted-foreground truncate font-medium">{po.client_name || "Unknown Client"}</p>
+                                            </div>
+                                            {po.order_id && <Badge variant="outline" className="text-[9px] bg-primary/5 text-primary border-primary/10 h-5 shrink-0">AUTO</Badge>}
+                                        </div>
+                                        
+                                        <div className="flex items-center gap-3 py-2 border-y border-border/50">
+                                            <div className="flex-1">
+                                                <p className="text-[9px] text-muted-foreground font-bold uppercase">Quantity</p>
+                                                <p className="text-sm font-bold">{(po.jb || 0) + (po.sb || 0)}</p>
+                                            </div>
+                                            <div className="w-px h-6 bg-muted"></div>
+                                            <div className="flex-1">
+                                                <p className="text-[9px] text-muted-foreground font-bold uppercase">Type</p>
+                                                <Badge variant="outline" className="text-[9px] font-mono h-4 px-1">{po.jb > 0 ? "JB" : "SB"}</Badge>
+                                            </div>
+                                            <div className="w-px h-6 bg-muted"></div>
+                                            <div className="flex-1 text-right">
+                                                <div className="inline-flex items-center text-[10px] text-muted-foreground font-bold uppercase">
+                                                    {po.service_type === 'deliver' ? <Truck className="w-3 h-3 mr-1" /> : <MapPin className="w-3 h-3 mr-1" />}
+                                                    {po.service_type === 'deliver' ? 'DLV' : 'PCK'}
+                                                </div>
                                             </div>
                                         </div>
-                                    )}
-                                    <div className="flex items-center justify-between">
-                                        <div className="text-[10px]">
-                                            {po.check_number ? (
-                                                <div className="text-muted-foreground">CHK: <span className="text-foreground font-medium">{po.check_number}</span></div>
-                                            ) : po.cash_amount ? (
-                                                <div className="text-muted-foreground">CASH: <span className="text-foreground font-medium">₱{Number(po.cash_amount).toLocaleString()}</span></div>
-                                            ) : (
-                                                <span className="text-muted-foreground italic">No payment</span>
-                                            )}
+
+                                        <div className="flex items-center justify-between">
+                                            <div className="text-[10px]">
+                                                {po.check_number ? (
+                                                    <div className="text-muted-foreground font-medium">CHK: <span className="text-foreground font-semibold">{po.check_number}</span></div>
+                                                ) : po.cash_amount ? (
+                                                    <div className="text-muted-foreground font-medium">CASH: <span className="text-foreground font-bold">₱{Number(po.cash_amount).toLocaleString()}</span></div>
+                                                ) : (
+                                                    <span className="text-muted-foreground italic">No payment</span>
+                                                )}
+                                            </div>
+                                            {getStatusBadge(po.status)}
                                         </div>
-                                        <Badge variant="outline" className="text-[9px] capitalize px-1.5 h-5 bg-muted/20">{po.status}</Badge>
-                                    </div>
-                                </CardContent>
-                            </Card>
-                        ))}
-                    </div>
-                )}
-            </CardContent>
+                                    </CardContent>
+                                </Card>
+                            ))}
+                        </div>
+                    )}
+                </CardContent>
+            </Card>
 
             {/* Create / Edit Dialog */}
             <Dialog open={isDialogOpen} onOpenChange={(open) => { setIsDialogOpen(open); if (!open) setPhotoFile(null); }}>
@@ -423,13 +491,11 @@ export function PoListTab({ purchaseOrders, loading, onReload }: { purchaseOrder
                         <div className="space-y-2">
                             <Label>Client Name</Label>
                             <Popover open={clientOpen} onOpenChange={setClientOpen}>
-                                <PopoverTrigger>
-                                    <div className="w-full flex items-center justify-between rounded-lg border border-input bg-background px-3 py-2 text-sm cursor-pointer hover:border-primary/50 transition-colors">
-                                        <span className={clientName ? "" : "text-muted-foreground"}>
-                                            {clientName || "Select a verified client..."}
-                                        </span>
-                                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 text-muted-foreground" />
-                                    </div>
+                                <PopoverTrigger render={<div className="w-full flex items-center justify-between rounded-lg border border-input bg-background px-3 py-2 text-sm cursor-pointer hover:border-primary/50 transition-colors" />}>
+                                    <span className={clientName ? "" : "text-muted-foreground"}>
+                                        {clientName || "Select a verified client..."}
+                                    </span>
+                                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 text-muted-foreground" />
                                 </PopoverTrigger>
                                 <PopoverContent className="w-[var(--anchor-width)] p-0" align="start">
                                     <Command>
@@ -606,14 +672,14 @@ export function PoListTab({ purchaseOrders, loading, onReload }: { purchaseOrder
                                 </div>
                                 <div className="space-y-1">
                                     <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold">Status</p>
-                                    <Badge variant="outline" className="capitalize">{viewingPo.status}</Badge>
+                                    <div>{getStatusBadge(viewingPo.status)}</div>
                                 </div>
                             </div>
 
                             <div className="grid grid-cols-2 gap-4 border-t pt-4">
                                 <div className="space-y-1">
                                     <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold">Quantity</p>
-                                    <p className="text-sm font-bold">{viewingPo.jb + viewingPo.sb} individual bags</p>
+                                    <p className="text-sm font-bold">{((viewingPo.jb || 0) + (viewingPo.sb || 0)).toLocaleString()} individual bags</p>
                                 </div>
                                 <div className="space-y-1">
                                     <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold">Bag Type</p>
@@ -677,7 +743,6 @@ export function PoListTab({ purchaseOrders, loading, onReload }: { purchaseOrder
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
-
-        </Card>
+        </div>
     );
 }

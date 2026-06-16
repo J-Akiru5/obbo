@@ -8,7 +8,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Search, Edit2, UploadCloud, CheckCircle2, X, FileImage, AlertTriangle } from "lucide-react";
+import { Plus, Search, Edit2, UploadCloud, CheckCircle2, X, FileImage, AlertTriangle, Truck, Layers, Coins } from "lucide-react";
 import { createDeliveryReceipt, updateDeliveryReceipt } from "@/lib/actions/admin-actions";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
@@ -59,6 +59,7 @@ export function DrListTab({
 
     const openCreate = () => {
         setEditingDr(null);
+        setDrNumber(""); setShipmentId(""); setClientName(""); setPoNumber("");
         setJbQty(0); setSbQty(0); setDriver(""); setPlateNumber(""); setDestination("");
         setShippingFee(0); setPhotoFile(null);
         setIsDialogOpen(true);
@@ -79,7 +80,6 @@ export function DrListTab({
         if (!drNumber || !shipmentId || !poNumber) return toast.error("DR Number, PO# Link, and Shipment Batch are required");
         setIsSubmitting(true);
         try {
-            // Upload DR photo if provided
             let drImageUrl: string | undefined = editingDr?.dr_image_url ?? undefined;
             if (photoFile) {
                 const supabase = createClient();
@@ -133,227 +133,288 @@ export function DrListTab({
         return matchSearch && matchDateFrom && matchDateTo;
     });
 
+    // ── REAL-TIME DR LOGISTICS ACCUMULATOR SUMMARY ──
+    const drMetrics = filtered.reduce(
+        (acc, dr) => {
+            acc.totalDeliveredBags += (dr.jb || 0) + (dr.sb || 0);
+            acc.totalLogisticsOutflow += Number(dr.shipping_fee) || 0;
+            return acc;
+        },
+        { totalDeliveredBags: 0, totalLogisticsOutflow: 0 }
+    );
+
     if (loading) return <div className="py-8 text-center text-muted-foreground animate-pulse">Loading DR list...</div>;
 
     return (
-        <Card>
-            <CardContent className="p-4 space-y-4">
-                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-                    <div className="relative w-full max-w-sm">
-                        <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                        <Input type="search" placeholder="Search DR, PO, or Client..." className="pl-8" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
-                    </div>
-                    <div className="flex items-center gap-2 w-full sm:w-auto">
-                        <div className="flex items-center border rounded-md p-1 bg-muted/30">
-                            <Button 
-                                variant={viewMode === "list" ? "secondary" : "ghost"} 
-                                size="sm" 
-                                className="h-7 w-7 p-0"
-                                onClick={() => setViewMode("list")}
-                                title="List View"
-                            >
-                                <List className="h-4 w-4" />
-                            </Button>
-                            <Button 
-                                variant={viewMode === "grid" ? "secondary" : "ghost"} 
-                                size="sm" 
-                                className="h-7 w-7 p-0"
-                                onClick={() => setViewMode("grid")}
-                                title="Grid View"
-                            >
-                                <LayoutGrid className="h-4 w-4" />
+        <div className="space-y-6">
+            {/* ── DR LOGISTICS ANALYTICS SUMMARY CARDS ── */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <Card className="border border-border shadow-sm bg-card rounded-2xl overflow-hidden relative">
+                    <div className="absolute top-0 left-0 right-0 h-1 bg-emerald-500" />
+                    <CardContent className="p-5 flex items-center justify-between">
+                        <div className="space-y-1.5">
+                            <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider block">Total Delivered Cement</span>
+                            <div className="text-2xl font-extrabold text-foreground tracking-tight">
+                                {drMetrics.totalDeliveredBags.toLocaleString()} <span className="text-sm font-medium text-muted-foreground">bags</span>
+                            </div>
+                            <span className="text-[11px] text-muted-foreground block font-medium">Cement volume cleared and received by clients</span>
+                        </div>
+                        <div className="w-12 h-12 rounded-xl bg-emerald-500/10 flex items-center justify-center shadow-sm">
+                            <Truck className="w-6 h-6 text-emerald-500" />
+                        </div>
+                    </CardContent>
+                </Card>
+
+                <Card className="border border-border shadow-sm bg-card rounded-2xl overflow-hidden relative">
+                    <div className="absolute top-0 left-0 right-0 h-1 bg-blue-500" />
+                    <CardContent className="p-5 flex items-center justify-between">
+                        <div className="space-y-1.5">
+                            <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider block">Total Receipts Logged</span>
+                            <div className="text-2xl font-extrabold text-blue-500 tracking-tight">
+                                {filtered.length} <span className="text-sm font-medium text-muted-foreground">receipts</span>
+                            </div>
+                            <span className="text-[11px] text-muted-foreground block font-medium">Official delivery parameters recorded</span>
+                        </div>
+                        <div className="w-12 h-12 rounded-xl bg-blue-500/10 flex items-center justify-center shadow-sm">
+                            <Layers className="w-6 h-6 text-blue-500" />
+                        </div>
+                    </CardContent>
+                </Card>
+
+                <Card className="border border-border shadow-sm bg-card rounded-2xl overflow-hidden relative">
+                    <div className="absolute top-0 left-0 right-0 h-1 bg-orange-500" />
+                    <CardContent className="p-5 flex items-center justify-between">
+                        <div className="space-y-1.5">
+                            <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider block">Total Shipping Fees</span>
+                            <div className="text-2xl font-extrabold text-foreground tracking-tight">
+                                ₱{drMetrics.totalLogisticsOutflow.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </div>
+                            <span className="text-[11px] text-muted-foreground block font-medium">Accumulated vehicle transport clearing costs</span>
+                        </div>
+                        <div className="w-12 h-12 rounded-xl bg-orange-500/10 flex items-center justify-center shadow-sm">
+                            <Coins className="w-6 h-6 text-orange-500" />
+                        </div>
+                    </CardContent>
+                </Card>
+            </div>
+
+            <Card>
+                <CardContent className="p-4 space-y-4">
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                        <div className="relative w-full max-w-sm">
+                            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                            <Input type="search" placeholder="Search DR, PO, or Client..." className="pl-8" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
+                        </div>
+                        <div className="flex items-center gap-2 w-full sm:w-auto">
+                            <div className="flex items-center border rounded-md p-1 bg-muted/30">
+                                <Button 
+                                    variant={viewMode === "list" ? "secondary" : "ghost"} 
+                                    size="sm" 
+                                    className="h-7 w-7 p-0"
+                                    onClick={() => setViewMode("list")}
+                                    title="List View"
+                                >
+                                    <List className="h-4 w-4" />
+                                </Button>
+                                <Button 
+                                    variant={viewMode === "grid" ? "secondary" : "ghost"} 
+                                    size="sm" 
+                                    className="h-7 w-7 p-0"
+                                    onClick={() => setViewMode("grid")}
+                                    title="Grid View"
+                                >
+                                    <LayoutGrid className="h-4 w-4" />
+                                </Button>
+                            </div>
+                            <Button onClick={openCreate} className="bg-primary shrink-0 h-9">
+                                <Plus className="w-4 h-4 mr-2" /> Add Manual DR
                             </Button>
                         </div>
-                        <Button onClick={openCreate} className="bg-primary shrink-0 h-9">
-                            <Plus className="w-4 h-4 mr-2" /> Add Manual DR
-                        </Button>
                     </div>
-                </div>
-                <div className="flex flex-wrap items-center gap-2">
-                    <Input type="date" value={drDateFrom} onChange={e => setDrDateFrom(e.target.value)} className="h-8 w-[130px] text-xs" placeholder="From" />
-                    <span className="text-xs text-muted-foreground">—</span>
-                    <Input type="date" value={drDateTo} onChange={e => setDrDateTo(e.target.value)} className="h-8 w-[130px] text-xs" placeholder="To" />
-                    {(drDateFrom || drDateTo) && (
-                        <Button variant="ghost" size="sm" className="h-8 text-xs text-muted-foreground" onClick={() => { setDrDateFrom(""); setDrDateTo(""); }}>
-                            <X className="w-3 h-3 mr-1" /> Clear
-                        </Button>
-                    )}
-                </div>
-
-                {viewMode === "list" ? (
-                    <div className="border rounded-lg overflow-x-auto">
-                        <Table>
-                            <TableHeader className="bg-muted/50">
-                                <TableRow>
-                                    <TableHead>Image</TableHead>
-                                    <TableHead>Date</TableHead>
-                                    <TableHead>DR #</TableHead>
-                                    <TableHead>Client Name</TableHead>
-                                    <TableHead>PO# Link</TableHead>
-                                    <TableHead>Order</TableHead>
-                                    <TableHead>Driver Name</TableHead>
-                                    <TableHead>Plate #</TableHead>
-                                    <TableHead className="text-right">Total Bags</TableHead>
-                                    <TableHead className="text-right">Actions</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {filtered.length === 0 ? (
-                                    <TableRow><TableCell colSpan={10} className="text-center py-6 text-muted-foreground">No delivery receipts found.</TableCell></TableRow>
-                                ) : filtered.map(dr => (
-                                    <TableRow key={dr.id} className={dr.order_id ? "bg-primary/5" : ""}>
-                                        <TableCell>
-                                            <div className="w-10 h-10 rounded bg-muted flex items-center justify-center overflow-hidden border border-border">
-                                                {dr.dr_image_url ? (
-                                                    <OptimizedImage 
-                                                        src={dr.dr_image_url} 
-                                                        alt="DR" 
-                                                        fill 
-                                                        className="object-cover" 
-                                                        unoptimized 
-                                                        containerClassName="w-full h-full"
-                                                    />
-                                                ) : (
-                                                    <FileImage className="w-5 h-5 text-muted-foreground/40" />
-                                                )}
-                                            </div>
-                                        </TableCell>
-                                        <TableCell className="text-sm whitespace-nowrap">{new Date(dr.received_date).toLocaleDateString()}</TableCell>
-                                        <TableCell>
-                                            <span className="font-semibold text-sm">{dr.dr_number}</span>
-                                            {dr.order_id && (
-                                                <Badge variant="outline" className="ml-2 text-[9px] border-primary/20 text-primary bg-primary/5">AUTO</Badge>
-                                            )}
-                                        </TableCell>
-                                        <TableCell className="text-sm">{dr.client_name || "—"}</TableCell>
-                                        <TableCell>
-                                            {dr.po_number ? (
-                                                <Badge variant="outline" className="text-xs font-mono cursor-default">{dr.po_number}</Badge>
-                                            ) : (
-                                                <span className="text-xs text-muted-foreground">—</span>
-                                            )}
-                                        </TableCell>
-                                        <TableCell className="text-sm">
-                                            {dr.order ? (
-                                                <div className="flex items-center gap-1.5">
-                                                    <Badge variant="outline" className="text-[10px] capitalize bg-primary/5 border-primary/20">{dr.order.status}</Badge>
-                                                    <span className="text-[10px] text-muted-foreground font-mono">{dr.order.id.slice(0, 8)}</span>
-                                                </div>
-                                            ) : (
-                                                <span className="text-muted-foreground text-xs">—</span>
-                                            )}
-                                        </TableCell>
-                                        <TableCell className="text-sm">{dr.driver || "—"}</TableCell>
-                                        <TableCell className="text-sm">{dr.plate_number || "—"}</TableCell>
-                                        <TableCell className="text-right">
-                                            <div className="flex items-center justify-end gap-1.5">
-                                                <span className="text-xs font-bold text-foreground">{dr.jb + dr.sb}</span>
-                                                <Badge variant="outline" className="text-[10px] font-mono">{dr.jb > 0 ? "JB" : "SB"}</Badge>
-                                            </div>
-                                        </TableCell>
-                                        <TableCell className="text-right whitespace-nowrap">
-                                            <Button 
-                                                variant="ghost" 
-                                                size="icon" 
-                                                onClick={() => { setViewingDr(dr); setIsViewOpen(true); }}
-                                                className="h-8 w-8 text-primary hover:text-primary hover:bg-primary/10"
-                                            >
-                                                <Eye className="w-4 h-4" />
-                                            </Button>
-                                            <Button variant="ghost" size="icon" onClick={() => openEdit(dr)} className="h-8 w-8 text-primary hover:text-primary/90 hover:bg-primary/10"><Edit2 className="w-4 h-4" /></Button>
-                                        </TableCell>
-                                    </TableRow>
-                                ))}
-                            </TableBody>
-                        </Table>
-                    </div>
-                ) : (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {filtered.length === 0 ? (
-                            <div className="col-span-full py-12 text-center text-muted-foreground border-2 border-dashed rounded-xl">
-                                No delivery receipts found matching your search.
-                            </div>
-                        ) : (
-                            filtered.map(dr => (
-                                <Card key={dr.id} className={`overflow-hidden group hover:shadow-md transition-shadow ${dr.order_id ? "border-primary/10 bg-primary/5" : ""}`}>
-                                    <div className="aspect-video bg-muted relative overflow-hidden border-b">
-                                        {dr.dr_image_url ? (
-                                            <OptimizedImage 
-                                                src={dr.dr_image_url} 
-                                                alt="DR" 
-                                                fill 
-                                                className="object-cover group-hover:scale-105 transition-transform duration-500" 
-                                                unoptimized 
-                                                containerClassName="h-full w-full"
-                                            />
-                                        ) : (
-                                            <div className="absolute inset-0 flex flex-col items-center justify-center text-muted-foreground/30">
-                                                <FileImage className="w-12 h-12 mb-2" />
-                                                <span className="text-[10px] uppercase font-bold tracking-widest">No Document Preview</span>
-                                            </div>
-                                        )}
-                                        <div className="absolute top-2 right-2 flex gap-1">
-                                            {dr.order_id && <Badge className="bg-primary text-primary-foreground border-none text-[9px]">AUTO</Badge>}
-                                            <Badge variant="secondary" className="bg-background/80 backdrop-blur-sm text-foreground text-[10px] font-mono border-none">{new Date(dr.received_date).toLocaleDateString()}</Badge>
-                                        </div>
-                                    </div>
-                                    <CardContent className="p-4 space-y-3">
-                                        <div className="flex justify-between items-start">
-                                            <div>
-                                                <h4 className="font-bold text-sm text-foreground">{dr.dr_number}</h4>
-                                                <p className="text-xs text-muted-foreground truncate max-w-[150px]">{dr.client_name || "Unknown Client"}</p>
-                                            </div>
-                                            <div className="text-right">
-                                                <div className="text-[10px] uppercase font-bold text-muted-foreground mb-0.5">PO Link</div>
-                                                <Badge variant="outline" className="text-[10px] font-mono">{dr.po_number || "NONE"}</Badge>
-                                            </div>
-                                        </div>
-
-                                        {dr.order && (
-                                            <div className="flex items-center justify-between text-[10px]">
-                                                <span className="text-muted-foreground uppercase font-bold">Order</span>
-                                                <div className="flex items-center gap-1">
-                                                    <Badge variant="outline" className="text-[9px] capitalize bg-primary/5 border-primary/20">{dr.order.status}</Badge>
-                                                    <span className="text-muted-foreground font-mono">{dr.order.id.slice(0, 8)}</span>
-                                                </div>
-                                            </div>
-                                        )}
-
-                                        <div className="grid grid-cols-2 gap-2 py-2 border-y border-border">
-                                            <div>
-                                                <div className="text-[9px] uppercase font-bold text-muted-foreground mb-1">Driver / Plate</div>
-                                                <p className="text-[11px] font-medium truncate">{dr.driver || "—"} • {dr.plate_number || "—"}</p>
-                                            </div>
-                                            <div className="text-right">
-                                                <div className="text-[9px] uppercase font-bold text-muted-foreground mb-1">Quantity</div>
-                                                <p className="text-[11px] font-bold text-foreground">{dr.jb + dr.sb} {dr.jb > 0 ? "JB" : "SB"}</p>
-                                            </div>
-                                        </div>
-
-                                        <div className="flex items-center justify-between pt-1">
-                                            <Button 
-                                                variant="secondary" 
-                                                size="sm" 
-                                                className="h-8 text-[11px] font-bold gap-1.5 bg-primary text-primary-foreground hover:bg-primary/90"
-                                                onClick={() => { setViewingDr(dr); setIsViewOpen(true); }}
-                                            >
-                                                <Eye className="w-3.5 h-3.5" /> View Details
-                                            </Button>
-                                            <div className="flex gap-1">
-                                                <Button variant="ghost" size="icon" onClick={() => openEdit(dr)} className="h-8 w-8 text-primary hover:text-primary/90 hover:bg-primary/10"><Edit2 className="w-3.5 h-3.5" /></Button>
-                                            </div>
-                                        </div>
-                                    </CardContent>
-                                </Card>
-                            ))
+                    <div className="flex flex-wrap items-center gap-2">
+                        <Input type="date" value={drDateFrom} onChange={e => setDrDateFrom(e.target.value)} className="h-8 w-[130px] text-xs" placeholder="From" />
+                        <span className="text-xs text-muted-foreground">—</span>
+                        <Input type="date" value={drDateTo} onChange={e => setDrDateTo(e.target.value)} className="h-8 w-[130px] text-xs" placeholder="To" />
+                        {(drDateFrom || drDateTo) && (
+                            <Button variant="ghost" size="sm" className="h-8 text-xs text-muted-foreground" onClick={() => { setDrDateFrom(""); setDrDateTo(""); }}>
+                                <X className="w-3 h-3 mr-1" /> Clear
+                            </Button>
                         )}
                     </div>
-                )}
-            </CardContent>
+
+                    {viewMode === "list" ? (
+                        <div className="border rounded-lg overflow-x-auto">
+                            <Table>
+                                <TableHeader className="bg-muted/50">
+                                    <TableRow>
+                                        <TableHead className="text-xs">Image</TableHead>
+                                        <TableHead className="text-xs">Date</TableHead>
+                                        <TableHead className="text-xs">DR #</TableHead>
+                                        <TableHead className="text-xs">Client Name</TableHead>
+                                        <TableHead className="text-xs">PO# Link</TableHead>
+                                        <TableHead className="text-xs">Order</TableHead>
+                                        <TableHead className="text-xs">Driver Name</TableHead>
+                                        <TableHead className="text-xs">Plate #</TableHead>
+                                        <TableHead className="text-xs text-right">Total Bags</TableHead>
+                                        <TableHead className="text-right text-xs w-[100px]">Actions</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {filtered.length === 0 ? (
+                                        <TableRow><TableCell colSpan={10} className="text-center py-6 text-xs text-muted-foreground">No delivery receipts found.</TableCell></TableRow>
+                                    ) : filtered.map(dr => (
+                                        <TableRow key={dr.id} className={dr.order_id ? "bg-primary/5" : ""}>
+                                            <TableCell>
+                                                <div className="w-10 h-10 rounded bg-muted flex items-center justify-center overflow-hidden border border-border">
+                                                    {dr.dr_image_url ? (
+                                                        <OptimizedImage 
+                                                            src={dr.dr_image_url} 
+                                                            alt="DR" 
+                                                            fill 
+                                                            className="object-cover" 
+                                                            unoptimized 
+                                                            containerClassName="w-full h-full"
+                                                        />
+                                                    ) : (
+                                                        <FileImage className="w-5 h-5 text-muted-foreground/40" />
+                                                    )}
+                                                </div>
+                                            </TableCell>
+                                            <TableCell className="text-xs whitespace-nowrap">{new Date(dr.received_date).toLocaleDateString()}</TableCell>
+                                            <TableCell>
+                                                <span className="font-semibold text-xs">{dr.dr_number}</span>
+                                                {dr.order_id && (
+                                                    <Badge variant="outline" className="ml-2 text-[9px] border-primary/20 text-primary bg-primary/5">AUTO</Badge>
+                                                )}
+                                            </TableCell>
+                                            <TableCell className="text-xs font-medium">{dr.client_name || "—"}</TableCell>
+                                            <TableCell>
+                                                {dr.po_number ? (
+                                                    <Badge variant="outline" className="text-[11px] font-mono cursor-default">{dr.po_number}</Badge>
+                                                ) : (
+                                                    <span className="text-xs text-muted-foreground">—</span>
+                                                )}
+                                            </TableCell>
+                                            <TableCell className="text-xs">
+                                                {dr.order ? (
+                                                    <div className="flex items-center gap-1.5">
+                                                        <Badge variant="outline" className="text-[9px] capitalize bg-primary/5 border-primary/20">{dr.order.status}</Badge>
+                                                        <span className="text-[9px] text-muted-foreground font-mono">{dr.order.id.slice(0, 8)}</span>
+                                                    </div>
+                                                ) : (
+                                                    <span className="text-muted-foreground text-xs">—</span>
+                                                )}
+                                            </TableCell>
+                                            <TableCell className="text-xs">{dr.driver || "—"}</TableCell>
+                                            <TableCell className="text-xs font-mono">{dr.plate_number || "—"}</TableCell>
+                                            <TableCell className="text-right">
+                                                <div className="flex items-center justify-end gap-1.5">
+                                                    <span className="text-xs font-bold text-foreground">{(dr.jb || 0) + (dr.sb || 0)}</span>
+                                                    <Badge variant="outline" className="text-[9px] font-mono px-1 h-4">{dr.jb > 0 ? "JB" : "SB"}</Badge>
+                                                </div>
+                                            </TableCell>
+                                            <TableCell className="text-right whitespace-nowrap">
+                                                <Button 
+                                                    variant="ghost" 
+                                                    size="icon" 
+                                                    onClick={() => { setViewingDr(dr); setIsViewOpen(true); }}
+                                                    className="h-7 w-7 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 mr-1"
+                                                >
+                                                    <Eye className="w-3.5 h-3.5" />
+                                                </Button>
+                                                <Button variant="ghost" size="icon" onClick={() => openEdit(dr)} className="h-7 w-7 text-primary hover:text-primary/90 hover:bg-primary/10"><Edit2 className="w-3.5 h-3.5" /></Button>
+                                            </TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        </div>
+                    ) : (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                            {filtered.length === 0 ? (
+                                <div className="col-span-full py-12 text-center text-muted-foreground border-2 border-dashed rounded-xl text-xs">
+                                    No delivery receipts found matching your search.
+                                </div>
+                            ) : (
+                                filtered.map(dr => (
+                                    <Card key={dr.id} className={`overflow-hidden group hover:shadow-md transition-shadow border-border ${dr.order_id ? "border-primary/10 bg-primary/5" : ""}`}>
+                                        <div className="aspect-video bg-muted relative overflow-hidden border-b">
+                                            {dr.dr_image_url ? (
+                                                <OptimizedImage 
+                                                    src={dr.dr_image_url} 
+                                                    alt="DR" 
+                                                    fill 
+                                                    className="object-cover group-hover:scale-105 transition-transform duration-500" 
+                                                    unoptimized 
+                                                    containerClassName="h-full w-full"
+                                                />
+                                            ) : (
+                                                <div className="absolute inset-0 flex flex-col items-center justify-center text-muted-foreground/30">
+                                                    <FileImage className="w-12 h-12 mb-2" />
+                                                    <span className="text-[10px] uppercase font-bold tracking-widest">No Document Preview</span>
+                                                </div>
+                                            )}
+                                            <div className="absolute top-2 right-2 flex gap-1">
+                                                {dr.order_id && <Badge className="bg-primary text-primary-foreground border-none text-[9px]">AUTO</Badge>}
+                                                <Badge variant="secondary" className="bg-background/80 backdrop-blur-sm text-foreground text-[10px] font-mono border-none font-semibold">{new Date(dr.received_date).toLocaleDateString()}</Badge>
+                                            </div>
+                                        </div>
+                                        <CardContent className="p-3 space-y-3">
+                                            <div className="flex justify-between items-start">
+                                                <div>
+                                                    <h4 className="font-bold text-sm text-foreground">{dr.dr_number}</h4>
+                                                    <p className="text-xs text-muted-foreground truncate max-w-[150px] font-medium">{dr.client_name || "Unknown Client"}</p>
+                                                </div>
+                                                <div className="text-right">
+                                                    <div className="text-[9px] uppercase font-bold text-muted-foreground mb-0.5">PO Link</div>
+                                                    <Badge variant="outline" className="text-[10px] font-mono h-5">{dr.po_number || "NONE"}</Badge>
+                                                </div>
+                                            </div>
+
+                                            {dr.order && (
+                                                <div className="flex items-center justify-between text-[10px] py-0.5 border-t border-dashed">
+                                                    <span className="text-muted-foreground uppercase font-bold">Order</span>
+                                                    <div className="flex items-center gap-1">
+                                                        <Badge variant="outline" className="text-[9px] capitalize bg-primary/5 border-primary/20">{dr.order.status}</Badge>
+                                                        <span className="text-muted-foreground font-mono">{dr.order.id.slice(0, 8)}</span>
+                                                    </div>
+                                                </div>
+                                            )}
+
+                                            <div className="grid grid-cols-2 gap-2 py-2 border-y border-border">
+                                                <div>
+                                                    <div className="text-[9px] uppercase font-bold text-muted-foreground mb-1">Driver / Plate</div>
+                                                    <p className="text-[11px] font-medium truncate text-foreground">{dr.driver || "—"} • {dr.plate_number || "—"}</p>
+                                                </div>
+                                                <div className="text-right">
+                                                    <div className="text-[9px] uppercase font-bold text-muted-foreground mb-1">Quantity</div>
+                                                    <p className="text-[11px] font-bold text-foreground">{(dr.jb || 0) + (dr.sb || 0)} {dr.jb > 0 ? "JB" : "SB"}</p>
+                                                </div>
+                                            </div>
+
+                                            <div className="flex items-center justify-between pt-1">
+                                                <Button 
+                                                    variant="secondary" 
+                                                    size="sm" 
+                                                    className="h-8 text-[11px] font-bold gap-1.5 bg-primary text-primary-foreground hover:bg-primary/90"
+                                                    onClick={() => { setViewingDr(dr); setIsViewOpen(true); }}
+                                                >
+                                                    <Eye className="w-3.5 h-3.5" /> View Details
+                                                </Button>
+                                                <Button variant="ghost" size="icon" onClick={() => openEdit(dr)} className="h-8 w-8 text-primary hover:text-primary/90 hover:bg-primary/10"><Edit2 className="w-3.5 h-3.5" /></Button>
+                                            </div>
+                                        </CardContent>
+                                    </Card>
+                                ))
+                            )}
+                        </div>
+                    )}
+                </CardContent>
+            </Card>
 
             {/* View Details Dialog */}
             <Dialog open={isViewOpen} onOpenChange={setIsViewOpen}>
-                <DialogContent showCloseButton={false} className="sm:max-w-2xl p-0 overflow-hidden rounded-xl border-none max-h-[90vh] overflow-y-auto">
+                <DialogContent showCloseButton={false} className="sm:max-w-2xl p-0 overflow-hidden rounded-xl border-none max-h-[90vh] overflow-y-auto shadow-xl">
                     <div className="bg-primary p-6 text-primary-foreground">
                         <div className="flex justify-between items-start">
                             <div>
@@ -375,23 +436,23 @@ export function DrListTab({
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-1">
                                     <p className="text-[10px] uppercase font-black text-muted-foreground/60 tracking-wider">Client Name</p>
-                                    <p className="font-bold text-foreground">{viewingDr?.client_name || "N/A"}</p>
+                                    <p className="font-bold text-foreground text-sm">{viewingDr?.client_name || "N/A"}</p>
                                 </div>
                                 <div className="space-y-1">
                                     <p className="text-[10px] uppercase font-black text-muted-foreground/60 tracking-wider">PO Number Link</p>
-                                    <p className="font-mono text-primary font-bold">{viewingDr?.po_number || "NONE"}</p>
+                                    <p className="font-mono text-primary font-bold text-sm">{viewingDr?.po_number || "NONE"}</p>
                                 </div>
                             </div>
 
                             <div className="p-4 bg-muted/30 rounded-lg border border-border space-y-3">
-                                <p className="text-[10px] uppercase font-black text-muted-foreground/60 tracking-wider">Shipment Details</p>
+                                <p className="text-[10px] uppercase font-black text-muted-foreground/60 tracking-wider">Shipment Volume Metrics</p>
                                 <div className="flex items-center justify-between text-sm">
                                     <span className="flex items-center gap-2 font-medium text-muted-foreground"><Package className="w-4 h-4" /> Quantity</span>
-                                    <span className="font-black text-foreground">{(viewingDr?.jb || 0) + (viewingDr?.sb || 0)}</span>
+                                    <span className="font-black text-foreground">{((viewingDr?.jb || 0) + (viewingDr?.sb || 0)).toLocaleString()} units</span>
                                 </div>
                                 <div className="flex items-center justify-between text-sm">
-                                    <span className="flex items-center gap-2 font-medium text-muted-foreground"><Package className="w-4 h-4" /> Bag Type</span>
-                                    <span className="font-black text-foreground">{(viewingDr?.jb ?? 0) > 0 ? "JB" : "SB"}</span>
+                                    <span className="flex items-center gap-2 font-medium text-muted-foreground"><Package className="w-4 h-4" /> Configuration</span>
+                                    <span className="font-black text-foreground">{(viewingDr?.jb ?? 0) > 0 ? "Jumbo Bag (JB)" : "Sling Bag (SB)"}</span>
                                 </div>
                             </div>
 
@@ -402,13 +463,13 @@ export function DrListTab({
                                 </div>
                                 <div className="space-y-1">
                                     <p className="text-[10px] uppercase font-black text-muted-foreground/60 tracking-wider">Shipping Fee</p>
-                                    <p className="text-sm font-bold text-emerald-600">₱{viewingDr?.shipping_fee?.toLocaleString() || "0.00"}</p>
+                                    <p className="text-sm font-bold text-emerald-600">₱{viewingDr?.shipping_fee?.toLocaleString(undefined, { minimumFractionDigits: 2 }) || "0.00"}</p>
                                 </div>
                             </div>
 
                             <div className="space-y-1">
                                 <p className="text-[10px] uppercase font-black text-muted-foreground/60 tracking-wider">Destination Address</p>
-                                <p className="text-sm font-medium text-foreground leading-relaxed italic border-l-2 border-accent pl-3">
+                                <p className="text-sm font-medium text-foreground leading-relaxed italic border-l-2 border-accent pl-3 bg-muted/20 py-2 rounded-r-md">
                                     {viewingDr?.destination || "No destination specified."}
                                 </p>
                             </div>
@@ -438,7 +499,7 @@ export function DrListTab({
                                 <div className="flex flex-col items-center justify-center text-muted-foreground/40 text-center p-8">
                                     <FileImage className="w-16 h-16 mb-4" />
                                     <p className="text-xs font-bold uppercase tracking-widest">No Document Uploaded</p>
-                                    <p className="text-[10px] mt-2">Manual entries without photos do not show previews.</p>
+                                    <p className="text-[10px] mt-2 text-muted-foreground/80">Manual entries without attachments do not show preview images.</p>
                                 </div>
                             )}
                         </div>
@@ -474,7 +535,7 @@ export function DrListTab({
                                     ))}
                                 </SelectContent>
                             </Select>
-                            {!editingDr && <p className="text-xs text-muted-foreground">Adding a DR will automatically add a ledger entry to this batch.</p>}
+                            {!editingDr && <p className="text-xs text-muted-foreground">Adding a DR will automatically append an outflow row entry to this specific batch ledger.</p>}
                         </div>
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
@@ -484,19 +545,17 @@ export function DrListTab({
                             <div className="space-y-2">
                                 <Label>PO# Link <span className="text-red-500">*</span></Label>
                                 <Popover open={isPoOpen} onOpenChange={setIsPoOpen}>
-                                    <PopoverTrigger 
-                                        render={
-                                            <Button
-                                                variant="outline"
-                                                role="combobox"
-                                                aria-expanded={isPoOpen}
-                                                className="w-full justify-between font-normal"
-                                            >
-                                                {poNumber || "Select PO Number..."}
-                                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                            </Button>
-                                        }
-                                    />
+                                    <PopoverTrigger render={
+                                        <Button
+                                            variant="outline"
+                                            role="combobox"
+                                            aria-expanded={isPoOpen}
+                                            className="w-full justify-between font-normal"
+                                        >
+                                            {poNumber || "Select PO Number..."}
+                                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                        </Button>
+                                    } />
                                     <PopoverContent className="w-[200px] p-0" align="start">
                                         <div className="flex flex-col">
                                             <div className="p-2 border-b">
@@ -548,7 +607,7 @@ export function DrListTab({
                                         </div>
                                     </PopoverContent>
                                 </Popover>
-                                {!editingDr && <p className="text-[10px] text-emerald-600 leading-tight">Linking a PO automatically syncs its payment data into the Shipment Ledger.</p>}
+                                {!editingDr && <p className="text-[10px] text-emerald-600 leading-tight">Linking a verified PO automates shipping cross-referencing values.</p>}
                             </div>
                         </div>
                         <div className="grid grid-cols-2 gap-4">
@@ -645,7 +704,6 @@ export function DrListTab({
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
-
-        </Card>
+        </div>
     );
 }
