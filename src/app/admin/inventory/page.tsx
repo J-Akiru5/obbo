@@ -7,8 +7,8 @@ import { fetchShipments, fetchPurchaseOrders, fetchDeliveryReceipts } from "@/li
 import { ShipmentsTab } from "./components/shipments-tab";
 import { PoListTab } from "./components/po-list-tab";
 import { DrListTab } from "./components/dr-list-tab";
-import { ReportsTab } from "./components/reports-tab";
-import { Shipment, PurchaseOrder, DeliveryReceipt, WarehouseReport } from "@/lib/types/database";
+import { CostConfigurationTab } from "./components/cost-configuration-tab"; // Idinagdag na import
+import { Shipment, PurchaseOrder, DeliveryReceipt } from "@/lib/types/database";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
 
@@ -77,10 +77,12 @@ function InventoryContent() {
             </div>
 
             <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-                <TabsList className="grid w-full grid-cols-3 h-auto">
+                {/* Ginawang grid-cols-4 mula sa grid-cols-3 para magkasya ang 4 na tabs */}
+                <TabsList className="grid w-full grid-cols-4 h-auto">
                     <TabsTrigger value="shipments" className="py-2.5">Shipment Batches</TabsTrigger>
                     <TabsTrigger value="po" className="py-2.5">PO List</TabsTrigger>
                     <TabsTrigger value="dr" className="py-2.5">DR List</TabsTrigger>
+                    <TabsTrigger value="cost-config" className="py-2.5">Cost Configuration</TabsTrigger> {/* Pang-apat na trigger */}
                 </TabsList>
 
                 <div className="mt-6">
@@ -94,6 +96,11 @@ function InventoryContent() {
 
                     <TabsContent value="dr">
                         <DrListTab deliveryReceipts={deliveryReceipts} shipments={shipments} purchaseOrders={purchaseOrders} loading={loading} onReload={loadData} />
+                    </TabsContent>
+
+                    {/* Idinagdag na panel display container para sa bagong module layout */}
+                    <TabsContent value="cost-config">
+                        <CostConfigurationTab />
                     </TabsContent>
                 </div>
             </Tabs>
