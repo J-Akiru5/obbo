@@ -3,8 +3,8 @@
 import { useEffect, useState, useCallback } from "react";
 import {
     ShoppingCart, Truck, Users, ArrowUpRight,
-    CheckCircle2, AlertCircle, Package, AlertTriangle, 
-    ShieldAlert, TrendingUp, DollarSign, Settings2, ArrowLeft
+    Package, AlertTriangle, ShieldAlert, TrendingUp, 
+    DollarSign, Settings2, ArrowLeft
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
@@ -14,6 +14,7 @@ import { fetchDashboardKPIs, fetchActivityFeed, fetchShipments, fetchOrders } fr
 import type { ActivityLog, Order } from "@/lib/types/database";
 import Link from "next/link";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
+import { toast } from "sonner"; // 🌟 TOAST CODES NORMALIZATION PIPELINE
 
 interface DashboardClientProps {
     initialKpis: any;
@@ -23,7 +24,6 @@ interface DashboardClientProps {
     initialUserRole: string | null;
 }
 
-// ── Activity helpers ───────────────────────────────────────────
 function getActivityLabel(action: string) {
     const labels: Record<string, string> = {
         order_placed: "New Order Placed",
@@ -60,18 +60,14 @@ export default function DashboardClient({
     const [shipments, setShipments] = useState(initialShipments);
     const [userRole, setUserRole] = useState(initialUserRole);
 
-    // ── Cost Configuration Panel States ───────────────────────────
     const [showCostConfig, setShowCostConfig] = useState<boolean>(false);
-    const [landedCost, setLandedCost] = useState<number>(147.64); // Default specified in documentation [cite: 4, 32, 48]
-    const [localExpenses, setLocalExpenses] = useState<number>(20.00); // Default specified in documentation [cite: 4, 33, 67]
+    const [landedCost, setLandedCost] = useState<number>(147.64); 
+    const [localExpenses, setLocalExpenses] = useState<number>(20.00); 
     const [saving, setSaving] = useState<boolean>(false);
-    const [apiMessage, setApiMessage] = useState<string>("");
 
-    // Preview variables for standard analytics dashboard presentation card display [cite: 35, 52, 54]
     const sampleQty = 1200; 
     const sampleSellingPrice = 185.00;
     
-    // Dynamic calculation formula engine implementation [cite: 36, 37, 98, 99]
     const currentGrossPerBag = sampleSellingPrice - landedCost;
     const currentNetPerBag = sampleSellingPrice - (landedCost + localExpenses);
     const currentTotalCostPerBag = landedCost + localExpenses;
@@ -105,7 +101,6 @@ export default function DashboardClient({
         return () => { supabase.removeChannel(channel); };
     }, [loadData]);
 
-    // FIXED: Direct Supabase Client load instead of breaking /api route fetch snapshot [cite: 123]
     useEffect(() => {
         const fetchCostsFromDB = async () => {
             try {
@@ -129,10 +124,8 @@ export default function DashboardClient({
         fetchCostsFromDB();
     }, []);
 
-    // FIXED: Direct Supabase insert statement completely eliminating 404 proxy errors [cite: 96, 97, 122, 162]
     const saveConfiguration = async () => {
         setSaving(true);
-        setApiMessage("");
         try {
             const supabase = createClient();
             const { error } = await supabase
@@ -145,13 +138,13 @@ export default function DashboardClient({
                 ]);
 
             if (!error) {
-                setApiMessage("SUCCESS");
-                setTimeout(() => setApiMessage(""), 4000);
+                // 🌟 TOAST POP-UP REGISTRATION SUCESS STATE
+                toast.success("Cost parameters successfully compiled in live database system!");
             } else {
-                setApiMessage("ERROR: " + error.message);
+                toast.error(`ERROR: ${error.message}`);
             }
         } catch (err) {
-            setApiMessage("ERROR: Live storage infrastructure failure");
+            toast.error("ERROR: Live storage infrastructure failure");
         } finally {
             setSaving(false);
         }
@@ -209,7 +202,7 @@ export default function DashboardClient({
                     </h2>
                     <p className="text-sm text-muted-foreground font-medium mt-1">
                         {showCostConfig 
-                          ? "Establish ledger variables, landing fees, and operational criteria parameters [cite: 13, 86]" 
+                          ? "Establish ledger variables, landing fees, and operational criteria parameters" 
                           : "Real-time operational overview of warehouse performance"}
                     </p>
                 </div>
@@ -217,7 +210,6 @@ export default function DashboardClient({
                     <button
                         onClick={() => {
                             setShowCostConfig(!showCostConfig);
-                            setApiMessage("");
                         }}
                         className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-semibold text-sm transition-all shadow-sm border ${
                             showCostConfig 
@@ -244,24 +236,13 @@ export default function DashboardClient({
                     <Card className="border-border shadow-md bg-card rounded-2xl overflow-hidden max-w-4xl mx-auto">
                         <div className="h-1.5 bg-orange-500 w-full" />
                         <CardContent className="p-6 md:p-8 space-y-6">
-                            
-                            {apiMessage === "SUCCESS" && (
-                                <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 text-sm font-semibold flex items-center gap-2">
-                                    <CheckCircle2 className="w-4 h-4" /> Cost parameters successfully compiled in live database system!
-                                </div>
-                            )}
 
-                            {apiMessage.startsWith("ERROR") && (
-                                <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-500 text-sm font-semibold flex items-center gap-2">
-                                    <AlertCircle className="w-4 h-4" /> {apiMessage}
-                                </div>
-                            )}
+                            {/* 🧹 TOAST NORMALIZATION REMOVAL: Inalis na ang inline static error message div elements block */}
 
-                            {/* Financial Variable Data Inputs Layout Grid */}
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <div className="space-y-2">
                                     <label className="block text-sm font-bold text-foreground tracking-wide">
-                                        Landed Cost (₱ / individual 40kg bag) [cite: 32, 82]
+                                        Landed Cost (₱ / individual 40kg bag)
                                     </label>
                                     <input
                                         type="number"
@@ -271,13 +252,13 @@ export default function DashboardClient({
                                         className="w-full bg-background border border-border text-foreground px-4 py-3 rounded-xl text-base focus:outline-none focus:ring-2 focus:ring-orange-500 font-medium transition-all"
                                     />
                                     <span className="text-xs text-muted-foreground/80 block leading-normal pt-1">
-                                        Base 85.80 + Freight 27.84 + Duties 22.00 + Port Handling 12.00 = 147.64 PHP[cite: 44, 45, 46, 47, 48].
+                                        Base 85.80 + Freight 27.84 + Duties 22.00 + Port Handling 12.00 = 147.64 PHP.
                                     </span>
                                 </div>
 
                                 <div className="space-y-2">
                                     <label className="block text-sm font-bold text-foreground tracking-wide">
-                                        Local Expenses (₱ / individual 40kg bag) [cite: 33, 82]
+                                        Local Expenses (₱ / individual 40kg bag)
                                     </label>
                                     <input
                                         type="number"
@@ -287,51 +268,48 @@ export default function DashboardClient({
                                         className="w-full bg-background border border-border text-foreground px-4 py-3 rounded-xl text-base focus:outline-none focus:ring-2 focus:ring-orange-500 font-medium transition-all"
                                     />
                                     <span className="text-xs text-muted-foreground/80 block leading-normal pt-1">
-                                        Aggregated warehouse rental, domestic logistics, labor charges, and business taxes = 20.00 PHP[cite: 63, 64, 65, 66, 67].
+                                        Aggregated warehouse rental, domestic logistics, labor charges, and business taxes = 20.00 PHP.
                                     </span>
                                 </div>
                             </div>
 
-                            {/* Dynamic Real-Time Calculations Performance Cards */}
                             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-4">
                                 <div className="bg-muted/40 border border-border/70 rounded-2xl p-5 shadow-sm">
-                                    <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Gross Profit / Bag [cite: 36]</span>
+                                    <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Gross Profit / Bag</span>
                                     <div className="text-2xl font-extrabold text-foreground mt-2 tracking-tight">
                                         ₱{currentGrossPerBag.toFixed(2)}
                                     </div>
-                                    <span className="text-[11px] font-medium text-muted-foreground block mt-1">Based on ₱{sampleSellingPrice} standard price [cite: 35]</span>
+                                    <span className="text-[11px] font-medium text-muted-foreground block mt-1">Based on ₱{sampleSellingPrice} standard price</span>
                                 </div>
 
                                 <div className="bg-orange-500/5 border border-orange-500/10 rounded-2xl p-5 shadow-sm">
-                                    <span className="text-xs font-semibold text-orange-500 uppercase tracking-wider">Net Profit / Bag [cite: 37]</span>
+                                    <span className="text-xs font-semibold text-orange-500 uppercase tracking-wider">Net Profit / Bag</span>
                                     <div className="text-2xl font-extrabold text-orange-500 mt-2 tracking-tight">
                                         ₱{currentNetPerBag.toFixed(2)}
                                     </div>
-                                    <span className="text-[11px] font-medium text-orange-500/70 block mt-1">Direct owner net yield earnings [cite: 58, 71]</span>
+                                    <span className="text-[11px] font-medium text-orange-500/70 block mt-1">Direct owner net yield earnings</span>
                                 </div>
 
                                 <div className="bg-muted/40 border border-border/70 rounded-2xl p-5 shadow-sm">
-                                    <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Total Cost / Bag [cite: 34]</span>
+                                    <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Total Cost / Bag</span>
                                     <div className="text-2xl font-extrabold text-foreground mt-2 tracking-tight">
                                         ₱{currentTotalCostPerBag.toFixed(2)}
                                     </div>
-                                    <span className="text-[11px] font-medium text-muted-foreground block mt-1">Combined expenses threshold [cite: 34]</span>
+                                    <span className="text-[11px] font-medium text-muted-foreground block mt-1">Combined expenses threshold</span>
                                 </div>
                             </div>
 
-                            {/* Formula Specifications Reference Information Callout Box */}
                             <div className="bg-orange-500/10 border border-orange-500/20 rounded-2xl p-5 text-sm text-orange-600 space-y-2">
                                 <strong className="font-bold text-[14px] flex items-center gap-1.5 mb-1">
-                                    <AlertTriangle className="w-4 h-4" /> Dynamic Systems Formulas Reference Architecture[cite: 14]:
+                                    <AlertTriangle className="w-4 h-4" /> Dynamic Systems Formulas Reference Architecture:
                                 </strong>
                                 <div className="font-medium text-xs md:text-sm pl-1 space-y-1">
-                                    <p>• <span className="font-bold">Total Sales Matrix</span> = Quantity (Bags) × Wholesale Price per Catalog Item [cite: 92]</p>
-                                    <p>• <span className="font-bold">Gross Profit (Revenue)</span> = Total Sales − (Quantity × Landed Cost Target Point) [cite: 98]</p>
-                                    <p>• <span className="font-bold">Net Profit Margin</span> = Total Sales − (Quantity × (Landed Cost + Local Expenses Aggregates)) [cite: 99]</p>
+                                    <p>• <span className="font-bold">Total Sales Matrix</span> = Quantity (Bags) × Wholesale Price per Catalog Item</p>
+                                    <p>• <span className="font-bold">Gross Profit (Revenue)</span> = Total Sales − (Quantity × Landed Cost Target Point)</p>
+                                    <p>• <span className="font-bold">Net Profit Margin</span> = Total Sales − (Quantity × (Landed Cost + Local Expenses Aggregates))</p>
                                 </div>
                             </div>
 
-                            {/* Save Actions Callout Processing Controller Trigger */}
                             <div className="pt-2">
                                 <button
                                     onClick={saveConfiguration}
@@ -346,8 +324,8 @@ export default function DashboardClient({
                     </Card>
                 </div>
             ) : (
-                <div className="animate-in fade-in duration-200">
-                    {/* KPI Cards */}
+                <div className="animate-in fade-in duration-200 space-y-6">
+                    {/* KPI Cards Row 1 */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
                         {/* Total Good Stock */}
                         <Card className="border-border shadow-sm bg-card rounded-xl overflow-hidden relative">
@@ -440,15 +418,15 @@ export default function DashboardClient({
                         </Card>
                     </div>
 
-                    {/* Financial KPI Cards */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6">
+                    {/* KPI Cards Row 2 (Financial KPIs) */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 mt-6">
                         {/* Today's Revenue */}
                         <Card className="border-border shadow-sm bg-card rounded-xl overflow-hidden relative">
                             <div className="absolute top-0 left-0 right-0 h-1 bg-emerald-500" />
                             <CardContent className="p-6">
                                 <div className="flex items-start justify-between">
                                     <div className="space-y-4 w-full">
-                                        <p className="text-[13px] font-medium text-muted-foreground uppercase tracking-wide">Today&apos;s Revenue [cite: 41]</p>
+                                        <p className="text-[13px] font-medium text-muted-foreground uppercase tracking-wide">Today&apos;s Revenue</p>
                                         <div className="flex items-baseline justify-between w-full">
                                             <p className="text-3xl sm:text-[38px] font-bold tracking-tight text-foreground leading-none">
                                                 ₱{kpis.todayRevenue?.toLocaleString() ?? "0"}
@@ -458,7 +436,7 @@ export default function DashboardClient({
                                             </div>
                                         </div>
                                         <div className="space-y-1">
-                                            <p className="text-[13px] font-medium text-muted-foreground">Total sales today [cite: 156]</p>
+                                            <p className="text-[13px] font-medium text-muted-foreground">Total sales today</p>
                                             <p className="text-[12px] font-semibold text-emerald-500">
                                                 Gross: ₱{kpis.todayGrossProfit?.toLocaleString() ?? "0"}
                                             </p>
@@ -474,7 +452,7 @@ export default function DashboardClient({
                             <CardContent className="p-6">
                                 <div className="flex items-start justify-between">
                                     <div className="space-y-4 w-full">
-                                        <p className="text-[13px] font-medium text-muted-foreground uppercase tracking-wide">Today&apos;s Net Profit [cite: 41]</p>
+                                        <p className="text-[13px] font-medium text-muted-foreground uppercase tracking-wide">Today&apos;s Net Profit</p>
                                         <div className="flex items-baseline justify-between w-full">
                                             <p className="text-3xl sm:text-[38px] font-bold tracking-tight text-foreground leading-none">
                                                 ₱{kpis.todayNetProfit?.toLocaleString() ?? "0"}
@@ -484,7 +462,7 @@ export default function DashboardClient({
                                             </div>
                                         </div>
                                         <div className="space-y-1">
-                                            <p className="text-[13px] font-medium text-muted-foreground">Owner&apos;s income today [cite: 58, 156]</p>
+                                            <p className="text-[13px] font-medium text-muted-foreground">Owner&apos;s income today</p>
                                             <p className="text-[12px] font-semibold text-transparent select-none">&nbsp;</p>
                                         </div>
                                     </div>
@@ -493,8 +471,8 @@ export default function DashboardClient({
                         </Card>
                     </div>
 
-                    {/* Visual Analytics */}
-                    <Card className="border-border shadow-sm bg-card rounded-xl overflow-hidden mt-8 p-6">
+                    {/* Visual Analytics Bar Chart Card */}
+                    <Card className="border-border shadow-sm bg-card rounded-xl overflow-hidden p-6 mt-6">
                         <CardHeader className="p-0 pb-4 mb-4 border-b border-border">
                             <CardTitle className="text-base font-semibold text-foreground tracking-wide">Warehouse Stock Overview</CardTitle>
                         </CardHeader>
@@ -538,8 +516,8 @@ export default function DashboardClient({
                         </div>
                     </Card>
 
-                    {/* Low Stock Alerts */}
-                    <Card className="border-border shadow-sm bg-card rounded-xl overflow-hidden mt-8">
+                    {/* Low Stock Alerts Card */}
+                    <Card className="border-border shadow-sm bg-card rounded-xl overflow-hidden mt-6">
                         <CardHeader className="pb-2">
                             <div className="flex items-center gap-2">
                                 <AlertTriangle className="w-5 h-5 text-muted-foreground" />
@@ -570,8 +548,9 @@ export default function DashboardClient({
                         </CardContent>
                     </Card>
 
-                    <div className={`grid grid-cols-1 ${userRole !== 'admin' ? 'lg:grid-cols-2' : ''} gap-6 mt-8`}>
-                        {/* Pending Tasks */}
+                    {/* Pending Tasks & Activities Split View Grid Layout */}
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+                        {/* Pending Tasks Section */}
                         {userRole !== 'admin' && (
                         <Card className="border-border shadow-sm bg-card rounded-xl overflow-hidden">
                             <CardHeader className="pb-4 border-b border-border">
@@ -614,7 +593,7 @@ export default function DashboardClient({
                         </Card>
                         )}
 
-                        {/* System Activity Feed */}
+                        {/* System Activity Feed Section */}
                         <Card className="border-border shadow-sm bg-card rounded-xl overflow-hidden">
                             <CardHeader className="pb-4 border-b border-border">
                                 <CardTitle className="text-base font-semibold text-foreground tracking-wide">System Activity Feed</CardTitle>
@@ -647,9 +626,9 @@ export default function DashboardClient({
                         </Card>
                     </div>
 
-                    {/* Recent Pending Orders */}
+                    {/* Recent Pending Orders Table Section */}
                     {userRole !== 'admin' && (
-                    <Card className="border-border shadow-sm bg-card rounded-xl overflow-hidden mt-8">
+                    <Card className="border-border shadow-sm bg-card rounded-xl overflow-hidden mt-6">
                         <CardHeader className="pb-4 border-b border-border">
                             <div className="flex items-center justify-between">
                                 <CardTitle className="text-base font-semibold text-foreground tracking-wide">Recent Pending Orders</CardTitle>
@@ -720,7 +699,7 @@ export default function DashboardClient({
                                         );
                                     })
                                 )}
-                            </div>
+                             </div>
                         </CardContent>
                     </Card>
                     )}

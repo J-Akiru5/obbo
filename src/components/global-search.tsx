@@ -49,16 +49,13 @@ export function GlobalSearch() {
         </kbd>
       </Button>
 
-      {/* 🌟 PERMANENT BYPASS FIX: Gagamitin natin ang inyong core Dialog component wrapper */}
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="p-0 overflow-hidden max-w-xl bg-background border border-border/50 shadow-2xl rounded-xl">
-          {/* Kinakailangang accessible headers para sa inyong screen readers */}
           <div className="sr-only">
             <DialogTitle>Global Search</DialogTitle>
             <DialogDescription>Search and navigate through system modules</DialogDescription>
           </div>
 
-          {/* Standard Command wrapper block mula sa cmdk package */}
           <Command className="flex flex-col w-full max-h-[85vh]">
             <div className="flex items-center border-b px-3">
               <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
@@ -136,6 +133,15 @@ export function GlobalSearch() {
                     >
                       <Settings className="h-4 w-4" />
                       <span>System Settings</span>
+                    </Command.Item>
+
+                    {/* 🌟 FIX: Idinagdag ang Profile item para searchable din sa Admin/Warehouse side */}
+                    <Command.Item 
+                        onSelect={() => runCommand(() => router.push("/admin/profile"))}
+                        className="flex items-center gap-2 rounded-sm px-2 py-2 text-sm text-foreground hover:bg-accent hover:text-accent-foreground cursor-pointer outline-none data-[selected=true]:bg-accent data-[selected=true]:text-accent-foreground"
+                    >
+                      <CircleUserRound className="h-4 w-4 text-[#3b82f6]" />
+                      <span>Profile & Settings</span>
                     </Command.Item>
                   </Command.Group>
                 </>
