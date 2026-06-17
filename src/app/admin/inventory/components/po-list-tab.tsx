@@ -1,13 +1,13 @@
 "use client";
 
-import { useState } from "react";
-import { PurchaseOrder, Profile } from "@/lib/types/database";
+import { useState, useEffect } from "react";
+import { PurchaseOrder, Profile, Product } from "@/lib/types/database";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Search, Edit2, MapPin, Truck, UploadCloud, CheckCircle2, X, FileImage, AlertTriangle, Eye, LayoutGrid, List, Check, ChevronsUpDown, ShoppingBag, Clock, FileText } from "lucide-react";
+import { Plus, Search, Edit2, MapPin, Truck, UploadCloud, CheckCircle2, X, FileImage, Eye, LayoutGrid, List, Check, ChevronsUpDown, ShoppingBag, Clock, FileText } from "lucide-react";
 import { createPurchaseOrder, updatePurchaseOrder, generateAdminPoNumber } from "@/lib/actions/admin-actions";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
@@ -36,6 +36,9 @@ export function PoListTab({ purchaseOrders, loading, onReload }: { purchaseOrder
     const [clientId, setClientId] = useState<string | null>(null);
     const [clientOpen, setClientOpen] = useState(false);
 
+    // SYSTEM CACHE: Lagayan para sa live catalog active product reference rates
+    const [catalogProducts, setCatalogProducts] = useState<Product[]>([]);
+
     // Form state
     const [poNumber, setPoNumber] = useState("");
     const [clientName, setClientName] = useState("");
@@ -46,7 +49,19 @@ export function PoListTab({ purchaseOrders, loading, onReload }: { purchaseOrder
     const [checkNumber, setCheckNumber] = useState("");
     const [checkAmount, setCheckAmount] = useState(0);
     const [cashAmount, setCashAmount] = useState(0);
+    const [paymentMethod, setPaymentMethod] = useState<"cash" | "check">("cash"); 
     const [photoFile, setPhotoFile] = useState<File | null>(null);
+
+    // DATABASE CALL LOOKUP: Kukunin ang mga produkto para malaman ang pinakabagong Port vs Warehouse selling prices
+    const fetchCatalogPrices = async () => {
+        try {
+            const supabase = createClient();
+            const { data } = await supabase.from("products").select("*").eq("is_active", true);
+            if (data) setCatalogProducts(data);
+        } catch (e) {
+            console.error("Error reading live parameters:", e);
+        }
+    };
 
     const fetchClients = async () => {
         try {
@@ -64,21 +79,49 @@ export function PoListTab({ purchaseOrders, loading, onReload }: { purchaseOrder
         }
     };
 
+    // REAL-TIME AUTOMATIC COMPUTATION CALCULATOR LOGIC ENGINE
+    useEffect(() => {
+        if (!isDialogOpen) return;
+
+        const jbProduct = catalogProducts.find(p => p.bag_type === "JB");
+        const sbProduct = catalogProducts.find(p => p.bag_type === "SB");
+
+        const jbPriceRate = source === "port" 
+            ? Number((jbProduct as any)?.port_selling_price ?? 0) 
+            : Number((jbProduct as any)?.warehouse_selling_price ?? 0);
+
+        const sbPriceRate = source === "port" 
+            ? Number((sbProduct as any)?.port_selling_price ?? 0) 
+            : Number((sbProduct as any)?.warehouse_selling_price ?? 0);
+
+        const computedTotal = (jbQty * jbPriceRate) + (sbQty * sbPriceRate);
+
+        if (paymentMethod === "cash") {
+            setCashAmount(computedTotal);
+            setCheckAmount(0);
+        } else {
+            setCheckAmount(computedTotal);
+            setCashAmount(0);
+        }
+    }, [source, jbQty, sbQty, paymentMethod, catalogProducts, isDialogOpen]);
+
     const openCreate = async () => {
         setEditingPo(null);
         setJbQty(0); setSbQty(0);
         setClientName("");
         setClientId(null);
         setPhotoFile(null);
+        setSource("warehouse");
+        setPaymentMethod("cash");
         setCheckNumber(""); setCheckAmount(0); setCashAmount(0);
-        fetchClients();
+        await Promise.all([fetchClients(), fetchCatalogPrices()]);
         setIsDialogOpen(true);
         
         const nextPo = await generateAdminPoNumber();
         setPoNumber(nextPo);
     };
 
-    const openEdit = (po: PurchaseOrder) => {
+    const openEdit = async (po: PurchaseOrder) => {
         setEditingPo(po);
         setPoNumber(po.po_number);
         setClientName(po.client_name || "");
@@ -90,8 +133,9 @@ export function PoListTab({ purchaseOrders, loading, onReload }: { purchaseOrder
         setCheckNumber(po.check_number || "");
         setCheckAmount(po.check_amount || 0);
         setCashAmount(po.cash_amount || 0);
+        setPaymentMethod(po.check_number ? "check" : "cash");
         setPhotoFile(null);
-        fetchClients();
+        await Promise.all([fetchClients(), fetchCatalogPrices()]);
         setIsDialogOpen(true);
     };
 
@@ -122,28 +166,32 @@ export function PoListTab({ purchaseOrders, loading, onReload }: { purchaseOrder
                 }
             }
 
+            const currentCheckNo = paymentMethod === "check" ? checkNumber : null;
+            const currentCheckAmt = paymentMethod === "check" ? checkAmount : null;
+            const currentCashAmt = paymentMethod === "cash" ? cashAmount : null;
+
             if (editingPo) {
                 await updatePurchaseOrder(editingPo.id, {
                     po_number: poNumber, client_name: clientName, client_id: clientId,
                     jb: jbQty, sb: sbQty,
                     source, service_type: serviceType,
-                    check_number: checkNumber || null,
-                    check_amount: checkAmount || null,
-                    cash_amount: cashAmount || null,
+                    check_number: currentCheckNo,
+                    check_amount: currentCheckAmt,
+                    cash_amount: currentCashAmt,
                     ...(photoUrl ? { photo_url: photoUrl } : {}),
                 });
-                toast.success("PO updated");
+                toast.success("PO updated configurations saved.");
             } else {
                 await createPurchaseOrder({
                     po_number: poNumber, client_name: clientName, client_id: clientId,
                     jb: jbQty, sb: sbQty,
                     source, service_type: serviceType,
-                    check_number: checkNumber || null,
-                    check_amount: checkAmount || null,
-                    cash_amount: cashAmount || null,
+                    check_number: currentCheckNo,
+                    check_amount: currentCheckAmt,
+                    cash_amount: currentCashAmt,
                     ...(photoUrl ? { photo_url: photoUrl } : {}),
                 });
-                toast.success("PO created");
+                toast.success("Manual PO recorded successfully.");
             }
             setIsDialogOpen(false);
             setPhotoFile(null);
@@ -165,7 +213,6 @@ export function PoListTab({ purchaseOrders, loading, onReload }: { purchaseOrder
         return matchSearch && matchStatus && matchSource && matchDateFrom && matchDateTo;
     });
 
-    // ── FIXED CORRECTION: REAL-TIME PO ANALYTICS ACCUMULATOR SUMMARY ──
     const poMetrics = filtered.reduce(
         (acc, po) => {
             acc.totalBags += (po.jb || 0) + (po.sb || 0);
@@ -176,7 +223,6 @@ export function PoListTab({ purchaseOrders, loading, onReload }: { purchaseOrder
         { totalBags: 0, totalValue: 0, pendingCount: 0 }
     );
 
-    // Dynamic color indicator parser for PO Status badges
     const getStatusBadge = (status: string) => {
         switch (status?.toLowerCase()) {
             case "pending":
@@ -190,13 +236,11 @@ export function PoListTab({ purchaseOrders, loading, onReload }: { purchaseOrder
         }
     };
 
-    if (loading) return <div className="py-8 text-center text-muted-foreground animate-pulse">Loading PO list...</div>;
+    if (loading) return <div className="py-8 text-center text-muted-foreground animate-pulse">Loading PO list data...</div>;
 
     return (
         <div className="space-y-6">
-            {/* ── NEW PO LIVE SUMMARY ANALYTICS SUMMARY CARDS ── */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {/* Total Ordered Cement Volume */}
                 <Card className="border border-border shadow-sm bg-card rounded-2xl overflow-hidden relative">
                     <div className="absolute top-0 left-0 right-0 h-1 bg-primary" />
                     <CardContent className="p-5 flex items-center justify-between">
@@ -213,7 +257,6 @@ export function PoListTab({ purchaseOrders, loading, onReload }: { purchaseOrder
                     </CardContent>
                 </Card>
 
-                {/* Pending Orders Counter */}
                 <Card className="border border-border shadow-sm bg-card rounded-2xl overflow-hidden relative">
                     <div className="absolute top-0 left-0 right-0 h-1 bg-amber-500" />
                     <CardContent className="p-5 flex items-center justify-between">
@@ -230,7 +273,6 @@ export function PoListTab({ purchaseOrders, loading, onReload }: { purchaseOrder
                     </CardContent>
                 </Card>
 
-                {/* Financial Transaction Valuation Value */}
                 <Card className="border border-border shadow-sm bg-card rounded-2xl overflow-hidden relative">
                     <div className="absolute top-0 left-0 right-0 h-1 bg-blue-500" />
                     <CardContent className="p-5 flex items-center justify-between">
@@ -283,12 +325,10 @@ export function PoListTab({ purchaseOrders, loading, onReload }: { purchaseOrder
                         <Select value={statusFilter} onValueChange={(v) => v && setStatusFilter(v)}>
                             <SelectTrigger className="h-8 w-[130px] text-xs"><SelectValue placeholder="Status" /></SelectTrigger>
                             <SelectContent>
-                                <SelectContent>
-                                    <SelectItem value="all">All Status</SelectItem>
-                                    <SelectItem value="pending">Pending</SelectItem>
-                                    <SelectItem value="dispatched">Dispatched</SelectItem>
-                                    <SelectItem value="completed">Completed</SelectItem>
-                                </SelectContent>
+                                <SelectItem value="all">All Status</SelectItem>
+                                <SelectItem value="pending">Pending</SelectItem>
+                                <SelectItem value="dispatched">Dispatched</SelectItem>
+                                <SelectItem value="completed">Completed</SelectItem>
                             </SelectContent>
                         </Select>
                         <Select value={sourceFilter} onValueChange={(v) => v && setSourceFilter(v)}>
@@ -491,13 +531,14 @@ export function PoListTab({ purchaseOrders, loading, onReload }: { purchaseOrder
                         <div className="space-y-2">
                             <Label>Client Name</Label>
                             <Popover open={clientOpen} onOpenChange={setClientOpen}>
-                                <PopoverTrigger render={<div className="w-full flex items-center justify-between rounded-lg border border-input bg-background px-3 py-2 text-sm cursor-pointer hover:border-primary/50 transition-colors" />}>
+                                {/* 🌟 FIXED PRIMITIVE TRIGGER: Ginawa nating semantic button element ito para mawala ang syntax error */}
+                                <PopoverTrigger className="w-full flex items-center justify-between rounded-lg border border-input bg-background px-3 py-2 text-sm font-normal cursor-pointer hover:border-primary/50 transition-colors h-10 shadow-sm">
                                     <span className={clientName ? "" : "text-muted-foreground"}>
                                         {clientName || "Select a verified client..."}
                                     </span>
                                     <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 text-muted-foreground" />
                                 </PopoverTrigger>
-                                <PopoverContent className="w-[var(--anchor-width)] p-0" align="start">
+                                <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
                                     <Command>
                                         <CommandInput placeholder="Search clients..." />
                                         <CommandList>
@@ -533,7 +574,7 @@ export function PoListTab({ purchaseOrders, loading, onReload }: { purchaseOrder
                         </div>
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
-                                <Label>Service</Label>
+                                <Label>Service Type</Label>
                                 <Select value={serviceType} onValueChange={(v) => setServiceType(v || "")}>
                                     <SelectTrigger><SelectValue /></SelectTrigger>
                                     <SelectContent>
@@ -543,12 +584,12 @@ export function PoListTab({ purchaseOrders, loading, onReload }: { purchaseOrder
                                 </Select>
                             </div>
                             <div className="space-y-2">
-                                <Label>Source</Label>
+                                <Label className="text-primary font-bold">Pricing Source Matrix</Label>
                                 <Select value={source} onValueChange={(v) => setSource(v || "")}>
-                                    <SelectTrigger><SelectValue /></SelectTrigger>
+                                    <SelectTrigger className="border-primary/40"><SelectValue /></SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="warehouse">Warehouse</SelectItem>
-                                        <SelectItem value="port">Port</SelectItem>
+                                        <SelectItem value="warehouse">Warehouse Rate</SelectItem>
+                                        <SelectItem value="port">Port Rate</SelectItem>
                                     </SelectContent>
                                 </Select>
                             </div>
@@ -580,38 +621,41 @@ export function PoListTab({ purchaseOrders, loading, onReload }: { purchaseOrder
                             </div>
                         </div>
 
+                        {/* Payment Details Container */}
                         <div className="border-t pt-4 space-y-3">
-                            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Payment Details</p>
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-2">
-                                    <Label htmlFor="po-check-number">Check No.</Label>
-                                    <Input id="po-check-number" value={checkNumber} onChange={e => setCheckNumber(e.target.value)} placeholder="Check number" />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="po-check-amount">Check Amount (₱)</Label>
-                                    <Input id="po-check-amount" type="number" min="0" value={checkAmount || ""} placeholder="0" onChange={e => {
-                                        const val = parseFloat(e.target.value) || 0;
-                                        setCheckAmount(val);
-                                        if (val > 0) setCashAmount(0);
-                                    }} />
-                                </div>
+                            <div className="flex justify-between items-center">
+                                <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Payment Information (Auto-Computed)</p>
+                                <Select value={paymentMethod} onValueChange={(v: any) => setPaymentMethod(v)}>
+                                    <SelectTrigger className="h-7 w-[100px] text-xs"><SelectValue /></SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="cash">💵 Cash</SelectItem>
+                                        <SelectItem value="check">🏦 Check</SelectItem>
+                                    </SelectContent>
+                                </Select>
                             </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="po-cash-amount">Cash Amount (₱)</Label>
-                                <Input id="po-cash-amount" type="number" min="0" value={cashAmount || ""} placeholder="0" onChange={e => {
-                                    const val = parseFloat(e.target.value) || 0;
-                                    setCashAmount(val);
-                                    if (val > 0) {
-                                        setCheckAmount(0);
-                                        setCheckNumber("");
-                                    }
-                                }} />
-                            </div>
+
+                            {paymentMethod === "check" ? (
+                                <div className="grid grid-cols-2 gap-4 bg-muted/30 p-3 rounded-xl border border-dashed animate-in fade-in duration-200">
+                                    <div className="space-y-2">
+                                        <Label htmlFor="po-check-number">Check No.</Label>
+                                        <Input id="po-check-number" value={checkNumber} onChange={e => setCheckNumber(e.target.value)} placeholder="Check number" required />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="po-check-amount" className="text-blue-500 font-bold">Computed Check Amount (₱)</Label>
+                                        <Input id="po-check-amount" type="number" value={checkAmount} disabled className="bg-background font-black text-blue-600 disabled:opacity-100 shadow-sm" />
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="space-y-2 bg-muted/30 p-3 rounded-xl border border-dashed animate-in fade-in duration-200">
+                                    <Label htmlFor="po-cash-amount" className="text-emerald-500 font-bold">Computed Cash Amount (₱)</Label>
+                                    <Input id="po-cash-amount" type="number" value={cashAmount} disabled className="bg-background font-black text-emerald-600 disabled:opacity-100 shadow-sm" />
+                                </div>
+                            )}
                         </div>
 
                         {/* Photo Upload */}
                         <div className="space-y-2">
-                            <Label htmlFor="po-photo-upload">PO Photo <span className="text-red-500">*</span></Label>
+                            <Label htmlFor="po-photo-upload">PO Attachment Image <span className="text-red-500">*</span></Label>
                             {photoFile ? (
                                 <div className="flex items-center gap-3 p-3 border border-emerald-200 bg-emerald-50 rounded-lg">
                                     <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
@@ -626,8 +670,7 @@ export function PoListTab({ purchaseOrders, loading, onReload }: { purchaseOrder
                                     onClick={() => document.getElementById("po-photo-upload")?.click()}
                                 >
                                     <UploadCloud className="w-6 h-6 mx-auto mb-1 text-muted-foreground" />
-                                    <p className="text-xs text-muted-foreground">Click to attach PO photo</p>
-                                    <p className="text-[10px] text-muted-foreground/60 mt-0.5">JPG, PNG, PDF</p>
+                                    <p className="text-xs text-muted-foreground">Click to attach validation photo sheet</p>
                                     <input
                                         id="po-photo-upload"
                                         type="file"
@@ -642,7 +685,7 @@ export function PoListTab({ purchaseOrders, loading, onReload }: { purchaseOrder
                     <DialogFooter>
                         <Button variant="outline" onClick={() => setIsDialogOpen(false)} disabled={isSubmitting}>Cancel</Button>
                         <Button onClick={handleSubmit} disabled={isSubmitting} className="bg-primary">
-                            {isSubmitting ? "Saving..." : editingPo ? "Update PO" : "Create PO"}
+                            {isSubmitting ? "Syncing..." : editingPo ? "✓ Update PO" : "✓ Create PO"}
                         </Button>
                     </DialogFooter>
                 </DialogContent>
@@ -679,7 +722,7 @@ export function PoListTab({ purchaseOrders, loading, onReload }: { purchaseOrder
                             <div className="grid grid-cols-2 gap-4 border-t pt-4">
                                 <div className="space-y-1">
                                     <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold">Quantity</p>
-                                    <p className="text-sm font-bold">{((viewingPo.jb || 0) + (viewingPo.sb || 0)).toLocaleString()} individual bags</p>
+                                    <p className="text-sm font-bold">{((viewingPo.jb || 0) + (viewingPo.sb || 0)).toLocaleString()} bags</p>
                                 </div>
                                 <div className="space-y-1">
                                     <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold">Bag Type</p>
@@ -706,13 +749,13 @@ export function PoListTab({ purchaseOrders, loading, onReload }: { purchaseOrder
                                             </div>
                                             <div className="space-y-1">
                                                 <p className="text-xs text-muted-foreground">Amount</p>
-                                                <p className="text-sm font-bold">₱{Number(viewingPo.check_amount).toLocaleString()}</p>
+                                                <p className="text-sm font-bold text-blue-500">₱{Number(viewingPo.check_amount).toLocaleString()}</p>
                                             </div>
                                         </>
                                     ) : viewingPo.cash_amount ? (
                                         <div className="space-y-1">
                                             <p className="text-xs text-muted-foreground">Cash Amount</p>
-                                            <p className="text-sm font-bold">₱{Number(viewingPo.cash_amount).toLocaleString()}</p>
+                                            <p className="text-sm font-bold text-emerald-500">₱{Number(viewingPo.cash_amount).toLocaleString()}</p>
                                         </div>
                                     ) : (
                                         <p className="text-xs text-muted-foreground italic">No payment data recorded</p>
@@ -738,7 +781,7 @@ export function PoListTab({ purchaseOrders, loading, onReload }: { purchaseOrder
                             )}
                         </div>
                     )}
-                    <DialogFooter>
+                    <DialogFooter className="border-t pt-3">
                         <Button onClick={() => setIsViewOpen(false)}>Close</Button>
                     </DialogFooter>
                 </DialogContent>
