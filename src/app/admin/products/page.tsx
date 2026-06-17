@@ -41,20 +41,24 @@ function ProductsContent() {
 
     const handleProductUpdate = async (id: string, updates: any) => {
         try {
-            await updateProduct(id, updates);
-            toast.success("Product updated successfully.");
+            // 🌟 IMPLEMENTATION CONTROLLER: Pinalawak para maayos na maipasa ang dual-pricing payload keys (port_selling_price, warehouse_selling_price)
+            await updateProduct(id, {
+                ...updates,
+                port_selling_price: updates.port_selling_price !== undefined ? Number(updates.port_selling_price) : undefined,
+                warehouse_selling_price: updates.warehouse_selling_price !== undefined ? Number(updates.warehouse_selling_price) : undefined
+            });
+            toast.success("Product configurations updated successfully.");
             loadData();
         } catch (e: any) {
-            toast.error(e.message || "Failed to update product.");
+            toast.error(e.message || "Failed to update product settings matrix.");
         }
     };
-
 
     return (
         <div className="space-y-6">
             <div>
                 <h2 className="text-2xl font-bold tracking-tight">Product Management</h2>
-                <p className="text-muted-foreground mt-1">Manage cement products, pricing, and availability.</p>
+                <p className="text-muted-foreground mt-1">Manage cement products, dual-pricing schemas, and storage allocation parameters.</p>
             </div>
 
             <ProductCatalogTab 
@@ -68,7 +72,7 @@ function ProductsContent() {
 
 export default function AdminProductsPage() {
     return (
-        <Suspense fallback={<div className="py-8 text-center text-muted-foreground animate-pulse">Loading products...</div>}>
+        <Suspense fallback={<div className="py-8 text-center text-muted-foreground animate-pulse">Loading products data infrastructure...</div>}>
             <ProductsContent />
         </Suspense>
     );

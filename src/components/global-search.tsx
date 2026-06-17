@@ -135,7 +135,6 @@ export function GlobalSearch() {
                       <span>System Settings</span>
                     </Command.Item>
 
-                    {/* 🌟 FIX: Idinagdag ang Profile item para searchable din sa Admin/Warehouse side */}
                     <Command.Item 
                         onSelect={() => runCommand(() => router.push("/admin/profile"))}
                         className="flex items-center gap-2 rounded-sm px-2 py-2 text-sm text-foreground hover:bg-accent hover:text-accent-foreground cursor-pointer outline-none data-[selected=true]:bg-accent data-[selected=true]:text-accent-foreground"

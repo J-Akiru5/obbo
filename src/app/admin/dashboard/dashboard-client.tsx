@@ -138,7 +138,6 @@ export default function DashboardClient({
                 ]);
 
             if (!error) {
-                // 🌟 TOAST POP-UP REGISTRATION SUCESS STATE
                 toast.success("Cost parameters successfully compiled in live database system!");
             } else {
                 toast.error(`ERROR: ${error.message}`);
@@ -236,8 +235,6 @@ export default function DashboardClient({
                     <Card className="border-border shadow-md bg-card rounded-2xl overflow-hidden max-w-4xl mx-auto">
                         <div className="h-1.5 bg-orange-500 w-full" />
                         <CardContent className="p-6 md:p-8 space-y-6">
-
-                            {/* 🧹 TOAST NORMALIZATION REMOVAL: Inalis na ang inline static error message div elements block */}
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <div className="space-y-2">
@@ -476,7 +473,8 @@ export default function DashboardClient({
                         <CardHeader className="p-0 pb-4 mb-4 border-b border-border">
                             <CardTitle className="text-base font-semibold text-foreground tracking-wide">Warehouse Stock Overview</CardTitle>
                         </CardHeader>
-                        <div className="h-[300px] w-full mt-4">
+                        {/* 🌟 FIX: Idinagdag ang min-w-0 para maiwasan ang chart responsive width calculation warning loops */}
+                        <div className="h-[300px] w-full min-w-0 mt-4">
                             <ResponsiveContainer width="100%" height="100%">
                                 <BarChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
                                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border) / 0.5)" />
