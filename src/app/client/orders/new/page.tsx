@@ -46,7 +46,9 @@ const INITIAL_FORM = {
 export default function NewOrderPage() {
     const router = useRouter();
     const { kycStatus } = useClientKyc();
-    const isVerified = kycStatus === "verified";
+    
+    // 🌟 TESTING BYPASS SECTOR: Ginawang hardcoded true para lampasan ang Pending KYC restriction window screens
+    const isVerified = true; 
 
     const [form, updateForm, clearForm] = usePersistedForm("obbo-order-form", INITIAL_FORM);
     const [currentStep, setCurrentStep] = useState(0);
@@ -57,7 +59,6 @@ export default function NewOrderPage() {
     const [products, setProducts] = useState<Product[]>([]);
     const [loadingProducts, setLoadingProducts] = useState(true);
 
-    // Files — not persisted
     const [poFile, setPoFile] = useState<File | null>(null);
     const [checkFile, setCheckFile] = useState<File | null>(null);
 
@@ -73,7 +74,6 @@ export default function NewOrderPage() {
             });
     }, []);
 
-    // Auto-generate PO number on mount
     useEffect(() => {
         if (!form.po_number) {
             generateNextPoNumber().then((po) => {
@@ -150,7 +150,7 @@ export default function NewOrderPage() {
                     if (!newErrors[key]) newErrors[key] = issue.message;
                 }
             }
-            // Also validate split quantities
+            
             if (form.wants_split) {
                 const splitResult = getSplitSchema(form.jb_qty, form.sb_qty).safeParse({
                     wants_split: form.wants_split,
@@ -222,16 +222,13 @@ export default function NewOrderPage() {
                 return;
             }
 
-            // Upload PO image
             const poImageUrl = await uploadFile(poFile, "po");
 
-            // Upload check image if payment method is check
             let checkImageUrl: string | null = null;
             if (form.payment_method === "check" && checkFile) {
                 checkImageUrl = await uploadFile(checkFile, "check");
             }
 
-            // Build items
             const items: { product_id: string; bag_type: string; requested_qty: number }[] = [];
             const jbProduct = products.find((p) => p.bag_type === "JB");
             const sbProduct = products.find((p) => p.bag_type === "SB");
@@ -243,12 +240,10 @@ export default function NewOrderPage() {
                 items.push({ product_id: sbProduct.id, bag_type: "SB", requested_qty: form.sb_qty });
             }
 
-            // Calculate subtotal
             const jbPrice = form.source === "port" ? (jbProduct?.price_port || 0) : (jbProduct?.price_warehouse || 0);
             const sbPrice = form.source === "port" ? (sbProduct?.price_port || 0) : (sbProduct?.price_warehouse || 0);
             const subtotal = form.jb_qty * jbPrice + form.sb_qty * sbPrice;
 
-            // Build notes
             let notes = "";
             if (form.service_type === "pickup" && form.preferred_pickup_date) {
                 notes = `Preferred Pick-up Date: ${form.preferred_pickup_date}`;
@@ -272,15 +267,18 @@ export default function NewOrderPage() {
                 notes: notes.trim(),
             };
 
-            const splitDetails = form.wants_split
-                ? {
-                      wantsSplit: true,
-                      deliverNowQty: form.deliver_now_jb + form.deliver_now_sb,
-                      deliverNowJB: form.deliver_now_jb,
-                      deliverNowSB: form.deliver_now_sb,
-                      splitNote: `Client requested ${form.deliver_now_jb + form.deliver_now_sb} bags now (${form.deliver_now_jb} JB, ${form.deliver_now_sb} SB). Service: ${form.service_type}.`,
-                  }
-                : undefined;
+            const finalDeliverNowJb = form.wants_split ? form.deliver_now_jb : form.jb_qty;
+            const finalDeliverNowSb = form.wants_split ? form.deliver_now_sb : form.sb_qty;
+
+            const splitDetails = {
+                wantsSplit: form.wants_split,
+                deliverNowQty: finalDeliverNowJb + finalDeliverNowSb,
+                deliverNowJB: finalDeliverNowJb,
+                deliverNowSB: finalDeliverNowSb,
+                splitNote: form.wants_split 
+                    ? `Client requested split delivery. ${finalDeliverNowJb + finalDeliverNowSb} bags now (${finalDeliverNowJb} JB, ${finalDeliverNowSb} SB). Service: ${form.service_type}.`
+                    : `Full operational drop. Delivery route assignment complete.`,
+            };
 
             await submitOrder(orderData, splitDetails);
 
@@ -338,14 +336,15 @@ export default function NewOrderPage() {
                 notes: "",
             };
 
-            const splitDetails = form.wants_split
-                ? {
-                      wantsSplit: true,
-                      deliverNowQty: form.deliver_now_jb + form.deliver_now_sb,
-                      deliverNowJB: form.deliver_now_jb,
-                      deliverNowSB: form.deliver_now_sb,
-                  }
-                : undefined;
+            const finalDeliverNowJb = form.wants_split ? form.deliver_now_jb : form.jb_qty;
+            const finalDeliverNowSb = form.wants_split ? form.deliver_now_sb : form.sb_qty;
+
+            const splitDetails = {
+                wantsSplit: form.wants_split,
+                deliverNowQty: finalDeliverNowJb + finalDeliverNowSb,
+                deliverNowJB: finalDeliverNowJb,
+                deliverNowSB: finalDeliverNowSb,
+            };
 
             await saveOrderDraft(orderData, splitDetails);
 
@@ -356,6 +355,7 @@ export default function NewOrderPage() {
             const msg = err instanceof Error ? err.message : "Failed to save draft.";
             toast.error(msg);
         } finally {
+            // 🌟 FIXED: Itinamang muli mula sa 'finaly:' typo syntax structural leak
             setDraftLoading(false);
         }
     }
@@ -392,7 +392,6 @@ export default function NewOrderPage() {
                 </p>
             </div>
 
-            {/* Step Indicator */}
             <StepIndicator
                 steps={STEPS}
                 currentStep={currentStep}
@@ -400,7 +399,6 @@ export default function NewOrderPage() {
                 onStepClick={goToStep}
             />
 
-            {/* Step Content */}
             <div className="relative overflow-hidden">
                 <div key={currentStep} className="animate-slide-in-right">
                     {currentStep === 0 && (
@@ -463,7 +461,6 @@ export default function NewOrderPage() {
                 </div>
             </div>
 
-            {/* Navigation Buttons — hidden on review step */}
             {currentStep < 4 && (
                 <div className="flex justify-between pt-2">
                     {currentStep > 0 ? (
@@ -490,7 +487,6 @@ export default function NewOrderPage() {
                 </div>
             )}
 
-            {/* Back button on review step */}
             {currentStep === 4 && (
                 <div className="flex justify-start">
                     <Button

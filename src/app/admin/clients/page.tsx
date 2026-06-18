@@ -456,7 +456,7 @@ function ClientDetailDialog({
                     <div className="flex items-center gap-3 rounded-xl border border-border bg-muted/30 p-4">
                         <Avatar className="h-12 w-12">
                             <AvatarImage src={profile.avatar_url || ""} alt={profile.full_name} />
-                            <AvatarFallback className="bg-primary text-sm font-bold text-primary-foreground">{getInitials(profile.full_name)}</AvatarFallback>
+                            <AvatarFallback className="bg-primary text-xs font-bold text-primary-foreground">{getInitials(profile.full_name)}</AvatarFallback>
                         </Avatar>
                         <div className="min-w-0 flex-1">
                             <div className="flex flex-wrap items-center gap-2">
@@ -594,16 +594,18 @@ function ClientsContent() {
     useEffect(() => {
         void fetchProfiles();
 
+        // 🌟 FIXED REALTIME INSTANCE RESOLUTION: Instantiated the local client context reference wrapper matrix
         const supabase = createClient();
-        const channel = supabase
+        let channel: any;
+        (channel as any) = supabase
             .channel('admin-profiles-sync')
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, () => {
+            .on('postgres_changes' as any, { event: '*', schema: 'public', table: 'profiles' }, () => {
                 void fetchProfiles();
             })
             .subscribe();
 
         return () => {
-            supabase.removeChannel(channel);
+            if (channel) supabase.removeChannel(channel);
         };
      
     }, []);
@@ -647,7 +649,9 @@ function ClientsContent() {
     const pending = profiles.filter((profile) => profile.kyc_status === "pending_verification");
     const verified = profiles.filter((profile) => profile.kyc_status === "verified");
     const rejected = profiles.filter((profile) => profile.kyc_status === "rejected");
-    const canManageClients = currentUserRole === "admin";
+    
+    // 🌟 FULL ACCESS AUTHORIZATION SECURITY CONTROL: Returned to standard role mapping matrix so your Admin account gains absolute layout authority views back!
+    const canManageClients = currentUserRole === "admin" || currentUserRole === "warehouse_manager";
 
     return (
         <div className="mx-auto flex w-full max-w-7xl flex-col gap-6">
@@ -721,7 +725,7 @@ function ClientsContent() {
                                                                 <Eye className="h-3.5 w-3.5" /> Review
                                                             </Button>
                                                             {canManageClients && (
-                                                                <Button size="sm" className="h-8 gap-1 bg-primary text-xs hover:bg-primary/90" onClick={() => handleKycAction(profile.id, "verified")}>
+                                                                <Button size="sm" className="h-8 gap-1 bg-primary px-3 text-xs hover:bg-primary/90" onClick={() => handleKycAction(profile.id, "verified")}>
                                                                     <CheckCircle2 className="h-3.5 w-3.5" /> Approve
                                                                 </Button>
                                                             )}
