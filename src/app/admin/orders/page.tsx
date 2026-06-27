@@ -8,18 +8,40 @@ import { NewRequestsTab } from "./components/new-requests-tab";
 import { FulfillmentTab } from "./components/fulfillment-tab";
 import { TrackingTab } from "./components/tracking-tab";
 import { OrderHistoryTab } from "./components/order-history-tab";
-import { Order, Product, Shipment } from "@/lib/types/database";
+import { Order, Shipment } from "@/lib/types/database";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
 
 function OrdersContent() {
-    const searchParams = useSearchParams();
     const router = useRouter();
+    const searchParams = useSearchParams();
     const pathname = usePathname();
+    const supabase = createClient();
+    const [role, setRole] = useState<string | null>(null);
     const [activeTab, setActiveTab] = useState(searchParams.get("tab") || "new");
     const [orders, setOrders] = useState<Order[]>([]);
     const [shipments, setShipments] = useState<Shipment[]>([]);
     const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        supabase.auth.getUser().then(({ data }) => {
+            if (data.user) {
+                supabase
+                    .from("profiles")
+                    .select("role")
+                    .eq("id", data.user.id)
+                    .single()
+                    .then(({ data: profile }) => {
+                        const userRole = profile?.role || null;
+                        setRole(userRole);
+                        if (userRole !== "warehouse_manager") {
+                            router.replace("/admin/dashboard");
+                        }
+                    });
+            }
+        });
+    }, [router, supabase]);
+
 
     const loadData = async () => {
         try {
@@ -117,6 +139,14 @@ function OrdersContent() {
             toast.error(e.message || "Failed to update tracking.");
         }
     };
+
+    if (role !== "warehouse_manager") {
+        return (
+            <div className="flex items-center justify-center py-16">
+                <p className="text-muted-foreground">Loading...</p>
+            </div>
+        );
+    }
 
     return (
         <div className="space-y-6">

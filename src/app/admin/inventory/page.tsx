@@ -22,7 +22,17 @@ function InventoryContent() {
     const [deliveryReceipts, setDeliveryReceipts] = useState<DeliveryReceipt[]>([]);
     const [loading, setLoading] = useState(true);
 
+    // Toggle to false after demo to restore live data
+    const DEMO_MODE = true;
+
     const loadData = async () => {
+        if (DEMO_MODE) {
+            setShipments([]);
+            setPurchaseOrders([]);
+            setDeliveryReceipts([]);
+            setLoading(false);
+            return;
+        }
         try {
             const [s, p, d] = await Promise.all([
                 fetchShipments(),

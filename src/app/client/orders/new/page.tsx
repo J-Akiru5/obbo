@@ -13,19 +13,10 @@ import { StepIndicator } from "@/components/ui/step-indicator";
 import { StepProducts } from "@/components/orders/wizard/step-products";
 import { StepSource } from "@/components/orders/wizard/step-source";
 import { StepServiceType } from "@/components/orders/wizard/step-service-type";
-import { StepPoPayment } from "@/components/orders/wizard/step-po-payment";
-import { StepOrderReview } from "@/components/orders/wizard/step-review";
-import { submitOrder, saveOrderDraft, generateNextPoNumber } from "@/lib/actions/client-actions";
-import {
-    productsSchema,
-    sourceSchema,
-    serviceTypeSchema,
-    poPaymentSchema,
-    getSplitSchema,
-} from "@/components/orders/wizard/order-schema";
+import { productsSchema, sourceSchema, serviceTypeSchema } from "@/components/orders/wizard/order-schema";
 import type { Product } from "@/lib/types/database";
 
-const STEPS = ["Products", "Source", "Service", "PO & Payment", "Review"];
+const ORDERING_STEPS = ["Products", "Source", "Service"];
 
 const INITIAL_FORM = {
     jb_qty: 0,
@@ -48,18 +39,32 @@ export default function NewOrderPage() {
     const { kycStatus } = useClientKyc();
     const isVerified = kycStatus === "verified";
 
-    const [form, updateForm, clearForm] = usePersistedForm("obbo-order-form", INITIAL_FORM);
-    const [currentStep, setCurrentStep] = useState(0);
-    const [completedSteps, setCompletedSteps] = useState<Set<number>>(new Set());
+    const [form, updateForm] = usePersistedForm("obbo-order-form", INITIAL_FORM);
+    const [currentStep, setCurrentStep] = useState(() => {
+        if (typeof window === "undefined") return 0;
+        try {
+            const stored = sessionStorage.getItem("obbo-order-form");
+            if (stored) {
+                const parsed = JSON.parse(stored);
+                return parsed._orderingStep ?? 0;
+            }
+        } catch { /* ignore */ }
+        return 0;
+    });
+    const [completedSteps, setCompletedSteps] = useState<Set<number>>(() => {
+        if (typeof window === "undefined") return new Set();
+        try {
+            const stored = sessionStorage.getItem("obbo-order-form");
+            if (stored) {
+                const parsed = JSON.parse(stored);
+                return new Set(parsed._orderingCompleted ?? []);
+            }
+        } catch { /* ignore */ }
+        return new Set();
+    });
     const [errors, setErrors] = useState<Record<string, string>>({});
-    const [loading, setLoading] = useState(false);
-    const [draftLoading, setDraftLoading] = useState(false);
     const [products, setProducts] = useState<Product[]>([]);
     const [loadingProducts, setLoadingProducts] = useState(true);
-
-    // Files — not persisted
-    const [poFile, setPoFile] = useState<File | null>(null);
-    const [checkFile, setCheckFile] = useState<File | null>(null);
 
     useEffect(() => {
         createClient()
@@ -73,14 +78,10 @@ export default function NewOrderPage() {
             });
     }, []);
 
-    // Auto-generate PO number on mount
+    // Persist wizard navigation state back to sessionStorage
     useEffect(() => {
-        if (!form.po_number) {
-            generateNextPoNumber().then((po) => {
-                updateForm({ po_number: po });
-            });
-        }
-    }, []); // eslint-disable-line react-hooks/exhaustive-deps
+        updateForm({ _orderingStep: currentStep, _orderingCompleted: Array.from(completedSteps) } as Partial<typeof INITIAL_FORM>);
+    }, [currentStep, completedSteps]); // eslint-disable-line react-hooks/exhaustive-deps
 
     const updateField = useCallback(
         (field: string, value: string | boolean | number) => {
@@ -133,39 +134,6 @@ export default function NewOrderPage() {
             }
         }
 
-        if (step === 3) {
-            const result = poPaymentSchema.safeParse({
-                po_number: form.po_number,
-                po_file: poFile,
-                supplier_name: form.supplier_name,
-                payment_method: form.payment_method,
-                check_file: checkFile,
-                wants_split: form.wants_split,
-                deliver_now_jb: form.deliver_now_jb,
-                deliver_now_sb: form.deliver_now_sb,
-            });
-            if (!result.success) {
-                for (const issue of result.error.issues) {
-                    const key = issue.path[0] as string;
-                    if (!newErrors[key]) newErrors[key] = issue.message;
-                }
-            }
-            // Also validate split quantities
-            if (form.wants_split) {
-                const splitResult = getSplitSchema(form.jb_qty, form.sb_qty).safeParse({
-                    wants_split: form.wants_split,
-                    deliver_now_jb: form.deliver_now_jb,
-                    deliver_now_sb: form.deliver_now_sb,
-                });
-                if (!splitResult.success) {
-                    for (const issue of splitResult.error.issues) {
-                        const key = issue.path[0] as string;
-                        if (!newErrors[key]) newErrors[key] = issue.message;
-                    }
-                }
-            }
-        }
-
         setErrors(newErrors);
         if (Object.keys(newErrors).length > 0) {
             toast.error("Please fix the errors before continuing.");
@@ -177,12 +145,23 @@ export default function NewOrderPage() {
     function goNext() {
         if (!validateStep(currentStep)) return;
         setCompletedSteps((prev) => new Set(prev).add(currentStep));
-        setCurrentStep((s) => Math.min(s + 1, STEPS.length - 1));
+
+        if (currentStep === ORDERING_STEPS.length - 1) {
+            // Last step: proceed to submit page
+            router.push("/client/orders/new/submit");
+            return;
+        }
+
+        setCurrentStep((s: number) => Math.min(s + 1, ORDERING_STEPS.length - 1));
         setErrors({});
     }
 
     function goBack() {
-        setCurrentStep((s) => Math.max(s - 1, 0));
+        if (currentStep === 0) {
+            router.push("/client/orders");
+            return;
+        }
+        setCurrentStep((s: number) => Math.max(s - 1, 0));
         setErrors({});
     }
 
@@ -190,173 +169,6 @@ export default function NewOrderPage() {
         if (step < currentStep || completedSteps.has(step)) {
             setCurrentStep(step);
             setErrors({});
-        }
-    }
-
-    async function uploadFile(file: File, prefix: string): Promise<string> {
-        const supabase = createClient();
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) throw new Error("Not authenticated");
-
-        const ext = file.name.split(".").pop() || "jpg";
-        const timestamp = Date.now();
-        const randomId = Math.random().toString(36).substring(7);
-        const path = `${user.id}/${prefix}_${timestamp}_${randomId}.${ext}`;
-
-        const { error } = await supabase.storage
-            .from("order-attachments")
-            .upload(path, file, { upsert: true, contentType: file.type });
-        if (error) throw new Error(`Upload failed: ${error.message}`);
-
-        const { data: { publicUrl } } = supabase.storage
-            .from("order-attachments")
-            .getPublicUrl(path);
-        return publicUrl;
-    }
-
-    async function handleSubmit() {
-        setLoading(true);
-        try {
-            if (!poFile) {
-                toast.error("PO image is required.");
-                return;
-            }
-
-            // Upload PO image
-            const poImageUrl = await uploadFile(poFile, "po");
-
-            // Upload check image if payment method is check
-            let checkImageUrl: string | null = null;
-            if (form.payment_method === "check" && checkFile) {
-                checkImageUrl = await uploadFile(checkFile, "check");
-            }
-
-            // Build items
-            const items: { product_id: string; bag_type: string; requested_qty: number }[] = [];
-            const jbProduct = products.find((p) => p.bag_type === "JB");
-            const sbProduct = products.find((p) => p.bag_type === "SB");
-
-            if (form.jb_qty > 0 && jbProduct) {
-                items.push({ product_id: jbProduct.id, bag_type: "JB", requested_qty: form.jb_qty });
-            }
-            if (form.sb_qty > 0 && sbProduct) {
-                items.push({ product_id: sbProduct.id, bag_type: "SB", requested_qty: form.sb_qty });
-            }
-
-            // Calculate subtotal
-            const jbPrice = form.source === "port" ? (jbProduct?.price_port || 0) : (jbProduct?.price_warehouse || 0);
-            const sbPrice = form.source === "port" ? (sbProduct?.price_port || 0) : (sbProduct?.price_warehouse || 0);
-            const subtotal = form.jb_qty * jbPrice + form.sb_qty * sbPrice;
-
-            // Build notes
-            let notes = "";
-            if (form.service_type === "pickup" && form.preferred_pickup_date) {
-                notes = `Preferred Pick-up Date: ${form.preferred_pickup_date}`;
-            }
-            if (checkImageUrl) {
-                notes += `${notes ? "\n" : ""}Check image uploaded.`;
-            }
-
-            const orderData = {
-                source: form.source,
-                service_type: form.service_type,
-                payment_method: form.payment_method,
-                po_number: form.po_number,
-                po_image_url: poImageUrl,
-                supplier_name: form.supplier_name,
-                driver_name: form.service_type === "pickup" ? form.driver_name : null,
-                plate_number: form.service_type === "pickup" ? form.plate_number : null,
-                preferred_pickup_date: form.service_type === "pickup" ? form.preferred_pickup_date : undefined,
-                total_amount: subtotal,
-                items,
-                notes: notes.trim(),
-            };
-
-            const splitDetails = form.wants_split
-                ? {
-                      wantsSplit: true,
-                      deliverNowQty: form.deliver_now_jb + form.deliver_now_sb,
-                      deliverNowJB: form.deliver_now_jb,
-                      deliverNowSB: form.deliver_now_sb,
-                      splitNote: `Client requested ${form.deliver_now_jb + form.deliver_now_sb} bags now (${form.deliver_now_jb} JB, ${form.deliver_now_sb} SB). Service: ${form.service_type}.`,
-                  }
-                : undefined;
-
-            await submitOrder(orderData, splitDetails);
-
-            toast.success("Order submitted successfully! Pending approval.");
-            clearForm();
-            router.push("/client/orders");
-        } catch (err) {
-            const msg = err instanceof Error ? err.message : "An error occurred. Please try again.";
-            toast.error(msg);
-        } finally {
-            setLoading(false);
-        }
-    }
-
-    async function handleSaveDraft() {
-        setDraftLoading(true);
-        try {
-            if (!poFile && !form.po_number) {
-                toast.error("At least a PO number is required for a draft.");
-                return;
-            }
-
-            let poImageUrl: string | undefined;
-            if (poFile) {
-                poImageUrl = await uploadFile(poFile, "po");
-            }
-
-            const items: { product_id: string; bag_type: string; requested_qty: number }[] = [];
-            const jbProduct = products.find((p) => p.bag_type === "JB");
-            const sbProduct = products.find((p) => p.bag_type === "SB");
-
-            if (form.jb_qty > 0 && jbProduct) {
-                items.push({ product_id: jbProduct.id, bag_type: "JB", requested_qty: form.jb_qty });
-            }
-            if (form.sb_qty > 0 && sbProduct) {
-                items.push({ product_id: sbProduct.id, bag_type: "SB", requested_qty: form.sb_qty });
-            }
-
-            const jbPrice = form.source === "port" ? (jbProduct?.price_port || 0) : (jbProduct?.price_warehouse || 0);
-            const sbPrice = form.source === "port" ? (sbProduct?.price_port || 0) : (sbProduct?.price_warehouse || 0);
-            const subtotal = form.jb_qty * jbPrice + form.sb_qty * sbPrice;
-
-            const orderData = {
-                source: form.source,
-                service_type: form.service_type,
-                payment_method: form.payment_method,
-                po_number: form.po_number,
-                po_image_url: poImageUrl,
-                supplier_name: form.supplier_name,
-                driver_name: form.service_type === "pickup" ? form.driver_name : null,
-                plate_number: form.service_type === "pickup" ? form.plate_number : null,
-                preferred_pickup_date: form.service_type === "pickup" ? form.preferred_pickup_date : undefined,
-                total_amount: subtotal,
-                items,
-                notes: "",
-            };
-
-            const splitDetails = form.wants_split
-                ? {
-                      wantsSplit: true,
-                      deliverNowQty: form.deliver_now_jb + form.deliver_now_sb,
-                      deliverNowJB: form.deliver_now_jb,
-                      deliverNowSB: form.deliver_now_sb,
-                  }
-                : undefined;
-
-            await saveOrderDraft(orderData, splitDetails);
-
-            toast.success("Order saved as draft.");
-            clearForm();
-            router.push("/client/orders");
-        } catch (err) {
-            const msg = err instanceof Error ? err.message : "Failed to save draft.";
-            toast.error(msg);
-        } finally {
-            setDraftLoading(false);
         }
     }
 
@@ -388,19 +200,17 @@ export default function NewOrderPage() {
             <div>
                 <h2 className="text-2xl font-bold tracking-tight">Place New Order</h2>
                 <p className="text-muted-foreground mt-1">
-                    Complete the steps below to submit your cement order.
+                    Select your products, source, and service type to proceed.
                 </p>
             </div>
 
-            {/* Step Indicator */}
             <StepIndicator
-                steps={STEPS}
+                steps={ORDERING_STEPS}
                 currentStep={currentStep}
                 completedSteps={completedSteps}
                 onStepClick={goToStep}
             />
 
-            {/* Step Content */}
             <div className="relative overflow-hidden">
                 <div key={currentStep} className="animate-slide-in-right">
                     {currentStep === 0 && (
@@ -433,77 +243,28 @@ export default function NewOrderPage() {
                             errors={errors}
                         />
                     )}
-                    {currentStep === 3 && (
-                        <StepPoPayment
-                            form={form}
-                            files={{ po_file: poFile, check_file: checkFile }}
-                            onFieldChange={updateField}
-                            onFileChange={(field, file) => {
-                                if (field === "po_file") setPoFile(file);
-                                else setCheckFile(file);
-                            }}
-                            errors={errors}
-                            totalJB={form.jb_qty}
-                            totalSB={form.sb_qty}
-                            totalIndividualBags={form.jb_qty * 25 + form.sb_qty * 50}
-                        />
-                    )}
-                    {currentStep === 4 && (
-                        <StepOrderReview
-                            form={form}
-                            files={{ po_file: poFile, check_file: checkFile }}
-                            products={products}
-                            onEditStep={goToStep}
-                            onSubmit={handleSubmit}
-                            onSaveDraft={handleSaveDraft}
-                            loading={loading}
-                            draftLoading={draftLoading}
-                        />
-                    )}
                 </div>
             </div>
 
-            {/* Navigation Buttons — hidden on review step */}
-            {currentStep < 4 && (
-                <div className="flex justify-between pt-2">
-                    {currentStep > 0 ? (
-                        <Button
-                            type="button"
-                            variant="outline"
-                            className="h-11 gap-1"
-                            onClick={goBack}
-                        >
-                            <ChevronLeft className="w-4 h-4" />
-                            Back
-                        </Button>
-                    ) : (
-                        <div />
-                    )}
-                    <Button
-                        type="button"
-                        className="h-11 gap-2 bg-primary text-primary-foreground font-semibold hover:bg-primary/90"
-                        onClick={goNext}
-                    >
-                        Continue
-                        <ChevronRight className="w-4 h-4" />
-                    </Button>
-                </div>
-            )}
-
-            {/* Back button on review step */}
-            {currentStep === 4 && (
-                <div className="flex justify-start">
-                    <Button
-                        type="button"
-                        variant="outline"
-                        className="h-11 gap-1"
-                        onClick={goBack}
-                    >
-                        <ChevronLeft className="w-4 h-4" />
-                        Back
-                    </Button>
-                </div>
-            )}
+            <div className="flex justify-between pt-2">
+                <Button
+                    type="button"
+                    variant="outline"
+                    className="h-11 gap-1"
+                    onClick={goBack}
+                >
+                    <ChevronLeft className="w-4 h-4" />
+                    {currentStep === 0 ? "Back to Orders" : "Back"}
+                </Button>
+                <Button
+                    type="button"
+                    className="h-11 gap-2 bg-primary text-primary-foreground font-semibold hover:bg-primary/90"
+                    onClick={goNext}
+                >
+                    {currentStep === ORDERING_STEPS.length - 1 ? "Proceed to Submit POs" : "Continue"}
+                    <ChevronRight className="w-4 h-4" />
+                </Button>
+            </div>
         </div>
     );
 }

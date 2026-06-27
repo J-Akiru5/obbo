@@ -55,6 +55,17 @@ export async function proxy(request: NextRequest) {
             role = profile?.role;
         }
 
+        // Restrict orders routes to Warehouse Manager strictly
+        if (pathname === '/admin/orders' || pathname.startsWith('/admin/orders/')) {
+            if (role !== 'warehouse_manager') {
+                if (role === 'admin') {
+                    return NextResponse.redirect(new URL('/admin/dashboard', request.url));
+                } else {
+                    return NextResponse.redirect(new URL('/client/dashboard', request.url));
+                }
+            }
+        }
+
         if (role !== 'admin' && role !== 'warehouse_manager') {
             return NextResponse.redirect(new URL('/client/dashboard', request.url));
         }

@@ -9,12 +9,15 @@ import {
 } from "lucide-react";
 import { Command } from "cmdk";
 import { Button } from "@/components/ui/button";
+import { createClient } from "@/lib/supabase/client";
 
 export function GlobalSearch() {
   const [open, setOpen] = React.useState(false);
   const router = useRouter();
   const pathname = usePathname();
   const isClient = pathname?.startsWith("/client");
+
+  const [role, setRole] = React.useState<string | null>(null);
 
   React.useEffect(() => {
     const down = (e: KeyboardEvent) => {
@@ -26,6 +29,22 @@ export function GlobalSearch() {
 
     document.addEventListener("keydown", down);
     return () => document.removeEventListener("keydown", down);
+  }, []);
+
+  React.useEffect(() => {
+    const supabase = createClient();
+    supabase.auth.getUser().then(({ data }) => {
+      if (data.user) {
+        supabase
+          .from("profiles")
+          .select("role")
+          .eq("id", data.user.id)
+          .single()
+          .then(({ data: profile }) => {
+            setRole(profile?.role || null);
+          });
+      }
+    });
   }, []);
 
   const runCommand = React.useCallback((command: () => void) => {
@@ -90,13 +109,15 @@ export function GlobalSearch() {
               </Command.Group>
 
               <Command.Group heading="Inventory & Orders" className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">
-                <Command.Item 
-                    onSelect={() => runCommand(() => router.push("/admin/orders?tab=new"))}
-                    className="flex items-center gap-2 rounded-sm px-2 py-2 text-sm text-foreground hover:bg-accent hover:text-accent-foreground cursor-pointer outline-none data-[selected=true]:bg-accent data-[selected=true]:text-accent-foreground"
-                >
-                  <FileText className="h-4 w-4" />
-                  <span>New Order Requests</span>
-                </Command.Item>
+                {role === "warehouse_manager" && (
+                  <Command.Item 
+                      onSelect={() => runCommand(() => router.push("/admin/orders?tab=new"))}
+                      className="flex items-center gap-2 rounded-sm px-2 py-2 text-sm text-foreground hover:bg-accent hover:text-accent-foreground cursor-pointer outline-none data-[selected=true]:bg-accent data-[selected=true]:text-accent-foreground"
+                  >
+                    <FileText className="h-4 w-4" />
+                    <span>New Order Requests</span>
+                  </Command.Item>
+                )}
                 <Command.Item 
                     onSelect={() => runCommand(() => router.push("/admin/inventory?tab=shipments"))}
                     className="flex items-center gap-2 rounded-sm px-2 py-2 text-sm text-foreground hover:bg-accent hover:text-accent-foreground cursor-pointer outline-none data-[selected=true]:bg-accent data-[selected=true]:text-accent-foreground"

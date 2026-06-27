@@ -248,6 +248,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     const [notifOpen, setNotifOpen] = useState(false);
     const [pendingOrderCount, setPendingOrderCount] = useState(0);
     const [pendingKycCount, setPendingKycCount] = useState(0);
+    const [userId, setUserId] = useState<string | null>(null);
 
     const loadNotifications = useCallback(async () => {
         try {
@@ -286,6 +287,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         const supabase = createClient();
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
+            setUserId(user.id);
             const { data: profile } = await supabase
                 .from("profiles")
                 .select("full_name, role, avatar_url")
@@ -333,57 +335,56 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         fetchPendingCounts();
 
         window.addEventListener("profile-updated", fetchProfile);
-
-        let channel: any;
-        const supabase = createClient();
-        const setupSubscription = async () => {
-            const { data: { user } } = await supabase.auth.getUser();
-            if (!user) return;
-
-            channel = supabase
-                .channel(`admin-notifications-${user.id}`)
-                .on(
-                    "postgres_changes", 
-                    { 
-                        event: "*", 
-                        schema: "public", 
-                        table: "notifications",
-                    }, 
-                    () => {
-                        loadNotifications();
-                    }
-                )
-                .on(
-                    "postgres_changes",
-                    {
-                        event: "*",
-                        schema: "public",
-                        table: "orders",
-                    },
-                    () => {
-                        fetchPendingCounts();
-                    }
-                )
-                .on(
-                    "postgres_changes",
-                    {
-                        event: "*",
-                        schema: "public",
-                        table: "profiles",
-                    },
-                    () => {
-                        fetchPendingCounts();
-                    }
-                )
-                .subscribe();
-        };
-
-        setupSubscription();
         return () => { 
-            if (channel) supabase.removeChannel(channel); 
             window.removeEventListener("profile-updated", fetchProfile);
         };
     }, [loadNotifications, fetchProfile, fetchPendingCounts]);
+
+    useEffect(() => {
+        if (!userId) return;
+
+        const supabase = createClient();
+        const channel = supabase
+            .channel(`admin-notifications-${userId}`)
+            .on(
+                "postgres_changes", 
+                { 
+                    event: "*", 
+                    schema: "public", 
+                    table: "notifications",
+                }, 
+                () => {
+                    loadNotifications();
+                }
+            )
+            .on(
+                "postgres_changes",
+                {
+                    event: "*",
+                    schema: "public",
+                    table: "orders",
+                },
+                () => {
+                    fetchPendingCounts();
+                }
+            )
+            .on(
+                "postgres_changes",
+                {
+                    event: "*",
+                    schema: "public",
+                    table: "profiles",
+                },
+                () => {
+                    fetchPendingCounts();
+                }
+            )
+            .subscribe();
+
+        return () => { 
+            supabase.removeChannel(channel); 
+        };
+    }, [userId, loadNotifications, fetchPendingCounts]);
 
     const markAllRead = async () => {
         try {

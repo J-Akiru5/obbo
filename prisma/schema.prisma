@@ -94,28 +94,34 @@ model Shipment {
 }
 
 model ShipmentLedger {
-  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  shipmentId      String   @db.Uuid @map("shipment_id")
-  date            DateTime @default(dbgenerated("CURRENT_DATE")) @db.Date
-  poNumber        String?  @map("po_number")
-  drNumber        String?  @map("dr_number")
-  clientName      String?  @map("client_name")
-  driverName      String?  @map("driver_name")
-  plateNumber     String?  @map("plate_number")
-  destination     String?
-  serviceType     String?  @map("service_type")
-  jb              Int      @default(0)
-  sb              Int      @default(0)
-  paymentMethod   String?  @map("payment_method")
-  checkNumber     String?  @map("check_number")
-  amount          Decimal? @db.Decimal(14, 2)
-  bagsReturned    Int      @default(0) @map("bags_returned")
-  bagReturnedType String?  @map("bag_returned_type")
-  returnReason    String   @default("return") @map("return_reason")
-  clientReason    String?  @map("client_reason")
-  notes           String?
-  createdAt       DateTime @default(now()) @db.Timestamptz(6) @map("created_at")
-  updatedAt       DateTime @default(now()) @db.Timestamptz(6) @map("updated_at")
+  id                  String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  shipmentId          String   @db.Uuid @map("shipment_id")
+  date                DateTime @default(dbgenerated("CURRENT_DATE")) @db.Date
+  poNumber            String?  @map("po_number")
+  drNumber            String?  @map("dr_number")
+  clientName          String?  @map("client_name")
+  driverName          String?  @map("driver_name")
+  plateNumber         String?  @map("plate_number")
+  destination         String?
+  serviceType         String?  @map("service_type")
+  jb                  Int      @default(0)
+  sb                  Int      @default(0)
+  paymentMethod       String?  @map("payment_method")
+  checkNumber         String?  @map("check_number")
+  amount              Decimal? @db.Decimal(14, 2)
+  bagsReturned        Int      @default(0) @map("bags_returned")
+  bagReturnedType     String?  @map("bag_returned_type")
+  returnReason        String   @default("return") @map("return_reason")
+  clientReason        String?  @map("client_reason")
+  notes               String?
+  totalSales          Decimal? @default(0) @db.Decimal(14, 2) @map("total_sales")
+  grossProfit         Decimal? @default(0) @db.Decimal(14, 2) @map("gross_profit")
+  netProfit           Decimal? @default(0) @db.Decimal(14, 2) @map("net_profit")
+  sellingPricePerBag  Decimal? @db.Decimal(10, 2) @map("selling_price_per_bag")
+  landedCostPerBag    Decimal? @db.Decimal(10, 2) @map("landed_cost_per_bag")
+  localExpensesPerBag Decimal? @db.Decimal(10, 2) @map("local_expenses_per_bag")
+  createdAt           DateTime @default(now()) @db.Timestamptz(6) @map("created_at")
+  updatedAt           DateTime @default(now()) @db.Timestamptz(6) @map("updated_at")
 
   shipment Shipment @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
 

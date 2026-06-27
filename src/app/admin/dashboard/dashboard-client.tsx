@@ -62,11 +62,12 @@ export default function DashboardClient({
 
     const loadData = useCallback(async () => {
         try {
+            const isAdmin = userRole === "admin";
             const [kpiData, feed, ships, pOrders] = await Promise.all([
                 fetchDashboardKPIs(),
                 fetchActivityFeed(20),
-                fetchShipments(),
-                fetchOrders("pending")
+                isAdmin ? Promise.resolve([]) : fetchShipments(),
+                isAdmin ? Promise.resolve([]) : fetchOrders("pending")
             ]);
             setKpis(kpiData);
             setActivityFeed(feed as ActivityLog[]);
@@ -75,7 +76,7 @@ export default function DashboardClient({
         } catch (e) {
             console.error("Dashboard reload error:", e);
         }
-    }, []);
+    }, [userRole]);
 
     useEffect(() => {
         const supabase = createClient();

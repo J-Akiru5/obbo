@@ -23,12 +23,13 @@ export default async function AdminDashboardPage() {
         userRole = profile?.role || null;
     }
 
-    // 2. Fetch all data in parallel on the server
+    // 2. Fetch data in parallel on the server (skip order data for admin role)
+    const isAdmin = userRole === "admin";
     const [kpiData, feed, ships, pOrders] = await Promise.all([
         fetchDashboardKPIs(),
         fetchActivityFeed(20),
-        fetchShipments(),
-        fetchOrders("pending")
+        isAdmin ? Promise.resolve([]) : fetchShipments(),
+        isAdmin ? Promise.resolve([]) : fetchOrders("pending")
     ]);
 
     return (
