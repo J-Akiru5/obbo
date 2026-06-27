@@ -9,12 +9,12 @@
     "lint": "eslint",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:e2e": "playwright test",
+    "postinstall": "npx playwright install chromium --with-deps",
     "admin:create": "node scripts/create-admin.mjs",
     "seed:all": "node scripts/seed-mock-data.mjs && node scripts/seed-shipments.mjs && node scripts/seed-transactions.mjs",
-    "prisma:generate": "prisma generate",
-    "prisma:migrate:prod": "prisma migrate deploy",
-    "prisma:db:push": "prisma db push --no-erase",
-    "seed:historical": "node scripts/seed-historical-po-dr.mjs"
+    "seed:historical": "node scripts/seed-historical-po-dr.mjs",
+    "prepare": "husky"
   },
   "dependencies": {
     "@base-ui/react": "^1.4.1",
@@ -49,6 +49,9 @@
     "zustand": "^5.0.12"
   },
   "devDependencies": {
+    "@commitlint/cli": "^21.1.0",
+    "@commitlint/config-conventional": "^21.1.0",
+    "@playwright/test": "^1.61.1",
     "@prisma/adapter-pg": "^7.8.0",
     "@tailwindcss/postcss": "^4",
     "@testing-library/jest-dom": "^6.9.1",
@@ -60,8 +63,12 @@
     "@vitejs/plugin-react": "^6.0.2",
     "eslint": "^9",
     "eslint-config-next": "16.2.4",
+    "husky": "^9.1.7",
     "jsdom": "^29.1.1",
+    "lint-staged": "^17.0.8",
     "pg": "^8.22.0",
+    "prettier": "^3.8.5",
+    "prettier-plugin-tailwindcss": "^0.8.0",
     "prisma": "^7.8.0",
     "tailwindcss": "^4",
     "typescript": "^5",

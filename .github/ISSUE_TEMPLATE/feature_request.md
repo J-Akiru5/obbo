@@ -1,0 +1,15 @@
+---
+name: Feature Request
+title: '[Feature] '
+labels: enhancement
+---
+
+## Problem
+
+<!-- What problem does this feature solve? -->
+
+## Proposed Solution
+
+## Alternatives Considered
+
+## Additional Context

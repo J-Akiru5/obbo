@@ -157,6 +157,12 @@ create table if not exists public.shipment_ledger (
   return_reason     text not null default 'return' check (return_reason in ('return', 'waste', 'damage')),
   client_reason     text,
   notes             text,
+  total_sales            numeric(14, 2) default 0,
+  gross_profit           numeric(14, 2) default 0,
+  net_profit             numeric(14, 2) default 0,
+  selling_price_per_bag  numeric(10, 2),
+  landed_cost_per_bag    numeric(10, 2),
+  local_expenses_per_bag numeric(10, 2),
   created_at        timestamptz not null default now(),
   updated_at        timestamptz not null default now()
 );
@@ -173,6 +179,12 @@ alter table public.shipment_ledger add column if not exists return_reason     te
 alter table public.shipment_ledger drop constraint if exists shipment_ledger_return_reason_check;
 alter table public.shipment_ledger add constraint shipment_ledger_return_reason_check check (return_reason in ('return', 'waste', 'damage'));
 alter table public.shipment_ledger add column if not exists client_reason     text;
+alter table public.shipment_ledger add column if not exists total_sales            numeric(14, 2) default 0;
+alter table public.shipment_ledger add column if not exists gross_profit           numeric(14, 2) default 0;
+alter table public.shipment_ledger add column if not exists net_profit             numeric(14, 2) default 0;
+alter table public.shipment_ledger add column if not exists selling_price_per_bag  numeric(10, 2);
+alter table public.shipment_ledger add column if not exists landed_cost_per_bag    numeric(10, 2);
+alter table public.shipment_ledger add column if not exists local_expenses_per_bag numeric(10, 2);
 
 
 -- ── DELIVERY RECEIPTS ────────────────────────────────────────
