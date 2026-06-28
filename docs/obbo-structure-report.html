@@ -1,0 +1,1259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OBBO iManage -- Project Structure Report</title>
+<style>
+  :root {
+    --blue-50: #eff6ff;
+    --blue-100: #dbeafe;
+    --blue-200: #bfdbfe;
+    --blue-600: #2563eb;
+    --blue-700: #1d4ed8;
+    --blue-800: #1e40af;
+    --blue-900: #1e3a5f;
+    --yellow-400: #facc15;
+    --yellow-500: #eab308;
+    --slate-50: #f8fafc;
+    --slate-100: #f1f5f9;
+    --slate-200: #e2e8f0;
+    --slate-300: #cbd5e1;
+    --slate-400: #94a3b8;
+    --slate-500: #64748b;
+    --slate-600: #475569;
+    --slate-700: #334155;
+    --slate-800: #1e293b;
+    --slate-900: #0f172a;
+    --green-600: #16a34a;
+    --green-100: #dcfce7;
+    --amber-600: #d97706;
+    --amber-100: #fef3c7;
+    --red-600: #dc2626;
+    --red-100: #fee2e2;
+    --font-mono: 'SF Mono', 'Cascadia Code', 'Fira Code', Consolas, monospace;
+    --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, Roboto, sans-serif;
+    --sidebar-w: 280px;
+    --radius: 8px;
+    --shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
+    --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -2px rgba(0,0,0,0.1);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html { scroll-behavior: smooth; scroll-padding-top: 24px; }
+
+  body {
+    font-family: var(--font-sans);
+    color: var(--slate-800);
+    background: var(--slate-50);
+    line-height: 1.6;
+    font-size: 15px;
+  }
+
+  /* Sidebar */
+  .sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: var(--sidebar-w);
+    height: 100vh;
+    background: var(--slate-900);
+    color: var(--slate-300);
+    overflow-y: auto;
+    z-index: 100;
+    padding: 0;
+    scrollbar-width: thin;
+    scrollbar-color: var(--slate-700) transparent;
+  }
+
+  .sidebar::-webkit-scrollbar { width: 6px; }
+  .sidebar::-webkit-scrollbar-thumb { background: var(--slate-700); border-radius: 3px; }
+
+  .sidebar-header {
+    padding: 24px 20px 16px;
+    border-bottom: 1px solid var(--slate-800);
+    background: linear-gradient(135deg, var(--blue-900), var(--slate-900));
+  }
+
+  .sidebar-header h1 {
+    font-size: 18px;
+    font-weight: 700;
+    color: #fff;
+    letter-spacing: -0.02em;
+  }
+
+  .sidebar-header .subtitle {
+    font-size: 12px;
+    color: var(--slate-400);
+    margin-top: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .sidebar-header .version {
+    display: inline-block;
+    background: var(--blue-800);
+    color: var(--blue-200);
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 10px;
+    margin-top: 8px;
+    font-weight: 600;
+  }
+
+  .sidebar nav { padding: 12px 0; }
+
+  .sidebar nav a {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 20px;
+    color: var(--slate-400);
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 500;
+    transition: all 0.15s;
+    border-left: 3px solid transparent;
+  }
+
+  .sidebar nav a:hover {
+    color: #fff;
+    background: rgba(255,255,255,0.05);
+  }
+
+  .sidebar nav a.active {
+    color: #fff;
+    background: rgba(37,99,235,0.15);
+    border-left-color: var(--blue-600);
+  }
+
+  .sidebar nav a .num {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--slate-600);
+    min-width: 20px;
+  }
+
+  /* Main Content */
+  .main {
+    margin-left: var(--sidebar-w);
+    padding: 32px 48px 80px;
+    max-width: 960px;
+  }
+
+  .page-header {
+    margin-bottom: 40px;
+    padding-bottom: 24px;
+    border-bottom: 2px solid var(--slate-200);
+  }
+
+  .page-header h1 {
+    font-size: 32px;
+    font-weight: 800;
+    color: var(--slate-900);
+    letter-spacing: -0.03em;
+    line-height: 1.2;
+  }
+
+  .page-header .meta {
+    display: flex;
+    gap: 16px;
+    margin-top: 12px;
+    font-size: 13px;
+    color: var(--slate-500);
+  }
+
+  .page-header .meta span {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  /* Sections */
+  .section {
+    margin-bottom: 32px;
+    border: 1px solid var(--slate-200);
+    border-radius: var(--radius);
+    background: #fff;
+    box-shadow: var(--shadow-sm);
+    overflow: hidden;
+  }
+
+  .section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px;
+    cursor: pointer;
+    user-select: none;
+    background: var(--slate-50);
+    border-bottom: 1px solid var(--slate-200);
+    transition: background 0.15s;
+  }
+
+  .section-header:hover { background: var(--slate-100); }
+
+  .section-header h2 {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--slate-900);
+    letter-spacing: -0.02em;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .section-header h2 .sec-num {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    color: var(--blue-600);
+    background: var(--blue-50);
+    padding: 2px 8px;
+    border-radius: 6px;
+    font-weight: 600;
+  }
+
+  .section-header .toggle {
+    font-size: 20px;
+    color: var(--slate-400);
+    transition: transform 0.2s;
+    line-height: 1;
+  }
+
+  .section.collapsed .section-header .toggle { transform: rotate(-90deg); }
+  .section.collapsed .section-body { display: none; }
+
+  .section-body { padding: 20px; }
+  .section-body > *:last-child { margin-bottom: 0; }
+
+  /* Typography */
+  h3 {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--slate-800);
+    margin: 20px 0 10px;
+    letter-spacing: -0.01em;
+  }
+
+  h3:first-child { margin-top: 0; }
+
+  p { margin-bottom: 12px; color: var(--slate-700); }
+
+  /* Tables */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+    margin-bottom: 16px;
+  }
+
+  thead th {
+    background: var(--slate-100);
+    color: var(--slate-600);
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 11px;
+    letter-spacing: 0.05em;
+    padding: 10px 12px;
+    text-align: left;
+    border-bottom: 2px solid var(--slate-200);
+  }
+
+  tbody td {
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--slate-100);
+    color: var(--slate-700);
+    vertical-align: top;
+  }
+
+  tbody tr:hover { background: var(--slate-50); }
+
+  td code, p code, li code {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    background: var(--slate-100);
+    color: var(--blue-700);
+    padding: 2px 6px;
+    border-radius: 4px;
+    border: 1px solid var(--slate-200);
+  }
+
+  /* File Tree */
+  .tree {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    line-height: 1.8;
+    background: var(--slate-900);
+    color: var(--slate-300);
+    padding: 20px;
+    border-radius: var(--radius);
+    overflow-x: auto;
+    margin-bottom: 16px;
+    border: 1px solid var(--slate-700);
+  }
+
+  .tree .dir { color: var(--blue-200); font-weight: 600; }
+  .tree .file { color: var(--slate-400); }
+  .tree .comment { color: var(--slate-600); font-style: italic; }
+  .tree .highlight { color: var(--yellow-400); font-weight: 600; }
+
+  /* Lists */
+  ul, ol {
+    margin: 0 0 12px 20px;
+    color: var(--slate-700);
+  }
+
+  li { margin-bottom: 4px; }
+
+  /* Badges */
+  .badge {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+  }
+
+  .badge-blue { background: var(--blue-100); color: var(--blue-700); }
+  .badge-green { background: var(--green-100); color: var(--green-600); }
+  .badge-amber { background: var(--amber-100); color: var(--amber-600); }
+  .badge-red { background: var(--red-100); color: var(--red-600); }
+  .badge-slate { background: var(--slate-100); color: var(--slate-600); }
+
+  /* Stats Grid */
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+
+  .stat-card {
+    background: var(--slate-50);
+    border: 1px solid var(--slate-200);
+    border-radius: var(--radius);
+    padding: 16px;
+    text-align: center;
+  }
+
+  .stat-card .value {
+    font-size: 28px;
+    font-weight: 800;
+    color: var(--blue-700);
+    line-height: 1;
+    font-family: var(--font-mono);
+  }
+
+  .stat-card .label {
+    font-size: 12px;
+    color: var(--slate-500);
+    margin-top: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    font-weight: 600;
+  }
+
+  /* Capability List */
+  .capabilities {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+
+  .capability {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 12px;
+    background: var(--slate-50);
+    border: 1px solid var(--slate-200);
+    border-radius: var(--radius);
+  }
+
+  .capability .icon {
+    font-size: 18px;
+    line-height: 1;
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+
+  .capability .text {
+    font-size: 13px;
+    color: var(--slate-700);
+  }
+
+  .capability .text strong { color: var(--slate-900); }
+
+  /* Observation Cards */
+  .observation {
+    display: flex;
+    gap: 12px;
+    padding: 12px;
+    border-radius: var(--radius);
+    margin-bottom: 8px;
+    border: 1px solid var(--slate-200);
+    background: #fff;
+  }
+
+  .observation .obs-num {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--slate-400);
+    flex-shrink: 0;
+    width: 24px;
+    text-align: center;
+  }
+
+  .observation .obs-text {
+    font-size: 13px;
+    color: var(--slate-700);
+  }
+
+  .observation .obs-text strong { color: var(--slate-900); }
+
+  /* Responsive */
+  @media (max-width: 900px) {
+    .sidebar { display: none; }
+    .main { margin-left: 0; padding: 20px 16px 60px; }
+    .stats-grid { grid-template-columns: repeat(2, 1fr); }
+    .capabilities { grid-template-columns: 1fr; }
+  }
+
+  /* Print */
+  @media print {
+    .sidebar { display: none; }
+    .main { margin-left: 0; }
+    .section.collapsed .section-body { display: block !important; }
+    .section-header .toggle { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Sidebar -->
+<aside class="sidebar">
+  <div class="sidebar-header">
+    <h1>OBBO iManage</h1>
+    <div class="subtitle">Structure Report</div>
+    <span class="version">v0.1.0</span>
+  </div>
+  <nav>
+    <a href="#overview"><span class="num">01</span> Overview</a>
+    <a href="#tech-stack"><span class="num">02</span> Tech Stack</a>
+    <a href="#directory"><span class="num">03</span> Directory Structure</a>
+    <a href="#app-router"><span class="num">04</span> App Router Architecture</a>
+    <a href="#portals"><span class="num">05</span> Dual-Portal Design</a>
+    <a href="#components"><span class="num">06</span> Component Library</a>
+    <a href="#data-layer"><span class="num">07</span> Data Layer</a>
+    <a href="#auth"><span class="num">08</span> Authentication &amp; Security</a>
+    <a href="#state"><span class="num">09</span> State Management</a>
+    <a href="#utilities"><span class="num">10</span> Utilities &amp; Services</a>
+    <a href="#config"><span class="num">11</span> Configuration Files</a>
+    <a href="#scripts"><span class="num">12</span> Scripts &amp; Tooling</a>
+    <a href="#testing"><span class="num">13</span> Testing</a>
+    <a href="#design"><span class="num">14</span> Design System &amp; Agents</a>
+    <a href="#observations"><span class="num">15</span> Key Observations</a>
+  </nav>
+</aside>
+
+<!-- Main Content -->
+<div class="main">
+
+  <div class="page-header">
+    <h1>OBBO iManage &mdash; Project Structure Report</h1>
+    <div class="meta">
+      <span>Generated: June 6, 2026</span>
+      <span>Version: 0.1.0</span>
+      <span>136 source files</span>
+      <span>24 routes</span>
+      <span>14 data models</span>
+    </div>
+  </div>
+
+  <!-- 1. Overview -->
+  <div class="section" id="overview">
+    <div class="section-header" onclick="toggleSection(this)">
+      <h2><span class="sec-num">01</span> Overview</h2>
+      <span class="toggle">&#9662;</span>
+    </div>
+    <div class="section-body">
+      <p><strong>OBBO iManage</strong> is a cloud-based ordering, inventory, and sales management platform designed for cement distribution operations. It provides role-based access for three user types: <strong>admins</strong>, <strong>warehouse managers</strong>, and <strong>clients</strong>.</p>
+
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="value">24</div>
+          <div class="label">Page Routes</div>
+        </div>
+        <div class="stat-card">
+          <div class="value">14</div>
+          <div class="label">Data Models</div>
+        </div>
+        <div class="stat-card">
+          <div class="value">136</div>
+          <div class="label">Source Files</div>
+        </div>
+        <div class="stat-card">
+          <div class="value">21</div>
+          <div class="label">UI Components</div>
+        </div>
+        <div class="stat-card">
+          <div class="value">3</div>
+          <div class="label">User Roles</div>
+        </div>
+        <div class="stat-card">
+          <div class="value">3</div>
+          <div class="label">API Routes</div>
+        </div>
+      </div>
+
+      <table>
+        <thead><tr><th>Property</th><th>Value</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Name</strong></td><td><code>obbo-imanage</code></td></tr>
+          <tr><td><strong>Version</strong></td><td>0.1.0</td></tr>
+          <tr><td><strong>Deployment</strong></td><td>Vercel (<code>obbo-imanage.vercel.app</code>)</td></tr>
+          <tr><td><strong>Architecture</strong></td><td>Next.js App Router (standalone)</td></tr>
+          <tr><td><strong>Database</strong></td><td>PostgreSQL via Supabase</td></tr>
+          <tr><td><strong>Auth Provider</strong></td><td>Supabase Auth</td></tr>
+          <tr><td><strong>PWA</strong></td><td>Enabled (Serwist service worker)</td></tr>
+        </tbody>
+      </table>
+
+      <h3>Core Capabilities</h3>
+      <div class="capabilities">
+        <div class="capability"><span class="icon">&#128230;</span><div class="text"><strong>Order Management</strong> &mdash; Multi-step wizard, approval workflow, split delivery, tracking</div></div>
+        <div class="capability"><span class="icon">&#128200;</span><div class="text"><strong>Inventory Tracking</strong> &mdash; Shipments, POs, DRs, warehouse reports</div></div>
+        <div class="capability"><span class="icon">&#128100;</span><div class="text"><strong>Client Portal</strong> &mdash; KYC-gated access, catalog, order placement, balance ledger</div></div>
+        <div class="capability"><span class="icon">&#128202;</span><div class="text"><strong>Admin Dashboard</strong> &mdash; KPIs, client management, product CRUD, financial reports</div></div>
+        <div class="capability"><span class="icon">&#128276;</span><div class="text"><strong>Real-time Notifications</strong> &mdash; Supabase Realtime across both portals</div></div>
+        <div class="capability"><span class="icon">&#128196;</span><div class="text"><strong>Report Generation</strong> &mdash; PDF (jsPDF) and Excel (SheetJS) export</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2. Tech Stack -->
+  <div class="section" id="tech-stack">
+    <div class="section-header" onclick="toggleSection(this)">
+      <h2><span class="sec-num">02</span> Tech Stack</h2>
+      <span class="toggle">&#9662;</span>
+    </div>
+    <div class="section-body">
+      <h3>Runtime &amp; Framework</h3>
+      <table>
+        <thead><tr><th>Technology</th><th>Version</th><th>Purpose</th></tr></thead>
+        <tbody>
+          <tr><td>Next.js</td><td><code>16.2.4</code></td><td>Full-stack React framework (App Router)</td></tr>
+          <tr><td>React</td><td><code>19.2.4</code></td><td>UI library</td></tr>
+          <tr><td>TypeScript</td><td><code>^5</code></td><td>Type-safe JavaScript</td></tr>
+        </tbody>
+      </table>
+
+      <h3>Styling &amp; UI</h3>
+      <table>
+        <thead><tr><th>Technology</th><th>Version</th><th>Purpose</th></tr></thead>
+        <tbody>
+          <tr><td>Tailwind CSS</td><td><code>v4</code></td><td>Utility-first CSS (PostCSS plugin)</td></tr>
+          <tr><td>shadcn/ui</td><td><code>^4.5.0</code></td><td>Component library (base-nova style)</td></tr>
+          <tr><td>@base-ui/react</td><td><code>^1.4.1</code></td><td>Component primitives</td></tr>
+          <tr><td>Lucide React</td><td><code>^1.11.0</code></td><td>Icon library</td></tr>
+          <tr><td>Motion</td><td><code>^12.38.0</code></td><td>Animations (Framer Motion successor)</td></tr>
+          <tr><td>next-themes</td><td><code>^0.4.6</code></td><td>Dark/light theme switching</td></tr>
+          <tr><td>class-variance-authority</td><td><code>^0.7.1</code></td><td>Component variant management</td></tr>
+        </tbody>
+      </table>
+
+      <h3>Data &amp; Backend</h3>
+      <table>
+        <thead><tr><th>Technology</th><th>Version</th><th>Purpose</th></tr></thead>
+        <tbody>
+          <tr><td>Supabase JS</td><td><code>^2.104.1</code></td><td>Database client, auth, realtime, storage</td></tr>
+          <tr><td>@supabase/ssr</td><td><code>^0.10.2</code></td><td>Server-side Supabase with cookie sessions</td></tr>
+          <tr><td>Prisma</td><td><code>^7.8.0</code></td><td>ORM (type generation + schema docs)</td></tr>
+          <tr><td>PostgreSQL</td><td>&mdash;</td><td>Primary database (via Supabase)</td></tr>
+        </tbody>
+      </table>
+
+      <h3>Forms &amp; Validation</h3>
+      <table>
+        <thead><tr><th>Technology</th><th>Version</th><th>Purpose</th></tr></thead>
+        <tbody>
+          <tr><td>React Hook Form</td><td><code>^7.73.1</code></td><td>Form state management</td></tr>
+          <tr><td>Zod</td><td><code>^4.3.6</code></td><td>Schema validation</td></tr>
+          <tr><td>@hookform/resolvers</td><td><code>^5.2.2</code></td><td>RHF + Zod integration</td></tr>
+        </tbody>
+      </table>
+
+      <h3>Data Visualization &amp; Export</h3>
+      <table>
+        <thead><tr><th>Technology</th><th>Version</th><th>Purpose</th></tr></thead>
+        <tbody>
+          <tr><td>Recharts</td><td><code>^3.8.1</code></td><td>Chart components</td></tr>
+          <tr><td>jsPDF</td><td><code>^4.2.1</code></td><td>PDF generation</td></tr>
+          <tr><td>xlsx (SheetJS)</td><td><code>^0.18.5</code></td><td>Excel file generation</td></tr>
+        </tbody>
+      </table>
+
+      <h3>Utilities</h3>
+      <table>
+        <thead><tr><th>Technology</th><th>Version</th><th>Purpose</th></tr></thead>
+        <tbody>
+          <tr><td>Zustand</td><td><code>^5.0.12</code></td><td>Global state management</td></tr>
+          <tr><td>date-fns</td><td><code>^4.1.0</code></td><td>Date manipulation</td></tr>
+          <tr><td>cmdk</td><td><code>^1.1.1</code></td><td>Command palette / search</td></tr>
+          <tr><td>Sonner</td><td><code>^2.0.7</code></td><td>Toast notifications</td></tr>
+          <tr><td>Resend</td><td><code>^6.12.2</code></td><td>Transactional email</td></tr>
+          <tr><td>clsx + tailwind-merge</td><td>&mdash;</td><td>Class name utilities</td></tr>
+        </tbody>
+      </table>
+
+      <h3>Development &amp; Testing</h3>
+      <table>
+        <thead><tr><th>Technology</th><th>Version</th><th>Purpose</th></tr></thead>
+        <tbody>
+          <tr><td>ESLint</td><td><code>^9</code></td><td>Linting (flat config)</td></tr>
+          <tr><td>Vitest</td><td><code>^4.1.6</code></td><td>Test runner</td></tr>
+          <tr><td>@testing-library/react</td><td><code>^16.3.2</code></td><td>Component testing</td></tr>
+          <tr><td>jsdom</td><td><code>^29.1.1</code></td><td>Browser environment for tests</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- 3. Directory Structure -->
+  <div class="section" id="directory">
+    <div class="section-header" onclick="toggleSection(this)">
+      <h2><span class="sec-num">03</span> Directory Structure</h2>
+      <span class="toggle">&#9662;</span>
+    </div>
+    <div class="section-body">
+      <h3>Top-Level Layout</h3>
+      <div class="tree">
+<span class="dir">obbo-imanage/</span>
+├── <span class="dir">.agents/</span>                  <span class="comment"># AI agent rules, migrations, audit reports</span>
+│   ├── <span class="dir">migrations/</span>             <span class="comment"># 17 SQL migration files (002-017)</span>
+│   ├── <span class="dir">reports/</span>                <span class="comment"># System audit report</span>
+│   └── <span class="dir">rules/</span>                  <span class="comment"># Design system rules</span>
+├── <span class="dir">.github/</span>                  <span class="comment"># GitHub skills, instructions, prompts</span>
+│   ├── <span class="dir">instructions/</span>           <span class="comment"># Auto-applied frontend instructions</span>
+│   ├── <span class="dir">prompts/</span>                <span class="comment"># Performance optimization prompts</span>
+│   └── <span class="dir">skills/</span>                 <span class="comment"># 4 specialized skills</span>
+├── <span class="dir">docs/</span>                      <span class="comment"># Project documentation</span>
+├── <span class="dir">prisma/</span>                    <span class="comment"># Prisma ORM schema</span>
+├── <span class="dir">public/</span>                    <span class="comment"># Static assets (10 files)</span>
+├── <span class="dir">scratch/</span>                   <span class="comment"># Ad-hoc utility scripts (4 files)</span>
+├── <span class="dir">scripts/</span>                   <span class="comment"># Seed/admin/SQL scripts (15 files)</span>
+├── <span class="highlight">src/</span>                        <span class="comment"># Application source code (136 files)</span>
+├── <span class="dir">supabase/</span>                  <span class="comment"># Supabase schema + migrations</span>
+├── <span class="file">.env</span>                        <span class="comment"># Environment variables</span>
+├── <span class="file">AGENTS.md</span>                   <span class="comment"># Primary agent instruction file</span>
+├── <span class="file">components.json</span>             <span class="comment"># shadcn/ui configuration</span>
+├── <span class="file">eslint.config.mjs</span>           <span class="comment"># ESLint flat config</span>
+├── <span class="file">next.config.ts</span>              <span class="comment"># Next.js configuration</span>
+├── <span class="file">package.json</span>                <span class="comment"># Dependencies and scripts</span>
+├── <span class="file">postcss.config.mjs</span>          <span class="comment"># PostCSS (Tailwind v4)</span>
+├── <span class="file">prisma.config.ts</span>            <span class="comment"># Prisma configuration</span>
+├── <span class="file">tsconfig.json</span>               <span class="comment"># TypeScript configuration</span>
+├── <span class="file">vitest.config.ts</span>            <span class="comment"># Vitest test runner config</span>
+└── <span class="file">vitest.setup.ts</span>             <span class="comment"># Test setup</span>
+      </div>
+
+      <h3>Source Code (<code>src/</code>)</h3>
+      <div class="tree">
+<span class="dir">src/</span>
+├── <span class="dir">app/</span>                        <span class="comment"># Next.js App Router (24 routes, 3 layouts)</span>
+│   ├── <span class="file">layout.tsx</span>              <span class="comment"># Root layout (Geist fonts, ThemeProvider)</span>
+│   ├── <span class="file">page.tsx</span>                <span class="comment"># Landing page</span>
+│   ├── <span class="file">globals.css</span>             <span class="comment"># Tailwind v4 + Clean Industrial tokens</span>
+│   ├── <span class="file">manifest.ts</span>             <span class="comment"># PWA manifest</span>
+│   ├── <span class="file">sw.ts</span>                   <span class="comment"># Serwist service worker</span>
+│   ├── <span class="dir">login/</span>                  <span class="comment"># /login</span>
+│   ├── <span class="dir">register/</span>               <span class="comment"># /register (multi-step wizard)</span>
+│   ├── <span class="dir">pending/</span>                <span class="comment"># /pending</span>
+│   ├── <span class="highlight">admin/</span>                  <span class="comment"># Admin portal (10 routes)</span>
+│   │   ├── <span class="file">layout.tsx</span>          <span class="comment"># Sidebar, notifications, search</span>
+│   │   ├── <span class="dir">dashboard/</span>          <span class="comment"># KPI dashboard</span>
+│   │   ├── <span class="dir">clients/</span>            <span class="comment"># Client directory + KYC</span>
+│   │   ├── <span class="dir">inventory/</span>          <span class="comment"># Inventory (5 tab components)</span>
+│   │   ├── <span class="dir">orders/</span>             <span class="comment"># Orders (5 tab components)</span>
+│   │   ├── <span class="dir">products/</span>           <span class="comment"># Product CRUD</span>
+│   │   ├── <span class="dir">profile/</span>            <span class="comment"># Admin profile</span>
+│   │   ├── <span class="dir">reports/</span>            <span class="comment"># Reports + WM submission</span>
+│   │   └── <span class="dir">settings/</span>           <span class="comment"># Admin settings</span>
+│   ├── <span class="highlight">client/</span>                 <span class="comment"># Client portal (10 routes)</span>
+│   │   ├── <span class="file">layout.tsx</span>          <span class="comment"># Sidebar, KYC context</span>
+│   │   ├── <span class="dir">catalog/</span>            <span class="comment"># Product catalog</span>
+│   │   ├── <span class="dir">contact-admin/</span>      <span class="comment"># Contact form</span>
+│   │   ├── <span class="dir">dashboard/</span>          <span class="comment"># Client dashboard</span>
+│   │   ├── <span class="dir">ledger/</span>             <span class="comment"># Balance ledger + test</span>
+│   │   ├── <span class="dir">orders/</span>             <span class="comment"># Orders + wizard + detail</span>
+│   │   ├── <span class="dir">pending-kyc/</span>        <span class="comment"># KYC pending screen</span>
+│   │   └── <span class="dir">profile/</span>            <span class="comment"># Profile management</span>
+│   └── <span class="dir">api/</span>                    <span class="comment"># API routes (3 endpoints)</span>
+│       ├── <span class="dir">admin/kyc-document/</span> <span class="comment"># KYC document proxy</span>
+│       └── <span class="dir">auth/</span>               <span class="comment"># send-otp, verify-otp</span>
+│
+├── <span class="dir">components/</span>                 <span class="comment"># Shared React components (38 files)</span>
+│   ├── <span class="dir">ui/</span>                     <span class="comment"># 21 shadcn/ui primitives</span>
+│   ├── <span class="dir">auth/</span>                   <span class="comment"># Auth shell + registration wizard</span>
+│   ├── <span class="dir">landing/</span>                <span class="comment"># Navbar, stats</span>
+│   ├── <span class="dir">orders/wizard/</span>          <span class="comment"># Order wizard (5 steps)</span>
+│   └── <span class="file">*.tsx</span>                   <span class="comment"># 8 shared components</span>
+│
+├── <span class="dir">generated/</span>                  <span class="comment"># Prisma generated client</span>
+│
+├── <span class="dir">lib/</span>                        <span class="comment"># Business logic, utilities, types</span>
+│   ├── <span class="dir">actions/</span>                <span class="comment"># Server actions (admin, client, notifications)</span>
+│   ├── <span class="dir">context/</span>                <span class="comment"># React context (KYC)</span>
+│   ├── <span class="dir">hooks/</span>                  <span class="comment"># Custom hooks (usePersistedForm)</span>
+│   ├── <span class="dir">report-generators/</span>      <span class="comment"># PDF + Excel export</span>
+│   ├── <span class="dir">store/</span>                  <span class="comment"># Zustand global store</span>
+│   ├── <span class="dir">supabase/</span>               <span class="comment"># 3 Supabase client wrappers</span>
+│   ├── <span class="dir">types/</span>                  <span class="comment"># TypeScript type definitions</span>
+│   └── <span class="file">*.ts</span>                    <span class="comment"># Utilities (cn, resend, portal data)</span>
+│
+└── <span class="file">proxy.ts</span>                    <span class="comment"># Middleware-equivalent auth/routing proxy</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4. App Router Architecture -->
+  <div class="section" id="app-router">
+    <div class="section-header" onclick="toggleSection(this)">
+      <h2><span class="sec-num">04</span> App Router Architecture</h2>
+      <span class="toggle">&#9662;</span>
+    </div>
+    <div class="section-body">
+      <h3>Route Map (24 Pages)</h3>
+      <table>
+        <thead><tr><th>Route</th><th>File</th><th>Type</th></tr></thead>
+        <tbody>
+          <tr><td><code>/</code></td><td>app/page.tsx</td><td><span class="badge badge-green">Public</span></td></tr>
+          <tr><td><code>/login</code></td><td>app/login/page.tsx</td><td><span class="badge badge-green">Public</span></td></tr>
+          <tr><td><code>/register</code></td><td>app/register/page.tsx</td><td><span class="badge badge-green">Public</span></td></tr>
+          <tr><td><code>/pending</code></td><td>app/pending/page.tsx</td><td><span class="badge badge-green">Public</span></td></tr>
+          <tr><td><code>/admin</code></td><td>app/admin/page.tsx</td><td><span class="badge badge-blue">Admin</span></td></tr>
+          <tr><td><code>/admin/dashboard</code></td><td>app/admin/dashboard/page.tsx</td><td><span class="badge badge-blue">Admin</span></td></tr>
+          <tr><td><code>/admin/clients</code></td><td>app/admin/clients/page.tsx</td><td><span class="badge badge-blue">Admin</span></td></tr>
+          <tr><td><code>/admin/inventory</code></td><td>app/admin/inventory/page.tsx</td><td><span class="badge badge-blue">Admin</span></td></tr>
+          <tr><td><code>/admin/orders</code></td><td>app/admin/orders/page.tsx</td><td><span class="badge badge-blue">Admin</span></td></tr>
+          <tr><td><code>/admin/products</code></td><td>app/admin/products/page.tsx</td><td><span class="badge badge-blue">Admin</span></td></tr>
+          <tr><td><code>/admin/profile</code></td><td>app/admin/profile/page.tsx</td><td><span class="badge badge-blue">Admin</span></td></tr>
+          <tr><td><code>/admin/reports</code></td><td>app/admin/reports/page.tsx</td><td><span class="badge badge-blue">Admin</span></td></tr>
+          <tr><td><code>/admin/reports/warehouse-manager</code></td><td>app/admin/reports/warehouse-manager/page.tsx</td><td><span class="badge badge-blue">Admin</span></td></tr>
+          <tr><td><code>/admin/settings</code></td><td>app/admin/settings/page.tsx</td><td><span class="badge badge-blue">Admin</span></td></tr>
+          <tr><td><code>/client</code></td><td>app/client/page.tsx</td><td><span class="badge badge-amber">Client</span></td></tr>
+          <tr><td><code>/client/catalog</code></td><td>app/client/catalog/page.tsx</td><td><span class="badge badge-amber">Client</span></td></tr>
+          <tr><td><code>/client/contact-admin</code></td><td>app/client/contact-admin/page.tsx</td><td><span class="badge badge-amber">Client</span></td></tr>
+          <tr><td><code>/client/dashboard</code></td><td>app/client/dashboard/page.tsx</td><td><span class="badge badge-amber">Client</span></td></tr>
+          <tr><td><code>/client/ledger</code></td><td>app/client/ledger/page.tsx</td><td><span class="badge badge-amber">Client</span></td></tr>
+          <tr><td><code>/client/orders</code></td><td>app/client/orders/page.tsx</td><td><span class="badge badge-amber">Client</span></td></tr>
+          <tr><td><code>/client/orders/new</code></td><td>app/client/orders/new/page.tsx</td><td><span class="badge badge-amber">Client</span></td></tr>
+          <tr><td><code>/client/orders/[id]</code></td><td>app/client/orders/[id]/page.tsx</td><td><span class="badge badge-amber">Client</span></td></tr>
+          <tr><td><code>/client/pending-kyc</code></td><td>app/client/pending-kyc/page.tsx</td><td><span class="badge badge-amber">Client</span></td></tr>
+          <tr><td><code>/client/profile</code></td><td>app/client/profile/page.tsx</td><td><span class="badge badge-amber">Client</span></td></tr>
+        </tbody>
+      </table>
+
+      <h3>Layouts (3)</h3>
+      <table>
+        <thead><tr><th>Layout</th><th>File</th><th>Purpose</th></tr></thead>
+        <tbody>
+          <tr><td>Root</td><td><code>app/layout.tsx</code></td><td>Geist fonts, ThemeProvider, Toaster</td></tr>
+          <tr><td>Admin</td><td><code>app/admin/layout.tsx</code></td><td>Sidebar nav, real-time notifications, global search, mobile navbar</td></tr>
+          <tr><td>Client</td><td><code>app/client/layout.tsx</code></td><td>Sidebar nav, KYC context, notifications, KYC status badges</td></tr>
+        </tbody>
+      </table>
+
+      <h3>API Routes (3)</h3>
+      <table>
+        <thead><tr><th>Method</th><th>Route</th><th>Purpose</th></tr></thead>
+        <tbody>
+          <tr><td><span class="badge badge-green">POST</span></td><td><code>/api/auth/send-otp</code></td><td>OTP generation + email</td></tr>
+          <tr><td><span class="badge badge-green">POST</span></td><td><code>/api/auth/verify-otp</code></td><td>OTP validation</td></tr>
+          <tr><td><span class="badge badge-blue">GET</span></td><td><code>/api/admin/kyc-document</code></td><td>KYC document proxy</td></tr>
+        </tbody>
+      </table>
+
+      <h3>Middleware</h3>
+      <p>No <code>middleware.ts</code> &mdash; uses <code>src/proxy.ts</code> as middleware equivalent. Exports <code>proxy</code> function + <code>config.matcher</code> pattern. Handles session refresh, route protection, and role-based redirects.</p>
+    </div>
+  </div>
+
+  <!-- 5. Dual-Portal Design -->
+  <div class="section" id="portals">
+    <div class="section-header" onclick="toggleSection(this)">
+      <h2><span class="sec-num">05</span> Dual-Portal Design</h2>
+      <span class="toggle">&#9662;</span>
+    </div>
+    <div class="section-body">
+      <p>The application implements a <strong>dual-portal architecture</strong> with completely separate admin and client interfaces, unified by a shared root layout and component library.</p>
+
+      <h3>Admin Portal (<code>/admin/*</code>)</h3>
+      <p><span class="badge badge-blue">Access: admin, warehouse_manager</span></p>
+      <ul>
+        <li><strong>Dashboard</strong> &mdash; KPI overview</li>
+        <li><strong>Orders</strong> &mdash; New requests, fulfillment, tracking, history, product catalog (5 tabs)</li>
+        <li><strong>Inventory</strong> &mdash; Shipments, PO list, DR list, reports, ledger entry (5 tabs)</li>
+        <li><strong>Clients</strong> &mdash; Client directory, KYC approval</li>
+        <li><strong>Products</strong> &mdash; Product management</li>
+        <li><strong>Reports</strong> &mdash; Admin reports, warehouse manager report submission</li>
+        <li><strong>Settings</strong> &mdash; Admin configuration</li>
+        <li><strong>Profile</strong> &mdash; Admin profile</li>
+      </ul>
+
+      <h3>Client Portal (<code>/client/*</code>)</h3>
+      <p><span class="badge badge-amber">Access: client (KYC-gated)</span></p>
+      <ul>
+        <li><strong>Dashboard</strong> &mdash; Client overview</li>
+        <li><strong>Catalog</strong> &mdash; Product browsing</li>
+        <li><strong>Orders</strong> &mdash; Order listing, new order wizard, order detail</li>
+        <li><strong>Ledger</strong> &mdash; Balance ledger (KYC-verified only)</li>
+        <li><strong>Profile</strong> &mdash; Profile management</li>
+        <li><strong>Contact Admin</strong> &mdash; Contact form</li>
+      </ul>
+
+      <h3>Role-Based Access Control</h3>
+      <table>
+        <thead><tr><th>Role</th><th>Portal</th><th>Capabilities</th></tr></thead>
+        <tbody>
+          <tr><td><code>admin</code></td><td>Admin</td><td>Full access to all admin features</td></tr>
+          <tr><td><code>warehouse_manager</code></td><td>Admin</td><td>Subset: inventory, reports</td></tr>
+          <tr><td><code>client</code></td><td>Client</td><td>Order placement, catalog, ledger, profile</td></tr>
+        </tbody>
+      </table>
+
+      <h3>KYC Gating</h3>
+      <p>Unverified clients are redirected to <code>/client/pending-kyc</code> when accessing restricted paths (<code>/client/orders/new</code>, <code>/client/ledger</code>). Verified clients have full access.</p>
+    </div>
+  </div>
+
+  <!-- 6. Component Library -->
+  <div class="section" id="components">
+    <div class="section-header" onclick="toggleSection(this)">
+      <h2><span class="sec-num">06</span> Component Library</h2>
+      <span class="toggle">&#9662;</span>
+    </div>
+    <div class="section-body">
+      <h3>UI Primitives (21 components in <code>src/components/ui/</code>)</h3>
+      <table>
+        <thead><tr><th>Component</th><th>File</th></tr></thead>
+        <tbody>
+          <tr><td>Avatar</td><td><code>avatar.tsx</code></td></tr>
+          <tr><td>Badge</td><td><code>badge.tsx</code></td></tr>
+          <tr><td>Button</td><td><code>button.tsx</code></td></tr>
+          <tr><td>Card</td><td><code>card.tsx</code></td></tr>
+          <tr><td>Command</td><td><code>command.tsx</code></td></tr>
+          <tr><td>Dialog</td><td><code>dialog.tsx</code></td></tr>
+          <tr><td>Dropdown Menu</td><td><code>dropdown-menu.tsx</code></td></tr>
+          <tr><td>Input</td><td><code>input.tsx</code></td></tr>
+          <tr><td>Label</td><td><code>label.tsx</code></td></tr>
+          <tr><td>Optimized Image</td><td><code>optimized-image.tsx</code></td></tr>
+          <tr><td>Popover</td><td><code>popover.tsx</code></td></tr>
+          <tr><td>Radio Group</td><td><code>radio-group.tsx</code></td></tr>
+          <tr><td>Select</td><td><code>select.tsx</code></td></tr>
+          <tr><td>Separator</td><td><code>separator.tsx</code></td></tr>
+          <tr><td>Sheet</td><td><code>sheet.tsx</code></td></tr>
+          <tr><td>Skeleton</td><td><code>skeleton.tsx</code></td></tr>
+          <tr><td>Sonner</td><td><code>sonner.tsx</code></td></tr>
+          <tr><td>Step Indicator</td><td><code>step-indicator.tsx</code></td></tr>
+          <tr><td>Table</td><td><code>table.tsx</code></td></tr>
+          <tr><td>Tabs</td><td><code>tabs.tsx</code></td></tr>
+          <tr><td>Textarea</td><td><code>textarea.tsx</code></td></tr>
+        </tbody>
+      </table>
+
+      <h3>Feature Components</h3>
+      <table>
+        <thead><tr><th>Area</th><th>Location</th><th>Components</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Authentication</strong></td><td><code>components/auth/</code></td><td>auth-shell, registration wizard (5 steps + schema)</td></tr>
+          <tr><td><strong>Orders</strong></td><td><code>components/orders/wizard/</code></td><td>Order wizard (5 steps + schema)</td></tr>
+          <tr><td><strong>Landing</strong></td><td><code>components/landing/</code></td><td>Navbar, stats</td></tr>
+          <tr><td><strong>Shared</strong></td><td><code>components/</code></td><td>avatar-upload, bottom-navbar, count-up, global-search, real-time-clock, scroll-reveal, theme-provider, theme-toggle</td></tr>
+        </tbody>
+      </table>
+
+      <h3>Co-located Page Components</h3>
+      <table>
+        <thead><tr><th>Page</th><th>Components</th></tr></thead>
+        <tbody>
+          <tr><td><code>/admin/dashboard</code></td><td>dashboard-client.tsx</td></tr>
+          <tr><td><code>/admin/inventory</code></td><td>shipments-tab, po-list-tab, dr-list-tab, reports-tab, ledger-entry-dialog</td></tr>
+          <tr><td><code>/admin/orders</code></td><td>new-requests-tab, fulfillment-tab, tracking-tab, order-history-tab, product-catalog-tab</td></tr>
+          <tr><td><code>/client/catalog</code></td><td>catalog-client.tsx</td></tr>
+          <tr><td><code>/client/contact-admin</code></td><td>contact-client.tsx</td></tr>
+          <tr><td><code>/client/ledger</code></td><td>ledger-client.tsx, ledger-client.test.tsx</td></tr>
+          <tr><td><code>/client/orders</code></td><td>orders-client.tsx</td></tr>
+          <tr><td><code>/client/profile</code></td><td>profile-client.tsx</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- 7. Data Layer -->
+  <div class="section" id="data-layer">
+    <div class="section-header" onclick="toggleSection(this)">
+      <h2><span class="sec-num">07</span> Data Layer</h2>
+      <span class="toggle">&#9662;</span>
+    </div>
+    <div class="section-body">
+      <h3>Prisma Schema (14 Models)</h3>
+      <table>
+        <thead><tr><th>Model</th><th>Table</th><th>Purpose</th></tr></thead>
+        <tbody>
+          <tr><td><code>Profile</code></td><td>profiles</td><td>User profiles (roles, KYC status, notification preferences)</td></tr>
+          <tr><td><code>Product</code></td><td>products</td><td>Cement products (name, bag type, price tiers)</td></tr>
+          <tr><td><code>Shipment</code></td><td>shipments</td><td>Incoming shipment batches (JB/SB quantities, good/damaged)</td></tr>
+          <tr><td><code>ShipmentLedger</code></td><td>shipment_ledger</td><td>Detailed shipment transaction ledger</td></tr>
+          <tr><td><code>DeliveryReceipt</code></td><td>delivery_receipts</td><td>Delivery receipts linked to shipments/orders</td></tr>
+          <tr><td><code>Order</code></td><td>orders</td><td>Client orders (status workflow, payment, tracking)</td></tr>
+          <tr><td><code>OrderItem</code></td><td>order_items</td><td>Line items per order (requested/approved/dispatched)</td></tr>
+          <tr><td><code>CustomerBalance</code></td><td>customer_balances</td><td>Remaining balances for partial deliveries</td></tr>
+          <tr><td><code>PurchaseOrder</code></td><td>purchase_orders</td><td>Purchase orders (linked to clients, shipments, orders)</td></tr>
+          <tr><td><code>WarehouseReport</code></td><td>warehouse_reports</td><td>Daily warehouse inventory reports</td></tr>
+          <tr><td><code>AdminSetting</code></td><td>admin_settings</td><td>Key-value admin settings store</td></tr>
+          <tr><td><code>ActivityLog</code></td><td>activity_log</td><td>Audit trail for all entity actions</td></tr>
+          <tr><td><code>OrderReturn</code></td><td>order_returns</td><td>Return requests with reasons</td></tr>
+          <tr><td><code>Notification</code></td><td>notifications</td><td>User notifications with severity levels</td></tr>
+        </tbody>
+      </table>
+
+      <h3>Supabase Infrastructure</h3>
+      <p><strong>Schema:</strong> <code>supabase/schema.sql</code> (570 lines) with table definitions, RLS policies, triggers, functions, indexes, and storage bucket setup.</p>
+
+      <h3>Migrations (6 files)</h3>
+      <table>
+        <thead><tr><th>Date</th><th>Migration</th></tr></thead>
+        <tbody>
+          <tr><td>2026-05-14</td><td>add_pending_final_confirmation_status</td></tr>
+          <tr><td>2026-05-15</td><td>fix_storage_permissions_and_client_orders</td></tr>
+          <tr><td>2026-05-20</td><td>add_notification_target_role</td></tr>
+          <tr><td>2026-05-22</td><td>add_return_reason</td></tr>
+          <tr><td>2026-05-26</td><td>add_sales_profit_tracking</td></tr>
+          <tr><td>2026-06-03</td><td>add_delivery_receipt_id_to_ledger</td></tr>
+        </tbody>
+      </table>
+
+      <h3>Server Actions</h3>
+      <table>
+        <thead><tr><th>File</th><th>Lines</th><th>Scope</th></tr></thead>
+        <tbody>
+          <tr><td><code>admin-actions.ts</code></td><td>1,858</td><td>Dashboard KPIs, products CRUD, order lifecycle, shipments, POs, DRs, warehouse reports, balances, profiles, settings, KYC, returns, notifications, audit log, financial reports</td></tr>
+          <tr><td><code>client-actions.ts</code></td><td>617</td><td>Dashboard KPIs, orders, drafts, payments, returns, balances, ledger, redelivery, notifications, profile</td></tr>
+          <tr><td><code>notification-actions.ts</code></td><td>&mdash;</td><td>Role broadcasts, user-specific notifications</td></tr>
+          <tr><td><code>po-utils.ts</code></td><td>&mdash;</td><td>PO number generation</td></tr>
+        </tbody>
+      </table>
+
+      <h3>Database Entities (15 tables)</h3>
+      <p><code>profiles</code>, <code>products</code>, <code>shipments</code>, <code>shipment_ledger</code>, <code>delivery_receipts</code>, <code>orders</code>, <code>order_items</code>, <code>customer_balances</code>, <code>purchase_orders</code>, <code>warehouse_reports</code>, <code>admin_settings</code>, <code>activity_log</code>, <code>order_returns</code>, <code>notifications</code>, <code>email_verifications</code></p>
+    </div>
+  </div>
+
+  <!-- 8. Authentication & Security -->
+  <div class="section" id="auth">
+    <div class="section-header" onclick="toggleSection(this)">
+      <h2><span class="sec-num">08</span> Authentication &amp; Security</h2>
+      <span class="toggle">&#9662;</span>
+    </div>
+    <div class="section-body">
+      <h3>Auth Provider: Supabase Auth</h3>
+      <table>
+        <thead><tr><th>Flow</th><th>Implementation</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Sign-up</strong></td><td><code>supabase.auth.signUp()</code> in register page; profile inserted to DB; user signed out pending KYC</td></tr>
+          <tr><td><strong>Login</strong></td><td><code>supabase.auth.signInWithPassword()</code> in login page</td></tr>
+          <tr><td><strong>Sign-out</strong></td><td><code>supabase.auth.signOut()</code> in admin and client layouts</td></tr>
+          <tr><td><strong>Session refresh</strong></td><td><code>supabase.auth.getUser()</code> on every request via proxy</td></tr>
+        </tbody>
+      </table>
+
+      <h3>OTP Email Verification</h3>
+      <ol>
+        <li><code>/api/auth/send-otp</code> &mdash; Generates 6-digit OTP, stores in <code>email_verifications</code>, sends via Resend</li>
+        <li><code>/api/auth/verify-otp</code> &mdash; Validates OTP, marks as used</li>
+        <li><strong>Rate limiting:</strong> 60-second cooldown between sends</li>
+        <li><strong>Expiry:</strong> 10 minutes</li>
+      </ol>
+
+      <h3>Route Protection (Proxy)</h3>
+      <p><code>src/proxy.ts</code> acts as the middleware layer:</p>
+      <ul>
+        <li>Refreshes Supabase session on every request</li>
+        <li>Protects <code>/admin/*</code> &mdash; requires <code>admin</code> or <code>warehouse_manager</code> role</li>
+        <li>Protects <code>/client/*</code> &mdash; requires <code>client</code> role; redirects unverified KYC users</li>
+        <li>Redirects authenticated users away from <code>/login</code>, <code>/register</code>, <code>/pending</code></li>
+      </ul>
+
+      <h3>KYC Flow</h3>
+      <ol>
+        <li>New clients start with <code>kyc_status: "pending_verification"</code></li>
+        <li>Admin can approve (<code>approveKyc</code>) or reject (<code>rejectKyc</code>)</li>
+        <li>Rejected users are permanently blocked from re-registration</li>
+        <li>KYC status checked in middleware and in <code>ClientKycContext</code> (real-time updates)</li>
+      </ol>
+    </div>
+  </div>
+
+  <!-- 9. State Management -->
+  <div class="section" id="state">
+    <div class="section-header" onclick="toggleSection(this)">
+      <h2><span class="sec-num">09</span> State Management</h2>
+      <span class="toggle">&#9662;</span>
+    </div>
+    <div class="section-body">
+      <table>
+        <thead><tr><th>Layer</th><th>Technology</th><th>Location</th><th>Purpose</th></tr></thead>
+        <tbody>
+          <tr><td>Global UI</td><td>Zustand</td><td><code>lib/store/app-store.ts</code></td><td>Sidebar state, current user</td></tr>
+          <tr><td>Feature Context</td><td>React Context</td><td><code>lib/context/client-kyc-context.tsx</code></td><td>KYC status with real-time subscription</td></tr>
+          <tr><td>Form Persistence</td><td>Session Storage</td><td><code>lib/hooks/use-persisted-form.ts</code></td><td>Multi-step wizard state persistence</td></tr>
+        </tbody>
+      </table>
+
+      <h3>Zustand Store</h3>
+      <p><code>useAppStore</code> manages <code>sidebarOpen</code> (boolean) and <code>currentUser</code> (id, email, full_name, role, kyc_status). Provides <code>toggleSidebar()</code>, <code>setSidebarOpen()</code>, and <code>setCurrentUser()</code>.</p>
+
+      <h3>KYC Context</h3>
+      <p><code>ClientKycProvider</code> fetches <code>kyc_status</code> from <code>profiles</code> table on mount and subscribes to real-time Postgres changes. Exports <code>useClientKyc()</code> and <code>useIsKycVerified()</code> hooks.</p>
+
+      <h3>Form Persistence</h3>
+      <p><code>usePersistedForm&lt;T&gt;(key, initial)</code> persists form state to <code>sessionStorage</code> with 300ms debounce. Strips <code>File</code> objects before serialization. Returns <code>[state, update, clear]</code> tuple.</p>
+    </div>
+  </div>
+
+  <!-- 10. Utilities & Services -->
+  <div class="section" id="utilities">
+    <div class="section-header" onclick="toggleSection(this)">
+      <h2><span class="sec-num">10</span> Utilities &amp; Services</h2>
+      <span class="toggle">&#9662;</span>
+    </div>
+    <div class="section-body">
+      <h3>Core Utilities</h3>
+      <table>
+        <thead><tr><th>Utility</th><th>File</th><th>Purpose</th></tr></thead>
+        <tbody>
+          <tr><td><code>cn()</code></td><td><code>lib/utils.ts</code></td><td>Tailwind class merging (clsx + tailwind-merge)</td></tr>
+          <tr><td><code>formatCurrency()</code></td><td><code>lib/client-portal-data.ts</code></td><td>PHP currency formatting</td></tr>
+          <tr><td><code>getProductById()</code></td><td><code>lib/client-portal-data.ts</code></td><td>Product lookup</td></tr>
+          <tr><td><code>getIndividualBagCount()</code></td><td><code>lib/client-portal-data.ts</code></td><td>Bag count calculation</td></tr>
+          <tr><td><code>getSourceUnitPrice()</code></td><td><code>lib/client-portal-data.ts</code></td><td>Price lookup by source</td></tr>
+          <tr><td><code>getOrderSubtotal()</code></td><td><code>lib/client-portal-data.ts</code></td><td>Order total calculation</td></tr>
+        </tbody>
+      </table>
+
+      <h3>Report Generators</h3>
+      <table>
+        <thead><tr><th>Generator</th><th>File</th><th>Output</th></tr></thead>
+        <tbody>
+          <tr><td>PDF</td><td><code>lib/report-generators/report-pdf.ts</code></td><td>Branded PDF (OBBO blue/yellow theme) with 3 table sections</td></tr>
+          <tr><td>Excel</td><td><code>lib/report-generators/report-xlsx.ts</code></td><td>3-sheet workbook (Physical Inventory, Customer Movement, Customer Obligations)</td></tr>
+        </tbody>
+      </table>
+
+      <h3>Supabase Client Wrappers</h3>
+      <table>
+        <thead><tr><th>Client</th><th>File</th><th>Purpose</th></tr></thead>
+        <tbody>
+          <tr><td>Server</td><td><code>lib/supabase/server.ts</code></td><td>Server-side client with cookie sessions</td></tr>
+          <tr><td>Browser</td><td><code>lib/supabase/client.ts</code></td><td>Browser-side client</td></tr>
+          <tr><td>Admin</td><td><code>lib/supabase/admin.ts</code></td><td>Service-role client (bypasses RLS)</td></tr>
+        </tbody>
+      </table>
+
+      <h3>Email Service</h3>
+      <p><code>lib/resend.ts</code> &mdash; Uses Resend API. Exports <code>sendOtpEmail(email, code)</code> for styled HTML OTP emails from <code>OBBO iManage &lt;noreply@jeffdev.studio&gt;</code>.</p>
+    </div>
+  </div>
+
+  <!-- 11. Configuration Files -->
+  <div class="section" id="config">
+    <div class="section-header" onclick="toggleSection(this)">
+      <h2><span class="sec-num">11</span> Configuration Files</h2>
+      <span class="toggle">&#9662;</span>
+    </div>
+    <div class="section-body">
+      <table>
+        <thead><tr><th>File</th><th>Purpose</th></tr></thead>
+        <tbody>
+          <tr><td><code>next.config.ts</code></td><td>Turbopack enabled, Supabase image remote patterns, Serwist PWA wrapper</td></tr>
+          <tr><td><code>tsconfig.json</code></td><td>ES2017 target, bundler module resolution, <code>@/*</code> path alias, strict mode</td></tr>
+          <tr><td><code>postcss.config.mjs</code></td><td>Tailwind CSS v4 PostCSS plugin</td></tr>
+          <tr><td><code>eslint.config.mjs</code></td><td>Flat config with next/core-web-vitals + typescript</td></tr>
+          <tr><td><code>vitest.config.ts</code></td><td>jsdom environment, React plugin, <code>@/</code> path alias</td></tr>
+          <tr><td><code>vitest.setup.ts</code></td><td>jest-dom/vitest matchers</td></tr>
+          <tr><td><code>prisma.config.ts</code></td><td>Prisma schema path, migrations path, DATABASE_URL</td></tr>
+          <tr><td><code>components.json</code></td><td>shadcn/ui: base-nova style, RSC enabled, lucide icons, neutral base color, CSS variables</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- 12. Scripts & Tooling -->
+  <div class="section" id="scripts">
+    <div class="section-header" onclick="toggleSection(this)">
+      <h2><span class="sec-num">12</span> Scripts &amp; Tooling</h2>
+      <span class="toggle">&#9662;</span>
+    </div>
+    <div class="section-body">
+      <h3>npm Scripts</h3>
+      <table>
+        <thead><tr><th>Script</th><th>Command</th><th>Purpose</th></tr></thead>
+        <tbody>
+          <tr><td><code>dev</code></td><td><code>next dev</code></td><td>Development server</td></tr>
+          <tr><td><code>build</code></td><td><code>next build</code></td><td>Production build</td></tr>
+          <tr><td><code>start</code></td><td><code>next start</code></td><td>Production server</td></tr>
+          <tr><td><code>lint</code></td><td><code>eslint</code></td><td>Lint codebase</td></tr>
+          <tr><td><code>test</code></td><td><code>vitest run</code></td><td>Run tests once</td></tr>
+          <tr><td><code>test:watch</code></td><td><code>vitest</code></td><td>Run tests in watch mode</td></tr>
+          <tr><td><code>admin:create</code></td><td><code>node scripts/create-admin.mjs</code></td><td>Create admin user</td></tr>
+          <tr><td><code>seed:all</code></td><td><code>node scripts/seed-mock-data.mjs && ...</code></td><td>Seed all mock data</td></tr>
+          <tr><td><code>prisma:generate</code></td><td><code>prisma generate</code></td><td>Generate Prisma client</td></tr>
+          <tr><td><code>prisma:migrate:prod</code></td><td><code>prisma migrate deploy</code></td><td>Deploy migrations</td></tr>
+          <tr><td><code>prisma:db:push</code></td><td><code>prisma db push --no-erase</code></td><td>Push schema to DB</td></tr>
+          <tr><td><code>seed:historical</code></td><td><code>node scripts/seed-historical-po-dr.mjs</code></td><td>Seed historical PO/DR data</td></tr>
+        </tbody>
+      </table>
+
+      <h3>Utility Scripts (<code>scripts/</code> &mdash; 15 files)</h3>
+      <ul>
+        <li><strong>User Creation:</strong> <code>create-admin.mjs</code>, <code>create-warehouse-manager.mjs</code></li>
+        <li><strong>Data Seeding:</strong> <code>seed-mock-data.mjs</code>, <code>seed-shipments.mjs</code>, <code>seed-transactions.mjs</code>, <code>seed-historical-po-dr.mjs</code>, <code>seed-maria.mjs</code>, <code>seed-fresh.mjs</code></li>
+        <li><strong>SQL Scripts:</strong> Various <code>.sql</code> files for storage buckets, notification triggers, cascade deletes, etc.</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- 13. Testing -->
+  <div class="section" id="testing">
+    <div class="section-header" onclick="toggleSection(this)">
+      <h2><span class="sec-num">13</span> Testing</h2>
+      <span class="toggle">&#9662;</span>
+    </div>
+    <div class="section-body">
+      <h3>Framework</h3>
+      <table>
+        <thead><tr><th>Component</th><th>Technology</th></tr></thead>
+        <tbody>
+          <tr><td>Test Runner</td><td>Vitest <code>^4.1.6</code></td></tr>
+          <tr><td>Environment</td><td>jsdom</td></tr>
+          <tr><td>Component Testing</td><td>@testing-library/react <code>^16.3.2</code></td></tr>
+          <tr><td>DOM Assertions</td><td>@testing-library/jest-dom <code>^6.9.1</code></td></tr>
+        </tbody>
+      </table>
+
+      <h3>Current Test Coverage</h3>
+      <table>
+        <thead><tr><th>Test File</th><th>Tests</th></tr></thead>
+        <tbody>
+          <tr><td><code>src/lib/actions/client-actions.test.ts</code></td><td>Client server actions</td></tr>
+          <tr><td><code>src/app/client/ledger/components/ledger-client.test.tsx</code></td><td>Ledger client component</td></tr>
+        </tbody>
+      </table>
+      <p><strong>Total:</strong> 2 test files. <span class="badge badge-amber">Low coverage</span> &mdash; area for improvement.</p>
+    </div>
+  </div>
+
+  <!-- 14. Design System & Agents -->
+  <div class="section" id="design">
+    <div class="section-header" onclick="toggleSection(this)">
+      <h2><span class="sec-num">14</span> Design System &amp; Agents</h2>
+      <span class="toggle">&#9662;</span>
+    </div>
+    <div class="section-body">
+      <h3>Clean Industrial Design System</h3>
+      <table>
+        <thead><tr><th>Property</th><th>Value</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Primary</strong></td><td>Industrial Blue</td></tr>
+          <tr><td><strong>Accent</strong></td><td>Construction Yellow</td></tr>
+          <tr><td><strong>Neutrals</strong></td><td>Slate scale</td></tr>
+          <tr><td><strong>Font</strong></td><td>Inter preferred</td></tr>
+          <tr><td><strong>Color System</strong></td><td>oklch-based with light/dark mode</td></tr>
+        </tbody>
+      </table>
+
+      <p><strong>Rules:</strong> Back buttons on auth/landing pages, Industrial Blue active states, cards with subtle 1px borders (8-12px radius, <code>shadow-sm</code> max), mobile-first responsive, <code>overflow-x-auto</code> on tables, sticky topbars.</p>
+
+      <h3><code>.agents/</code> Directory (18 files)</h3>
+      <ul>
+        <li><strong>Rules:</strong> <code>design-system.md</code> &mdash; Clean Industrial design system rules</li>
+        <li><strong>Migrations:</strong> 17 SQL files (002-017) covering OTP, storage, admin schema, product images, warehouse manager role, report submission, shipment damage, returns, PO automation, client balance RLS, split delivery, FK consistency, and more</li>
+        <li><strong>Reports:</strong> <code>system-audit-2026-05-18.md</code> &mdash; 30-issue audit (6 critical, 2 high, 13 medium, 8 low)</li>
+      </ul>
+
+      <h3><code>.github/</code> Directory (6 files)</h3>
+      <table>
+        <thead><tr><th>Skill</th><th>Purpose</th></tr></thead>
+        <tbody>
+          <tr><td><code>obbo-clean-industrial-ui</code></td><td>UI implementation following OBBO visual system</td></tr>
+          <tr><td><code>obbo-design-system-audit</code></td><td>Design-system compliance review</td></tr>
+          <tr><td><code>obbo-page-load-optimization</code></td><td>Page load speed, hydration, bundle size</td></tr>
+          <tr><td><code>obbo-inp-optimization</code></td><td>INP and click latency optimization</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- 15. Key Observations -->
+  <div class="section" id="observations">
+    <div class="section-header" onclick="toggleSection(this)">
+      <h2><span class="sec-num">15</span> Key Observations</h2>
+      <span class="toggle">&#9662;</span>
+    </div>
+    <div class="section-body">
+      <h3>Architecture Decisions</h3>
+      <div class="observation"><span class="obs-num">1</span><div class="obs-text"><strong>Standalone Application</strong> &mdash; Despite being in a <code>Monorepo/</code> parent directory, obbo-imanage is a standalone Next.js application with no workspace configuration.</div></div>
+      <div class="observation"><span class="obs-num">2</span><div class="obs-text"><strong>Dual-Portal Architecture</strong> &mdash; Completely separate admin and client portals with independent layouts, navigation, and access control, unified by shared root layout and component library.</div></div>
+      <div class="observation"><span class="obs-num">3</span><div class="obs-text"><strong>Three User Roles</strong> &mdash; <code>admin</code>, <code>warehouse_manager</code>, and <code>client</code> with distinct navigation trees and permissions enforced at the proxy/middleware level.</div></div>
+      <div class="observation"><span class="obs-num">4</span><div class="obs-text"><strong>KYC-Gated Client Features</strong> &mdash; Unverified clients are restricted from placing orders and viewing ledgers; they see a pending-KYC page instead.</div></div>
+      <div class="observation"><span class="obs-num">5</span><div class="obs-text"><strong>Real-time Throughout</strong> &mdash; Supabase Realtime subscriptions power live notifications, badge counts, and data updates in both portals.</div></div>
+      <div class="observation"><span class="obs-num">6</span><div class="obs-text"><strong>PWA-Ready</strong> &mdash; Full service worker setup with Serwist, web manifest, and Apple web app meta tags.</div></div>
+
+      <h3>Technical Patterns</h3>
+      <div class="observation"><span class="obs-num">7</span><div class="obs-text"><strong>Server Actions as Data Layer</strong> &mdash; Primary data access via <code>"use server"</code> directives rather than API routes. Only 3 API routes exist (OTP + KYC document proxy).</div></div>
+      <div class="observation"><span class="obs-num">8</span><div class="obs-text"><strong>Prisma for Types Only</strong> &mdash; Despite Prisma being configured, runtime data access uses Supabase JS client directly. Prisma is used primarily for type generation and schema documentation.</div></div>
+      <div class="observation"><span class="obs-num">9</span><div class="obs-text"><strong>Proxy as Middleware</strong> &mdash; <code>src/proxy.ts</code> replaces the traditional <code>middleware.ts</code> pattern, handling session refresh and route protection.</div></div>
+      <div class="observation"><span class="obs-num">10</span><div class="obs-text"><strong>Multi-Step Wizards</strong> &mdash; Both registration (5 steps) and order placement (5 steps) use Zod schemas for step-level validation with <code>usePersistedForm</code> for session storage persistence.</div></div>
+
+      <h3>Development Maturity</h3>
+      <div class="observation"><span class="obs-num">11</span><div class="obs-text"><strong>Formalized Design System</strong> &mdash; &ldquo;Clean Industrial&rdquo; theme with oklch color tokens, light/dark mode, custom animations, documented rules, and a prior audit report identifying 30 issues.</div></div>
+      <div class="observation"><span class="obs-num">12</span><div class="obs-text"><strong>AI-Assisted Development</strong> &mdash; The presence of <code>.agents/</code> rules, 17 migration files, skills, and audit reports indicates iterative development with AI-assisted workflows.</div></div>
+      <div class="observation"><span class="obs-num">13</span><div class="obs-text"><strong>Limited Test Coverage</strong> &mdash; Only 2 test files exist despite Vitest being configured. <span class="badge badge-amber">Area for improvement</span></div></div>
+      <div class="observation"><span class="obs-num">14</span><div class="obs-text"><strong>No Loading/Error States</strong> &mdash; No <code>loading.tsx</code>, <code>error.tsx</code>, <code>not-found.tsx</code>, <code>template.tsx</code>, or <code>default.tsx</code> files exist anywhere in the app directory.</div></div>
+      <div class="observation"><span class="obs-num">15</span><div class="obs-text"><strong>Large Server Actions File</strong> &mdash; <code>admin-actions.ts</code> at 1,858 lines is the largest file in the project and could benefit from decomposition.</div></div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+function toggleSection(header) {
+  const section = header.parentElement;
+  section.classList.toggle('collapsed');
+}
+
+// Highlight active nav link on scroll
+const sections = document.querySelectorAll('.section[id]');
+const navLinks = document.querySelectorAll('.sidebar nav a');
+
+const observer = new IntersectionObserver(entries => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      navLinks.forEach(link => link.classList.remove('active'));
+      const active = document.querySelector(`.sidebar nav a[href="#${entry.target.id}"]`);
+      if (active) active.classList.add('active');
+    }
+  });
+}, { rootMargin: '-20% 0px -70% 0px' });
+
+sections.forEach(section => observer.observe(section));
+</script>
+
+</body>
+</html>
