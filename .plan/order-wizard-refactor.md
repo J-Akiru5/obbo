@@ -20,15 +20,15 @@ Both pages share the same `usePersistedForm("obbo-order-form", ...)` key, so for
 
 ## Files to Modify
 
-| File | Action | Purpose |
-|------|--------|---------|
-| `src/app/client/orders/new/page.tsx` | **Rewrite** | Ordering page: steps 0-2 + "Proceed to PO" button |
-| `src/app/client/orders/new/submit/page.tsx` | **Create** | Submitting POs page: steps 3-4 + back navigation |
-| `src/components/orders/wizard/order-schema.ts` | **Keep as-is** | Schemas already support per-step validation |
-| `src/components/ui/step-indicator.tsx` | **Keep as-is** | Reusable, works with any step array |
-| `src/components/orders/wizard/step-*.tsx` | **Keep as-is** | Step components are presentational, no changes needed |
-| `src/lib/hooks/use-persisted-form.ts` | **Keep as-is** | Already handles sessionStorage persistence |
-| `src/app/client/layout.tsx` | **Keep as-is** | Lock href already covers `/client/orders/new` (matches both routes) |
+| File                                           | Action         | Purpose                                                             |
+| ---------------------------------------------- | -------------- | ------------------------------------------------------------------- |
+| `src/app/client/orders/new/page.tsx`           | **Rewrite**    | Ordering page: steps 0-2 + "Proceed to PO" button                   |
+| `src/app/client/orders/new/submit/page.tsx`    | **Create**     | Submitting POs page: steps 3-4 + back navigation                    |
+| `src/components/orders/wizard/order-schema.ts` | **Keep as-is** | Schemas already support per-step validation                         |
+| `src/components/ui/step-indicator.tsx`         | **Keep as-is** | Reusable, works with any step array                                 |
+| `src/components/orders/wizard/step-*.tsx`      | **Keep as-is** | Step components are presentational, no changes needed               |
+| `src/lib/hooks/use-persisted-form.ts`          | **Keep as-is** | Already handles sessionStorage persistence                          |
+| `src/app/client/layout.tsx`                    | **Keep as-is** | Lock href already covers `/client/orders/new` (matches both routes) |
 
 ## Implementation Details
 
@@ -48,6 +48,7 @@ Both pages share the same `usePersistedForm("obbo-order-form", ...)` key, so for
 - **Loading products state**: Keep existing guard
 
 Key changes from current:
+
 - Remove steps 3-4 rendering
 - Remove PO number auto-generation useEffect
 - Remove `handleSubmit`, `handleSaveDraft`, `uploadFile` (move to submit page)
@@ -76,6 +77,7 @@ Key changes from current:
 When user clicks "Back" from the submit page's first step (PO & Payment), they return to `/client/orders/new`. The ordering page will hydrate its state from sessionStorage (same key), so all previously entered data (products, source, service type) is restored.
 
 The ordering page should **restore `currentStep` to 2** (the last step) when navigating back from submit, since all ordering steps are completed. This can be done by:
+
 - Storing `currentStep` in the persisted form state
 - Or detecting that we're navigating back (e.g., checking if step 2 data exists)
 - Simplest: always start ordering page at step 0, but mark steps 0-2 as completed if data exists
@@ -111,25 +113,25 @@ Extend `INITIAL_FORM` to include wizard navigation state:
 
 ```ts
 const INITIAL_FORM = {
-    // Existing order fields
-    jb_qty: 0,
-    sb_qty: 0,
-    source: "warehouse" as "port" | "warehouse",
-    service_type: "pickup" as "pickup" | "deliver",
-    driver_name: "",
-    plate_number: "",
-    preferred_pickup_date: "",
-    po_number: "",
-    supplier_name: "OBBO",
-    payment_method: "cash" as "cash" | "check",
-    wants_split: false,
-    deliver_now_jb: 0,
-    deliver_now_sb: 0,
-    // Wizard navigation state (for cross-page persistence)
-    _orderingStep: 0,         // current step on ordering page
-    _orderingCompleted: [] as number[],  // completed steps on ordering page
-    _submitStep: 0,           // current step on submit page
-    _submitCompleted: [] as number[],    // completed steps on submit page
+  // Existing order fields
+  jb_qty: 0,
+  sb_qty: 0,
+  source: 'warehouse' as 'port' | 'warehouse',
+  service_type: 'pickup' as 'pickup' | 'deliver',
+  driver_name: '',
+  plate_number: '',
+  preferred_pickup_date: '',
+  po_number: '',
+  supplier_name: 'OBBO',
+  payment_method: 'cash' as 'cash' | 'check',
+  wants_split: false,
+  deliver_now_jb: 0,
+  deliver_now_sb: 0,
+  // Wizard navigation state (for cross-page persistence)
+  _orderingStep: 0, // current step on ordering page
+  _orderingCompleted: [] as number[], // completed steps on ordering page
+  _submitStep: 0, // current step on submit page
+  _submitCompleted: [] as number[], // completed steps on submit page
 };
 ```
 

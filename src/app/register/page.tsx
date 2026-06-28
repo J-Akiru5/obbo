@@ -53,14 +53,14 @@ export default function RegisterPage() {
     const [errors, setErrors] = useState<Record<string, string>>({});
     const [loading, setLoading] = useState(false);
 
-    // Files are NOT persisted (File objects can't serialize)
-    const [validIdFile, setValidIdFile] = useState<File | null>(null);
+    // 🌟 FIXED CORRECTION: Ginawang hiwalay ang front at back files para sa Valid ID split upload compliance
+    const [validIdFrontFile, setValidIdFrontFile] = useState<File | null>(null);
+    const [validIdBackFile, setValidIdBackFile] = useState<File | null>(null);
     const [businessPermitFile, setBusinessPermitFile] = useState<File | null>(null);
 
     const updateField = useCallback(
         (field: string, value: string | boolean) => {
             updateForm({ [field]: value } as Partial<typeof INITIAL_FORM>);
-            // Clear field error on change
             setErrors((prev) => {
                 if (prev[field]) {
                     const next = { ...prev };
@@ -113,8 +113,10 @@ export default function RegisterPage() {
 
         if (step === 3) {
             const schema = getDocumentSchema(form.account_type);
+            // 🌟 SCHEMA LOOKUP HANDLER: Ipinasa ang parehong front at back validation nodes sa parsed fields
             const result = schema.safeParse({
-                valid_id_file: validIdFile,
+                valid_id_front_file: validIdFrontFile,
+                valid_id_back_file: validIdBackFile,
                 business_permit_file: businessPermitFile,
             });
             if (!result.success) {
@@ -146,7 +148,6 @@ export default function RegisterPage() {
     }
 
     function goToStep(step: number) {
-        // Only allow going back to completed steps
         if (step < currentStep || completedSteps.has(step)) {
             setCurrentStep(step);
             setErrors({});
@@ -176,14 +177,14 @@ export default function RegisterPage() {
             } else {
                 metaData.company_name = form.company_name;
                 metaData.contact_person_first_name = form.contact_person_first_name;
-                metaData.contact_person_surname = form.contact_person_surname;
+                metaData.company_person_surname = form.contact_person_surname;
                 metaData.phone = form.contact_person_number;
                 metaData.business_permit_no = form.business_permit_no;
                 metaData.tin_no = form.tin_no;
                 metaData.full_name = `${form.contact_person_first_name} ${form.contact_person_surname}`.trim();
             }
 
-            // 1. Sign up
+            // 1. Sign up the user inside Supabase Auth
             const { data: authData, error: signUpError } = await supabase.auth.signUp({
                 email: form.email,
                 password: form.password,
@@ -200,19 +201,32 @@ export default function RegisterPage() {
                 return;
             }
 
-            // 2. Upload KYC documents
+            // 2. Upload KYC documents (Front, Back, and optional Business Permit)
             const kycPaths: string[] = [];
 
-            if (validIdFile) {
-                const idExt = validIdFile.name.split(".").pop();
-                const idPath = `${userId}/valid-id.${idExt}`;
-                const { error: idUploadErr } = await supabase.storage
+            // 🌟 ID FRONT VIEW UPLOAD MATRIX NODE
+            if (validIdFrontFile) {
+                const frontExt = validIdFrontFile.name.split(".").pop();
+                const frontPath = `${userId}/valid-id-front.${frontExt}`;
+                const { error: frontUploadErr } = await supabase.storage
                     .from("kyc-documents")
-                    .upload(idPath, validIdFile, { upsert: true });
+                    .upload(frontPath, validIdFrontFile, { upsert: true });
 
-                if (!idUploadErr) kycPaths.push(idPath);
+                if (!frontUploadErr) kycPaths.push(frontPath);
             }
 
+            // 🌟 ID BACK VIEW UPLOAD MATRIX NODE
+            if (validIdBackFile) {
+                const backExt = validIdBackFile.name.split(".").pop();
+                const backPath = `${userId}/valid-id-back.${backExt}`;
+                const { error: backUploadErr } = await supabase.storage
+                    .from("kyc-documents")
+                    .upload(backPath, validIdBackFile, { upsert: true });
+
+                if (!backUploadErr) kycPaths.push(backPath);
+            }
+
+            // Business Permit upload control loop for company accounts
             if (form.account_type === "company" && businessPermitFile) {
                 const bpExt = businessPermitFile.name.split(".").pop();
                 const bpPath = `${userId}/business-permit.${bpExt}`;
@@ -223,12 +237,12 @@ export default function RegisterPage() {
                 if (!bpUploadErr) kycPaths.push(bpPath);
             }
 
-            // 3. Update profile with document paths
+            // 3. Update profiles postgres public reference array record row with split paths
             if (kycPaths.length > 0) {
                 await supabase.from("profiles").update({ kyc_documents: kycPaths }).eq("id", userId);
             }
 
-            // Trigger Admin Notification (uses service-role client to bypass RLS)
+            // Trigger Admin Notification alert logs
             await createRoleNotificationAdmin({
                 targetRole: "admin",
                 title: "New Client Registration",
@@ -237,9 +251,9 @@ export default function RegisterPage() {
                 severity: "info",
             });
 
-            // 5. Sign out and redirect to login
             await supabase.auth.signOut();
             clearForm();
+            toast.success("Registration submitted! Waiting for validation review.");
             router.push("/login?registered=true");
         } catch {
             toast.error("An unexpected error occurred. Please try again.");
@@ -283,7 +297,6 @@ export default function RegisterPage() {
                     </div>
                 </div>
 
-                {/* Step Indicator */}
                 <StepIndicator
                     steps={STEPS}
                     currentStep={currentStep}
@@ -291,7 +304,6 @@ export default function RegisterPage() {
                     onStepClick={goToStep}
                 />
 
-                {/* Step Content with slide animation */}
                 <div className="relative overflow-hidden">
                     <div
                         key={currentStep}
@@ -320,10 +332,16 @@ export default function RegisterPage() {
                             />
                         )}
                         {currentStep === 3 && (
+                            // 🌟 CHILD PROP CONFIGURATION PATHWAY: Ipinasa ang magkahiwalay na split parameters pababa sa form view component
                             <StepDocuments
-                                files={{ valid_id_file: validIdFile, business_permit_file: businessPermitFile }}
+                                files={{ 
+                                    valid_id_front_file: validIdFrontFile, 
+                                    valid_id_back_file: validIdBackFile, 
+                                    business_permit_file: businessPermitFile 
+                                }}
                                 onFilesChange={(f) => {
-                                    if (f.valid_id_file !== undefined) setValidIdFile(f.valid_id_file);
+                                    if (f.valid_id_front_file !== undefined) setValidIdFrontFile(f.valid_id_front_file);
+                                    if (f.valid_id_back_file !== undefined) setValidIdBackFile(f.valid_id_back_file);
                                     if (f.business_permit_file !== undefined) setBusinessPermitFile(f.business_permit_file);
                                 }}
                                 errors={errors}
@@ -333,7 +351,11 @@ export default function RegisterPage() {
                         {currentStep === 4 && (
                             <StepReview
                                 form={form}
-                                files={{ valid_id_file: validIdFile, business_permit_file: businessPermitFile }}
+                                files={{ 
+                                    valid_id_front_file: validIdFrontFile, 
+                                    valid_id_back_file: validIdBackFile, 
+                                    business_permit_file: businessPermitFile 
+                                }}
                                 onEditStep={goToStep}
                                 onSubmit={handleSubmit}
                                 loading={loading}
@@ -342,7 +364,6 @@ export default function RegisterPage() {
                     </div>
                 </div>
 
-                {/* Navigation Buttons — hidden on review step (it has its own submit) */}
                 {currentStep < 4 && (
                     <div className="flex justify-between pt-2">
                         {currentStep > 0 ? (

@@ -30,15 +30,15 @@
 
 **OBBO iManage** is a cloud-based ordering, inventory, and sales management platform designed for cement distribution operations. It provides role-based access for three user types: **admins**, **warehouse managers**, and **clients**.
 
-| Property | Value |
-|---|---|
-| **Name** | `obbo-imanage` |
-| **Version** | 0.1.0 |
-| **Deployment** | Vercel (`obbo-imanage.vercel.app`) |
-| **Architecture** | Next.js App Router (standalone) |
-| **Database** | PostgreSQL via Supabase |
-| **Auth Provider** | Supabase Auth |
-| **PWA** | Enabled (Serwist service worker) |
+| Property          | Value                              |
+| ----------------- | ---------------------------------- |
+| **Name**          | `obbo-imanage`                     |
+| **Version**       | 0.1.0                              |
+| **Deployment**    | Vercel (`obbo-imanage.vercel.app`) |
+| **Architecture**  | Next.js App Router (standalone)    |
+| **Database**      | PostgreSQL via Supabase            |
+| **Auth Provider** | Supabase Auth                      |
+| **PWA**           | Enabled (Serwist service worker)   |
 
 ### Core Capabilities
 
@@ -55,82 +55,82 @@
 
 ### Runtime & Framework
 
-| Technology | Version | Purpose |
-|---|---|---|
-| Next.js | 16.2.4 | Full-stack React framework (App Router) |
-| React | 19.2.4 | UI library |
-| React DOM | 19.2.4 | DOM rendering |
-| TypeScript | ^5 | Type-safe JavaScript |
+| Technology | Version | Purpose                                 |
+| ---------- | ------- | --------------------------------------- |
+| Next.js    | 16.2.4  | Full-stack React framework (App Router) |
+| React      | 19.2.4  | UI library                              |
+| React DOM  | 19.2.4  | DOM rendering                           |
+| TypeScript | ^5      | Type-safe JavaScript                    |
 
 ### Styling & UI
 
-| Technology | Version | Purpose |
-|---|---|---|
-| Tailwind CSS | v4 | Utility-first CSS framework (PostCSS plugin) |
-| shadcn/ui | ^4.5.0 | Component library (base-nova style) |
-| @base-ui/react | ^1.4.1 | Component primitives |
-| Lucide React | ^1.11.0 | Icon library |
-| Motion | ^12.38.0 | Animations (Framer Motion successor) |
-| next-themes | ^0.4.6 | Dark/light theme switching |
-| tw-animate-css | ^1.4.0 | Tailwind animation utilities |
-| class-variance-authority | ^0.7.1 | Component variant management |
+| Technology               | Version  | Purpose                                      |
+| ------------------------ | -------- | -------------------------------------------- |
+| Tailwind CSS             | v4       | Utility-first CSS framework (PostCSS plugin) |
+| shadcn/ui                | ^4.5.0   | Component library (base-nova style)          |
+| @base-ui/react           | ^1.4.1   | Component primitives                         |
+| Lucide React             | ^1.11.0  | Icon library                                 |
+| Motion                   | ^12.38.0 | Animations (Framer Motion successor)         |
+| next-themes              | ^0.4.6   | Dark/light theme switching                   |
+| tw-animate-css           | ^1.4.0   | Tailwind animation utilities                 |
+| class-variance-authority | ^0.7.1   | Component variant management                 |
 
 ### Data & Backend
 
-| Technology | Version | Purpose |
-|---|---|---|
-| Supabase JS | ^2.104.1 | Database client, auth, realtime, storage |
-| @supabase/ssr | ^0.10.2 | Server-side Supabase with cookie sessions |
-| Prisma | ^7.8.0 | ORM (type generation + schema documentation) |
-| PostgreSQL | -- | Primary database (via Supabase) |
+| Technology    | Version  | Purpose                                      |
+| ------------- | -------- | -------------------------------------------- |
+| Supabase JS   | ^2.104.1 | Database client, auth, realtime, storage     |
+| @supabase/ssr | ^0.10.2  | Server-side Supabase with cookie sessions    |
+| Prisma        | ^7.8.0   | ORM (type generation + schema documentation) |
+| PostgreSQL    | --       | Primary database (via Supabase)              |
 
 ### Forms & Validation
 
-| Technology | Version | Purpose |
-|---|---|---|
-| React Hook Form | ^7.73.1 | Form state management |
-| Zod | ^4.3.6 | Schema validation |
-| @hookform/resolvers | ^5.2.2 | RHF + Zod integration |
+| Technology          | Version | Purpose               |
+| ------------------- | ------- | --------------------- |
+| React Hook Form     | ^7.73.1 | Form state management |
+| Zod                 | ^4.3.6  | Schema validation     |
+| @hookform/resolvers | ^5.2.2  | RHF + Zod integration |
 
 ### Data Visualization & Export
 
-| Technology | Version | Purpose |
-|---|---|---|
-| Recharts | ^3.8.1 | Chart components |
-| jsPDF | ^4.2.1 | PDF generation |
-| jspdf-autotable | ^5.0.7 | PDF table generation |
-| xlsx (SheetJS) | ^0.18.5 | Excel file generation |
+| Technology      | Version | Purpose               |
+| --------------- | ------- | --------------------- |
+| Recharts        | ^3.8.1  | Chart components      |
+| jsPDF           | ^4.2.1  | PDF generation        |
+| jspdf-autotable | ^5.0.7  | PDF table generation  |
+| xlsx (SheetJS)  | ^0.18.5 | Excel file generation |
 
 ### Utilities
 
-| Technology | Version | Purpose |
-|---|---|---|
-| Zustand | ^5.0.12 | Global state management |
-| date-fns | ^4.1.0 | Date manipulation |
-| cmdk | ^1.1.1 | Command palette / search |
-| Sonner | ^2.0.7 | Toast notifications |
-| Resend | ^6.12.2 | Transactional email |
-| clsx | ^2.1.1 | Conditional classnames |
-| tailwind-merge | ^3.5.0 | Tailwind class deduplication |
+| Technology     | Version | Purpose                      |
+| -------------- | ------- | ---------------------------- |
+| Zustand        | ^5.0.12 | Global state management      |
+| date-fns       | ^4.1.0  | Date manipulation            |
+| cmdk           | ^1.1.1  | Command palette / search     |
+| Sonner         | ^2.0.7  | Toast notifications          |
+| Resend         | ^6.12.2 | Transactional email          |
+| clsx           | ^2.1.1  | Conditional classnames       |
+| tailwind-merge | ^3.5.0  | Tailwind class deduplication |
 
 ### PWA
 
-| Technology | Version | Purpose |
-|---|---|---|
-| @serwist/next | ^9.5.11 | Next.js PWA integration |
-| @serwist/precaching | ^9.5.11 | Asset precaching |
-| @serwist/sw | ^9.5.11 | Service worker utilities |
+| Technology          | Version | Purpose                  |
+| ------------------- | ------- | ------------------------ |
+| @serwist/next       | ^9.5.11 | Next.js PWA integration  |
+| @serwist/precaching | ^9.5.11 | Asset precaching         |
+| @serwist/sw         | ^9.5.11 | Service worker utilities |
 
 ### Development & Testing
 
-| Technology | Version | Purpose |
-|---|---|---|
-| ESLint | ^9 | Linting (flat config) |
-| Vitest | ^4.1.6 | Test runner |
-| @testing-library/react | ^16.3.2 | Component testing |
-| @testing-library/jest-dom | ^6.9.1 | DOM assertion matchers |
-| jsdom | ^29.1.1 | Browser environment for tests |
-| @vitejs/plugin-react | ^6.0.2 | React plugin for Vitest |
+| Technology                | Version | Purpose                       |
+| ------------------------- | ------- | ----------------------------- |
+| ESLint                    | ^9      | Linting (flat config)         |
+| Vitest                    | ^4.1.6  | Test runner                   |
+| @testing-library/react    | ^16.3.2 | Component testing             |
+| @testing-library/jest-dom | ^6.9.1  | DOM assertion matchers        |
+| jsdom                     | ^29.1.1 | Browser environment for tests |
+| @vitejs/plugin-react      | ^6.0.2  | React plugin for Vitest       |
 
 ---
 
@@ -362,48 +362,48 @@ src/
 
 ### Route Map (24 Pages)
 
-| Route | File | Type |
-|---|---|---|
-| `/` | `src/app/page.tsx` | Public landing page |
-| `/login` | `src/app/login/page.tsx` | Authentication |
-| `/register` | `src/app/register/page.tsx` | Multi-step registration |
-| `/pending` | `src/app/pending/page.tsx` | Pending verification |
-| `/admin` | `src/app/admin/page.tsx` | Admin root redirect |
-| `/admin/dashboard` | `src/app/admin/dashboard/page.tsx` | KPI dashboard |
-| `/admin/clients` | `src/app/admin/clients/page.tsx` | Client directory |
-| `/admin/inventory` | `src/app/admin/inventory/page.tsx` | Inventory management |
-| `/admin/orders` | `src/app/admin/orders/page.tsx` | Order management |
-| `/admin/products` | `src/app/admin/products/page.tsx` | Product CRUD |
-| `/admin/profile` | `src/app/admin/profile/page.tsx` | Admin profile |
-| `/admin/reports` | `src/app/admin/reports/page.tsx` | Reports |
-| `/admin/reports/warehouse-manager` | `src/app/admin/reports/warehouse-manager/page.tsx` | WM report submission |
-| `/admin/settings` | `src/app/admin/settings/page.tsx` | Admin settings |
-| `/client` | `src/app/client/page.tsx` | Client root redirect |
-| `/client/catalog` | `src/app/client/catalog/page.tsx` | Product catalog |
-| `/client/contact-admin` | `src/app/client/contact-admin/page.tsx` | Contact form |
-| `/client/dashboard` | `src/app/client/dashboard/page.tsx` | Client dashboard |
-| `/client/ledger` | `src/app/client/ledger/page.tsx` | Balance ledger |
-| `/client/orders` | `src/app/client/orders/page.tsx` | Order listing |
-| `/client/orders/new` | `src/app/client/orders/new/page.tsx` | Order wizard |
-| `/client/orders/[id]` | `src/app/client/orders/[id]/page.tsx` | Order detail |
-| `/client/pending-kyc` | `src/app/client/pending-kyc/page.tsx` | KYC pending |
-| `/client/profile` | `src/app/client/profile/page.tsx` | Profile management |
+| Route                              | File                                               | Type                    |
+| ---------------------------------- | -------------------------------------------------- | ----------------------- |
+| `/`                                | `src/app/page.tsx`                                 | Public landing page     |
+| `/login`                           | `src/app/login/page.tsx`                           | Authentication          |
+| `/register`                        | `src/app/register/page.tsx`                        | Multi-step registration |
+| `/pending`                         | `src/app/pending/page.tsx`                         | Pending verification    |
+| `/admin`                           | `src/app/admin/page.tsx`                           | Admin root redirect     |
+| `/admin/dashboard`                 | `src/app/admin/dashboard/page.tsx`                 | KPI dashboard           |
+| `/admin/clients`                   | `src/app/admin/clients/page.tsx`                   | Client directory        |
+| `/admin/inventory`                 | `src/app/admin/inventory/page.tsx`                 | Inventory management    |
+| `/admin/orders`                    | `src/app/admin/orders/page.tsx`                    | Order management        |
+| `/admin/products`                  | `src/app/admin/products/page.tsx`                  | Product CRUD            |
+| `/admin/profile`                   | `src/app/admin/profile/page.tsx`                   | Admin profile           |
+| `/admin/reports`                   | `src/app/admin/reports/page.tsx`                   | Reports                 |
+| `/admin/reports/warehouse-manager` | `src/app/admin/reports/warehouse-manager/page.tsx` | WM report submission    |
+| `/admin/settings`                  | `src/app/admin/settings/page.tsx`                  | Admin settings          |
+| `/client`                          | `src/app/client/page.tsx`                          | Client root redirect    |
+| `/client/catalog`                  | `src/app/client/catalog/page.tsx`                  | Product catalog         |
+| `/client/contact-admin`            | `src/app/client/contact-admin/page.tsx`            | Contact form            |
+| `/client/dashboard`                | `src/app/client/dashboard/page.tsx`                | Client dashboard        |
+| `/client/ledger`                   | `src/app/client/ledger/page.tsx`                   | Balance ledger          |
+| `/client/orders`                   | `src/app/client/orders/page.tsx`                   | Order listing           |
+| `/client/orders/new`               | `src/app/client/orders/new/page.tsx`               | Order wizard            |
+| `/client/orders/[id]`              | `src/app/client/orders/[id]/page.tsx`              | Order detail            |
+| `/client/pending-kyc`              | `src/app/client/pending-kyc/page.tsx`              | KYC pending             |
+| `/client/profile`                  | `src/app/client/profile/page.tsx`                  | Profile management      |
 
 ### Layouts (3)
 
-| Layout | File | Purpose |
-|---|---|---|
-| Root | `src/app/layout.tsx` | Geist fonts, ThemeProvider, Toaster |
-| Admin | `src/app/admin/layout.tsx` | Sidebar nav, real-time notifications, global search, mobile navbar |
-| Client | `src/app/client/layout.tsx` | Sidebar nav, KYC context, notifications, KYC status badges |
+| Layout | File                        | Purpose                                                            |
+| ------ | --------------------------- | ------------------------------------------------------------------ |
+| Root   | `src/app/layout.tsx`        | Geist fonts, ThemeProvider, Toaster                                |
+| Admin  | `src/app/admin/layout.tsx`  | Sidebar nav, real-time notifications, global search, mobile navbar |
+| Client | `src/app/client/layout.tsx` | Sidebar nav, KYC context, notifications, KYC status badges         |
 
 ### API Routes (3)
 
-| Method | Route | File | Purpose |
-|---|---|---|---|
-| POST | `/api/auth/send-otp` | `src/app/api/auth/send-otp/route.ts` | OTP generation + email |
-| POST | `/api/auth/verify-otp` | `src/app/api/auth/verify-otp/route.ts` | OTP validation |
-| GET | `/api/admin/kyc-document` | `src/app/api/admin/kyc-document/route.ts` | KYC document proxy |
+| Method | Route                     | File                                      | Purpose                |
+| ------ | ------------------------- | ----------------------------------------- | ---------------------- |
+| POST   | `/api/auth/send-otp`      | `src/app/api/auth/send-otp/route.ts`      | OTP generation + email |
+| POST   | `/api/auth/verify-otp`    | `src/app/api/auth/verify-otp/route.ts`    | OTP validation         |
+| GET    | `/api/admin/kyc-document` | `src/app/api/admin/kyc-document/route.ts` | KYC document proxy     |
 
 ### Middleware
 
@@ -422,6 +422,7 @@ The application implements a **dual-portal architecture** with completely separa
 **Access:** `admin` and `warehouse_manager` roles
 
 **Navigation:**
+
 - Dashboard -- KPI overview
 - Orders -- New requests, fulfillment, tracking, history, product catalog (5 tabs)
 - Inventory -- Shipments, PO list, DR list, reports, ledger entry (5 tabs)
@@ -432,6 +433,7 @@ The application implements a **dual-portal architecture** with completely separa
 - Profile -- Admin profile
 
 **Features:**
+
 - Real-time notification badges
 - Global search (cmdk)
 - Theme toggle
@@ -442,6 +444,7 @@ The application implements a **dual-portal architecture** with completely separa
 **Access:** `client` role (KYC-gated for restricted routes)
 
 **Navigation:**
+
 - Dashboard -- Client overview
 - Catalog -- Product browsing
 - Orders -- Order listing, new order wizard, order detail
@@ -450,6 +453,7 @@ The application implements a **dual-portal architecture** with completely separa
 - Contact Admin -- Contact form
 
 **KYC Gating:**
+
 - Unverified clients are redirected to `/client/pending-kyc` when accessing:
   - `/client/orders/new`
   - `/client/ledger`
@@ -457,11 +461,11 @@ The application implements a **dual-portal architecture** with completely separa
 
 ### Role-Based Access Control
 
-| Role | Portal | Capabilities |
-|---|---|---|
-| `admin` | Admin | Full access to all admin features |
-| `warehouse_manager` | Admin | Subset of admin features (inventory, reports) |
-| `client` | Client | Order placement, catalog, ledger, profile |
+| Role                | Portal | Capabilities                                  |
+| ------------------- | ------ | --------------------------------------------- |
+| `admin`             | Admin  | Full access to all admin features             |
+| `warehouse_manager` | Admin  | Subset of admin features (inventory, reports) |
+| `client`            | Client | Order placement, catalog, ledger, profile     |
 
 ---
 
@@ -469,33 +473,34 @@ The application implements a **dual-portal architecture** with completely separa
 
 ### UI Primitives (21 components in `src/components/ui/`)
 
-| Component | File |
-|---|---|
-| Avatar | `avatar.tsx` |
-| Badge | `badge.tsx` |
-| Button | `button.tsx` |
-| Card | `card.tsx` |
-| Command | `command.tsx` |
-| Dialog | `dialog.tsx` |
-| Dropdown Menu | `dropdown-menu.tsx` |
-| Input | `input.tsx` |
-| Label | `label.tsx` |
+| Component       | File                  |
+| --------------- | --------------------- |
+| Avatar          | `avatar.tsx`          |
+| Badge           | `badge.tsx`           |
+| Button          | `button.tsx`          |
+| Card            | `card.tsx`            |
+| Command         | `command.tsx`         |
+| Dialog          | `dialog.tsx`          |
+| Dropdown Menu   | `dropdown-menu.tsx`   |
+| Input           | `input.tsx`           |
+| Label           | `label.tsx`           |
 | Optimized Image | `optimized-image.tsx` |
-| Popover | `popover.tsx` |
-| Radio Group | `radio-group.tsx` |
-| Select | `select.tsx` |
-| Separator | `separator.tsx` |
-| Sheet | `sheet.tsx` |
-| Skeleton | `skeleton.tsx` |
-| Sonner | `sonner.tsx` |
-| Step Indicator | `step-indicator.tsx` |
-| Table | `table.tsx` |
-| Tabs | `tabs.tsx` |
-| Textarea | `textarea.tsx` |
+| Popover         | `popover.tsx`         |
+| Radio Group     | `radio-group.tsx`     |
+| Select          | `select.tsx`          |
+| Separator       | `separator.tsx`       |
+| Sheet           | `sheet.tsx`           |
+| Skeleton        | `skeleton.tsx`        |
+| Sonner          | `sonner.tsx`          |
+| Step Indicator  | `step-indicator.tsx`  |
+| Table           | `table.tsx`           |
+| Tabs            | `tabs.tsx`            |
+| Textarea        | `textarea.tsx`        |
 
 ### Feature Components
 
 **Authentication (`src/components/auth/`)**
+
 - `auth-shell.tsx` -- Auth page wrapper
 - `register/` -- 6-step registration wizard
   - `register-schema.ts` -- Zod validation schema
@@ -506,6 +511,7 @@ The application implements a **dual-portal architecture** with completely separa
   - `step-review.tsx`
 
 **Orders (`src/components/orders/wizard/`)**
+
 - `order-schema.ts` -- Zod validation schema
 - `step-source.tsx`
 - `step-service-type.tsx`
@@ -514,10 +520,12 @@ The application implements a **dual-portal architecture** with completely separa
 - `step-review.tsx`
 
 **Landing Page (`src/components/landing/`)**
+
 - `navbar.tsx` -- Navigation bar
 - `stats.tsx` -- Statistics display
 
 **Shared Components (root of `src/components/`)**
+
 - `avatar-upload.tsx` -- Avatar upload with preview
 - `bottom-navbar.tsx` -- Mobile bottom navigation
 - `count-up.tsx` -- Animated number counter
@@ -531,16 +539,16 @@ The application implements a **dual-portal architecture** with completely separa
 
 Several pages have dedicated `components/` directories for page-specific client components:
 
-| Page | Components |
-|---|---|
-| `/admin/dashboard` | `dashboard-client.tsx` |
-| `/admin/inventory` | `shipments-tab`, `po-list-tab`, `dr-list-tab`, `reports-tab`, `ledger-entry-dialog` |
-| `/admin/orders` | `new-requests-tab`, `fulfillment-tab`, `tracking-tab`, `order-history-tab`, `product-catalog-tab` |
-| `/client/catalog` | `catalog-client.tsx` |
-| `/client/contact-admin` | `contact-client.tsx` |
-| `/client/ledger` | `ledger-client.tsx`, `ledger-client.test.tsx` |
-| `/client/orders` | `orders-client.tsx` |
-| `/client/profile` | `profile-client.tsx` |
+| Page                    | Components                                                                                        |
+| ----------------------- | ------------------------------------------------------------------------------------------------- |
+| `/admin/dashboard`      | `dashboard-client.tsx`                                                                            |
+| `/admin/inventory`      | `shipments-tab`, `po-list-tab`, `dr-list-tab`, `reports-tab`, `ledger-entry-dialog`               |
+| `/admin/orders`         | `new-requests-tab`, `fulfillment-tab`, `tracking-tab`, `order-history-tab`, `product-catalog-tab` |
+| `/client/catalog`       | `catalog-client.tsx`                                                                              |
+| `/client/contact-admin` | `contact-client.tsx`                                                                              |
+| `/client/ledger`        | `ledger-client.tsx`, `ledger-client.test.tsx`                                                     |
+| `/client/orders`        | `orders-client.tsx`                                                                               |
+| `/client/profile`       | `profile-client.tsx`                                                                              |
 
 ---
 
@@ -548,26 +556,27 @@ Several pages have dedicated `components/` directories for page-specific client 
 
 ### Prisma Schema (14 Models)
 
-| Model | Table | Purpose |
-|---|---|---|
-| `Profile` | `profiles` | User profiles (admin, client, warehouse_manager roles; KYC status; notification preferences) |
-| `Product` | `products` | Cement products (name, bag type, price tiers: per-bag, port, warehouse) |
-| `Shipment` | `shipments` | Incoming shipment batches (JB/SB quantities, good/damaged stock tracking) |
-| `ShipmentLedger` | `shipment_ledger` | Detailed shipment transaction ledger (PO/DR numbers, driver info, payments) |
-| `DeliveryReceipt` | `delivery_receipts` | Delivery receipts linked to shipments and orders |
-| `Order` | `orders` | Client orders (status workflow, payment method, tracking, split delivery support) |
-| `OrderItem` | `order_items` | Line items per order (requested/approved/dispatched quantities) |
-| `CustomerBalance` | `customer_balances` | Remaining balances for partial deliveries |
-| `PurchaseOrder` | `purchase_orders` | Purchase orders (linked to clients, shipments, orders) |
-| `WarehouseReport` | `warehouse_reports` | Daily warehouse inventory reports (JB/SB received/dispatched/returned/waste) |
-| `AdminSetting` | `admin_settings` | Key-value admin settings store |
-| `ActivityLog` | `activity_log` | Audit trail for all entity actions |
-| `OrderReturn` | `order_returns` | Return requests with reasons |
-| `Notification` | `notifications` | User notifications with severity levels |
+| Model             | Table               | Purpose                                                                                      |
+| ----------------- | ------------------- | -------------------------------------------------------------------------------------------- |
+| `Profile`         | `profiles`          | User profiles (admin, client, warehouse_manager roles; KYC status; notification preferences) |
+| `Product`         | `products`          | Cement products (name, bag type, price tiers: per-bag, port, warehouse)                      |
+| `Shipment`        | `shipments`         | Incoming shipment batches (JB/SB quantities, good/damaged stock tracking)                    |
+| `ShipmentLedger`  | `shipment_ledger`   | Detailed shipment transaction ledger (PO/DR numbers, driver info, payments)                  |
+| `DeliveryReceipt` | `delivery_receipts` | Delivery receipts linked to shipments and orders                                             |
+| `Order`           | `orders`            | Client orders (status workflow, payment method, tracking, split delivery support)            |
+| `OrderItem`       | `order_items`       | Line items per order (requested/approved/dispatched quantities)                              |
+| `CustomerBalance` | `customer_balances` | Remaining balances for partial deliveries                                                    |
+| `PurchaseOrder`   | `purchase_orders`   | Purchase orders (linked to clients, shipments, orders)                                       |
+| `WarehouseReport` | `warehouse_reports` | Daily warehouse inventory reports (JB/SB received/dispatched/returned/waste)                 |
+| `AdminSetting`    | `admin_settings`    | Key-value admin settings store                                                               |
+| `ActivityLog`     | `activity_log`      | Audit trail for all entity actions                                                           |
+| `OrderReturn`     | `order_returns`     | Return requests with reasons                                                                 |
+| `Notification`    | `notifications`     | User notifications with severity levels                                                      |
 
 ### Supabase Infrastructure
 
 **Schema:** `supabase/schema.sql` (570 lines) -- Full SQL schema with:
+
 - Table definitions
 - RLS (Row Level Security) policies
 - Triggers (auto-create profile on signup)
@@ -577,22 +586,24 @@ Several pages have dedicated `components/` directories for page-specific client 
 
 **Migrations (6 files in `supabase/migrations/`):**
 
-| Date | Migration |
-|---|---|
-| 2026-05-14 | `add_pending_final_confirmation_status` |
+| Date       | Migration                                   |
+| ---------- | ------------------------------------------- |
+| 2026-05-14 | `add_pending_final_confirmation_status`     |
 | 2026-05-15 | `fix_storage_permissions_and_client_orders` |
-| 2026-05-20 | `add_notification_target_role` |
-| 2026-05-22 | `add_return_reason` |
-| 2026-05-26 | `add_sales_profit_tracking` |
-| 2026-06-03 | `add_delivery_receipt_id_to_ledger` |
+| 2026-05-20 | `add_notification_target_role`              |
+| 2026-05-22 | `add_return_reason`                         |
+| 2026-05-26 | `add_sales_profit_tracking`                 |
+| 2026-06-03 | `add_delivery_receipt_id_to_ledger`         |
 
 **Standalone Migrations:**
+
 - `migration_avatars_bucket.sql` -- Avatar storage bucket
 - `migration_po_dr_automation.sql` -- PO/DR automation
 
 ### Server Actions
 
 **Admin Actions (`src/lib/actions/admin-actions.ts` -- 1858 lines)**
+
 - Dashboard KPIs
 - Products CRUD
 - Order lifecycle (approve/reject/dispatch/track)
@@ -611,6 +622,7 @@ Several pages have dedicated `components/` directories for page-specific client 
 - Financial reports (sales/profit)
 
 **Client Actions (`src/lib/actions/client-actions.ts` -- 617 lines)**
+
 - Dashboard KPIs
 - Recent orders
 - Order submission (with split delivery support)
@@ -625,6 +637,7 @@ Several pages have dedicated `components/` directories for page-specific client 
 - Contact info
 
 **Notification Actions (`src/lib/actions/notification-actions.ts`)**
+
 - `createRoleNotification()` -- Broadcasts to all users with a given role
 - `createRoleNotificationAdmin()` -- Same but bypasses RLS via service-role key
 - `createUserNotification()` -- Sends to a specific user
@@ -639,12 +652,12 @@ Several pages have dedicated `components/` directories for page-specific client 
 
 ### Auth Provider: Supabase Auth
 
-| Flow | Implementation |
-|---|---|
-| **Sign-up** | `supabase.auth.signUp()` in register page; profile inserted to DB; user signed out pending KYC |
-| **Login** | `supabase.auth.signInWithPassword()` in login page |
-| **Sign-out** | `supabase.auth.signOut()` in admin and client layouts |
-| **Session refresh** | `supabase.auth.getUser()` on every request via proxy |
+| Flow                | Implementation                                                                                 |
+| ------------------- | ---------------------------------------------------------------------------------------------- |
+| **Sign-up**         | `supabase.auth.signUp()` in register page; profile inserted to DB; user signed out pending KYC |
+| **Login**           | `supabase.auth.signInWithPassword()` in login page                                             |
+| **Sign-out**        | `supabase.auth.signOut()` in admin and client layouts                                          |
+| **Session refresh** | `supabase.auth.getUser()` on every request via proxy                                           |
 
 ### OTP Email Verification
 
@@ -684,6 +697,7 @@ Several pages have dedicated `components/` directories for page-specific client 
 ### Zustand Store (`src/lib/store/app-store.ts`)
 
 **`useAppStore`** -- Global UI state:
+
 - `sidebarOpen` (boolean) -- Sidebar visibility
 - `toggleSidebar()` / `setSidebarOpen()` -- Sidebar controls
 - `currentUser` -- User object (id, email, full_name, role, kyc_status)
@@ -692,6 +706,7 @@ Several pages have dedicated `components/` directories for page-specific client 
 ### React Context (`src/lib/context/client-kyc-context.tsx`)
 
 **`ClientKycContext`** / **`ClientKycProvider`** -- KYC state management:
+
 - Fetches `kyc_status` from `profiles` table on mount
 - Subscribes to real-time Postgres changes for live KYC status updates
 - Exports `useClientKyc()` and `useIsKycVerified()` hooks
@@ -700,6 +715,7 @@ Several pages have dedicated `components/` directories for page-specific client 
 ### Session Storage (`src/lib/hooks/use-persisted-form.ts`)
 
 **`usePersistedForm<T>(key, initial)`** -- Form state persistence:
+
 - Persists to `sessionStorage` with debounced writes (300ms)
 - Strips `File` objects before serialization
 - Returns `[state, update, clear]` tuple
@@ -711,22 +727,22 @@ Several pages have dedicated `components/` directories for page-specific client 
 
 ### Core Utilities
 
-| Utility | File | Purpose |
-|---|---|---|
-| `cn()` | `src/lib/utils.ts` | Tailwind class merging (clsx + tailwind-merge) |
-| `formatCurrency()` | `src/lib/client-portal-data.ts` | PHP currency formatting |
-| `getProductById()` | `src/lib/client-portal-data.ts` | Product lookup |
-| `getIndividualBagCount()` | `src/lib/client-portal-data.ts` | Bag count calculation |
-| `getSourceUnitPrice()` | `src/lib/client-portal-data.ts` | Price lookup by source |
-| `getOrderSubtotal()` | `src/lib/client-portal-data.ts` | Order total calculation |
+| Utility                   | File                            | Purpose                                        |
+| ------------------------- | ------------------------------- | ---------------------------------------------- |
+| `cn()`                    | `src/lib/utils.ts`              | Tailwind class merging (clsx + tailwind-merge) |
+| `formatCurrency()`        | `src/lib/client-portal-data.ts` | PHP currency formatting                        |
+| `getProductById()`        | `src/lib/client-portal-data.ts` | Product lookup                                 |
+| `getIndividualBagCount()` | `src/lib/client-portal-data.ts` | Bag count calculation                          |
+| `getSourceUnitPrice()`    | `src/lib/client-portal-data.ts` | Price lookup by source                         |
+| `getOrderSubtotal()`      | `src/lib/client-portal-data.ts` | Order total calculation                        |
 
 ### Report Generators (`src/lib/report-generators/`)
 
-| Generator | File | Output |
-|---|---|---|
-| PDF | `report-pdf.ts` | Branded PDF (OBBO blue/yellow theme) with 3 table sections |
-| Excel | `report-xlsx.ts` | 3-sheet workbook (Physical Inventory, Customer Movement, Customer Obligations) |
-| Types | `types.ts` | Shared interfaces: `PhysicalData`, `DispatchRow`, `BalanceRow`, `ReportExportData` |
+| Generator | File             | Output                                                                             |
+| --------- | ---------------- | ---------------------------------------------------------------------------------- |
+| PDF       | `report-pdf.ts`  | Branded PDF (OBBO blue/yellow theme) with 3 table sections                         |
+| Excel     | `report-xlsx.ts` | 3-sheet workbook (Physical Inventory, Customer Movement, Customer Obligations)     |
+| Types     | `types.ts`       | Shared interfaces: `PhysicalData`, `DispatchRow`, `BalanceRow`, `ReportExportData` |
 
 ### Email Service (`src/lib/resend.ts`)
 
@@ -740,26 +756,26 @@ Several pages have dedicated `components/` directories for page-specific client 
 
 ### Supabase Client Wrappers (`src/lib/supabase/`)
 
-| Client | File | Purpose |
-|---|---|---|
-| Server | `server.ts` | Server-side client with cookie sessions |
-| Browser | `client.ts` | Browser-side client |
-| Admin | `admin.ts` | Service-role client (bypasses RLS) |
+| Client  | File        | Purpose                                 |
+| ------- | ----------- | --------------------------------------- |
+| Server  | `server.ts` | Server-side client with cookie sessions |
+| Browser | `client.ts` | Browser-side client                     |
+| Admin   | `admin.ts`  | Service-role client (bypasses RLS)      |
 
 ---
 
 ## 11. Configuration Files
 
-| File | Purpose |
-|---|---|
-| `next.config.ts` | Turbopack enabled, Supabase image remote patterns, Serwist PWA wrapper |
-| `tsconfig.json` | ES2017 target, bundler module resolution, `@/*` path alias, strict mode |
-| `postcss.config.mjs` | Tailwind CSS v4 PostCSS plugin |
-| `eslint.config.mjs` | Flat config with next/core-web-vitals + typescript |
-| `vitest.config.ts` | jsdom environment, React plugin, `@/` path alias |
-| `vitest.setup.ts` | jest-dom/vitest matchers |
-| `prisma.config.ts` | Prisma schema path, migrations path, DATABASE_URL |
-| `components.json` | shadcn/ui: base-nova style, RSC enabled, lucide icons, neutral base color, CSS variables |
+| File                 | Purpose                                                                                  |
+| -------------------- | ---------------------------------------------------------------------------------------- |
+| `next.config.ts`     | Turbopack enabled, Supabase image remote patterns, Serwist PWA wrapper                   |
+| `tsconfig.json`      | ES2017 target, bundler module resolution, `@/*` path alias, strict mode                  |
+| `postcss.config.mjs` | Tailwind CSS v4 PostCSS plugin                                                           |
+| `eslint.config.mjs`  | Flat config with next/core-web-vitals + typescript                                       |
+| `vitest.config.ts`   | jsdom environment, React plugin, `@/` path alias                                         |
+| `vitest.setup.ts`    | jest-dom/vitest matchers                                                                 |
+| `prisma.config.ts`   | Prisma schema path, migrations path, DATABASE_URL                                        |
+| `components.json`    | shadcn/ui: base-nova style, RSC enabled, lucide icons, neutral base color, CSS variables |
 
 ### TypeScript Configuration
 
@@ -797,28 +813,30 @@ Several pages have dedicated `components/` directories for page-specific client 
 
 ### npm Scripts
 
-| Script | Command | Purpose |
-|---|---|---|
-| `dev` | `next dev` | Development server |
-| `build` | `next build` | Production build |
-| `start` | `next start` | Production server |
-| `lint` | `eslint` | Lint codebase |
-| `test` | `vitest run` | Run tests once |
-| `test:watch` | `vitest` | Run tests in watch mode |
-| `admin:create` | `node scripts/create-admin.mjs` | Create admin user |
-| `seed:all` | `node scripts/seed-mock-data.mjs && seed-shipments.mjs && seed-transactions.mjs` | Seed all mock data |
-| `prisma:generate` | `prisma generate` | Generate Prisma client |
-| `prisma:migrate:prod` | `prisma migrate deploy` | Deploy migrations to production |
-| `prisma:db:push` | `prisma db push --no-erase` | Push schema to DB |
-| `seed:historical` | `node scripts/seed-historical-po-dr.mjs` | Seed historical PO/DR data |
+| Script                | Command                                                                          | Purpose                         |
+| --------------------- | -------------------------------------------------------------------------------- | ------------------------------- |
+| `dev`                 | `next dev`                                                                       | Development server              |
+| `build`               | `next build`                                                                     | Production build                |
+| `start`               | `next start`                                                                     | Production server               |
+| `lint`                | `eslint`                                                                         | Lint codebase                   |
+| `test`                | `vitest run`                                                                     | Run tests once                  |
+| `test:watch`          | `vitest`                                                                         | Run tests in watch mode         |
+| `admin:create`        | `node scripts/create-admin.mjs`                                                  | Create admin user               |
+| `seed:all`            | `node scripts/seed-mock-data.mjs && seed-shipments.mjs && seed-transactions.mjs` | Seed all mock data              |
+| `prisma:generate`     | `prisma generate`                                                                | Generate Prisma client          |
+| `prisma:migrate:prod` | `prisma migrate deploy`                                                          | Deploy migrations to production |
+| `prisma:db:push`      | `prisma db push --no-erase`                                                      | Push schema to DB               |
+| `seed:historical`     | `node scripts/seed-historical-po-dr.mjs`                                         | Seed historical PO/DR data      |
 
 ### Utility Scripts (`scripts/` -- 15 files)
 
 **User Creation:**
+
 - `create-admin.mjs` -- Create admin user
 - `create-warehouse-manager.mjs` -- Create warehouse manager user
 
 **Data Seeding:**
+
 - `seed-mock-data.mjs` -- Seed mock data
 - `seed-shipments.mjs` -- Seed shipments
 - `seed-transactions.mjs` -- Seed transactions
@@ -827,6 +845,7 @@ Several pages have dedicated `components/` directories for page-specific client 
 - `seed-fresh.mjs` -- Fresh seed
 
 **SQL Scripts:**
+
 - Various `.sql` files for storage buckets, notification triggers, cascade deletes, etc.
 
 ### Scratch Scripts (`scratch/` -- 4 files)
@@ -839,19 +858,19 @@ Several pages have dedicated `components/` directories for page-specific client 
 
 ### Framework
 
-| Component | Technology |
-|---|---|
-| Test Runner | Vitest ^4.1.6 |
-| Environment | jsdom |
-| Component Testing | @testing-library/react ^16.3.2 |
-| DOM Assertions | @testing-library/jest-dom ^6.9.1 |
-| React Plugin | @vitejs/plugin-react ^6.0.2 |
+| Component         | Technology                       |
+| ----------------- | -------------------------------- |
+| Test Runner       | Vitest ^4.1.6                    |
+| Environment       | jsdom                            |
+| Component Testing | @testing-library/react ^16.3.2   |
+| DOM Assertions    | @testing-library/jest-dom ^6.9.1 |
+| React Plugin      | @vitejs/plugin-react ^6.0.2      |
 
 ### Current Test Coverage
 
-| Test File | Tests |
-|---|---|
-| `src/lib/actions/client-actions.test.ts` | Client server actions |
+| Test File                                                 | Tests                   |
+| --------------------------------------------------------- | ----------------------- |
+| `src/lib/actions/client-actions.test.ts`                  | Client server actions   |
 | `src/app/client/ledger/components/ledger-client.test.tsx` | Ledger client component |
 
 **Total:** 2 test files
@@ -868,12 +887,14 @@ Several pages have dedicated `components/` directories for page-specific client 
 ### Clean Industrial Design System
 
 **Palette:**
+
 - **Primary:** Industrial Blue
 - **Accent:** Construction Yellow
 - **Neutrals:** Slate scale
 - **Font:** Inter preferred
 
 **Rules:**
+
 - Back buttons required on auth/landing pages with `ArrowLeft` icon
 - Active states must use Industrial Blue
 - Cards with subtle 1px borders, 8-12px radius, `shadow-sm` max
@@ -886,30 +907,32 @@ Several pages have dedicated `components/` directories for page-specific client 
 ### `.agents/` Directory (18 files)
 
 **Rules (`rules/`):**
+
 - `design-system.md` -- Clean Industrial design system rules (always-on trigger for `**/*.{tsx,css}`)
 
 **Migrations (`migrations/` -- 17 SQL files):**
 
-| # | Migration |
-|---|---|
-| 002 | OTP and storage setup |
-| 003 | Admin schema evolution |
-| 004 | Product images storage |
-| 005 | Warehouse manager role |
-| 006 | Report submission |
-| 007 | Shipment damaged breakdown |
-| 008 | Products unique constraint |
-| 009 | Order returns |
-| 010 | PO automation structure |
-| 011 | Client balance RLS |
-| 012 | Split delivery breakdown |
-| 013 | Total purchase column |
-| 014 | FK on_delete consistency |
+| #   | Migration                         |
+| --- | --------------------------------- |
+| 002 | OTP and storage setup             |
+| 003 | Admin schema evolution            |
+| 004 | Product images storage            |
+| 005 | Warehouse manager role            |
+| 006 | Report submission                 |
+| 007 | Shipment damaged breakdown        |
+| 008 | Products unique constraint        |
+| 009 | Order returns                     |
+| 010 | PO automation structure           |
+| 011 | Client balance RLS                |
+| 012 | Split delivery breakdown          |
+| 013 | Total purchase column             |
+| 014 | FK on_delete consistency          |
 | 015 | Cleanup delivery receipts columns |
-| 016 | Return tracking statuses |
-| 017 | Delivery receipt ID on ledger |
+| 016 | Return tracking statuses          |
+| 017 | Delivery receipt ID on ledger     |
 
 **Reports (`reports/`):**
+
 - `system-audit-2026-05-18.md` -- Comprehensive 30-issue audit covering:
   - **CRITICAL (6):** Dark mode breakages
   - **HIGH (2):** Accessibility violations
@@ -919,19 +942,21 @@ Several pages have dedicated `components/` directories for page-specific client 
 ### `.github/` Directory (6 files)
 
 **Instructions (`instructions/`):**
+
 - `clean-industrial.instructions.md` -- Auto-applied frontend instructions for `**/*.{tsx,css}` files
 
 **Prompts (`prompts/`):**
+
 - `optimize-page-performance.prompt.md` -- Performance optimization prompt
 
 **Skills (`skills/` -- 4 skills):**
 
-| Skill | Purpose |
-|---|---|
-| `obbo-clean-industrial-ui` | UI implementation following OBBO visual system |
-| `obbo-design-system-audit` | Design-system compliance review |
-| `obbo-page-load-optimization` | Page load speed, hydration, bundle size |
-| `obbo-inp-optimization` | INP and click latency optimization |
+| Skill                         | Purpose                                        |
+| ----------------------------- | ---------------------------------------------- |
+| `obbo-clean-industrial-ui`    | UI implementation following OBBO visual system |
+| `obbo-design-system-audit`    | Design-system compliance review                |
+| `obbo-page-load-optimization` | Page load speed, hydration, bundle size        |
+| `obbo-inp-optimization`       | INP and click latency optimization             |
 
 ---
 
@@ -975,4 +1000,4 @@ Several pages have dedicated `components/` directories for page-specific client 
 
 ---
 
-*Report generated for OBBO iManage v0.1.0 -- June 6, 2026*
+_Report generated for OBBO iManage v0.1.0 -- June 6, 2026_

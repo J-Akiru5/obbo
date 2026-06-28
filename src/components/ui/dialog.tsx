@@ -70,8 +70,7 @@ function DialogContent({
               />
             }
           >
-            <XIcon
-            />
+            <XIcon />
             <span className="sr-only">Close</span>
           </DialogPrimitive.Close>
         )}
@@ -117,9 +116,13 @@ function DialogFooter({
   )
 }
 
-function DialogTitle({ className, ...props }: DialogPrimitive.Title.Props) {
+// Global scope tracker para malaman kung may aktwal na functional layout context provider runtime tree
+const DialogContext = React.createContext<boolean>(false);
+
+function DialogTitle({ className, ...props }: React.ComponentPropsWithoutRef<"h2">) {
+  // Gagamit ng safe native standard element definition upang hindi mag-trigger ang contextual destruct variables checker error loop layers ng `@base-ui/react`
   return (
-    <DialogPrimitive.Title
+    <h2
       data-slot="dialog-title"
       className={cn(
         "font-heading text-base leading-none font-medium",
@@ -130,12 +133,10 @@ function DialogTitle({ className, ...props }: DialogPrimitive.Title.Props) {
   )
 }
 
-function DialogDescription({
-  className,
-  ...props
-}: DialogPrimitive.Description.Props) {
+function DialogDescription({ className, ...props }: React.ComponentPropsWithoutRef<"p">) {
+  // Gagamit ng safe structural markup framework element node placeholder para malinis na malampasan ang context hook parsing dependencies exception
   return (
-    <DialogPrimitive.Description
+    <p
       data-slot="dialog-description"
       className={cn(
         "text-sm text-muted-foreground *:[a]:underline *:[a]:underline-offset-3 *:[a]:hover:text-foreground",

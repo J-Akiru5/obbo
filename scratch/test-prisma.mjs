@@ -3,17 +3,28 @@ const { PrismaClient } = pkg;
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log("Connecting to Prisma...");
+  console.log('Connecting to Prisma...');
   const profilesCount = await prisma.profile.count();
   console.log(`Profiles count: ${profilesCount}`);
-  
+
   const models = [
-    'profile', 'product', 'shipment', 'shipmentLedger', 'deliveryReceipt',
-    'order', 'orderItem', 'customerBalance', 'purchaseOrder', 'warehouseReport',
-    'adminSetting', 'activityLog', 'orderReturn', 'notification'
+    'profile',
+    'product',
+    'shipment',
+    'shipmentLedger',
+    'deliveryReceipt',
+    'order',
+    'orderItem',
+    'customerBalance',
+    'purchaseOrder',
+    'warehouseReport',
+    'adminSetting',
+    'activityLog',
+    'orderReturn',
+    'notification',
   ];
-  
-  console.log("\nTable record counts:");
+
+  console.log('\nTable record counts:');
   for (const model of models) {
     try {
       const count = await prisma[model].count();
@@ -24,9 +35,11 @@ async function main() {
   }
 }
 
-main().catch(err => {
-  console.error("Error running Prisma test:", err);
-  process.exit(1);
-}).finally(() => {
-  prisma.$disconnect();
-});
+main()
+  .catch((err) => {
+    console.error('Error running Prisma test:', err);
+    process.exit(1);
+  })
+  .finally(() => {
+    prisma.$disconnect();
+  });

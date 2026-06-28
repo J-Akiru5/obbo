@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import { Upload, X, FileCheck, Split, Camera } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -99,7 +100,20 @@ export function StepPoPayment({
     totalIndividualBags,
 }: StepPoPaymentProps) {
     const totalDeliverNow = form.deliver_now_jb + form.deliver_now_sb;
-    const remainingBalance = totalIndividualBags - totalDeliverNow;
+    
+    // 🌟 MATHEMATICAL ALGORITHM CORRECTION: Hinati sa sako-sa-sako na deduction para maiwasan ang maling incremental factor errors
+    const remainingBalance = (totalJB + totalSB) - totalDeliverNow;
+
+    // 🌟 STATE LIFE CYCLE SYNCHRONIZER: Pinipilit nitong ibalik sa max totals o i-clamp sa valid bounds ang inputs kapag may nabago sa main settings status
+    useEffect(() => {
+        if (!form.wants_split) {
+            onFieldChange("deliver_now_jb", totalJB);
+            onFieldChange("deliver_now_sb", totalSB);
+        } else {
+            if (form.deliver_now_jb > totalJB) onFieldChange("deliver_now_jb", totalJB);
+            if (form.deliver_now_sb > totalSB) onFieldChange("deliver_now_sb", totalSB);
+        }
+    }, [form.wants_split, totalJB, totalSB, onFieldChange, form.deliver_now_jb, form.deliver_now_sb]);
 
     return (
         <div className="space-y-6">
@@ -190,7 +204,7 @@ export function StepPoPayment({
                 </div>
             )}
 
-            {/* Split Delivery */}
+            {/* Split Delivery Options panel row layout mapping */}
             <div className="p-4 border border-blue-500/20 bg-blue-500/5 rounded-lg space-y-4">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
@@ -261,7 +275,7 @@ export function StepPoPayment({
                                 <span>Delivering now</span>
                                 <span>{totalDeliverNow.toLocaleString()} bags</span>
                             </div>
-                            <div className="flex justify-between text-blue-400 mt-1">
+                            <div className="flex justify-between text-blue-500/70 mt-1 font-medium">
                                 <span>Remaining balance</span>
                                 <span>{remainingBalance.toLocaleString()} bags</span>
                             </div>

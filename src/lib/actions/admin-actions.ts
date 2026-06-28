@@ -428,18 +428,17 @@ export async function dispatchOrder(
     if (orderUpdateError) throw new Error(`Failed to update order status: ${orderUpdateError.message}`);
 
     // ── AUTO-GENERATE PO RECORD ──────────────────────────────
-    // Determine payment columns
-    let checkNumber: string | null = null;
-    let checkAmount: number | null = null;
-    let cashAmount: number | null = null;
+    let checkNumberStr: string | null = null;
+    let checkAmountNum: number | null = null;
+    let cashAmountNum: number | null = null;
     
     if (order.payment_method === "check") {
-        checkNumber = order.check_number || null;
-        checkAmount = Number(order.total_amount) || null;
+        checkNumberStr = order.check_number || null;
+        checkAmountNum = Number(order.total_amount) || null;
     } else if (order.payment_method === "cash") {
-        cashAmount = Number(order.total_amount) || null;
+        cashAmountNum = Number(order.total_amount) || null;
     } else {
-        cashAmount = Number(order.total_amount) || null;
+        cashAmountNum = Number(order.total_amount) || null;
     }
 
     const poPayload = {
@@ -454,14 +453,13 @@ export async function dispatchOrder(
         service_type: order.service_type,
         shipment_id: shipmentId,
         order_id: orderId,
-        check_number: checkNumber,
-        check_amount: checkAmount,
-        cash_amount: cashAmount,
+        check_number: checkNumberStr,
+        check_amount: checkAmountNum,
+        cash_amount: cashAmountNum,
         photo_url: order.po_image_url,
         updated_at: new Date().toISOString(),
     };
 
-    // Check if a PO record with this po_number already exists
     const { data: existingPo } = await supabase.from("purchase_orders")
         .select("id").eq("po_number", poNumber).maybeSingle();
 
@@ -474,7 +472,6 @@ export async function dispatchOrder(
 
     if (poResult?.error) {
         console.error("PO Auto-generation error:", poResult.error);
-        // Non-blocking: let dispatch complete even if PO sync fails
     }
 
     // ── AUTO-GENERATE DR RECORD ──────────────────────────────
@@ -499,7 +496,6 @@ export async function dispatchOrder(
 
     if (drError) throw new Error(`Failed to auto-generate DR record: ${drError.message}`);
 
-    // Link the ledger entry to the DR via FK
     if (drRecord?.id) {
         await supabase.from("shipment_ledger")
             .update({ delivery_receipt_id: drRecord.id })
@@ -530,7 +526,6 @@ export async function updateTrackingStatus(orderId: string, trackingStatus: stri
     await supabase.from("orders").update(updates).eq("id", orderId);
     await logActivity(supabase, userId, "tracking_updated", "order", orderId, { trackingStatus });
 
-    // If bags were returned, auto-create a shipment ledger entry so it reflects in stock and reports
     if (isReturn && (bagsReturnedJb || bagsReturnedSb)) {
         const { data: order } = await supabase.from("orders").select("shipment_id, po_number, dr_number, client_id").eq("id", orderId).single();
         if (order?.shipment_id) {
@@ -539,7 +534,6 @@ export async function updateTrackingStatus(orderId: string, trackingStatus: stri
                 const { data: profile } = await supabase.from("profiles").select("full_name, company_name").eq("id", order.client_id).single();
                 clientLabel = profile?.company_name || profile?.full_name || "Unknown";
             }
-            // Determine return_reason based on status
             const reason = trackingStatus === "returned_waste" ? "waste" : "return";
             const { data: drRecord } = await supabase.from("delivery_receipts")
                 .select("id").eq("dr_number", order.dr_number).maybeSingle();
@@ -594,7 +588,6 @@ export async function createShipment(batchName: string, totalJb: number, totalSb
     if (error) throw new Error(error.message);
     await logActivity(supabase, userId, "shipment_created", "shipment", data.id, { batchName, totalJb, totalSb, damagedJb, damagedSb });
 
-    // Notify warehouse manager about new shipment
     await createRoleNotification({
         targetRole: "warehouse_manager",
         title: "New Shipment Arrived",
@@ -618,7 +611,6 @@ export async function updateShipment(id: string, updates: Partial<{
     const { supabase, userId } = await requireAdmin();
     const { error } = await supabase.from("shipments").update({ 
         ...updates, 
-        // Keep good_stock in sync if remaining counts are manually set
         ...(updates.remaining_jb !== undefined || updates.remaining_sb !== undefined ? {
             good_stock: (updates.remaining_jb ?? 0) + (updates.remaining_sb ?? 0),
         } : {}),
@@ -662,7 +654,6 @@ export async function addLedgerEntry(shipmentId: string, entry: {
     const returnedType = entry.bag_returned_type ?? null;
     const returnReason = entry.return_reason ?? "return";
 
-    // Insert the ledger row
     const isDispatch = !entry.bags_returned || entry.bags_returned === 0;
     let profitFields = {};
     if (isDispatch && (jbOut > 0 || sbOut > 0)) {
@@ -683,8 +674,6 @@ export async function addLedgerEntry(shipmentId: string, entry: {
     }).select().single();
     if (error) throw new Error(error.message);
 
-    // Adjust shipment remaining stock
-    // Only 'return' reason adds bags back to stock; 'waste'/'damage' are write-offs
     const { data: shipment } = await supabase.from("shipments").select("remaining_jb, remaining_sb, good_stock").eq("id", shipmentId).single();
     if (shipment) {
         const restockReturned = returnReason === "return" && returned > 0;
@@ -718,8 +707,6 @@ export async function updateLedgerEntry(
     const { error } = await supabase.from("shipment_ledger").update({ ...updates, updated_at: new Date().toISOString() }).eq("id", id);
     if (error) throw new Error(error.message);
 
-    // Recalculate stock delta: reverse old, apply new
-    // Only 'return' reason affects stock; 'waste'/'damage' are write-offs
     const wasRestockable = oldEntry.return_reason === "return" || !oldEntry.return_reason;
     const newReturnReason = updates.return_reason ?? oldEntry.return_reason ?? "return";
     const isRestockable = newReturnReason === "return";
@@ -735,10 +722,9 @@ export async function updateLedgerEntry(
         const newJbReturned = isRestockable && newReturned > 0 && newReturnedType === "JB" ? newReturned : 0;
         const newSbReturned = isRestockable && newReturned > 0 && newReturnedType === "SB" ? newReturned : 0;
 
-        // Reverse old effect, apply new effect
         const correctedJb = (shipment.remaining_jb ?? 0)
-            + oldEntry.jb - oldJbReturned   // undo old
-            - newJbOut + newJbReturned;       // apply new
+            + oldEntry.jb - oldJbReturned   
+            - newJbOut + newJbReturned;       
         const correctedSb = (shipment.remaining_sb ?? 0)
             + oldEntry.sb - oldSbReturned
             - newSbOut + newSbReturned;
@@ -880,13 +866,11 @@ export async function createPurchaseOrder(po: {
 }) {
     const { supabase, userId } = await requireAdmin();
     
-    // Auto-generate if blank
     let finalPoNumber = po.po_number?.trim();
     if (!finalPoNumber) {
         finalPoNumber = await generateGlobalNextPoNumber();
     }
 
-    // Map quantity and bag_type to legacy jb/sb columns
     const jb = po.jb ?? (po.bag_type === "JB" ? (po.quantity ?? 0) : 0);
     const sb = po.sb ?? (po.bag_type === "SB" ? (po.quantity ?? 0) : 0);
 
@@ -898,7 +882,6 @@ export async function createPurchaseOrder(po: {
     }).select().single();
     if (error) throw new Error(error.message);
 
-    // If a verified client is selected, auto-create an order so it reflects in the client portal
     if (data.client_id) {
         try {
             const orderData = await createOrderForClientPortal(supabase, {
@@ -942,11 +925,9 @@ export async function createPurchaseOrder(po: {
 export async function updatePurchaseOrder(id: string, updates: any) {
     const { supabase, userId } = await requireAdmin();
     
-    // Handle unified quantity mapping if provided
     if (updates.quantity !== undefined && updates.bag_type !== undefined) {
         updates.jb = updates.bag_type === "JB" ? updates.quantity : 0;
         updates.sb = updates.bag_type === "SB" ? updates.quantity : 0;
-        // Don't delete them if they exist in DB, but usually they don't for PO
     }
 
     const { error } = await supabase.from("purchase_orders").update({ ...updates, updated_at: new Date().toISOString() }).eq("id", id);
@@ -973,7 +954,6 @@ export async function createDeliveryReceipt(dr: {
 }) {
     const { supabase, userId } = await requireAdmin();
 
-    // 1. Fetch linked PO data to unify ledger row
     let poData = null;
     if (dr.po_number) {
         const { data: po } = await supabase.from("purchase_orders").select("*").eq("po_number", dr.po_number).single();
@@ -983,11 +963,9 @@ export async function createDeliveryReceipt(dr: {
     const clientName = dr.client_name || poData?.client_name || "Unknown";
     const effectiveClientId = dr.client_id || poData?.client_id || null;
 
-    // Map quantity and bag_type to legacy jb/sb columns
     const jb = dr.jb ?? (dr.bag_type === "JB" ? (dr.quantity ?? 0) : 0);
     const sb = dr.sb ?? (dr.bag_type === "SB" ? (dr.quantity ?? 0) : 0);
 
-    // 2. Create the DR record
     const { data, error } = await supabase.from("delivery_receipts").insert({
         ...dr,
         client_name: clientName,
@@ -1000,7 +978,6 @@ export async function createDeliveryReceipt(dr: {
     }).select().single();
     if (error) throw new Error(error.message);
 
-    // 3. Auto-insert UNIFIED ledger row via addLedgerEntry (handles stock deduction)
     await addLedgerEntry(dr.shipment_id, {
         dr_number: dr.dr_number,
         po_number: dr.po_number,
@@ -1018,11 +995,9 @@ export async function createDeliveryReceipt(dr: {
         delivery_receipt_id: data.id,
     });
 
-    // 4. If linked PO has a verified client, sync with client portal
     if (effectiveClientId) {
         try {
             if (poData?.order_id) {
-                // Update existing order (created during manual PO step)
                 await supabase.from("orders").update({
                     status: "dispatched",
                     tracking_status: "pending_dispatch",
@@ -1035,7 +1010,6 @@ export async function createDeliveryReceipt(dr: {
                     updated_at: new Date().toISOString(),
                 }).eq("id", poData.order_id);
 
-                // Update dispatched_qty on order items
                 const { data: orderItems } = await supabase
                     .from("order_items")
                     .select("id, bag_type")
@@ -1064,7 +1038,6 @@ export async function createDeliveryReceipt(dr: {
                     severity: "success",
                 });
             } else {
-                // No existing order - create one with dispatched status
                 const orderData = await createOrderForClientPortal(supabase, {
                     clientId: effectiveClientId,
                     poNumber: poData?.po_number || dr.po_number || "",
@@ -1085,7 +1058,6 @@ export async function createDeliveryReceipt(dr: {
                     shippingFee: dr.shipping_fee || 0,
                 });
 
-                // Link PO to order
                 if (poData?.id) {
                     await supabase.from("purchase_orders")
                         .update({ order_id: orderData.id })
@@ -1119,11 +1091,9 @@ export async function createDeliveryReceipt(dr: {
 export async function updateDeliveryReceipt(id: string, updates: any) {
     const { supabase, userId } = await requireAdmin();
 
-    // Fetch existing DR for old values
     const { data: oldDr } = await supabase.from("delivery_receipts").select("*").eq("id", id).single();
     if (!oldDr) throw new Error("Delivery receipt not found");
 
-    // Handle unified quantity mapping if provided
     if (updates.quantity !== undefined && updates.bag_type !== undefined) {
         updates.jb = updates.bag_type === "JB" ? updates.quantity : 0;
         updates.sb = updates.bag_type === "SB" ? updates.quantity : 0;
@@ -1134,15 +1104,12 @@ export async function updateDeliveryReceipt(id: string, updates: any) {
     const newDrNumber = updates.dr_number ?? oldDr.dr_number;
     const newShipmentId = updates.shipment_id ?? oldDr.shipment_id;
 
-    // Update the DR record
     const { error } = await supabase.from("delivery_receipts").update(updates).eq("id", id);
     if (error) throw new Error(error.message);
 
-    // Sync with ledger entry if quantities changed or key fields changed
     if (updates.jb !== undefined || updates.sb !== undefined || updates.dr_number !== undefined ||
         updates.client_name !== undefined || updates.driver !== undefined || updates.plate_number !== undefined) {
 
-        // Find the corresponding ledger entry: prefer FK, fall back to dr_number + shipment_id
         let { data: ledgerEntry } = await supabase
             .from("shipment_ledger")
             .select("*")
@@ -1161,7 +1128,6 @@ export async function updateDeliveryReceipt(id: string, updates: any) {
                 .limit(1)
                 .maybeSingle();
             ledgerEntry = fallback;
-            // Backfill the FK for future lookups
             if (fallback) {
                 await supabase.from("shipment_ledger")
                     .update({ delivery_receipt_id: id })
@@ -1170,7 +1136,6 @@ export async function updateDeliveryReceipt(id: string, updates: any) {
         }
 
         if (ledgerEntry) {
-            // Reverse old stock deduction, apply new deduction
             const { data: shipment } = await supabase
                 .from("shipments")
                 .select("remaining_jb, remaining_sb")
@@ -1178,12 +1143,8 @@ export async function updateDeliveryReceipt(id: string, updates: any) {
                 .single();
 
             if (shipment) {
-                const correctedJb = Math.max(0, (shipment.remaining_jb ?? 0)
-                    + (oldDr.jb || 0)   // undo old deduction
-                    - newJb);            // apply new deduction
-                const correctedSb = Math.max(0, (shipment.remaining_sb ?? 0)
-                    + (oldDr.sb || 0)
-                    - newSb);
+                const correctedJb = Math.max(0, (shipment.remaining_jb ?? 0) + (oldDr.jb || 0) - newJb);
+                const correctedSb = Math.max(0, (shipment.remaining_sb ?? 0) + (oldDr.sb || 0) - newSb);
 
                 await supabase.from("shipments").update({
                     remaining_jb: correctedJb,
@@ -1192,7 +1153,6 @@ export async function updateDeliveryReceipt(id: string, updates: any) {
                 }).eq("id", oldDr.shipment_id);
             }
 
-            // If shipment changed, also need to deduct from new shipment
             if (updates.shipment_id && updates.shipment_id !== oldDr.shipment_id) {
                 const { data: newShipment } = await supabase
                     .from("shipments")
@@ -1210,7 +1170,6 @@ export async function updateDeliveryReceipt(id: string, updates: any) {
                 }
             }
 
-            // Update the ledger entry
             await supabase.from("shipment_ledger").update({
                 dr_number: newDrNumber,
                 shipment_id: newShipmentId,
@@ -1223,7 +1182,6 @@ export async function updateDeliveryReceipt(id: string, updates: any) {
                 updated_at: new Date().toISOString(),
             }).eq("id", ledgerEntry.id);
         } else if (updates.jb !== undefined || updates.sb !== undefined) {
-            // No existing ledger entry found but quantities changed — create one
             await addLedgerEntry(newShipmentId, {
                 dr_number: newDrNumber,
                 client_name: updates.client_name ?? oldDr.client_name ?? "Unknown",
@@ -1248,7 +1206,6 @@ export async function updateDeliveryReceipt(id: string, updates: any) {
 export async function generateDailyReportData(date: string) {
     const { supabase } = await requireAdmin();
 
-    // 1. Get yesterday's closing stock
     const prevDate = new Date(date);
     prevDate.setDate(prevDate.getDate() - 1);
     const prevDateStr = prevDate.toISOString().split("T")[0];
@@ -1257,14 +1214,12 @@ export async function generateDailyReportData(date: string) {
     const yesterday_jb = yesterdayReport?.closing_jb || 0;
     const yesterday_sb = yesterdayReport?.closing_sb || 0;
 
-    // 2. Get today's received stock from shipments (including damaged)
     const { data: shipments } = await supabase.from("shipments").select("total_jb, total_sb, damaged_jb, damaged_sb").eq("arrival_date", date);
     const received_jb = shipments?.reduce((sum, s) => sum + (s.total_jb || 0), 0) || 0;
     const received_sb = shipments?.reduce((sum, s) => sum + (s.total_sb || 0), 0) || 0;
     const shipmentDamagedJb = shipments?.reduce((sum, s) => sum + (s.damaged_jb || 0), 0) || 0;
     const shipmentDamagedSb = shipments?.reduce((sum, s) => sum + (s.damaged_sb || 0), 0) || 0;
 
-    // 3. Get today's dispatches & returns from ledger
     const { data: ledger } = await supabase.from("shipment_ledger").select("*").eq("date", date);
     const dispatched_jb = ledger?.reduce((sum, l) => sum + (l.jb || 0), 0) || 0;
     const dispatched_sb = ledger?.reduce((sum, l) => sum + (l.sb || 0), 0) || 0;
@@ -1285,11 +1240,9 @@ export async function generateDailyReportData(date: string) {
         }
     });
 
-    // Add damaged bags from shipment intake to waste totals (arrival-day damage)
     waste_jb += shipmentDamagedJb;
     waste_sb += shipmentDamagedSb;
 
-    // 4. Get today's dispatches for Module 2 from orders
     const { data: orders } = await supabase
         .from("orders")
         .select("*, client:profiles!orders_client_id_fkey(full_name, company_name), items:order_items(*)")
@@ -1308,7 +1261,6 @@ export async function generateDailyReportData(date: string) {
         };
     });
 
-    // 4b. Also include DRs from delivery_receipts not already covered by orders
     const drNumbersInOrders = new Set(orders?.map(o => o.dr_number).filter(Boolean) || []);
     const { data: drs } = await supabase
         .from("delivery_receipts")
@@ -1325,7 +1277,6 @@ export async function generateDailyReportData(date: string) {
         });
     }
 
-    // 5. Get pending balances for Module 3
     const { data: customerBalances } = await supabase
         .from("customer_balances")
         .select("*, client:profiles!customer_balances_client_id_fkey(full_name, company_name), product:products!customer_balances_product_id_fkey(name), order:orders(po_number)")
@@ -1355,7 +1306,6 @@ export async function fetchWarehouseReport(date: string) {
     if (!data) return null;
 
     const today = new Date().toISOString().split("T")[0];
-    // Admin can only see today's report if it has been submitted
     if (role === "admin" && date === today && !data.submitted) {
         return null;
     }
@@ -1371,7 +1321,6 @@ export async function fetchWarehouseReports(limit: number = 30) {
         .order("report_date", { ascending: false })
         .limit(limit);
     if (role === "admin") {
-        // Admin sees past reports always, but today's only if submitted
         query = query.or(`report_date.lt.${today},and(report_date.eq.${today},submitted.eq.true)`);
     }
     const { data } = await query;
@@ -1407,7 +1356,6 @@ export async function saveWarehouseReport(report: {
 export async function submitWarehouseReport(date: string) {
     const { supabase, userId } = await requireAdmin();
     
-    // Ensure report exists first
     const { data: report, error: fetchError } = await supabase
         .from("warehouse_reports")
         .select("id")
@@ -1416,13 +1364,9 @@ export async function submitWarehouseReport(date: string) {
     
     if (fetchError || !report) throw new Error("Please save the report before submitting.");
 
-    // Mark report as submitted
     await supabase.from("warehouse_reports").update({ submitted: true }).eq("id", report.id);
-
-    // Log the submission activity
     await logActivity(supabase, userId, "warehouse_report_submitted", "warehouse_report", report.id, { date });
 
-    // Trigger Admin Notification
     await createRoleNotification({
         targetRole: "admin",
         title: "Daily Report Submitted",
@@ -1443,7 +1387,6 @@ export async function autoSubmitEndOfDayReports() {
 
     const autoSubmitted: string[] = [];
 
-    // Find any unsubmitted reports from past days
     const { data: pastReports } = await supabase
         .from("warehouse_reports")
         .select("*")
@@ -1456,7 +1399,6 @@ export async function autoSubmitEndOfDayReports() {
         autoSubmitted.push(report.report_date);
     }
 
-    // Also check if yesterday has no report at all — auto-generate and submit
     const { data: yesterdayReport } = await supabase
         .from("warehouse_reports")
         .select("id")
@@ -1505,8 +1447,7 @@ export async function fetchCustomerBalances() {
 export async function updateCustomerBalance(id: string, remaining_qty: number, status: string) {
     const { supabase, userId } = await requireAdmin();
     const { error } = await supabase.from("customer_balances")
-        .update({ remaining_qty, status, updated_at: new Date().toISOString() })
-        .eq("id", id);
+        .update({ remaining_qty, status, updated_at: new Date().toISOString() }).eq("id", id);
     if (error) throw new Error(error.message);
     await logActivity(supabase, userId, "balance_updated", "customer_balances", id, { remaining_qty, status });
     return { success: true };
@@ -1644,6 +1585,14 @@ export async function saveCostConfig(config: CostConfig) {
     return { success: true };
 }
 
+// Wrapper alias function for perfect frontend UI compatibility wizard sync matching
+export async function saveCostConfiguration(landedCost: number, localExpenses: number) {
+    return saveCostConfig({
+        landed_cost_per_bag: landedCost,
+        local_expenses_per_bag: localExpenses
+    });
+}
+
 export async function fetchDashboardFinancials() {
     const { supabase } = await requireAdmin();
     const today = new Date().toISOString().split("T")[0];
@@ -1688,7 +1637,6 @@ export async function fetchAuditLog(page: number = 1, perPage: number = 50) {
     return { entries: data ?? [], total: count ?? 0 };
 }
 
-
 export async function fetchActivityFeed(limit: number = 20) {
     const { supabase } = await requireAdmin();
     const { data } = await supabase
@@ -1704,88 +1652,86 @@ export async function fetchActivityFeed(limit: number = 20) {
 // ═══════════════════════════════════════════════════════════════
 
 export async function fetchPendingKyc() {
-        const { supabase } = await requireAdmin();
-        const { data } = await supabase
-            .from("profiles")
-            .select("*")
-            .eq("kyc_status", "pending_verification")
-            .eq("role", "client")
-            .order("created_at", { ascending: true });
-        return data ?? [];
-    }
+    const { supabase } = await requireAdmin();
+    const { data } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("kyc_status", "pending_verification")
+        .eq("role", "client")
+        .order("created_at", { ascending: true });
+    return data ?? [];
+}
 
-    export async function fetchVerifiedClients() {
-        const { supabase } = await requireAdmin();
-        const { data } = await supabase
-            .from("profiles")
-            .select("*")
-            .eq("kyc_status", "verified")
-            .eq("role", "client")
-            .order("created_at", { ascending: false });
-        return data ?? [];
-    }
+export async function fetchVerifiedClients() {
+    const { supabase } = await requireAdmin();
+    const { data } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("kyc_status", "verified")
+        .eq("role", "client")
+        .order("created_at", { ascending: false });
+    return data ?? [];
+}
 
-    export async function approveKyc(profileId: string) {
-        const { supabase, userId } = await requireAdmin();
+export async function approveKyc(profileId: string) {
+    const { supabase, userId } = await requireAdmin();
 
-        const { data: profile } = await supabase
-            .from("profiles")
-            .select("full_name, email")
-            .eq("id", profileId)
-            .single();
+    const { data: profile } = await supabase
+        .from("profiles")
+        .select("full_name, email")
+        .eq("id", profileId)
+        .single();
 
-        const { error } = await supabase
-            .from("profiles")
-            .update({ kyc_status: "verified", updated_at: new Date().toISOString() })
-            .eq("id", profileId);
+    const { error } = await supabase
+        .from("profiles")
+        .update({ kyc_status: "verified", updated_at: new Date().toISOString() })
+        .eq("id", profileId);
 
-        if (error) throw new Error(error.message);
+    if (error) throw new Error(error.message);
 
-        await logActivity(supabase, userId, "kyc_approved", "profile", profileId, {
-            status: "verified",
-        });
+    await logActivity(supabase, userId, "kyc_approved", "profile", profileId, {
+        status: "verified",
+    });
 
-        // Notify client about KYC approval
-        await createUserNotification({
-            userId: profileId,
-            title: "KYC Approved",
-            message: "Your account has been verified. You can now place orders and access all portal features.",
-            href: "/client/dashboard",
-            severity: "success"
-        });
+    await createUserNotification({
+        userId: profileId,
+        title: "KYC Approved",
+        message: "Your account has been verified. You can now place orders and access all portal features.",
+        href: "/client/dashboard",
+        severity: "success"
+    });
 
-        return { success: true };
-    }
+    return { success: true };
+}
 
-    export async function rejectKyc(profileId: string, reason: string) {
-        const { supabase, userId } = await requireAdmin();
+export async function rejectKyc(profileId: string, reason: string) {
+    const { supabase, userId } = await requireAdmin();
 
-        const { error } = await supabase
-            .from("profiles")
-            .update({
-                kyc_status: "rejected",
-                updated_at: new Date().toISOString(),
-            })
-            .eq("id", profileId);
+    const { error } = await supabase
+        .from("profiles")
+        .update({
+            kyc_status: "rejected",
+            updated_at: new Date().toISOString(),
+        })
+        .eq("id", profileId);
 
-        if (error) throw new Error(error.message);
+    if (error) throw new Error(error.message);
 
-        await logActivity(supabase, userId, "kyc_rejected", "profile", profileId, {
-            reason,
-            status: "rejected",
-        });
+    await logActivity(supabase, userId, "kyc_rejected", "profile", profileId, {
+        reason,
+        status: "rejected",
+    });
 
-        // Notify client about KYC rejection
-        await createUserNotification({
-            userId: profileId,
-            title: "KYC Rejected",
-            message: `Your verification was not approved. Reason: ${reason}. Please contact support or re-submit your documents.`,
-            href: "/client/profile",
-            severity: "warning"
-        });
+    await createUserNotification({
+        userId: profileId,
+        title: "KYC Rejected",
+        message: `Your verification was not approved. Reason: ${reason}. Please contact support or re-submit your documents.`,
+        href: "/client/profile",
+        severity: "warning"
+    });
 
-        return { success: true };
-    }
+    return { success: true };
+}
 
 // ═══════════════════════════════════════════════════════════════
 // ORDER RETURNS
@@ -1855,4 +1801,3 @@ export async function markAllAdminNotificationsRead() {
     if (error) throw new Error(error.message);
     return { success: true };
 }
-

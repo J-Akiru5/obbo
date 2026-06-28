@@ -22,8 +22,10 @@ interface StepReviewProps {
         province: string;
         postal_code: string;
     };
+    // 🌟 FIXED CORRECTION: Binago ang properties ng files para tanggapin ang magkaibang front at back files
     files: {
-        valid_id_file: File | null;
+        valid_id_front_file: File | null;
+        valid_id_back_file: File | null;
         business_permit_file: File | null;
     };
     onEditStep: (step: number) => void;
@@ -131,11 +133,16 @@ export function StepReview({
                     </div>
                 </ReviewSection>
 
-                {/* Documents */}
+                {/* Documents Summary Section View */}
                 <ReviewSection title="Documents" icon={FileCheck} stepIndex={3} onEdit={onEditStep}>
+                    {/* 🌟 SPLIT VALUE RENDERING: Hiwalay na ipinapakita ang pangalan ng Front at Back files */}
                     <ReviewField
-                        label={isCompany ? "Contact person ID" : "Valid ID"}
-                        value={files.valid_id_file?.name ?? "No file selected"}
+                        label={isCompany ? "Contact ID (Front)" : "Valid ID (Front)"}
+                        value={files.valid_id_front_file?.name ?? "No file selected"}
+                    />
+                    <ReviewField
+                        label={isCompany ? "Contact ID (Back)" : "Valid ID (Back)"}
+                        value={files.valid_id_back_file?.name ?? "No file selected"}
                     />
                     {isCompany && (
                         <ReviewField
@@ -155,7 +162,7 @@ export function StepReview({
                 </p>
             </div>
 
-            {/* Submit */}
+            {/* Submit Button Block */}
             <div className="flex justify-end">
                 <Button
                     type="button"

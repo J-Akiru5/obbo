@@ -5,10 +5,15 @@ import { Button } from "@/components/ui/button";
 
 interface StepDocumentsProps {
     files: {
-        valid_id_file: File | null;
+        valid_id_front_file: File | null;
+        valid_id_back_file: File | null;
         business_permit_file: File | null;
     };
-    onFilesChange: (files: Partial<{ valid_id_file: File | null; business_permit_file: File | null }>) => void;
+    onFilesChange: (files: Partial<{ 
+        valid_id_front_file: File | null; 
+        valid_id_back_file: File | null; 
+        business_permit_file: File | null; 
+    }>) => void;
     errors: Record<string, string>;
     accountType: "individual" | "company";
 }
@@ -90,27 +95,40 @@ export function StepDocuments({
                 </h2>
                 <p className="text-sm text-muted-foreground">
                     {accountType === "company"
-                        ? "Upload the contact person's valid ID and your business permit."
-                        : "Upload a photo of your valid government-issued ID."}
+                        ? "Upload the contact person's valid ID (front & back views) and your business permit."
+                        : "Upload photos of the front and back views of your valid government-issued ID."}
                 </p>
             </div>
 
-            <FileDropZone
-                label={accountType === "company" ? "Contact person valid ID" : "Valid ID"}
-                file={files.valid_id_file}
-                onFileChange={(f) => onFilesChange({ valid_id_file: f })}
-                error={errors.valid_id_file}
-                inputId="valid-id-upload"
-            />
+            {/* 🌟 SPLIT SCREEN CONTAINER ROW: Front and Back Views side-by-side deployment layout */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FileDropZone
+                    label={accountType === "company" ? "Contact Person ID (Front)" : "Valid ID (Front View)"}
+                    file={files.valid_id_front_file}
+                    onFileChange={(f) => onFilesChange({ valid_id_front_file: f })}
+                    error={errors.valid_id_front_file}
+                    inputId="valid-id-front-upload"
+                />
+
+                <FileDropZone
+                    label={accountType === "company" ? "Contact Person ID (Back)" : "Valid ID (Back View)"}
+                    file={files.valid_id_back_file}
+                    onFileChange={(f) => onFilesChange({ valid_id_back_file: f })}
+                    error={errors.valid_id_back_file}
+                    inputId="valid-id-back-upload"
+                />
+            </div>
 
             {accountType === "company" && (
-                <FileDropZone
-                    label="Business permit"
-                    file={files.business_permit_file}
-                    onFileChange={(f) => onFilesChange({ business_permit_file: f })}
-                    error={errors.business_permit_file}
-                    inputId="business-permit-upload"
-                />
+                <div className="border-t pt-4">
+                    <FileDropZone
+                        label="Business permit"
+                        file={files.business_permit_file}
+                        onFileChange={(f) => onFilesChange({ business_permit_file: f })}
+                        error={errors.business_permit_file}
+                        inputId="business-permit-upload"
+                    />
+                </div>
             )}
         </div>
     );

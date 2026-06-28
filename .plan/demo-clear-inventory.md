@@ -10,8 +10,8 @@ Add a single `DEMO_MODE` boolean constant at the top of the inventory page. When
 
 ## File to Modify
 
-| File | Change |
-|------|--------|
+| File                               | Change                                                                        |
+| ---------------------------------- | ----------------------------------------------------------------------------- |
 | `src/app/admin/inventory/page.tsx` | Add `const DEMO_MODE = true` and short-circuit `loadData` to set empty arrays |
 
 ## Implementation
@@ -22,14 +22,14 @@ In `src/app/admin/inventory/page.tsx`, modify the `loadData` function:
 const DEMO_MODE = true;
 
 const loadData = async () => {
-    if (DEMO_MODE) {
-        setShipments([]);
-        setPurchaseOrders([]);
-        setDeliveryReceipts([]);
-        setLoading(false);
-        return;
-    }
-    // ... existing fetch logic unchanged
+  if (DEMO_MODE) {
+    setShipments([]);
+    setPurchaseOrders([]);
+    setDeliveryReceipts([]);
+    setLoading(false);
+    return;
+  }
+  // ... existing fetch logic unchanged
 };
 ```
 
