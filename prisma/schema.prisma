@@ -205,13 +205,14 @@ model Order {
 }
 
 model OrderItem {
-  id            String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  orderId       String @db.Uuid @map("order_id")
-  productId     String @db.Uuid @map("product_id")
-  bagType       String @map("bag_type")
-  requestedQty  Int    @map("requested_qty")
-  approvedQty   Int    @default(0) @map("approved_qty")
-  dispatchedQty Int    @default(0) @map("dispatched_qty")
+  id                  String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  orderId             String   @db.Uuid @map("order_id")
+  productId           String   @db.Uuid @map("product_id")
+  bagType             String   @map("bag_type")
+  requestedQty        Int      @map("requested_qty")
+  approvedQty         Int      @default(0) @map("approved_qty")
+  dispatchedQty       Int      @default(0) @map("dispatched_qty")
+  sellingPricePerBag  Decimal? @db.Decimal(10, 2) @map("selling_price_per_bag")
 
   order   Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
   product Product @relation(fields: [productId], references: [id])
