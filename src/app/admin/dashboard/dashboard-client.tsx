@@ -23,12 +23,7 @@ import {
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { createClient } from '@/lib/supabase/client';
-import {
-  fetchDashboardKPIs,
-  fetchActivityFeed,
-  fetchShipments,
-  fetchOrders,
-} from '@/lib/actions/admin-actions';
+import { fetchDashboardKPIs, fetchActivityFeed, fetchOrders } from '@/lib/actions/admin-actions';
 import type { ActivityLog, Order } from '@/lib/types/database';
 import Link from 'next/link';
 import {
@@ -87,15 +82,13 @@ export default function DashboardClient({
   const loadData = useCallback(async () => {
     try {
       const isAdmin = userRole === 'admin';
-      const [kpiData, feed, ships, pOrders] = await Promise.all([
+      const [kpiData, feed, pOrders] = await Promise.all([
         fetchDashboardKPIs(),
         fetchActivityFeed(20),
-        isAdmin ? Promise.resolve([]) : fetchShipments(),
         isAdmin ? Promise.resolve([]) : fetchOrders('pending'),
       ]);
       setKpis(kpiData);
       setActivityFeed(feed as ActivityLog[]);
-      setShipments(ships as any[]);
       setRecentOrders((pOrders as Order[]).slice(0, 5));
     } catch (e) {
       console.error('Dashboard reload error:', e);
