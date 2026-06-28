@@ -234,7 +234,13 @@ export default function NewOrderPage() {
     }
   }
 
+  const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+
   async function uploadFile(file: File, prefix: string): Promise<string> {
+    if (file.size > MAX_FILE_SIZE) {
+      throw new Error(`File exceeds the 10MB size limit. Please use a smaller file.`);
+    }
+
     const supabase = createClient();
     const {
       data: { user },

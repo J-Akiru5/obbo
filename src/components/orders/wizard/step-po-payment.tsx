@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
+import { toast } from 'sonner';
 import { Upload, X, FileCheck, Split, Camera } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -33,6 +34,8 @@ interface StepPoPaymentProps {
   totalSB: number;
 }
 
+const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+
 function FileDropZone({
   label,
   file,
@@ -48,6 +51,16 @@ function FileDropZone({
   inputId: string;
   required?: boolean;
 }) {
+  function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const selected = e.target.files?.[0];
+    if (!selected) return;
+    if (selected.size > MAX_FILE_SIZE) {
+      toast.error(`File exceeds the 10MB size limit. Please use a smaller file.`);
+      e.target.value = '';
+      return;
+    }
+    onFileChange(selected);
+  }
   return (
     <div className="space-y-2">
       <Label className="text-sm font-medium">
@@ -85,7 +98,7 @@ function FileDropZone({
             type="file"
             className="hidden"
             accept="image/*,.pdf"
-            onChange={(e) => onFileChange(e.target.files?.[0] || null)}
+            onChange={handleChange}
           />
         </div>
       )}
