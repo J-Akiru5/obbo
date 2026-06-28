@@ -246,7 +246,7 @@ export default function DashboardClient({
                     <ShieldAlert className="h-5 w-5 text-[var(--color-chart-accent-3)]" />
                   </div>
                 </div>
-                <div className="mt-4 space-y-1">
+                <div className="space-y-1">
                   <p className="text-muted-foreground text-[13px] font-medium">Unverified users</p>
                   <p className="text-[12px] font-semibold text-transparent select-none">&nbsp;</p>
                 </div>
@@ -257,7 +257,7 @@ export default function DashboardClient({
 
         {/* Net Available */}
         <Card className="border-border bg-card relative overflow-hidden rounded-xl shadow-sm">
-          <div className="absolute top-0 right-0 left-0 h-1 bg-[var(--color-chart-accent-4)]" />
+          <div className="bg-industrial-green absolute top-0 right-0 left-0 h-1" />
           <CardContent className="p-6">
             <div className="flex items-start justify-between">
               <div className="w-full space-y-4">
@@ -272,7 +272,7 @@ export default function DashboardClient({
                     <Package className="h-5 w-5 text-[var(--color-chart-accent-4)]" />
                   </div>
                 </div>
-                <div className="mt-4 space-y-1">
+                <div className="space-y-1">
                   <p className="text-muted-foreground text-[13px] font-medium">
                     Physical - Balances
                   </p>
@@ -288,7 +288,7 @@ export default function DashboardClient({
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:gap-6">
         {/* Today's Revenue */}
         <Card className="border-border bg-card relative overflow-hidden rounded-xl shadow-sm">
-          <div className="absolute top-0 right-0 left-0 h-1 bg-emerald-500" />
+          <div className="bg-industrial-green absolute top-0 right-0 left-0 h-1" />
           <CardContent className="p-6">
             <div className="flex items-start justify-between">
               <div className="w-full space-y-4">
@@ -316,7 +316,7 @@ export default function DashboardClient({
 
         {/* Today's Net Profit */}
         <Card className="border-border bg-card relative overflow-hidden rounded-xl shadow-sm">
-          <div className="absolute top-0 right-0 left-0 h-1 bg-blue-500" />
+          <div className="bg-industrial-blue-light absolute top-0 right-0 left-0 h-1" />
           <CardContent className="p-6">
             <div className="flex items-start justify-between">
               <div className="w-full space-y-4">
@@ -344,7 +344,7 @@ export default function DashboardClient({
       </div>
 
       {/* Visual Analytics */}
-      <Card className="border-border bg-card mt-8 overflow-hidden rounded-xl p-6 shadow-sm">
+      <Card className="border-border bg-card overflow-hidden rounded-xl p-6 shadow-sm">
         <CardHeader className="border-border mb-4 border-b p-0 pb-4">
           <CardTitle className="text-foreground text-base font-semibold tracking-wide">
             Warehouse Stock Overview
@@ -391,21 +391,21 @@ export default function DashboardClient({
               <Bar
                 dataKey="good"
                 name="Good Stock"
-                fill="#1dd1a1"
+                fill="var(--color-industrial-green)"
                 radius={[6, 6, 0, 0]}
                 maxBarSize={50}
               />
               <Bar
                 dataKey="obligated"
                 name="Obligated (Balances)"
-                fill="#feca57"
+                fill="var(--color-industrial-yellow)"
                 radius={[6, 6, 0, 0]}
                 maxBarSize={50}
               />
               <Bar
                 dataKey="net"
                 name="Net Available"
-                fill="#3b82f6"
+                fill="var(--color-industrial-blue-light)"
                 radius={[6, 6, 0, 0]}
                 maxBarSize={50}
               />
@@ -415,7 +415,7 @@ export default function DashboardClient({
       </Card>
 
       {/* Low Stock Alerts */}
-      <Card className="border-border bg-card mt-8 overflow-hidden rounded-xl shadow-sm">
+      <Card className="border-border bg-card overflow-hidden rounded-xl shadow-sm">
         <CardHeader className="pb-2">
           <div className="flex items-center gap-2">
             <AlertTriangle className="text-muted-foreground h-5 w-5" />
@@ -468,9 +468,7 @@ export default function DashboardClient({
         </CardContent>
       </Card>
 
-      <div
-        className={`grid grid-cols-1 ${userRole !== 'admin' ? 'lg:grid-cols-2' : ''} mt-8 gap-6`}
-      >
+      <div className={`grid grid-cols-1 ${userRole !== 'admin' ? 'lg:grid-cols-2' : ''} gap-6`}>
         {/* Pending Tasks */}
         {userRole !== 'admin' && (
           <Card className="border-border bg-card overflow-hidden rounded-xl shadow-sm">
@@ -580,7 +578,7 @@ export default function DashboardClient({
 
       {/* Recent Pending Orders */}
       {userRole !== 'admin' && (
-        <Card className="border-border bg-card mt-8 overflow-hidden rounded-xl shadow-sm">
+        <Card className="border-border bg-card overflow-hidden rounded-xl shadow-sm">
           <CardHeader className="border-border border-b pb-4">
             <div className="flex items-center justify-between">
               <CardTitle className="text-foreground text-base font-semibold tracking-wide">
