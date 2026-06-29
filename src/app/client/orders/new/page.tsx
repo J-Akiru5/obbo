@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { ChevronRight, ChevronLeft, ShieldAlert } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
@@ -24,7 +24,12 @@ import {
   getPrice,
   getSubtotal,
 } from '@/components/orders/wizard/order-schema';
-import { submitOrder, saveOrderDraft, generateNextPoNumber } from '@/lib/actions/client-actions';
+import {
+  submitOrder,
+  saveOrderDraft,
+  generateNextPoNumber,
+  fetchOrderForResume,
+} from '@/lib/actions/client-actions';
 import type { Product } from '@/lib/types/database';
 
 const ORDERING_STEPS = ['Products', 'Source', 'Service', 'PO & Payment', 'Review'];
@@ -106,6 +111,50 @@ export default function NewOrderPage() {
       });
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Resume from draft if ?draft= param is present
+  const searchParams = useSearchParams();
+  const draftId = searchParams.get('draft');
+  useEffect(() => {
+    if (!draftId) return;
+
+    let cancelled = false;
+    fetchOrderForResume(draftId)
+      .then((draft) => {
+        if (cancelled) return;
+
+        const jbItem = draft.items?.find((i: any) => i.bag_type === 'JB');
+        const sbItem = draft.items?.find((i: any) => i.bag_type === 'SB');
+
+        updateForm({
+          jb_qty: jbItem?.requested_qty || 0,
+          sb_qty: sbItem?.requested_qty || 0,
+          source: draft.source || 'warehouse',
+          service_type: draft.service_type || 'pickup',
+          driver_name: draft.driver_name || '',
+          plate_number: draft.plate_number || '',
+          preferred_pickup_date: draft.preferred_pickup_date || '',
+          po_number: draft.po_number || '',
+          supplier_name: draft.supplier_name || 'OBBO',
+          payment_method: draft.payment_method || 'cash',
+          wants_split: draft.is_split_delivery || false,
+          deliver_now_jb: draft.deliver_now_jb || 0,
+          deliver_now_sb: draft.deliver_now_sb || 0,
+        } as Partial<typeof INITIAL_FORM>);
+
+        // Jump to Review step
+        setCurrentStep(4);
+        setCompletedSteps(new Set([0, 1, 2, 3]));
+      })
+      .catch(() => {
+        toast.error('Failed to load draft. It may have been deleted.');
+        router.push('/client/orders');
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [draftId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Persist wizard navigation state back to sessionStorage
   useEffect(() => {

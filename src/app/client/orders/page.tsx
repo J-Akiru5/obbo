@@ -1,12 +1,12 @@
-import { fetchClientOrders } from "@/lib/actions/client-actions";
-import OrdersClient from "./components/orders-client";
+import { fetchClientOrders, fetchDraftOrders } from '@/lib/actions/client-actions';
+import OrdersClient from './components/orders-client';
 
 export const metadata = {
-    title: "My Orders | OBBO iManage",
+  title: 'My Orders | OBBO iManage',
 };
 
 export default async function ClientOrdersPage() {
-    const orders = await fetchClientOrders();
+  const [orders, drafts] = await Promise.all([fetchClientOrders(), fetchDraftOrders()]);
 
-    return <OrdersClient orders={orders} />;
+  return <OrdersClient orders={orders} drafts={drafts} />;
 }

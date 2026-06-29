@@ -4,7 +4,11 @@ import { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { createClient } from '@/lib/supabase/client';
-import { submitPaymentDetails, submitOrderReturn } from '@/lib/actions/client-actions';
+import {
+  submitPaymentDetails,
+  submitOrderReturn,
+  deleteDraftOrder,
+} from '@/lib/actions/client-actions';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -37,6 +41,8 @@ import {
   CircleDot,
   Package,
   ArrowRight,
+  FileText,
+  Trash2,
 } from 'lucide-react';
 
 import { Order, OrderItem } from '@/lib/types/database';
@@ -108,11 +114,18 @@ function TrackingProgressBar({ order }: { order: Order }) {
   );
 }
 
-export default function OrdersClient({ orders }: { orders: Order[] }) {
+export default function OrdersClient({
+  orders,
+  drafts: initialDrafts,
+}: {
+  orders: Order[];
+  drafts: Order[];
+}) {
   const router = useRouter();
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [isPaymentOpen, setIsPaymentOpen] = useState(false);
   const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null);
+  const [drafts, setDrafts] = useState<Order[]>(initialDrafts);
 
   // Payment Form
   const [checkNumber, setCheckNumber] = useState('');
@@ -261,6 +274,17 @@ export default function OrdersClient({ orders }: { orders: Order[] }) {
       toast.error(msg);
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleDeleteDraft = async (orderId: string) => {
+    try {
+      await deleteDraftOrder(orderId);
+      setDrafts((prev) => prev.filter((d) => d.id !== orderId));
+      toast.success('Draft deleted.');
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : 'Failed to delete draft.';
+      toast.error(msg);
     }
   };
 
@@ -601,6 +625,14 @@ export default function OrdersClient({ orders }: { orders: Order[] }) {
           >
             Order History
           </TabsTrigger>
+          {drafts.length > 0 && (
+            <TabsTrigger
+              value="drafts"
+              className="data-[state=active]:border-primary data-[state=active]:text-primary mr-6 shrink-0 rounded-none px-0 py-3 whitespace-nowrap shadow-none data-[state=active]:border-b-2"
+            >
+              Drafts ({drafts.length})
+            </TabsTrigger>
+          )}
         </TabsList>
 
         <TabsContent value="active" className="mt-0">
@@ -666,6 +698,73 @@ export default function OrdersClient({ orders }: { orders: Order[] }) {
             </div>
           ) : (
             historyOrders.map((o) => renderOrderCard(o, 'history'))
+          )}
+        </TabsContent>
+
+        <TabsContent value="drafts" className="mt-0">
+          {drafts.length === 0 ? (
+            <div className="text-muted-foreground border-border bg-card rounded-xl border border-dashed p-12 text-center">
+              <FileText className="text-muted-foreground/30 mx-auto mb-3 h-8 w-8" />
+              <p>No saved drafts.</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {drafts.map((draft) => {
+                const totalBags = draft.items.reduce(
+                  (acc: number, item: OrderItem) => acc + (item.requested_qty || 0),
+                  0,
+                );
+                return (
+                  <Card key={draft.id} className="bg-card border-border overflow-hidden shadow-sm">
+                    <CardContent className="p-4">
+                      <div className="flex items-center justify-between gap-4">
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2">
+                            <FileText className="text-muted-foreground h-4 w-4 shrink-0" />
+                            <span className="text-foreground truncate text-sm font-semibold">
+                              PO: {draft.po_number || 'No PO #'}
+                            </span>
+                            <Badge variant="outline" className="border-dashed text-[10px]">
+                              Draft
+                            </Badge>
+                          </div>
+                          <p className="text-muted-foreground mt-1 text-xs">
+                            {new Date(draft.created_at).toLocaleDateString()} &middot; {totalBags}{' '}
+                            bags &middot;{' '}
+                            {draft.items
+                              .map((i: OrderItem) => `${i.requested_qty} ${i.bag_type}`)
+                              .join(' + ')}
+                          </p>
+                          <p className="text-muted-foreground text-xs capitalize">
+                            {draft.source} &middot;{' '}
+                            {draft.service_type === 'pickup' ? 'Pick-up' : 'Deliver'} &middot;{' '}
+                            {draft.payment_method}
+                          </p>
+                        </div>
+                        <div className="flex shrink-0 items-center gap-2">
+                          <Button
+                            size="sm"
+                            className="bg-primary gap-1.5"
+                            onClick={() => router.push(`/client/orders/new?draft=${draft.id}`)}
+                          >
+                            <ArrowRight className="h-3.5 w-3.5" />
+                            Resume
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="text-destructive hover:text-destructive hover:bg-destructive/10 gap-1.5"
+                            onClick={() => handleDeleteDraft(draft.id)}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
           )}
         </TabsContent>
       </Tabs>

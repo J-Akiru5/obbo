@@ -340,8 +340,22 @@ export async function deleteDraftOrder(orderId: string) {
     .eq('client_id', user.id)
     .eq('order_type', 'draft');
   if (error) throw new Error(error.message);
+  revalidatePath('/client/orders');
   revalidatePath('/client/catalog');
   return { success: true };
+}
+
+export async function fetchOrderForResume(orderId: string) {
+  const { supabase, user } = await requireClient();
+  const { data, error } = await supabase
+    .from('orders')
+    .select('*, items:order_items(*, product:products(name, bag_type, price_per_bag))')
+    .eq('id', orderId)
+    .eq('client_id', user.id)
+    .eq('order_type', 'draft')
+    .single();
+  if (error || !data) throw new Error('Draft order not found.');
+  return data;
 }
 
 export async function submitPaymentDetails(
