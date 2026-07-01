@@ -33,8 +33,8 @@ export function ProductCatalogTab({ products, onUpdate, onCreate, onDelete, load
         name: "",
         description: "",
         bag_type: "JB",
-        port_selling_price: 0,
-        warehouse_selling_price: 0
+        price_port: 0,
+        price_warehouse: 0
     });
 
     const [imageFile, setImageFile] = useState<File | null>(null);
@@ -54,8 +54,8 @@ export function ProductCatalogTab({ products, onUpdate, onCreate, onDelete, load
             description: product.description || "",
             bag_type: product.bag_type,
             // 🌟 BACKEND ASSIGNMENT ALIGNMENT LOOKUPS
-            port_selling_price: (product as any).port_selling_price ?? (product as any).price_port ?? 0,
-            warehouse_selling_price: (product as any).warehouse_selling_price ?? (product as any).price_warehouse ?? 0
+            price_port: (product as any).price_port ?? (product as any).price_per_bag ?? 0,
+            price_warehouse: (product as any).price_warehouse ?? (product as any).price_per_bag ?? 0
         });
         setImageFile(null);
         setImagePreview(null);
@@ -112,8 +112,8 @@ export function ProductCatalogTab({ products, onUpdate, onCreate, onDelete, load
                     description: formData.description,
                     bag_type: formData.bag_type as 'JB' | 'SB',
                     // 🌟 SUBMIT PAYLOAD CONFIGURATION KEYS RE-MAPPING
-                    port_selling_price: formData.port_selling_price,
-                    warehouse_selling_price: formData.warehouse_selling_price,
+                    price_port: formData.price_port,
+                    price_warehouse: formData.price_warehouse,
                     image_url: newImageUrl
                 } as any);
                 setEditingProduct(null);
@@ -196,8 +196,8 @@ export function ProductCatalogTab({ products, onUpdate, onCreate, onDelete, load
                                     </TableRow>
                                 ) : (
                                     filteredProducts.map((p) => {
-                                        const pPort = (p as any).port_selling_price ?? (p as any).price_port ?? (p as any).price_per_bag ?? 0;
-                                        const pWh = (p as any).warehouse_selling_price ?? (p as any).price_warehouse ?? (p as any).price_per_bag ?? 0;
+                                        const pPort = (p as any).price_port ?? (p as any).price_per_bag ?? 0;
+                                        const pWh = (p as any).price_warehouse ?? (p as any).price_per_bag ?? 0;
                                         return (
                                             <TableRow key={p.id} className="group">
                                                 <TableCell>
@@ -267,8 +267,8 @@ export function ProductCatalogTab({ products, onUpdate, onCreate, onDelete, load
                             </div>
                         ) : (
                             filteredProducts.map(p => {
-                                const pPort = (p as any).port_selling_price ?? (p as any).price_port ?? (p as any).price_per_bag ?? 0;
-                                const pWh = (p as any).warehouse_selling_price ?? (p as any).price_warehouse ?? (p as any).price_per_bag ?? 0;
+                                const pPort = (p as any).price_port ?? (p as any).price_per_bag ?? 0;
+                                const pWh = (p as any).price_warehouse ?? (p as any).price_per_bag ?? 0;
                                 return (
                                     <Card key={p.id} className="overflow-hidden group hover:shadow-md transition-shadow border-border/50">
                                         <div className="aspect-square bg-muted relative overflow-hidden border-b">
@@ -388,7 +388,7 @@ export function ProductCatalogTab({ products, onUpdate, onCreate, onDelete, load
                                             PORT VALUE
                                         </p>
                                         <p className="text-xl font-black text-emerald-600">
-                                            Requirements: ₱{Number((viewingProduct as any)?.port_selling_price ?? (viewingProduct as any)?.price_port ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                            Requirements: ₱{Number((viewingProduct as any)?.price_port ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
                                         </p>
                                     </div>
                                     <div className="text-right">
@@ -397,7 +397,7 @@ export function ProductCatalogTab({ products, onUpdate, onCreate, onDelete, load
                                             <div className="w-2 h-2 rounded-full bg-blue-500" />
                                         </p>
                                         <p className="text-xl font-black text-blue-600">
-                                            ₱{Number((viewingProduct as any)?.warehouse_selling_price ?? (viewingProduct as any)?.price_warehouse ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                            ₱{Number((viewingProduct as any)?.price_warehouse ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
                                         </p>
                                     </div>
                                 </div>
@@ -477,9 +477,9 @@ export function ProductCatalogTab({ products, onUpdate, onCreate, onDelete, load
                                     id="port-selling-price"
                                     type="number" 
                                     step="0.01"
-                                    value={formData.port_selling_price || ""} 
+                                    value={formData.price_port || ""} 
                                     placeholder="0.00"
-                                    onChange={(e) => setFormData({ ...formData, port_selling_price: parseFloat(e.target.value) || 0 })} 
+                                    onChange={(e) => setFormData({ ...formData, price_port: parseFloat(e.target.value) || 0 })} 
                                 />
                             </div>
                             <div className="space-y-2">
@@ -488,9 +488,9 @@ export function ProductCatalogTab({ products, onUpdate, onCreate, onDelete, load
                                     id="warehouse-selling-price"
                                     type="number" 
                                     step="0.01"
-                                    value={formData.warehouse_selling_price || ""} 
+                                    value={formData.price_warehouse || ""} 
                                     placeholder="0.00"
-                                    onChange={(e) => setFormData({ ...formData, warehouse_selling_price: parseFloat(e.target.value) || 0 })} 
+                                    onChange={(e) => setFormData({ ...formData, price_warehouse: parseFloat(e.target.value) || 0 })} 
                                 />
                             </div>
                         </div>

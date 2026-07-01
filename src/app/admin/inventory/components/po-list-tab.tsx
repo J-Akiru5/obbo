@@ -87,12 +87,12 @@ export function PoListTab({ purchaseOrders, loading, onReload }: { purchaseOrder
         const sbProduct = catalogProducts.find(p => p.bag_type === "SB");
 
         const jbPriceRate = source === "port" 
-            ? Number((jbProduct as any)?.port_selling_price ?? 0) 
-            : Number((jbProduct as any)?.warehouse_selling_price ?? 0);
+            ? Number((jbProduct as any)?.price_port ?? 0) 
+            : Number((jbProduct as any)?.price_warehouse ?? 0);
 
         const sbPriceRate = source === "port" 
-            ? Number((sbProduct as any)?.port_selling_price ?? 0) 
-            : Number((sbProduct as any)?.warehouse_selling_price ?? 0);
+            ? Number((sbProduct as any)?.price_port ?? 0) 
+            : Number((sbProduct as any)?.price_warehouse ?? 0);
 
         const computedTotal = (jbQty * jbPriceRate) + (sbQty * sbPriceRate);
 

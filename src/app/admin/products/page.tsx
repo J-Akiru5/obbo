@@ -44,8 +44,8 @@ function ProductsContent() {
             // 🌟 IMPLEMENTATION CONTROLLER: Pinalawak para maayos na maipasa ang dual-pricing payload keys (port_selling_price, warehouse_selling_price)
             await updateProduct(id, {
                 ...updates,
-                port_selling_price: updates.port_selling_price !== undefined ? Number(updates.port_selling_price) : undefined,
-                warehouse_selling_price: updates.warehouse_selling_price !== undefined ? Number(updates.warehouse_selling_price) : undefined
+                price_port: updates.price_port !== undefined ? Number(updates.price_port) : undefined,
+                price_warehouse: updates.price_warehouse !== undefined ? Number(updates.price_warehouse) : undefined
             });
             toast.success("Product configurations updated successfully.");
             loadData();
