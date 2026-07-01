@@ -29,8 +29,7 @@ model Profile {
   addressPostalCode       String?           @map("address_postal_code")
   businessPermitNo        String?           @map("business_permit_no")
   tinNo                   String?           @map("tin_no")
-  idFrontUrl              String?           @map("id_front_url")
-  idBackUrl               String?           @map("id_back_url")
+  kycDocuments            String[]          @map("kyc_documents")
   kycStatus               String            @default("pending_verification") @map("kyc_status")
   role                    String            @default("client")
   avatarUrl               String?           @map("avatar_url")
@@ -85,9 +84,6 @@ model Shipment {
   damagedJb       Int      @default(0) @map("damaged_jb")
   damagedSb       Int      @default(0) @map("damaged_sb")
   createdAt       DateTime @default(now()) @db.Timestamptz(6) @map("created_at")
-  totalSales      Decimal  @default(0) @db.Decimal(14, 2) @map("total_sales")
-  grossRevenue    Decimal  @default(0) @db.Decimal(14, 2) @map("gross_revenue")
-  netProfit       Decimal  @default(0) @db.Decimal(14, 2) @map("net_profit")
 
   ledgerEntries    ShipmentLedger[]
   deliveryReceipts DeliveryReceipt[]
@@ -294,15 +290,6 @@ model AdminSetting {
   updatedAt DateTime @default(now()) @db.Timestamptz(6) @map("updated_at")
 
   @@map("admin_settings")
-}
-
-model CostConfiguration {
-  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  landedCost    Decimal  @db.Decimal(12, 2) @map("landed_cost")
-  localExpenses Decimal  @db.Decimal(12, 2) @map("local_expenses")
-  updatedAt     DateTime @default(now()) @db.Timestamptz(6) @map("updated_at")
-
-  @@map("cost_configurations")
 }
 
 model ActivityLog {

@@ -1,32 +1,27 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { getCostConfig, saveCostConfiguration } from '@/lib/actions/admin-actions';
 
 export default function CostConfigurationPage() {
-  const [landedCost, setLandedCost] = useState<number>(147.64); // Default panel criteria [cite: 32]
-  const [localExpenses, setLocalExpenses] = useState<number>(20.0); // Default panel criteria [cite: 33]
+  const [landedCost, setLandedCost] = useState<number>(147.64);
+  const [localExpenses, setLocalExpenses] = useState<number>(20.0);
   const [loading, setLoading] = useState<boolean>(false);
   const [message, setMessage] = useState<string>('');
 
-  // Base sample data para sa live calculation preview mockup (1,200 bags, selling at 185) [cite: 105]
   const sampleQty = 1200;
-  const sampleSellingPrice = 185.0; // [cite: 35]
+  const sampleSellingPrice = 185.0;
 
-  // Dynamic formulas base sa inyong document guidelines [cite: 92, 98, 99]
-  const totalSales = sampleQty * sampleSellingPrice; // eslint-disable-line @typescript-eslint/no-unused-vars
-  const grossProfitPerBag = sampleSellingPrice - landedCost; // [cite: 36]
-  const netProfitPerBag = sampleSellingPrice - (landedCost + localExpenses); // [cite: 37]
-  const totalCostPerBag = landedCost + localExpenses; // [cite: 34]
+  const _totalSales = sampleQty * sampleSellingPrice;
+  const grossProfitPerBag = sampleSellingPrice - landedCost;
+  const netProfitPerBag = sampleSellingPrice - (landedCost + localExpenses);
+  const totalCostPerBag = landedCost + localExpenses;
 
-  // Kukunin ang active saved values mula sa Supabase pagka-load ng page [cite: 123]
   useEffect(() => {
-    fetch('/api/cost-configuration')
-      .then((res) => res.json())
-      .then((data) => {
-        if (data && !data.error) {
-          setLandedCost(Number(data.landedCost));
-          setLocalExpenses(Number(data.localExpenses));
-        }
+    getCostConfig()
+      .then((config) => {
+        setLandedCost(config.landed_cost_per_bag);
+        setLocalExpenses(config.local_expenses_per_bag);
       })
       .catch((err) => console.error('Error loading values:', err));
   }, []);
@@ -35,19 +30,10 @@ export default function CostConfigurationPage() {
     setLoading(true);
     setMessage('');
     try {
-      const response = await fetch('/api/cost-configuration', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ landedCost, localExpenses }), // [cite: 122]
-      });
-      const result = await response.json();
-      if (response.ok) {
-        setMessage('✅ ' + result.message);
-      } else {
-        setMessage('❌ ' + (result.error || 'Failed to save configuration'));
-      }
+      await saveCostConfiguration(landedCost, localExpenses);
+      setMessage('✅ Cost configuration saved successfully.');
     } catch (_error) {
-      setMessage('❌ Network error saving configuration');
+      setMessage('❌ Failed to save configuration.');
     } finally {
       setLoading(false);
     }
