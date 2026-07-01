@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { ChevronRight, ChevronLeft, ShieldAlert } from 'lucide-react';
 import Link from 'next/link';
@@ -50,7 +50,21 @@ const INITIAL_FORM = {
   deliver_now_sb: 0,
 };
 
-export default function NewOrderPage() {
+export default function NewOrderPageWrapper() {
+  return (
+    <Suspense
+      fallback={
+        <div className="text-muted-foreground animate-pulse py-8 text-center">
+          Loading order form...
+        </div>
+      }
+    >
+      <NewOrderPage />
+    </Suspense>
+  );
+}
+
+function NewOrderPage() {
   const router = useRouter();
   const { kycStatus } = useClientKyc();
   const isVerified = kycStatus === 'verified';
