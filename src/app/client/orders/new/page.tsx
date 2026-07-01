@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { ChevronRight, ChevronLeft, ShieldAlert } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
@@ -13,14 +13,26 @@ import { StepIndicator } from '@/components/ui/step-indicator';
 import { StepProducts } from '@/components/orders/wizard/step-products';
 import { StepSource } from '@/components/orders/wizard/step-source';
 import { StepServiceType } from '@/components/orders/wizard/step-service-type';
+import { StepPoPayment } from '@/components/orders/wizard/step-po-payment';
+import { StepOrderReview } from '@/components/orders/wizard/step-review';
 import {
   productsSchema,
   sourceSchema,
   serviceTypeSchema,
+  poPaymentSchema,
+  getSplitSchema,
+  getPrice,
+  getSubtotal,
 } from '@/components/orders/wizard/order-schema';
+import {
+  submitOrder,
+  saveOrderDraft,
+  generateNextPoNumber,
+  fetchOrderForResume,
+} from '@/lib/actions/client-actions';
 import type { Product } from '@/lib/types/database';
 
-const ORDERING_STEPS = ['Products', 'Source', 'Service'];
+const ORDERING_STEPS = ['Products', 'Source', 'Service', 'PO & Payment', 'Review'];
 
 const INITIAL_FORM = {
   jb_qty: 0,
@@ -43,7 +55,7 @@ export default function NewOrderPage() {
   const { kycStatus } = useClientKyc();
   const isVerified = kycStatus === 'verified';
 
-  const [form, updateForm] = usePersistedForm('obbo-order-form', INITIAL_FORM);
+  const [form, updateForm, clearForm] = usePersistedForm('obbo-order-form', INITIAL_FORM);
   const [currentStep, setCurrentStep] = useState(() => {
     if (typeof window === 'undefined') return 0;
     try {
@@ -73,6 +85,11 @@ export default function NewOrderPage() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [products, setProducts] = useState<Product[]>([]);
   const [loadingProducts, setLoadingProducts] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [draftLoading, setDraftLoading] = useState(false);
+
+  const [poFile, setPoFile] = useState<File | null>(null);
+  const [checkFile, setCheckFile] = useState<File | null>(null);
 
   useEffect(() => {
     createClient()
@@ -85,6 +102,59 @@ export default function NewOrderPage() {
         setLoadingProducts(false);
       });
   }, []);
+
+  // Auto-generate PO number on mount
+  useEffect(() => {
+    if (!form.po_number) {
+      generateNextPoNumber().then((po) => {
+        updateForm({ po_number: po });
+      });
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Resume from draft if ?draft= param is present
+  const searchParams = useSearchParams();
+  const draftId = searchParams.get('draft');
+  useEffect(() => {
+    if (!draftId) return;
+
+    let cancelled = false;
+    fetchOrderForResume(draftId)
+      .then((draft) => {
+        if (cancelled) return;
+
+        const jbItem = draft.items?.find((i: any) => i.bag_type === 'JB');
+        const sbItem = draft.items?.find((i: any) => i.bag_type === 'SB');
+
+        updateForm({
+          jb_qty: jbItem?.requested_qty || 0,
+          sb_qty: sbItem?.requested_qty || 0,
+          source: draft.source || 'warehouse',
+          service_type: draft.service_type || 'pickup',
+          driver_name: draft.driver_name || '',
+          plate_number: draft.plate_number || '',
+          preferred_pickup_date: draft.preferred_pickup_date || '',
+          po_number: draft.po_number || '',
+          supplier_name: draft.supplier_name || 'OBBO',
+          payment_method: draft.payment_method || 'cash',
+          wants_split: draft.is_split_delivery || false,
+          deliver_now_jb: draft.deliver_now_jb || 0,
+          deliver_now_sb: draft.deliver_now_sb || 0,
+        } as Partial<typeof INITIAL_FORM>);
+
+        // Jump to Review step
+        setCurrentStep(4);
+        setCompletedSteps(new Set([0, 1, 2, 3]));
+      })
+      .catch(() => {
+        toast.error('Failed to load draft. It may have been deleted.');
+        router.push('/client/orders');
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [draftId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Persist wizard navigation state back to sessionStorage
   useEffect(() => {
@@ -145,9 +215,46 @@ export default function NewOrderPage() {
       }
     }
 
+    if (step === 3) {
+      const result = poPaymentSchema.safeParse({
+        po_number: form.po_number,
+        po_file: poFile,
+        supplier_name: form.supplier_name,
+        payment_method: form.payment_method,
+        check_file: checkFile,
+        wants_split: form.wants_split,
+        deliver_now_jb: form.deliver_now_jb,
+        deliver_now_sb: form.deliver_now_sb,
+      });
+      if (!result.success) {
+        for (const issue of result.error.issues) {
+          const key = issue.path[0] as string;
+          if (!newErrors[key]) newErrors[key] = issue.message;
+        }
+      }
+      if (form.wants_split) {
+        const splitResult = getSplitSchema(form.jb_qty, form.sb_qty).safeParse({
+          wants_split: form.wants_split,
+          deliver_now_jb: form.deliver_now_jb,
+          deliver_now_sb: form.deliver_now_sb,
+        });
+        if (!splitResult.success) {
+          for (const issue of splitResult.error.issues) {
+            const key = issue.path[0] as string;
+            if (!newErrors[key]) newErrors[key] = issue.message;
+          }
+        }
+      }
+    }
+
     setErrors(newErrors);
     if (Object.keys(newErrors).length > 0) {
-      toast.error('Please fix the errors before continuing.');
+      const msgs = Object.values(newErrors);
+      toast.error(
+        msgs.length <= 2
+          ? msgs.join('. ')
+          : `${msgs[0]} — and ${msgs.length - 1} more issue${msgs.length > 2 ? 's' : ''}.`,
+      );
       return false;
     }
     return true;
@@ -156,13 +263,6 @@ export default function NewOrderPage() {
   function goNext() {
     if (!validateStep(currentStep)) return;
     setCompletedSteps((prev) => new Set(prev).add(currentStep));
-
-    if (currentStep === ORDERING_STEPS.length - 1) {
-      // Last step: proceed to submit page
-      router.push('/client/orders/new/submit');
-      return;
-    }
-
     setCurrentStep((s: number) => Math.min(s + 1, ORDERING_STEPS.length - 1));
     setErrors({});
   }
@@ -180,6 +280,178 @@ export default function NewOrderPage() {
     if (step < currentStep || completedSteps.has(step)) {
       setCurrentStep(step);
       setErrors({});
+    }
+  }
+
+  const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+
+  async function uploadFile(file: File, prefix: string): Promise<string> {
+    if (file.size > MAX_FILE_SIZE) {
+      throw new Error(`File exceeds the 10MB size limit. Please use a smaller file.`);
+    }
+
+    const supabase = createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) throw new Error('Not authenticated');
+
+    const ext = file.name.split('.').pop() || 'jpg';
+    const timestamp = Date.now();
+    const randomId = Math.random().toString(36).substring(7);
+    const path = `${user.id}/${prefix}_${timestamp}_${randomId}.${ext}`;
+
+    const { error } = await supabase.storage
+      .from('order-attachments')
+      .upload(path, file, { upsert: true, contentType: file.type });
+    if (error) throw new Error(`Upload failed: ${error.message}`);
+
+    const {
+      data: { publicUrl },
+    } = supabase.storage.from('order-attachments').getPublicUrl(path);
+    return publicUrl;
+  }
+
+  async function handleSubmit() {
+    setLoading(true);
+    try {
+      if (!poFile) {
+        toast.error('PO image is required.');
+        return;
+      }
+
+      const poImageUrl = await uploadFile(poFile, 'po');
+
+      let checkImageUrl: string | null = null;
+      if (form.payment_method === 'check' && checkFile) {
+        checkImageUrl = await uploadFile(checkFile, 'check');
+      }
+
+      const items: { product_id: string; bag_type: string; requested_qty: number }[] = [];
+      const jbProduct = products.find((p) => p.bag_type === 'JB');
+      const sbProduct = products.find((p) => p.bag_type === 'SB');
+
+      if (form.jb_qty > 0 && jbProduct) {
+        items.push({ product_id: jbProduct.id, bag_type: 'JB', requested_qty: form.jb_qty });
+      }
+      if (form.sb_qty > 0 && sbProduct) {
+        items.push({ product_id: sbProduct.id, bag_type: 'SB', requested_qty: form.sb_qty });
+      }
+
+      const jbPrice = getPrice(jbProduct, form.source);
+      const sbPrice = getPrice(sbProduct, form.source);
+      const subtotal = getSubtotal(form.jb_qty, form.sb_qty, jbPrice, sbPrice);
+
+      let notes = '';
+      if (form.service_type === 'pickup' && form.preferred_pickup_date) {
+        notes = `Preferred Pick-up Date: ${form.preferred_pickup_date}`;
+      }
+      if (checkImageUrl) {
+        notes += `${notes ? '\n' : ''}Check image uploaded.`;
+      }
+
+      const orderData = {
+        source: form.source,
+        service_type: form.service_type,
+        payment_method: form.payment_method,
+        po_number: form.po_number,
+        po_image_url: poImageUrl,
+        supplier_name: form.supplier_name,
+        driver_name: form.service_type === 'pickup' ? form.driver_name : null,
+        plate_number: form.service_type === 'pickup' ? form.plate_number : null,
+        preferred_pickup_date:
+          form.service_type === 'pickup' ? form.preferred_pickup_date : undefined,
+        total_amount: subtotal,
+        items,
+        notes: notes.trim(),
+      };
+
+      const splitDetails = form.wants_split
+        ? {
+            wantsSplit: true,
+            deliverNowQty: form.deliver_now_jb + form.deliver_now_sb,
+            deliverNowJB: form.deliver_now_jb,
+            deliverNowSB: form.deliver_now_sb,
+            splitNote: `Client requested ${form.deliver_now_jb + form.deliver_now_sb} bags now (${form.deliver_now_jb} JB, ${form.deliver_now_sb} SB). Service: ${form.service_type}.`,
+          }
+        : undefined;
+
+      await submitOrder(orderData, splitDetails);
+
+      toast.success('Order submitted successfully! Pending approval.');
+      clearForm();
+      router.push('/client/orders');
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'An error occurred. Please try again.';
+      toast.error(msg);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleSaveDraft() {
+    setDraftLoading(true);
+    try {
+      if (!poFile && !form.po_number) {
+        toast.error('At least a PO number is required for a draft.');
+        return;
+      }
+
+      let poImageUrl: string | undefined;
+      if (poFile) {
+        poImageUrl = await uploadFile(poFile, 'po');
+      }
+
+      const items: { product_id: string; bag_type: string; requested_qty: number }[] = [];
+      const jbProduct = products.find((p) => p.bag_type === 'JB');
+      const sbProduct = products.find((p) => p.bag_type === 'SB');
+
+      if (form.jb_qty > 0 && jbProduct) {
+        items.push({ product_id: jbProduct.id, bag_type: 'JB', requested_qty: form.jb_qty });
+      }
+      if (form.sb_qty > 0 && sbProduct) {
+        items.push({ product_id: sbProduct.id, bag_type: 'SB', requested_qty: form.sb_qty });
+      }
+
+      const jbPrice = getPrice(jbProduct, form.source);
+      const sbPrice = getPrice(sbProduct, form.source);
+      const subtotal = getSubtotal(form.jb_qty, form.sb_qty, jbPrice, sbPrice);
+
+      const orderData = {
+        source: form.source,
+        service_type: form.service_type,
+        payment_method: form.payment_method,
+        po_number: form.po_number,
+        po_image_url: poImageUrl,
+        supplier_name: form.supplier_name,
+        driver_name: form.service_type === 'pickup' ? form.driver_name : null,
+        plate_number: form.service_type === 'pickup' ? form.plate_number : null,
+        preferred_pickup_date:
+          form.service_type === 'pickup' ? form.preferred_pickup_date : undefined,
+        total_amount: subtotal,
+        items,
+        notes: '',
+      };
+
+      const splitDetails = form.wants_split
+        ? {
+            wantsSplit: true,
+            deliverNowQty: form.deliver_now_jb + form.deliver_now_sb,
+            deliverNowJB: form.deliver_now_jb,
+            deliverNowSB: form.deliver_now_sb,
+          }
+        : undefined;
+
+      await saveOrderDraft(orderData, splitDetails);
+
+      toast.success('Order saved as draft.');
+      clearForm();
+      router.push('/client/orders');
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Failed to save draft.';
+      toast.error(msg);
+    } finally {
+      setDraftLoading(false);
     }
   }
 
@@ -205,6 +477,8 @@ export default function NewOrderPage() {
       </div>
     );
   }
+
+  const isReviewStep = currentStep === ORDERING_STEPS.length - 1;
 
   return (
     <div className="mx-auto max-w-3xl space-y-6 px-4 py-8">
@@ -254,23 +528,62 @@ export default function NewOrderPage() {
               errors={errors}
             />
           )}
+          {currentStep === 3 && (
+            <StepPoPayment
+              form={form}
+              files={{ po_file: poFile, check_file: checkFile }}
+              onFieldChange={updateField}
+              onFileChange={(field, file) => {
+                if (field === 'po_file') setPoFile(file);
+                else setCheckFile(file);
+              }}
+              errors={errors}
+              totalJB={form.jb_qty}
+              totalSB={form.sb_qty}
+            />
+          )}
+          {currentStep === 4 && (
+            <StepOrderReview
+              form={form}
+              files={{ po_file: poFile, check_file: checkFile }}
+              products={products}
+              onEditStep={goToStep}
+              onSubmit={handleSubmit}
+              onSaveDraft={handleSaveDraft}
+              loading={loading}
+              draftLoading={draftLoading}
+            />
+          )}
         </div>
       </div>
 
-      <div className="flex justify-between pt-2">
-        <Button type="button" variant="outline" className="h-11 gap-1" onClick={goBack}>
-          <ChevronLeft className="h-4 w-4" />
-          {currentStep === 0 ? 'Back to Orders' : 'Back'}
-        </Button>
-        <Button
-          type="button"
-          className="bg-primary text-primary-foreground hover:bg-primary/90 h-11 gap-2 font-semibold"
-          onClick={goNext}
-        >
-          {currentStep === ORDERING_STEPS.length - 1 ? 'Proceed to Submit POs' : 'Continue'}
-          <ChevronRight className="h-4 w-4" />
-        </Button>
-      </div>
+      {/* Navigation — hidden on review step */}
+      {!isReviewStep && (
+        <div className="flex justify-between pt-2">
+          <Button type="button" variant="outline" className="h-11 gap-1" onClick={goBack}>
+            <ChevronLeft className="h-4 w-4" />
+            {currentStep === 0 ? 'Back to Orders' : 'Back'}
+          </Button>
+          <Button
+            type="button"
+            className="bg-primary text-primary-foreground hover:bg-primary/90 h-11 gap-2 font-semibold"
+            onClick={goNext}
+          >
+            Continue
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+        </div>
+      )}
+
+      {/* Back button on review step */}
+      {isReviewStep && (
+        <div className="flex justify-start">
+          <Button type="button" variant="outline" className="h-11 gap-1" onClick={goBack}>
+            <ChevronLeft className="h-4 w-4" />
+            Back
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

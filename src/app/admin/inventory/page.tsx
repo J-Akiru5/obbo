@@ -25,8 +25,7 @@ function InventoryContent() {
   const [deliveryReceipts, setDeliveryReceipts] = useState<DeliveryReceipt[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Toggle to false after demo to restore live data
-  const DEMO_MODE = true;
+  const DEMO_MODE = false;
 
   const loadData = async () => {
     if (DEMO_MODE) {

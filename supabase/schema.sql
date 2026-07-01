@@ -293,9 +293,10 @@ create table if not exists public.order_items (
   order_id       uuid not null references public.orders(id) on delete cascade,
   product_id     uuid not null references public.products(id) on delete set null,
   bag_type       text not null check (bag_type in ('JB', 'SB')),
-  requested_qty  integer not null check (requested_qty > 0),
-  approved_qty   integer not null default 0 check (approved_qty >= 0),
-  dispatched_qty integer not null default 0 check (dispatched_qty >= 0)
+  requested_qty        integer not null check (requested_qty > 0),
+  approved_qty         integer not null default 0 check (approved_qty >= 0),
+  dispatched_qty       integer not null default 0 check (dispatched_qty >= 0),
+  selling_price_per_bag numeric(10, 2)
 );
 
 -- ── CUSTOMER BALANCES ────────────────────────────────────────

@@ -1,9 +1,9 @@
-"use client";
+'use client';
 
-import { createContext, useContext, useState, useEffect, useCallback } from "react";
-import { createClient } from "@/lib/supabase/client";
+import { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { createClient } from '@/lib/supabase/client';
 
-export type KycStatus = "pending_verification" | "verified" | "rejected";
+export type KycStatus = 'pending_verification' | 'verified' | 'rejected';
 
 interface ClientKycContextValue {
   kycStatus: KycStatus;
@@ -11,34 +11,34 @@ interface ClientKycContextValue {
 }
 
 const ClientKycContext = createContext<ClientKycContextValue>({
-  kycStatus: "verified",
+  kycStatus: 'verified',
   isLoading: true,
 });
 
 export function ClientKycProvider({ children }: { children: React.ReactNode }) {
-  // 🌟 TESTING FORCE BYPASS: Palaging panatilihing 'verified' bilang panimulang state matrix
-  const [kycStatus, setKycStatus] = useState<KycStatus>("verified");
+  const [kycStatus, setKycStatus] = useState<KycStatus>('pending_verification');
   const [isLoading, setIsLoading] = useState(true);
 
   const loadKycStatus = useCallback(async () => {
     try {
       const supabase = createClient();
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (!user) return;
 
       const { data: profile } = await supabase
-        .from("profiles")
-        .select("kyc_status")
-        .eq("id", user.id)
+        .from('profiles')
+        .select('kyc_status')
+        .eq('id', user.id)
         .single();
 
       if (profile?.kyc_status) {
-        // 🌟 TESTING FORCE BYPASS: Pinilit na palaging verified para hindi ka ihagis ng system router pabalik sa lock screen
-        setKycStatus("verified");
+        setKycStatus(profile.kyc_status as KycStatus);
       }
     } catch {
       // silently fail — default to verified to avoid locking verified users
-      setKycStatus("verified");
+      setKycStatus('verified');
     } finally {
       setIsLoading(false);
     }
@@ -51,26 +51,27 @@ export function ClientKycProvider({ children }: { children: React.ReactNode }) {
     const supabase = createClient();
 
     const setupSubscription = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (!user) return;
 
       // 🌟 TYPESCRIPT TYPES OVERRIDE PATCH: Idinagdag ang string literal cast selector check matrix
       channel = supabase
         .channel(`kyc-status-${user.id}`)
         .on(
-          "postgres_changes" as any,
+          'postgres_changes' as any,
           {
-            event: "UPDATE",
-            schema: "public",
-            table: "profiles",
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'profiles',
             filter: `id=eq.${user.id}`,
           },
           (payload) => {
             if (payload.new?.kyc_status) {
-              // 🌟 TESTING FORCE BYPASS: Panatilihing 'verified' kahit may changes sa background
-              setKycStatus("verified");
+              setKycStatus(payload.new.kyc_status as KycStatus);
             }
-          }
+          },
         )
         .subscribe();
     };
@@ -94,5 +95,5 @@ export function useClientKyc() {
 
 export function useIsKycVerified() {
   const { kycStatus, isLoading } = useClientKyc();
-  return { isVerified: true, isLoading }; // 🌟 OVERRIDE RETURN BLOCK TO TRUE ALWAYS FOR LOCAL DIAGNOSTICS
+  return { isVerified: kycStatus === 'verified', isLoading };
 }
