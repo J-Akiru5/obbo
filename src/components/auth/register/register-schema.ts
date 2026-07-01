@@ -11,9 +11,9 @@ export const credentialsSchema = z
     email: z.string().min(1, 'Email is required').email('Invalid email address'),
     password: z.string().min(8, 'Password must be at least 8 characters'),
     confirm_password: z.string().min(1, 'Please confirm your password'),
-    otp_verified: z.literal(true, {
-      errorMap: () => ({ message: 'Please verify your email before proceeding' }),
-    }),
+    otp_verified: z
+      .boolean()
+      .refine((val) => val === true, { message: 'Please verify your email before proceeding' }),
   })
   .refine((data) => data.password === data.confirm_password, {
     message: "Passwords don't match",
