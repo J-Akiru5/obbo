@@ -353,31 +353,27 @@ export default function DashboardClient({
         <div className="mt-4 h-[300px] w-full">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
-              <CartesianGrid
-                strokeDasharray="3 3"
-                vertical={false}
-                stroke="hsl(var(--border) / 0.5)"
-              />
+              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
               <XAxis
                 dataKey="name"
                 axisLine={false}
                 tickLine={false}
-                tick={{ fill: 'hsl(var(--foreground))', fontSize: 12, fontWeight: 500 }}
+                tick={{ fill: '#1e293b', fontSize: 12, fontWeight: 500 }}
                 dy={10}
               />
               <YAxis
                 axisLine={false}
                 tickLine={false}
-                tick={{ fill: 'hsl(var(--foreground))', fontSize: 12, fontWeight: 500 }}
+                tick={{ fill: '#1e293b', fontSize: 12, fontWeight: 500 }}
                 tickFormatter={(value) => value.toLocaleString()}
               />
               <Tooltip
-                cursor={{ fill: 'hsl(var(--muted)/0.15)' }}
+                cursor={{ fill: 'rgba(241, 245, 249, 0.15)' }}
                 contentStyle={{
                   borderRadius: '12px',
-                  backgroundColor: 'hsl(var(--card))',
-                  border: '1px solid hsl(var(--border))',
-                  color: 'hsl(var(--foreground))',
+                  backgroundColor: '#ffffff',
+                  border: '1px solid #e2e8f0',
+                  color: '#1e293b',
                   boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)',
                   padding: '12px',
                 }}
@@ -385,27 +381,29 @@ export default function DashboardClient({
               <Legend
                 wrapperStyle={{ paddingTop: '30px' }}
                 formatter={(value) => (
-                  <span className="text-foreground/80 text-xs font-medium">{value}</span>
+                  <span className="text-xs font-medium" style={{ color: '#475569' }}>
+                    {value}
+                  </span>
                 )}
               />
               <Bar
                 dataKey="good"
                 name="Good Stock"
-                fill="var(--color-industrial-green)"
+                fill="#10b981"
                 radius={[6, 6, 0, 0]}
                 maxBarSize={50}
               />
               <Bar
                 dataKey="obligated"
                 name="Obligated (Balances)"
-                fill="var(--color-industrial-yellow)"
+                fill="#f59e0b"
                 radius={[6, 6, 0, 0]}
                 maxBarSize={50}
               />
               <Bar
                 dataKey="net"
                 name="Net Available"
-                fill="var(--color-industrial-blue-light)"
+                fill="#2563eb"
                 radius={[6, 6, 0, 0]}
                 maxBarSize={50}
               />
