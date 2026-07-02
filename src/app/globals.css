@@ -162,6 +162,21 @@
 
   --status-info-bg: oklch(0.2 0.05 250);
   --status-info-text: oklch(0.85 0.08 250);
+
+  /* Industrial palette — dark mode */
+  --color-industrial-blue: #3b82f6;
+  --color-industrial-blue-light: #60a5fa;
+  --color-industrial-yellow: #fbbf24;
+  --color-industrial-yellow-light: #fcd34d;
+  --color-industrial-green: #34d399;
+  --color-industrial-red: #f87171;
+  --color-industrial-slate: #94a3b8;
+
+  /* Chart accent colors — dark mode */
+  --color-chart-accent-1: #ffb366;
+  --color-chart-accent-2: #fcd34d;
+  --color-chart-accent-3: #ff8a8a;
+  --color-chart-accent-4: #5ce0c0;
 }
 
 @layer base {

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
+import { useTheme } from 'next-themes';
 import {
   ShoppingCart,
   Truck,
@@ -78,6 +79,8 @@ export default function DashboardClient({
   const [activityFeed, setActivityFeed] = useState<ActivityLog[]>(initialActivityFeed);
   const [recentOrders, setRecentOrders] = useState<Order[]>(initialRecentOrders);
   const [userRole] = useState(initialUserRole);
+  const { theme } = useTheme();
+  const isDark = theme === 'dark';
 
   const loadData = useCallback(async () => {
     try {
@@ -353,27 +356,31 @@ export default function DashboardClient({
         <div className="mt-4 h-[300px] w-full">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+              <CartesianGrid
+                strokeDasharray="3 3"
+                vertical={false}
+                stroke={isDark ? '#334155' : '#e2e8f0'}
+              />
               <XAxis
                 dataKey="name"
                 axisLine={false}
                 tickLine={false}
-                tick={{ fill: '#1e293b', fontSize: 12, fontWeight: 500 }}
+                tick={{ fill: isDark ? '#e2e8f0' : '#1e293b', fontSize: 12, fontWeight: 500 }}
                 dy={10}
               />
               <YAxis
                 axisLine={false}
                 tickLine={false}
-                tick={{ fill: '#1e293b', fontSize: 12, fontWeight: 500 }}
+                tick={{ fill: isDark ? '#e2e8f0' : '#1e293b', fontSize: 12, fontWeight: 500 }}
                 tickFormatter={(value) => value.toLocaleString()}
               />
               <Tooltip
-                cursor={{ fill: 'rgba(241, 245, 249, 0.15)' }}
+                cursor={{ fill: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(241, 245, 249, 0.15)' }}
                 contentStyle={{
                   borderRadius: '12px',
-                  backgroundColor: '#ffffff',
-                  border: '1px solid #e2e8f0',
-                  color: '#1e293b',
+                  backgroundColor: isDark ? '#1e293b' : '#ffffff',
+                  border: isDark ? '1px solid #334155' : '1px solid #e2e8f0',
+                  color: isDark ? '#e2e8f0' : '#1e293b',
                   boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)',
                   padding: '12px',
                 }}
@@ -381,7 +388,10 @@ export default function DashboardClient({
               <Legend
                 wrapperStyle={{ paddingTop: '30px' }}
                 formatter={(value) => (
-                  <span className="text-xs font-medium" style={{ color: '#475569' }}>
+                  <span
+                    className="text-xs font-medium"
+                    style={{ color: isDark ? '#94a3b8' : '#475569' }}
+                  >
                     {value}
                   </span>
                 )}

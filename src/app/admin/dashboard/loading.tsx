@@ -1,6 +1,6 @@
 import { Skeleton } from '@/components/ui/skeleton';
 
-export default function AdminLoading() {
+export default function AdminDashboardLoading() {
   return (
     <div className="space-y-6 p-6">
       {/* KPI Cards Row */}
@@ -20,7 +20,7 @@ export default function AdminLoading() {
         <Skeleton className="h-[300px] w-full rounded-lg" />
       </div>
 
-      {/* Recent Activity */}
+      {/* Recent Orders Table */}
       <div className="border-border bg-card rounded-xl border p-6 shadow-sm">
         <Skeleton className="mb-4 h-5 w-36" />
         <div className="space-y-3">
@@ -28,6 +28,7 @@ export default function AdminLoading() {
             <div key={i} className="flex items-center gap-4">
               <Skeleton className="h-4 flex-1" />
               <Skeleton className="h-4 w-20" />
+              <Skeleton className="h-4 w-16" />
             </div>
           ))}
         </div>
