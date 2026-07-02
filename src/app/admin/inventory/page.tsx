@@ -99,14 +99,14 @@ function InventoryContent() {
       </div>
 
       <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-        <TabsList className="grid h-auto w-full grid-cols-3">
-          <TabsTrigger value="shipments" className="py-2.5">
+        <TabsList className="no-scrollbar mb-4 flex h-auto w-full justify-start overflow-x-auto rounded-none border-b pb-1 md:mb-0 md:grid md:grid-cols-3 md:rounded-md md:border-b-0 md:pb-0">
+          <TabsTrigger value="shipments" className="shrink-0 py-2.5 whitespace-nowrap">
             Shipment Batches
           </TabsTrigger>
-          <TabsTrigger value="po" className="py-2.5">
+          <TabsTrigger value="po" className="shrink-0 py-2.5 whitespace-nowrap">
             PO List
           </TabsTrigger>
-          <TabsTrigger value="dr" className="py-2.5">
+          <TabsTrigger value="dr" className="shrink-0 py-2.5 whitespace-nowrap">
             DR List
           </TabsTrigger>
         </TabsList>
