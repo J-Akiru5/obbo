@@ -1,0 +1,22 @@
+export const mockPurchaseOrders = [
+  {
+    id: 'po-001',
+    date: '2026-06-01',
+    po_number: 'PO-2026-001',
+    client_id: 'client-001',
+    client_name: 'ACME Construction',
+    jb: 100,
+    sb: 50,
+    status: 'dispatched',
+    source: 'warehouse',
+    service_type: 'pickup',
+    shipment_id: 'ship-001',
+    order_id: 'order-001',
+    check_number: null,
+    check_amount: null,
+    cash_amount: 7500,
+    photo_url: null,
+    created_at: '2026-06-01T00:00:00.000Z',
+    updated_at: '2026-06-01T00:00:00.000Z',
+  },
+];

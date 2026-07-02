@@ -1,0 +1,23 @@
+export const mockDeliveryReceipts = [
+  {
+    id: 'dr-001',
+    shipment_id: 'ship-001',
+    dr_number: 'DR-2026-001',
+    quantity: 30,
+    bag_type: 'JB',
+    received_date: '2026-06-02',
+    notes: null,
+    po_number: 'PO-2026-001',
+    client_name: 'ACME Construction',
+    client_id: 'client-001',
+    jb: 20,
+    sb: 10,
+    driver: 'Driver Name',
+    plate_number: 'ABC1234',
+    shipping_fee: 0,
+    dr_image_url: null,
+    destination: 'Manila',
+    order_id: 'order-001',
+    created_at: '2026-06-02T00:00:00.000Z',
+  },
+];

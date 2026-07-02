@@ -1,0 +1,26 @@
+export const mockProducts = [
+  {
+    id: 'prod-jb-001',
+    name: 'Portland Cement Type 1',
+    description: 'Ordinary Portland Cement',
+    bag_type: 'JB',
+    price_per_bag: 250,
+    price_port: 240,
+    price_warehouse: 255,
+    image_url: null,
+    is_active: true,
+    created_at: '2026-01-01T00:00:00.000Z',
+  },
+  {
+    id: 'prod-sb-001',
+    name: 'Portland Cement Type 1',
+    description: 'Ordinary Portland Cement',
+    bag_type: 'SB',
+    price_per_bag: 260,
+    price_port: 250,
+    price_warehouse: 265,
+    image_url: null,
+    is_active: true,
+    created_at: '2026-01-01T00:00:00.000Z',
+  },
+];
