@@ -1,5 +1,5 @@
-import Link from "next/link";
-import Image from "next/image";
+import Link from 'next/link';
+import Image from 'next/image';
 import {
   ShieldCheck,
   Truck,
@@ -10,84 +10,106 @@ import {
   ClipboardCheck,
   Clock,
   ChevronRight,
-} from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { ScrollReveal } from "@/components/scroll-reveal";
-import { Navbar } from "@/components/landing/navbar";
-import { Stats } from "@/components/landing/stats";
+} from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { ScrollReveal } from '@/components/scroll-reveal';
+import { Navbar } from '@/components/landing/navbar';
+import { Stats } from '@/components/landing/stats';
 
 // ─── Hero ──────────────────────────────────────────────
 function Hero() {
   return (
-    <section className="relative pt-32 pb-20 sm:pt-40 sm:pb-28 overflow-hidden bg-[linear-gradient(160deg,#0f1b29_0%,#17263d_55%,#0d1420_100%)]">
+    <section className="relative overflow-hidden bg-[linear-gradient(160deg,#0f1b29_0%,#17263d_55%,#0d1420_100%)] pt-32 pb-20 sm:pt-40 sm:pb-28">
       {/* Background pattern */}
       <div className="absolute inset-0">
-        <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'radial-gradient(circle at 1px 1px, rgba(255,255,255,0.3) 1px, transparent 0)', backgroundSize: '40px 40px' }} />
-        <div className="absolute top-20 right-10 w-72 h-72 bg-accent/10 rounded-full blur-3xl animate-glow-pulse" />
-        <div className="absolute bottom-10 left-10 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl animate-glow-pulse delay-500" />
+        <div
+          className="absolute inset-0 opacity-10"
+          style={{
+            backgroundImage:
+              'radial-gradient(circle at 1px 1px, rgba(255,255,255,0.3) 1px, transparent 0)',
+            backgroundSize: '40px 40px',
+          }}
+        />
+        <div className="bg-accent/10 animate-glow-pulse absolute top-20 right-10 h-72 w-72 rounded-full blur-3xl" />
+        <div className="animate-glow-pulse absolute bottom-10 left-10 h-96 w-96 rounded-full bg-blue-500/10 blur-3xl delay-500" />
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="grid lg:grid-cols-2 gap-12 items-center">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="grid items-center gap-12 lg:grid-cols-2">
           {/* Left text content */}
           <div>
-            <div className="animate-fade-in-up inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 backdrop-blur-sm border border-white/20 mb-6">
-              <div className="w-2 h-2 rounded-full bg-accent animate-pulse" />
-              <span className="text-sm font-medium text-white">Cloud-Based Distribution Platform</span>
+            <div className="animate-fade-in-up mb-6 inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-2 backdrop-blur-sm">
+              <div className="bg-accent h-2 w-2 animate-pulse rounded-full" />
+              <span className="text-sm font-medium text-white">
+                Cloud-Based Distribution Platform
+              </span>
             </div>
-            <h1 className="animate-fade-in-up delay-100 text-4xl sm:text-5xl lg:text-6xl font-extrabold text-white leading-tight tracking-tight">
-              Digitizing{" "}
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-accent to-accent/80">
+            <h1 className="animate-fade-in-up text-4xl leading-tight font-extrabold tracking-tight text-white delay-100 sm:text-5xl lg:text-6xl">
+              Digitizing{' '}
+              <span className="from-accent to-accent/80 bg-gradient-to-r bg-clip-text text-transparent">
                 Cement
-              </span>{" "}
+              </span>{' '}
               Distribution
             </h1>
-            <p className="animate-fade-in-up delay-200 mt-6 text-lg sm:text-xl text-white/90 max-w-2xl leading-relaxed">
-              Streamline your ordering, inventory management, and delivery tracking with OBBO iManage.
-              Built for cement distributors who demand precision and speed.
+            <p className="animate-fade-in-up mt-6 max-w-2xl text-lg leading-relaxed text-white/90 delay-200 sm:text-xl">
+              Streamline your ordering, inventory management, and delivery tracking with OBBO
+              iManage. Built for cement distributors who demand precision and speed.
             </p>
-            <div className="animate-fade-in-up delay-300 mt-8 flex flex-col sm:flex-row gap-4">
+            <div className="animate-fade-in-up mt-8 flex flex-col gap-4 delay-300 sm:flex-row">
               <Link href="/register">
-                <Button size="lg" className="w-full sm:w-auto bg-accent hover:bg-accent/90 text-accent-foreground font-bold text-base px-8 gap-2 transition-all duration-300 hover:scale-105 hover:shadow-lg hover:shadow-accent/25">
-                  Start Free <ArrowRight className="w-4 h-4" />
+                <Button
+                  size="lg"
+                  className="bg-accent hover:bg-accent/90 text-accent-foreground hover:shadow-accent/25 w-full gap-2 px-8 text-base font-bold transition-all duration-300 hover:scale-105 hover:shadow-lg sm:w-auto"
+                >
+                  Start Free <ArrowRight className="h-4 w-4" />
                 </Button>
               </Link>
               <Link href="/login">
-                <Button size="lg" variant="outline" className="w-full sm:w-auto bg-transparent border-white/60 text-white hover:bg-white/10 hover:text-white font-semibold text-base px-8 transition-all duration-300 hover:scale-105">
+                <Button
+                  size="lg"
+                  variant="outline"
+                  className="w-full border-white/60 bg-transparent px-8 text-base font-semibold text-white transition-all duration-300 hover:scale-105 hover:bg-white/10 hover:text-white sm:w-auto"
+                >
                   Sign In
                 </Button>
               </Link>
             </div>
-            <div className="animate-fade-in-up delay-400 mt-10 flex items-center gap-8 text-white/80 text-sm">
-              <div className="flex items-center gap-2"><ShieldCheck className="w-4 h-4" /><span>Secure Platform</span></div>
-              <div className="flex items-center gap-2"><Clock className="w-4 h-4" /><span>Real-Time Data</span></div>
+            <div className="animate-fade-in-up mt-10 flex items-center gap-8 text-sm text-white/80 delay-400">
+              <div className="flex items-center gap-2">
+                <ShieldCheck className="h-4 w-4" />
+                <span>Secure Platform</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Clock className="h-4 w-4" />
+                <span>Real-Time Data</span>
+              </div>
             </div>
           </div>
 
           {/* Right hero image */}
-          <div className="animate-fade-in delay-300 hidden lg:block">
-            <div className="relative animate-float">
-              <div className="absolute -inset-4 bg-gradient-to-r from-accent/20 to-blue-500/20 rounded-2xl blur-2xl" />
-              <div className="relative rounded-2xl overflow-hidden border border-white/10 shadow-2xl shadow-black/30">
+          <div className="animate-fade-in hidden delay-300 lg:block">
+            <div className="animate-float relative">
+              <div className="from-accent/20 absolute -inset-4 rounded-2xl bg-gradient-to-r to-blue-500/20 blur-2xl" />
+              <div className="relative overflow-hidden rounded-2xl border border-white/10 shadow-2xl shadow-black/30">
                 <Image
                   src="/hero-cement.png"
                   alt="Modern cement distribution warehouse with organized bags and delivery trucks"
                   width={640}
                   height={400}
-                  className="w-full h-auto object-cover"
+                  className="h-auto w-full object-cover"
                   priority
                 />
                 {/* Overlay gradient */}
-                <div className="absolute inset-0 bg-gradient-to-t from-primary/40 to-transparent" />
+                <div className="from-primary/40 absolute inset-0 bg-gradient-to-t to-transparent" />
               </div>
               {/* Mascot Overlay */}
-              <div className="absolute -bottom-24 -right-20 z-30 w-[576px] h-[576px] drop-shadow-3xl">
+              <div className="drop-shadow-3xl absolute -right-20 -bottom-24 z-30 h-[576px] w-[576px]">
                 <Image
                   src="/obbo.gif"
                   alt="OBBO Mascot"
                   width={576}
                   height={576}
-                  className="w-full h-full object-contain"
+                  className="h-full w-full object-contain"
                   unoptimized
                   priority
                 />
@@ -104,48 +126,55 @@ function Hero() {
 const features = [
   {
     icon: BarChart3,
-    title: "Real-Time Inventory",
-    description: "Track stock levels across multiple shipment batches. Know exactly how many Jumbo Bags and Sling Bags are available at any moment.",
-    color: "bg-blue-500/10 text-blue-600",
+    title: 'Real-Time Inventory',
+    description:
+      'Track stock levels across multiple shipment batches. Know exactly how many Jumbo Bags and Sling Bags are available at any moment.',
+    color: 'bg-blue-500/10 text-blue-600',
   },
   {
     icon: ShieldCheck,
-    title: "Secure Digital Ordering",
-    description: "Place and manage orders with full audit trails. Support for cash and check payment methods with KYC verification.",
-    color: "bg-emerald-500/10 text-emerald-600",
+    title: 'Secure Digital Ordering',
+    description:
+      'Place and manage orders with full audit trails. Support for cash and check payment methods with KYC verification.',
+    color: 'bg-emerald-500/10 text-emerald-600',
   },
   {
     icon: Truck,
-    title: "Delivery Management",
-    description: "Track partial deliveries and customer balances automatically. Every bag dispatched is accounted for in the system.",
-    color: "bg-amber-500/10 text-amber-600",
+    title: 'Delivery Management',
+    description:
+      'Track partial deliveries and customer balances automatically. Every bag dispatched is accounted for in the system.',
+    color: 'bg-amber-500/10 text-amber-600',
   },
 ];
 
 function Features() {
   return (
-    <section id="features" className="py-20 sm:py-28 bg-background">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <ScrollReveal className="text-center max-w-2xl mx-auto mb-16">
-          <span className="text-sm font-bold uppercase tracking-widest text-accent">Why Choose OBBO</span>
-          <h2 className="mt-3 text-3xl sm:text-4xl font-bold text-foreground">
+    <section id="features" className="bg-background py-20 sm:py-28">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <ScrollReveal className="mx-auto mb-16 max-w-2xl text-center">
+          <span className="text-accent text-sm font-bold tracking-widest uppercase">
+            Why Choose OBBO
+          </span>
+          <h2 className="text-foreground mt-3 text-3xl font-bold sm:text-4xl">
             Everything You Need to Manage Cement Distribution
           </h2>
-          <p className="mt-4 text-muted-foreground text-lg">
+          <p className="text-muted-foreground mt-4 text-lg">
             Purpose-built tools for the construction supply chain.
           </p>
         </ScrollReveal>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 gap-8 md:grid-cols-3">
           {features.map((f, i) => (
             <ScrollReveal key={f.title} delay={i * 150}>
-              <div className="group relative p-8 rounded-2xl border border-border bg-card hover:shadow-xl hover:shadow-primary/5 transition-all duration-300 hover:-translate-y-2">
-                <div className={`w-14 h-14 rounded-xl ${f.color} flex items-center justify-center mb-6 transition-transform duration-300 group-hover:scale-110 group-hover:rotate-3`}>
-                  <f.icon className="w-7 h-7" />
+              <div className="group border-border bg-card hover:shadow-primary/5 relative rounded-2xl border p-8 transition-all duration-300 hover:-translate-y-2 hover:shadow-xl">
+                <div
+                  className={`h-14 w-14 rounded-xl ${f.color} mb-6 flex items-center justify-center transition-transform duration-300 group-hover:scale-110 group-hover:rotate-3`}
+                >
+                  <f.icon className="h-7 w-7" />
                 </div>
-                <h3 className="text-xl font-bold mb-3">{f.title}</h3>
+                <h3 className="mb-3 text-xl font-bold">{f.title}</h3>
                 <p className="text-muted-foreground leading-relaxed">{f.description}</p>
                 {/* Hover accent bar */}
-                <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-accent to-primary rounded-b-2xl scale-x-0 group-hover:scale-x-100 transition-transform duration-500 origin-left" />
+                <div className="from-accent to-primary absolute right-0 bottom-0 left-0 h-1 origin-left scale-x-0 rounded-b-2xl bg-gradient-to-r transition-transform duration-500 group-hover:scale-x-100" />
               </div>
             </ScrollReveal>
           ))}
@@ -157,38 +186,54 @@ function Features() {
 
 // ─── How It Works ──────────────────────────────────────────
 const steps = [
-  { icon: Building2, title: "Register", description: "Create your account and submit your business verification documents." },
-  { icon: ClipboardCheck, title: "Get Verified", description: "Our admin team reviews your KYC documents and activates your account." },
-  { icon: Package, title: "Place Orders", description: "Browse the cement catalog, select quantities, and submit your order." },
-  { icon: Truck, title: "Track Delivery", description: "Monitor order status from approval to dispatch, with real-time updates." },
+  {
+    icon: Building2,
+    title: 'Register',
+    description: 'Create your account and submit your business verification documents.',
+  },
+  {
+    icon: ClipboardCheck,
+    title: 'Get Verified',
+    description: 'Our admin team reviews your KYC documents and activates your account.',
+  },
+  {
+    icon: Package,
+    title: 'Place Orders',
+    description: 'Browse the cement catalog, select quantities, and submit your order.',
+  },
+  {
+    icon: Truck,
+    title: 'Track Delivery',
+    description: 'Monitor order status from approval to dispatch, with real-time updates.',
+  },
 ];
 
 function HowItWorks() {
   return (
-    <section id="how-it-works" className="py-20 sm:py-28 bg-muted/20">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <ScrollReveal className="text-center max-w-2xl mx-auto mb-16">
-          <span className="text-sm font-bold uppercase tracking-widest text-accent">Process</span>
-          <h2 className="mt-3 text-3xl sm:text-4xl font-bold text-foreground">How It Works</h2>
-          <p className="mt-4 text-muted-foreground text-lg">
+    <section id="how-it-works" className="bg-muted/20 py-20 sm:py-28">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <ScrollReveal className="mx-auto mb-16 max-w-2xl text-center">
+          <span className="text-accent text-sm font-bold tracking-widest uppercase">Process</span>
+          <h2 className="text-foreground mt-3 text-3xl font-bold sm:text-4xl">How It Works</h2>
+          <p className="text-muted-foreground mt-4 text-lg">
             From registration to delivery in four simple steps.
           </p>
         </ScrollReveal>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
           {steps.map((s, i) => (
             <ScrollReveal key={s.title} delay={i * 120}>
               <div className="relative">
-                <div className="group flex flex-col items-center text-center p-6 rounded-2xl bg-card border border-border hover:shadow-lg transition-all duration-300 hover:-translate-y-1">
-                  <div className="w-12 h-12 rounded-full bg-primary text-white flex items-center justify-center text-lg font-bold mb-4 transition-transform duration-300 group-hover:scale-110">
+                <div className="group bg-card border-border flex flex-col items-center rounded-2xl border p-6 text-center transition-all duration-300 hover:-translate-y-1 hover:shadow-lg">
+                  <div className="bg-primary mb-4 flex h-12 w-12 items-center justify-center rounded-full text-lg font-bold text-white transition-transform duration-300 group-hover:scale-110">
                     {i + 1}
                   </div>
-                  <s.icon className="w-8 h-8 text-primary mb-3 transition-transform duration-300 group-hover:scale-110" />
-                  <h3 className="text-lg font-bold mb-2">{s.title}</h3>
-                  <p className="text-sm text-muted-foreground">{s.description}</p>
+                  <s.icon className="text-primary mb-3 h-8 w-8 transition-transform duration-300 group-hover:scale-110" />
+                  <h3 className="mb-2 text-lg font-bold">{s.title}</h3>
+                  <p className="text-muted-foreground text-sm">{s.description}</p>
                 </div>
                 {i < steps.length - 1 && (
-                  <div className="hidden lg:flex absolute top-1/2 -right-3 transform -translate-y-1/2 z-10">
-                    <ChevronRight className="w-6 h-6 text-muted-foreground/30" />
+                  <div className="absolute top-1/2 -right-3 z-10 hidden -translate-y-1/2 transform lg:flex">
+                    <ChevronRight className="text-muted-foreground/30 h-6 w-6" />
                   </div>
                 )}
               </div>
@@ -203,47 +248,63 @@ function HowItWorks() {
 // ─── FAQ ──────────────────────────────────────────────
 const faqs = [
   {
-    question: "How long does the KYC verification process take?",
-    answer: "Typically, our admin team reviews and approves KYC documents within 24-48 business hours. You will receive an email notification once your account is activated."
+    question: 'How long does the KYC verification process take?',
+    answer:
+      'Typically, our admin team reviews and approves KYC documents within 24-48 business hours. You will receive an email notification once your account is activated.',
   },
   {
-    question: "What payment methods are supported?",
-    answer: "We support both Cash and Check payment methods. You can select your preferred method during the checkout process. For check payments, additional verification might be required."
+    question: 'What payment methods are supported?',
+    answer:
+      'We support both Cash and Check payment methods. You can select your preferred method during the checkout process. For check payments, additional verification might be required.',
   },
   {
-    question: "Can I track my delivery in real-time?",
-    answer: "Yes, once your order is dispatched from our warehouse, you can track the status of your delivery directly from your dashboard."
+    question: 'Can I track my delivery in real-time?',
+    answer:
+      'Yes, once your order is dispatched from our warehouse, you can track the status of your delivery directly from your dashboard.',
   },
   {
-    question: "What happens if a partial delivery is made?",
-    answer: "Our system automatically tracks partial deliveries. Any remaining balance will be recorded and scheduled for a subsequent dispatch."
-  }
+    question: 'What happens if a partial delivery is made?',
+    answer:
+      'Our system automatically tracks partial deliveries. Any remaining balance will be recorded and scheduled for a subsequent dispatch.',
+  },
 ];
 
 function FAQ() {
   return (
-    <section id="faq" className="py-20 sm:py-28 bg-background">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-        <ScrollReveal className="text-center mb-16">
-          <span className="text-sm font-bold uppercase tracking-widest text-accent">FAQ</span>
-          <h2 className="mt-3 text-3xl sm:text-4xl font-bold text-foreground">Frequently Asked Questions</h2>
-          <p className="mt-4 text-muted-foreground text-lg">
-            Got questions? We've got answers.
+    <section id="faq" className="bg-background py-20 sm:py-28">
+      <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
+        <ScrollReveal className="mb-16 text-center">
+          <span className="text-accent text-sm font-bold tracking-widest uppercase">FAQ</span>
+          <h2 className="text-foreground mt-3 text-3xl font-bold sm:text-4xl">
+            Frequently Asked Questions
+          </h2>
+          <p className="text-muted-foreground mt-4 text-lg">
+            Got questions? We&apos;ve got answers.
           </p>
         </ScrollReveal>
         <div className="space-y-4">
           {faqs.map((faq, i) => (
             <ScrollReveal key={i} delay={i * 100}>
-              <details className="group bg-card border border-border rounded-xl [&_summary::-webkit-details-marker]:hidden">
-                <summary className="flex items-center justify-between p-6 cursor-pointer font-bold text-lg">
+              <details className="group bg-card border-border rounded-xl border [&_summary::-webkit-details-marker]:hidden">
+                <summary className="flex cursor-pointer items-center justify-between p-6 text-lg font-bold">
                   {faq.question}
-                  <span className="transition-transform duration-300 group-open:-rotate-180 text-primary">
-                    <svg fill="none" height="24" shapeRendering="geometricPrecision" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" width="24"><path d="M6 9l6 6 6-6"></path></svg>
+                  <span className="text-primary transition-transform duration-300 group-open:-rotate-180">
+                    <svg
+                      fill="none"
+                      height="24"
+                      shapeRendering="geometricPrecision"
+                      stroke="currentColor"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2"
+                      viewBox="0 0 24 24"
+                      width="24"
+                    >
+                      <path d="M6 9l6 6 6-6"></path>
+                    </svg>
                   </span>
                 </summary>
-                <div className="px-6 pb-6 text-muted-foreground leading-relaxed">
-                  {faq.answer}
-                </div>
+                <div className="text-muted-foreground px-6 pb-6 leading-relaxed">{faq.answer}</div>
               </details>
             </ScrollReveal>
           ))}
@@ -256,28 +317,42 @@ function FAQ() {
 // ─── CTA ──────────────────────────────────────────────
 function CTA() {
   return (
-    <section className="py-20 sm:py-28 relative overflow-hidden">
-      <div className="absolute inset-0 bg-gradient-to-r from-primary to-[#142d4d]" />
-      <div className="absolute inset-0 opacity-5" style={{ backgroundImage: 'radial-gradient(circle at 1px 1px, white 1px, transparent 0)', backgroundSize: '32px 32px' }} />
+    <section className="relative overflow-hidden py-20 sm:py-28">
+      <div className="from-primary absolute inset-0 bg-gradient-to-r to-[#142d4d]" />
+      <div
+        className="absolute inset-0 opacity-5"
+        style={{
+          backgroundImage: 'radial-gradient(circle at 1px 1px, white 1px, transparent 0)',
+          backgroundSize: '32px 32px',
+        }}
+      />
       {/* Animated accent orbs */}
-      <div className="absolute top-10 left-20 w-40 h-40 bg-accent/10 rounded-full blur-3xl animate-glow-pulse" />
-      <div className="absolute bottom-10 right-20 w-60 h-60 bg-blue-400/10 rounded-full blur-3xl animate-glow-pulse delay-300" />
+      <div className="bg-accent/10 animate-glow-pulse absolute top-10 left-20 h-40 w-40 rounded-full blur-3xl" />
+      <div className="animate-glow-pulse absolute right-20 bottom-10 h-60 w-60 rounded-full bg-blue-400/10 blur-3xl delay-300" />
 
-      <ScrollReveal className="relative max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-        <h2 className="text-3xl sm:text-4xl font-bold text-white mb-6">
+      <ScrollReveal className="relative mx-auto max-w-4xl px-4 text-center sm:px-6 lg:px-8">
+        <h2 className="mb-6 text-3xl font-bold text-white sm:text-4xl">
           Ready to Modernize Your Distribution?
         </h2>
-        <p className="text-lg text-white/90 max-w-2xl mx-auto mb-10">
-          Join the growing number of cement distributors who trust OBBO iManage for their daily operations.
+        <p className="mx-auto mb-10 max-w-2xl text-lg text-white/90">
+          Join the growing number of cement distributors who trust OBBO iManage for their daily
+          operations.
         </p>
-        <div className="flex flex-col sm:flex-row justify-center gap-4">
+        <div className="flex flex-col justify-center gap-4 sm:flex-row">
           <Link href="/register">
-            <Button size="lg" className="w-full sm:w-auto bg-accent hover:bg-accent/90 text-accent-foreground font-bold text-base px-10 gap-2 transition-all duration-300 hover:scale-105 hover:shadow-lg hover:shadow-accent/25">
-              Create Account <ArrowRight className="w-4 h-4" />
+            <Button
+              size="lg"
+              className="bg-accent hover:bg-accent/90 text-accent-foreground hover:shadow-accent/25 w-full gap-2 px-10 text-base font-bold transition-all duration-300 hover:scale-105 hover:shadow-lg sm:w-auto"
+            >
+              Create Account <ArrowRight className="h-4 w-4" />
             </Button>
           </Link>
           <Link href="/login">
-            <Button size="lg" variant="outline" className="w-full sm:w-auto bg-transparent border-white/60 text-white hover:bg-white/10 hover:text-white font-semibold text-base px-10 transition-all duration-300 hover:scale-105">
+            <Button
+              size="lg"
+              variant="outline"
+              className="w-full border-white/60 bg-transparent px-10 text-base font-semibold text-white transition-all duration-300 hover:scale-105 hover:bg-white/10 hover:text-white sm:w-auto"
+            >
               Sign In
             </Button>
           </Link>
@@ -290,16 +365,24 @@ function CTA() {
 // ─── Footer ──────────────────────────────────────────────
 function Footer() {
   return (
-    <footer className="bg-[#0c1a2b] text-white/50 py-12">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex flex-col md:flex-row justify-between items-center gap-6">
-          <div className="flex items-center gap-2 group">
-            <div className="w-8 h-8 flex items-center justify-center transition-transform duration-300 group-hover:scale-110 group-hover:rotate-6">
-              <Image src="/logo.png" alt="OBBO iManage Logo" width={32} height={32} className="object-contain" />
+    <footer className="bg-[#0c1a2b] py-12 text-white/50">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="flex flex-col items-center justify-between gap-6 md:flex-row">
+          <div className="group flex items-center gap-2">
+            <div className="flex h-8 w-8 items-center justify-center transition-transform duration-300 group-hover:scale-110 group-hover:rotate-6">
+              <Image
+                src="/logo.png"
+                alt="OBBO iManage Logo"
+                width={32}
+                height={32}
+                className="object-contain"
+              />
             </div>
             <span className="text-lg font-bold text-white/80">OBBO iManage</span>
           </div>
-          <p className="text-sm">&copy; {new Date().getFullYear()} OBBO Cement Distribution. All rights reserved.</p>
+          <p className="text-sm">
+            &copy; {new Date().getFullYear()} OBBO Cement Distribution. All rights reserved.
+          </p>
         </div>
       </div>
     </footer>
@@ -309,7 +392,7 @@ function Footer() {
 // ─── Page ──────────────────────────────────────────────
 export default function LandingPage() {
   return (
-    <main className="min-h-screen bg-background text-foreground">
+    <main className="bg-background text-foreground min-h-screen">
       <Navbar />
       <Hero />
       <Stats />
