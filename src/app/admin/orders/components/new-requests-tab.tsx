@@ -328,6 +328,13 @@ export function NewRequestsTab({
                                   JB
                                 </span>
                               </p>
+                              <p className="text-muted-foreground text-[9px]">
+                                ={' '}
+                                {(order.is_split_delivery
+                                  ? order.deliver_now_jb
+                                  : jbItem.requested_qty) * 25}{' '}
+                                bags
+                              </p>
                             </div>
                           )}
                           {sbItem && (sbItem.requested_qty > 0 || order.deliver_now_sb > 0) && (
@@ -347,12 +354,22 @@ export function NewRequestsTab({
                                   SB
                                 </span>
                               </p>
+                              <p className="text-muted-foreground text-[9px]">
+                                ={' '}
+                                {(order.is_split_delivery
+                                  ? order.deliver_now_sb
+                                  : sbItem.requested_qty) * 50}{' '}
+                                bags
+                              </p>
                             </div>
                           )}
                           {totalBags > 0 && !jbItem && !sbItem && (
                             <p className="text-foreground text-lg font-bold">{totalBags} bags</p>
                           )}
                         </div>
+                        <p className="mt-1 text-[9px] text-amber-600">
+                          💡 1 JB = 25 bags | 1 SB = 50 bags
+                        </p>
                       </div>
                     </div>
 
@@ -561,7 +578,8 @@ export function NewRequestsTab({
                     </div>
                     <div className="flex-1">
                       <p className="text-muted-foreground text-xs">
-                        Requested: {item.requested_qty}
+                        Requested: {item.requested_qty} units (
+                        {item.requested_qty * (item.bag_type === 'JB' ? 25 : 50)} bags)
                       </p>
                     </div>
                     <div className="w-32">
@@ -585,6 +603,9 @@ export function NewRequestsTab({
                     </div>
                   </div>
                 ))}
+                <p className="rounded border border-amber-200 bg-amber-50 p-2 text-xs text-amber-600">
+                  💡 1 JB = 25 bags | 1 SB = 50 bags
+                </p>
               </div>
 
               {selectedOrder.service_type === 'deliver' && (

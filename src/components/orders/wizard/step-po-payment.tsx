@@ -17,11 +17,9 @@ import {
 interface StepPoPaymentProps {
   form: {
     po_number: string;
-    supplier_name: string;
     payment_method: 'cash' | 'check';
     wants_split: boolean;
-    deliver_now_jb: number;
-    deliver_now_sb: number;
+    deliver_now_total: number;
   };
   files: {
     po_file: File | null;
@@ -30,8 +28,7 @@ interface StepPoPaymentProps {
   onFieldChange: (field: string, value: string | boolean | number) => void;
   onFileChange: (field: 'po_file' | 'check_file', file: File | null) => void;
   errors: Record<string, string>;
-  totalJB: number;
-  totalSB: number;
+  totalBags: number;
 }
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
@@ -113,24 +110,17 @@ export function StepPoPayment({
   onFieldChange,
   onFileChange,
   errors,
-  totalJB,
-  totalSB,
+  totalBags,
 }: StepPoPaymentProps) {
-  const totalDeliverNow = form.deliver_now_jb + form.deliver_now_sb;
+  const remainingBalance = totalBags - form.deliver_now_total;
 
-  // 🌟 MATHEMATICAL ALGORITHM CORRECTION: Hinati sa sako-sa-sako na deduction para maiwasan ang maling incremental factor errors
-  const remainingBalance = totalJB + totalSB - totalDeliverNow;
-
-  // 🌟 STATE LIFE CYCLE SYNCHRONIZER: Pinipilit nitong ibalik sa max totals o i-clamp sa valid bounds ang inputs kapag may nabago sa main settings status
   useEffect(() => {
     if (!form.wants_split) {
-      onFieldChange('deliver_now_jb', totalJB);
-      onFieldChange('deliver_now_sb', totalSB);
+      onFieldChange('deliver_now_total', totalBags);
     } else {
-      if (form.deliver_now_jb > totalJB) onFieldChange('deliver_now_jb', totalJB);
-      if (form.deliver_now_sb > totalSB) onFieldChange('deliver_now_sb', totalSB);
+      if (form.deliver_now_total > totalBags) onFieldChange('deliver_now_total', totalBags);
     }
-  }, [form.wants_split, totalJB, totalSB, onFieldChange, form.deliver_now_jb, form.deliver_now_sb]);
+  }, [form.wants_split, totalBags, onFieldChange, form.deliver_now_total]);
 
   return (
     <div className="space-y-6">
@@ -141,32 +131,19 @@ export function StepPoPayment({
         </p>
       </div>
 
-      {/* PO Number & Supplier */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <div>
-          <Label htmlFor="po_number" className="text-sm font-medium">
-            PO Number <span className="text-destructive">*</span>
-          </Label>
-          <Input
-            id="po_number"
-            value={form.po_number}
-            onChange={(e) => onFieldChange('po_number', e.target.value)}
-            placeholder="PO-2026-001"
-            className="mt-1.5 h-11"
-          />
-          {errors.po_number && <p className="text-destructive mt-1 text-sm">{errors.po_number}</p>}
-        </div>
-        <div>
-          <Label htmlFor="supplier_name" className="text-sm font-medium">
-            Supplier name
-          </Label>
-          <Input
-            id="supplier_name"
-            value={form.supplier_name}
-            onChange={(e) => onFieldChange('supplier_name', e.target.value)}
-            className="mt-1.5 h-11"
-          />
-        </div>
+      {/* PO Number */}
+      <div>
+        <Label htmlFor="po_number" className="text-sm font-medium">
+          PO Number <span className="text-destructive">*</span>
+        </Label>
+        <Input
+          id="po_number"
+          value={form.po_number}
+          onChange={(e) => onFieldChange('po_number', e.target.value)}
+          placeholder="PO-2026-001"
+          className="mt-1.5 h-11"
+        />
+        {errors.po_number && <p className="text-destructive mt-1 text-sm">{errors.po_number}</p>}
       </div>
 
       {/* PO Image */}
@@ -246,55 +223,30 @@ export function StepPoPayment({
 
         {form.wants_split && (
           <div className="space-y-4 border-t border-blue-500/20 pt-3">
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              {totalJB > 0 && (
-                <div>
-                  <Label className="text-xs font-bold text-blue-600 uppercase">
-                    JB to receive now (max {totalJB})
-                  </Label>
-                  <Input
-                    type="number"
-                    min={0}
-                    max={totalJB}
-                    value={form.deliver_now_jb || ''}
-                    placeholder="0"
-                    onChange={(e) =>
-                      onFieldChange(
-                        'deliver_now_jb',
-                        Math.min(totalJB, Math.max(0, parseInt(e.target.value) || 0)),
-                      )
-                    }
-                    className="mt-1.5 h-10 border-blue-500/20 font-semibold"
-                  />
-                </div>
-              )}
-              {totalSB > 0 && (
-                <div>
-                  <Label className="text-xs font-bold text-blue-600 uppercase">
-                    SB to receive now (max {totalSB})
-                  </Label>
-                  <Input
-                    type="number"
-                    min={0}
-                    max={totalSB}
-                    value={form.deliver_now_sb || ''}
-                    placeholder="0"
-                    onChange={(e) =>
-                      onFieldChange(
-                        'deliver_now_sb',
-                        Math.min(totalSB, Math.max(0, parseInt(e.target.value) || 0)),
-                      )
-                    }
-                    className="mt-1.5 h-10 border-blue-500/20 font-semibold"
-                  />
-                </div>
-              )}
+            <div>
+              <Label className="text-xs font-bold text-blue-600 uppercase">
+                Bags to receive now (max {totalBags})
+              </Label>
+              <Input
+                type="number"
+                min={0}
+                max={totalBags}
+                value={form.deliver_now_total || ''}
+                placeholder="0"
+                onChange={(e) =>
+                  onFieldChange(
+                    'deliver_now_total',
+                    Math.min(totalBags, Math.max(0, parseInt(e.target.value) || 0)),
+                  )
+                }
+                className="mt-1.5 h-10 border-blue-500/20 font-semibold"
+              />
             </div>
 
             <div className="rounded border border-blue-500/20 bg-blue-500/10 p-3 text-sm">
               <div className="flex justify-between font-bold text-blue-600">
                 <span>Delivering now</span>
-                <span>{totalDeliverNow.toLocaleString()} bags</span>
+                <span>{form.deliver_now_total.toLocaleString()} bags</span>
               </div>
               <div className="mt-1 flex justify-between font-medium text-blue-500/70">
                 <span>Remaining balance</span>
@@ -302,11 +254,8 @@ export function StepPoPayment({
               </div>
             </div>
 
-            {errors.deliver_now_jb && (
-              <p className="text-destructive text-sm">{errors.deliver_now_jb}</p>
-            )}
-            {errors.deliver_now_sb && (
-              <p className="text-destructive text-sm">{errors.deliver_now_sb}</p>
+            {errors.deliver_now_total && (
+              <p className="text-destructive text-sm">{errors.deliver_now_total}</p>
             )}
           </div>
         )}
