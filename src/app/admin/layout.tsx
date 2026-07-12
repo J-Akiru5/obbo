@@ -31,7 +31,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Badge } from '@/components/ui/badge';
-import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import { Sheet, SheetContent, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from '@/components/ui/popover';
 import type { Notification } from '@/lib/types/database';
 import { ThemeToggle } from '@/components/theme-toggle';
@@ -495,6 +495,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 <Menu className="h-5 w-5" aria-hidden="true" />
               </SheetTrigger>
               <SheetContent side="left" className="bg-sidebar w-64 p-0">
+                <SheetTitle className="sr-only">Navigation Menu</SheetTitle>
                 <SidebarContent
                   pathname={pathname}
                   navItems={navItems}

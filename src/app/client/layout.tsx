@@ -25,7 +25,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import { Sheet, SheetContent, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { createClient } from '@/lib/supabase/client';
 import { ClientKycProvider, useClientKyc, type KycStatus } from '@/lib/context/client-kyc-context';
 import {
@@ -305,6 +305,7 @@ function ClientLayoutInner({ children }: { children: React.ReactNode }) {
                 <Menu className="h-4 w-4" aria-hidden="true" />
               </SheetTrigger>
               <SheetContent side="left" className="bg-sidebar w-72 p-0">
+                <SheetTitle className="sr-only">Navigation Menu</SheetTitle>
                 <SidebarContent
                   pathname={pathname}
                   onNavigate={() => setMobileOpen(false)}
