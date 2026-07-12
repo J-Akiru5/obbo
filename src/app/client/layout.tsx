@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useState, useEffect, useCallback } from 'react';
 import {
   Bell,
@@ -16,20 +16,26 @@ import {
   ShieldCheck,
   WalletCards,
   AlertCircle,
-  CheckCircle2,
-  Info,
   Lock,
   Clock,
+  Plus,
+  Moon,
+  Sun,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import type { Notification } from '@/lib/types/database';
-import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
-import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from '@/components/ui/popover';
 import { createClient } from '@/lib/supabase/client';
-import { toast } from 'sonner';
 import { ClientKycProvider, useClientKyc, type KycStatus } from '@/lib/context/client-kyc-context';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { useTheme } from 'next-themes';
 
 const navItems = [
   { href: '/client/dashboard', label: 'Dashboard', icon: Gauge },
@@ -166,10 +172,11 @@ function SidebarContent({
 }
 
 import { GlobalSearch } from '@/components/global-search';
-import { ThemeToggle } from '@/components/theme-toggle';
 
 function ClientLayoutInner({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
+  const { theme, setTheme } = useTheme();
   const handleSignOut = async () => {
     const supabase = createClient();
     await supabase.auth.signOut();
@@ -180,8 +187,6 @@ function ClientLayoutInner({ children }: { children: React.ReactNode }) {
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [initials, setInitials] = useState<string>('CL');
   const [unreadCount, setUnreadCount] = useState(0);
-  const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [notifOpen, setNotifOpen] = useState(false);
 
   const loadNotifications = useCallback(async () => {
     try {
@@ -212,14 +217,6 @@ function ClientLayoutInner({ children }: { children: React.ReactNode }) {
         }
       }
 
-      // Fetch last 20 notifications
-      const { data: notifs } = await supabase
-        .from('notifications')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
-        .limit(20);
-
       // Fetch TOTAL unread count
       const { count: unread } = await supabase
         .from('notifications')
@@ -227,7 +224,6 @@ function ClientLayoutInner({ children }: { children: React.ReactNode }) {
         .eq('user_id', user.id)
         .eq('is_read', false);
 
-      setNotifications(notifs ?? []);
       setUnreadCount(unread ?? 0);
     } catch {
       // silently fail
@@ -271,25 +267,6 @@ function ClientLayoutInner({ children }: { children: React.ReactNode }) {
       window.removeEventListener('profile-updated', loadNotifications);
     };
   }, [loadNotifications]);
-
-  const markAllRead = async () => {
-    try {
-      const supabase = createClient();
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) return;
-      await supabase
-        .from('notifications')
-        .update({ is_read: true })
-        .eq('user_id', user.id)
-        .eq('is_read', false);
-      setUnreadCount(0);
-      setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
-    } catch {
-      toast.error('Failed to mark notifications as read.');
-    }
-  };
 
   // Derive header badge content from kycStatus
   const kycBadge =
@@ -360,114 +337,72 @@ function ClientLayoutInner({ children }: { children: React.ReactNode }) {
           </div>
 
           <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
-            <ThemeToggle />
-            <Popover
-              open={notifOpen}
-              onOpenChange={(open) => {
-                setNotifOpen(open);
-                if (open && unreadCount > 0) markAllRead();
-              }}
-            >
-              <PopoverTrigger
-                className="hover:bg-muted relative inline-flex h-8 w-8 items-center justify-center rounded-md"
-                aria-label="Notifications"
-              >
-                <Bell className="h-4 w-4" aria-hidden="true" />
-                {unreadCount > 0 && (
-                  <span className="bg-accent text-accent-foreground absolute -top-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full text-[10px] font-bold">
-                    {unreadCount > 9 ? '9+' : unreadCount}
-                  </span>
-                )}
-              </PopoverTrigger>
-              <PopoverContent align="end" className="w-80 p-0">
-                <div className="flex items-center justify-between border-b p-3">
-                  <PopoverTitle className="text-sm font-semibold">Notifications</PopoverTitle>
-                  {unreadCount > 0 && (
-                    <button onClick={markAllRead} className="text-primary text-xs hover:underline">
-                      Mark all as read
-                    </button>
-                  )}
-                </div>
-                <div className="max-h-80 overflow-y-auto">
-                  {notifications.length === 0 ? (
-                    <div className="text-muted-foreground p-6 text-center text-sm">
-                      No notifications yet
-                    </div>
-                  ) : (
-                    notifications.map((n: any) => (
-                      <Link
-                        key={n.id}
-                        href={n.href || '/client/orders'}
-                        onClick={() => setNotifOpen(false)}
-                      >
-                        <div
-                          className={`border-border hover:bg-muted/50 border-b px-3 py-2.5 transition-colors ${!n.is_read ? 'bg-status-info-bg/30' : ''}`}
-                        >
-                          <div className="flex items-start gap-2">
-                            {n.severity === 'warning' ? (
-                              <AlertCircle className="text-status-pending-text mt-0.5 h-3.5 w-3.5 shrink-0" />
-                            ) : n.severity === 'success' ? (
-                              <CheckCircle2 className="text-status-success-text mt-0.5 h-3.5 w-3.5 shrink-0" />
-                            ) : (
-                              <Info className="text-status-info-text mt-0.5 h-3.5 w-3.5 shrink-0" />
-                            )}
-                            <div>
-                              <p
-                                className={`text-xs font-medium ${!n.is_read ? 'text-foreground' : 'text-muted-foreground'}`}
-                              >
-                                {n.title}
-                              </p>
-                              <p className="text-muted-foreground mt-0.5 text-[10px]">
-                                {n.message}
-                              </p>
-                              <p className="text-muted-foreground/80 mt-1 text-[9px]">
-                                {new Date(n.created_at).toLocaleString()}
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-                      </Link>
-                    ))
-                  )}
-                </div>
-                <div className="border-t p-2">
-                  <Link href="/client/dashboard" onClick={() => setNotifOpen(false)}>
-                    <Button variant="ghost" size="sm" className="w-full text-xs">
-                      View all on Dashboard
-                    </Button>
-                  </Link>
-                </div>
-              </PopoverContent>
-            </Popover>
-
             {/* Dynamic KYC badge */}
             <Badge variant="outline" className={`hidden sm:inline-flex ${kycBadge.className}`}>
               {kycBadge.label}
             </Badge>
 
-            <Link href="/client/profile">
-              <Avatar className="ring-primary h-8 w-8 cursor-pointer transition-all hover:ring-2">
-                {avatarUrl ? (
-                  <AvatarImage src={avatarUrl} alt="Avatar" className="object-cover" />
-                ) : (
-                  <AvatarFallback className="bg-primary text-primary-foreground text-xs font-bold">
-                    {initials}
-                  </AvatarFallback>
-                )}
-              </Avatar>
-            </Link>
+            <DropdownMenu>
+              <DropdownMenuTrigger className="outline-none">
+                <Avatar className="ring-primary h-8 w-8 cursor-pointer transition-all hover:ring-2">
+                  {avatarUrl ? (
+                    <AvatarImage src={avatarUrl} alt="Avatar" className="object-cover" />
+                  ) : (
+                    <AvatarFallback className="bg-primary text-primary-foreground text-xs font-bold">
+                      {initials}
+                    </AvatarFallback>
+                  )}
+                </Avatar>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuLabel>My Account</DropdownMenuLabel>
+                <DropdownMenuSeparator />
 
-            <button
-              type="button"
-              onClick={async () => {
-                const supabase = createClient();
-                await supabase.auth.signOut();
-                window.location.href = '/login';
-              }}
-              className="text-muted-foreground hover:bg-muted hidden items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors sm:inline-flex"
-            >
-              <LogOut className="h-4 w-4" /> Sign Out
-            </button>
+                <DropdownMenuItem onClick={() => router.push('/client/profile')}>
+                  <CircleUserRound className="mr-2 h-4 w-4" />
+                  <span>Profile & Settings</span>
+                </DropdownMenuItem>
+
+                <DropdownMenuItem onClick={() => router.push('/client/contact-admin')}>
+                  <Contact className="mr-2 h-4 w-4" />
+                  <span>App Settings & Support</span>
+                </DropdownMenuItem>
+
+                <DropdownMenuItem onClick={() => router.push('/client/notifications')}>
+                  <div className="flex w-full items-center justify-between">
+                    <div className="flex items-center">
+                      <Bell className="mr-2 h-4 w-4" />
+                      <span>Notifications</span>
+                    </div>
+                    {unreadCount > 0 && (
+                      <span className="bg-primary text-primary-foreground flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] font-bold">
+                        {unreadCount}
+                      </span>
+                    )}
+                  </div>
+                </DropdownMenuItem>
+
+                <DropdownMenuItem onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}>
+                  {theme === 'dark' ? (
+                    <>
+                      <Sun className="mr-2 h-4 w-4 text-amber-500" />
+                      <span>Light Mode</span>
+                    </>
+                  ) : (
+                    <>
+                      <Moon className="mr-2 h-4 w-4 text-blue-600" />
+                      <span>Dark Mode</span>
+                    </>
+                  )}
+                </DropdownMenuItem>
+
+                <DropdownMenuSeparator />
+                <DropdownMenuItem variant="destructive" onClick={handleSignOut}>
+                  <LogOut className="mr-2 h-4 w-4" />
+                  <span>Sign Out</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </header>
 
@@ -477,10 +412,76 @@ function ClientLayoutInner({ children }: { children: React.ReactNode }) {
         >
           Skip to content
         </a>
-        <main id="main-content" className="relative flex-1 p-4 sm:p-6">
+        <main id="main-content" className="relative flex-1 p-4 pb-24 sm:p-6 lg:pb-6">
           <div className="from-primary/5 pointer-events-none absolute inset-x-0 top-0 h-24 bg-gradient-to-b to-transparent" />
           <div className="relative">{children}</div>
         </main>
+      </div>
+
+      {/* Mobile Bottom Navigation Bar */}
+      <div className="bg-background/90 border-border pb-safe fixed inset-x-0 bottom-0 z-40 flex h-16 items-center justify-around border-t backdrop-blur-md lg:hidden">
+        {/* Item 1: Dashboard */}
+        <Link
+          href="/client/dashboard"
+          className={`flex h-full flex-1 flex-col items-center justify-center text-[10px] font-medium transition-colors ${
+            pathname === '/client/dashboard'
+              ? 'text-primary font-semibold'
+              : 'text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          <Gauge className="mb-0.5 h-5 w-5" />
+          <span>Home</span>
+        </Link>
+
+        {/* Item 2: Product Catalog */}
+        <Link
+          href="/client/catalog"
+          className={`flex h-full flex-1 flex-col items-center justify-center text-[10px] font-medium transition-colors ${
+            pathname.startsWith('/client/catalog')
+              ? 'text-primary font-semibold'
+              : 'text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          <PackageSearch className="mb-0.5 h-5 w-5" />
+          <span>Catalog</span>
+        </Link>
+
+        {/* Item 3: Center Plus Action Button (FAB) */}
+        <div className="relative flex h-full flex-1 items-center justify-center">
+          <Link
+            href="/client/orders/new"
+            aria-label="Place New Order"
+            className="bg-primary hover:bg-primary/95 text-primary-foreground border-background absolute -top-6 flex h-14 w-14 items-center justify-center rounded-full border-4 shadow-lg transition-transform active:scale-95"
+          >
+            <Plus className="h-7 w-7" />
+          </Link>
+        </div>
+
+        {/* Item 4: My Orders */}
+        <Link
+          href="/client/orders"
+          className={`flex h-full flex-1 flex-col items-center justify-center text-[10px] font-medium transition-colors ${
+            pathname.startsWith('/client/orders') && !pathname.endsWith('/new')
+              ? 'text-primary font-semibold'
+              : 'text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          <ClipboardList className="mb-0.5 h-5 w-5" />
+          <span>Orders</span>
+        </Link>
+
+        {/* Item 5: Balance Ledger */}
+        <Link
+          href="/client/ledger"
+          className={`flex h-full flex-1 flex-col items-center justify-center text-[10px] font-medium transition-colors ${
+            pathname.startsWith('/client/ledger')
+              ? 'text-primary font-semibold'
+              : 'text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          <WalletCards className="mb-0.5 h-5 w-5" />
+          <span>Ledger</span>
+        </Link>
       </div>
     </div>
   );
