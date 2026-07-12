@@ -22,6 +22,7 @@ import {
   Moon,
   Sun,
 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
@@ -337,6 +338,21 @@ function ClientLayoutInner({ children }: { children: React.ReactNode }) {
           </div>
 
           <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="relative"
+              onClick={() => router.push('/client/notifications')}
+              aria-label="Notifications"
+            >
+              <Bell className="h-5 w-5" />
+              {unreadCount > 0 && (
+                <span className="bg-destructive text-destructive-foreground absolute -top-0.5 -right-0.5 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] font-bold">
+                  {unreadCount > 9 ? '9+' : unreadCount}
+                </span>
+              )}
+            </Button>
+
             {/* Dynamic KYC badge */}
             <Badge variant="outline" className={`hidden sm:inline-flex ${kycBadge.className}`}>
               {kycBadge.label}
@@ -366,20 +382,6 @@ function ClientLayoutInner({ children }: { children: React.ReactNode }) {
                 <DropdownMenuItem onClick={() => router.push('/client/contact-admin')}>
                   <Contact className="mr-2 h-4 w-4" />
                   <span>App Settings & Support</span>
-                </DropdownMenuItem>
-
-                <DropdownMenuItem onClick={() => router.push('/client/notifications')}>
-                  <div className="flex w-full items-center justify-between">
-                    <div className="flex items-center">
-                      <Bell className="mr-2 h-4 w-4" />
-                      <span>Notifications</span>
-                    </div>
-                    {unreadCount > 0 && (
-                      <span className="bg-primary text-primary-foreground flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] font-bold">
-                        {unreadCount}
-                      </span>
-                    )}
-                  </div>
                 </DropdownMenuItem>
 
                 <DropdownMenuItem onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}>
