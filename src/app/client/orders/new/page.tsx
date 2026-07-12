@@ -128,6 +128,7 @@ function NewOrderPage() {
   // Resume from draft if ?draft= param is present
   const searchParams = useSearchParams();
   const draftId = searchParams.get('draft');
+  const bagType = searchParams.get('bag_type') as 'JB' | 'SB' | null;
   useEffect(() => {
     if (!draftId) return;
 
@@ -525,6 +526,7 @@ function NewOrderPage() {
               sbQty={form.sb_qty}
               onJbChange={(value) => updateField('jb_qty', value)}
               onSbChange={(value) => updateField('sb_qty', value)}
+              bagType={bagType}
               error={errors.jb_qty}
             />
           )}

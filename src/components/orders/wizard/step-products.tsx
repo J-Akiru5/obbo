@@ -1,13 +1,17 @@
 'use client';
 
-import { Minus, Plus } from 'lucide-react';
+import { useState, useMemo } from 'react';
+import { Minus, Plus, PackagePlus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 
 interface StepProductsProps {
   jbQty: number;
   sbQty: number;
   onJbChange: (value: number) => void;
   onSbChange: (value: number) => void;
+  bagType: 'JB' | 'SB' | null;
   error?: string;
 }
 
@@ -74,44 +78,159 @@ function BagCounter({
   );
 }
 
-export function StepProducts({ jbQty, sbQty, onJbChange, onSbChange, error }: StepProductsProps) {
-  const totalIndivBags = jbQty * 25 + sbQty * 50;
+export function StepProducts({
+  jbQty,
+  sbQty,
+  onJbChange,
+  onSbChange,
+  bagType,
+  error,
+}: StepProductsProps) {
+  const [individualBags, setIndividualBags] = useState(() => jbQty * 25 + sbQty * 50);
+
+  const isPrimarySB = bagType === 'SB';
+  const isPrimaryJB = bagType === 'JB';
+  const hasType = isPrimarySB || isPrimaryJB;
+
+  const primaryBagsPerUnit = isPrimarySB ? 50 : 25;
+  const primaryLabel = isPrimarySB ? 'SB' : 'JB';
+  const otherLabel = isPrimarySB ? 'JB' : 'SB';
+  const otherBagsPerUnit = isPrimarySB ? 25 : 50;
+
+  const primaryUnits = individualBags > 0 ? Math.floor(individualBags / primaryBagsPerUnit) : 0;
+  const remainder = individualBags > 0 ? individualBags % primaryBagsPerUnit : 0;
+  const otherUnitsFromRemainder = remainder > 0 ? Math.floor(remainder / otherBagsPerUnit) : 0;
+  const hasOtherType = isPrimarySB ? jbQty > 0 : sbQty > 0;
+
+  const totalCalculated = useMemo(() => {
+    if (isPrimarySB) return primaryUnits * 50 + jbQty * 25;
+    if (isPrimaryJB) return primaryUnits * 25 + sbQty * 50;
+    return jbQty * 25 + sbQty * 50;
+  }, [isPrimarySB, isPrimaryJB, primaryUnits, jbQty, sbQty]);
+
+  function handleIndividualBagsChange(value: number) {
+    const bags = Math.max(0, value);
+    setIndividualBags(bags);
+    if (bagType === 'SB') {
+      onSbChange(Math.floor(bags / 50));
+      if (jbQty > 0) onJbChange(0);
+    } else if (bagType === 'JB') {
+      onJbChange(Math.floor(bags / 25));
+      if (sbQty > 0) onSbChange(0);
+    }
+  }
+
+  function handleAddOtherType() {
+    if (bagType === 'SB' && otherUnitsFromRemainder > 0) {
+      onJbChange(otherUnitsFromRemainder);
+    } else if (bagType === 'JB' && otherUnitsFromRemainder > 0) {
+      onSbChange(otherUnitsFromRemainder);
+    }
+  }
 
   return (
     <div className="space-y-5">
       <div className="space-y-1">
         <h2 className="text-foreground text-xl font-semibold tracking-tight">Select products</h2>
         <p className="text-muted-foreground text-sm">
-          Choose how many JB and/or SB units you want to order.
+          {hasType
+            ? `Enter the total number of individual bags. We'll calculate the ${primaryLabel} units.`
+            : 'Choose how many JB and/or SB units you want to order.'}
         </p>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2">
-        <BagCounter
-          label="Jumbo Bag"
-          type="JB"
-          qty={jbQty}
-          onChange={onJbChange}
-          bagsPerUnit={25}
-          description="1 JB = 25 individual bags"
-        />
-        <BagCounter
-          label="Sling Bag"
-          type="SB"
-          qty={sbQty}
-          onChange={onSbChange}
-          bagsPerUnit={50}
-          description="1 SB = 50 individual bags"
-        />
-      </div>
+      {hasType ? (
+        <>
+          <div className="space-y-2">
+            <Label htmlFor="indiv-bags">Number of individual bags</Label>
+            <Input
+              id="indiv-bags"
+              type="number"
+              min="0"
+              value={individualBags || ''}
+              placeholder="Enter total number of bags"
+              onChange={(e) => handleIndividualBagsChange(parseInt(e.target.value) || 0)}
+              className="text-lg font-bold"
+            />
+          </div>
 
-      {totalIndivBags > 0 && (
-        <div className="border-border bg-muted/40 flex items-center justify-between rounded-lg border px-4 py-3">
-          <span className="text-muted-foreground text-sm">Total individual bags</span>
-          <span className="text-foreground text-sm font-bold">
-            {totalIndivBags.toLocaleString()}
-          </span>
-        </div>
+          {individualBags > 0 && (
+            <>
+              {primaryUnits > 0 && (
+                <div className="bg-card rounded-lg border p-4">
+                  <p className="text-sm font-semibold">
+                    {individualBags.toLocaleString()} individual bags ={' '}
+                    <span className="text-primary">
+                      {primaryUnits} {primaryLabel} unit{primaryUnits > 1 ? 's' : ''}
+                    </span>{' '}
+                    ({primaryUnits * primaryBagsPerUnit} bags)
+                  </p>
+                </div>
+              )}
+
+              {remainder > 0 &&
+                primaryUnits > 0 &&
+                otherUnitsFromRemainder > 0 &&
+                !hasOtherType && (
+                  <div className="bg-card flex items-center justify-between rounded-lg border p-3">
+                    <p className="text-muted-foreground text-sm">
+                      {remainder.toLocaleString()} bag{remainder > 1 ? 's' : ''} remaining
+                    </p>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={handleAddOtherType}
+                      className="gap-1"
+                    >
+                      <PackagePlus className="h-3.5 w-3.5" />
+                      Add {otherUnitsFromRemainder} {otherLabel} unit
+                      {otherUnitsFromRemainder > 1 ? 's' : ''}
+                    </Button>
+                  </div>
+                )}
+
+              {totalCalculated > 0 && (
+                <div className="border-border bg-muted/40 flex items-center justify-between rounded-lg border px-4 py-3">
+                  <span className="text-muted-foreground text-sm">Total individual bags</span>
+                  <span className="text-foreground text-sm font-bold">
+                    {totalCalculated.toLocaleString()}
+                  </span>
+                </div>
+              )}
+            </>
+          )}
+        </>
+      ) : (
+        <>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <BagCounter
+              label="Jumbo Bag"
+              type="JB"
+              qty={jbQty}
+              onChange={onJbChange}
+              bagsPerUnit={25}
+              description="1 JB = 25 individual bags"
+            />
+            <BagCounter
+              label="Sling Bag"
+              type="SB"
+              qty={sbQty}
+              onChange={onSbChange}
+              bagsPerUnit={50}
+              description="1 SB = 50 individual bags"
+            />
+          </div>
+
+          {totalCalculated > 0 && (
+            <div className="border-border bg-muted/40 flex items-center justify-between rounded-lg border px-4 py-3">
+              <span className="text-muted-foreground text-sm">Total individual bags</span>
+              <span className="text-foreground text-sm font-bold">
+                {totalCalculated.toLocaleString()}
+              </span>
+            </div>
+          )}
+        </>
       )}
 
       {error && <p className="text-destructive text-sm">{error}</p>}

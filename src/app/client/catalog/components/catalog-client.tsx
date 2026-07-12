@@ -94,7 +94,7 @@ export default function CatalogClient({ products }: { products: Product[] }) {
             <div className="mt-auto p-6 pt-0">
               {isVerified ? (
                 <Button
-                  onClick={() => router.push('/client/orders/new')}
+                  onClick={() => router.push(`/client/orders/new?bag_type=${product.bag_type}`)}
                   className="bg-primary hover:bg-primary/90 w-full"
                 >
                   <ShoppingCart className="mr-2 h-4 w-4" />
