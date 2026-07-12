@@ -31,6 +31,7 @@ import { ClientKycProvider, useClientKyc, type KycStatus } from '@/lib/context/c
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
@@ -371,18 +372,18 @@ function ClientLayoutInner({ children }: { children: React.ReactNode }) {
                 </Avatar>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56">
-                <DropdownMenuLabel>My Account</DropdownMenuLabel>
-                <DropdownMenuSeparator />
+                <DropdownMenuGroup>
+                  <DropdownMenuLabel>My Account</DropdownMenuLabel>
+                  <DropdownMenuItem onClick={() => router.push('/client/profile')}>
+                    <CircleUserRound className="mr-2 h-4 w-4" />
+                    <span>Profile & Settings</span>
+                  </DropdownMenuItem>
 
-                <DropdownMenuItem onClick={() => router.push('/client/profile')}>
-                  <CircleUserRound className="mr-2 h-4 w-4" />
-                  <span>Profile & Settings</span>
-                </DropdownMenuItem>
-
-                <DropdownMenuItem onClick={() => router.push('/client/contact-admin')}>
-                  <Contact className="mr-2 h-4 w-4" />
-                  <span>App Settings & Support</span>
-                </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => router.push('/client/contact-admin')}>
+                    <Contact className="mr-2 h-4 w-4" />
+                    <span>App Settings & Support</span>
+                  </DropdownMenuItem>
+                </DropdownMenuGroup>
 
                 <DropdownMenuItem onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}>
                   {theme === 'dark' ? (
