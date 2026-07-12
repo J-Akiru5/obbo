@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useMemo } from 'react';
-import { Minus, Plus, PackagePlus } from 'lucide-react';
+import { useState } from 'react';
+import { Minus, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -94,37 +94,26 @@ export function StepProducts({
 
   const primaryBagsPerUnit = isPrimarySB ? 50 : 25;
   const primaryLabel = isPrimarySB ? 'SB' : 'JB';
-  const otherLabel = isPrimarySB ? 'JB' : 'SB';
-  const otherBagsPerUnit = isPrimarySB ? 25 : 50;
 
-  const primaryUnits = individualBags > 0 ? Math.floor(individualBags / primaryBagsPerUnit) : 0;
-  const remainder = individualBags > 0 ? individualBags % primaryBagsPerUnit : 0;
-  const otherUnitsFromRemainder = remainder > 0 ? Math.floor(remainder / otherBagsPerUnit) : 0;
-  const hasOtherType = isPrimarySB ? jbQty > 0 : sbQty > 0;
-
-  const totalCalculated = useMemo(() => {
-    if (isPrimarySB) return primaryUnits * 50 + jbQty * 25;
-    if (isPrimaryJB) return primaryUnits * 25 + sbQty * 50;
-    return jbQty * 25 + sbQty * 50;
-  }, [isPrimarySB, isPrimaryJB, primaryUnits, jbQty, sbQty]);
+  const totalCalculated = jbQty * 25 + sbQty * 50;
+  const remainder = individualBags % primaryBagsPerUnit;
 
   function handleIndividualBagsChange(value: number) {
     const bags = Math.max(0, value);
     setIndividualBags(bags);
-    if (bagType === 'SB') {
-      onSbChange(Math.floor(bags / 50));
-      if (jbQty > 0) onJbChange(0);
-    } else if (bagType === 'JB') {
-      onJbChange(Math.floor(bags / 25));
-      if (sbQty > 0) onSbChange(0);
+    if (bags === 0) {
+      onSbChange(0);
+      onJbChange(0);
+      return;
     }
-  }
-
-  function handleAddOtherType() {
-    if (bagType === 'SB' && otherUnitsFromRemainder > 0) {
-      onJbChange(otherUnitsFromRemainder);
-    } else if (bagType === 'JB' && otherUnitsFromRemainder > 0) {
-      onSbChange(otherUnitsFromRemainder);
+    if (bagType === 'SB') {
+      const targetBags = Math.max(25, Math.round(bags / 25) * 25);
+      onSbChange(Math.floor(targetBags / 50));
+      onJbChange((targetBags % 50) / 25);
+    } else if (bagType === 'JB') {
+      const targetBags = Math.max(25, Math.round(bags / 25) * 25);
+      onJbChange(targetBags / 25);
+      onSbChange(0);
     }
   }
 
@@ -156,39 +145,26 @@ export function StepProducts({
 
           {individualBags > 0 && (
             <>
-              {primaryUnits > 0 && (
+              {(sbQty > 0 || jbQty > 0) && (
                 <div className="bg-card rounded-lg border p-4">
                   <p className="text-sm font-semibold">
                     {individualBags.toLocaleString()} individual bags ={' '}
-                    <span className="text-primary">
-                      {primaryUnits} {primaryLabel} unit{primaryUnits > 1 ? 's' : ''}
+                    <span className="text-primary font-bold">
+                      {sbQty > 0 ? `${sbQty} SB` : ''}
+                      {sbQty > 0 && jbQty > 0 ? ' + ' : ''}
+                      {jbQty > 0 ? `${jbQty} JB` : ''}
                     </span>{' '}
-                    ({primaryUnits * primaryBagsPerUnit} bags)
+                    ({totalCalculated.toLocaleString()} bags)
                   </p>
                 </div>
               )}
 
-              {remainder > 0 &&
-                primaryUnits > 0 &&
-                otherUnitsFromRemainder > 0 &&
-                !hasOtherType && (
-                  <div className="bg-card flex items-center justify-between rounded-lg border p-3">
-                    <p className="text-muted-foreground text-sm">
-                      {remainder.toLocaleString()} bag{remainder > 1 ? 's' : ''} remaining
-                    </p>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={handleAddOtherType}
-                      className="gap-1"
-                    >
-                      <PackagePlus className="h-3.5 w-3.5" />
-                      Add {otherUnitsFromRemainder} {otherLabel} unit
-                      {otherUnitsFromRemainder > 1 ? 's' : ''}
-                    </Button>
-                  </div>
-                )}
+              {remainder > 0 && (
+                <p className="text-muted-foreground px-1 text-xs italic">
+                  * Rounded to the nearest unit configuration ({totalCalculated.toLocaleString()}{' '}
+                  bags) to fit wholesale packaging.
+                </p>
+              )}
 
               {totalCalculated > 0 && (
                 <div className="border-border bg-muted/40 flex items-center justify-between rounded-lg border px-4 py-3">
