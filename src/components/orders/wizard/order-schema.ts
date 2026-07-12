@@ -1,9 +1,15 @@
 import { z } from 'zod';
 import type { Product } from '@/lib/types/database';
 
-export const productsSchema = z.object({
-  total_bags: z.number().min(1, 'At least 1 bag is required'),
-});
+export const productsSchema = z
+  .object({
+    jb_qty: z.number().min(0),
+    sb_qty: z.number().min(0),
+  })
+  .refine((d) => d.jb_qty + d.sb_qty > 0, {
+    message: 'Please order at least 1 JB or SB unit',
+    path: ['jb_qty'],
+  });
 
 export const sourceSchema = z.object({
   source: z.enum(['port', 'warehouse'], 'Please select a source'),

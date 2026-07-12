@@ -22,8 +22,8 @@ import {
   poPaymentSchema,
   getSplitSchema,
   getPrice,
-  getSubtotal,
-  deriveJBAndSB,
+  getSubtotalByBagType,
+  getTotalIndividualBags,
 } from '@/components/orders/wizard/order-schema';
 import {
   submitOrder,
@@ -31,12 +31,13 @@ import {
   generateNextPoNumber,
   fetchOrderForResume,
 } from '@/lib/actions/client-actions';
-import type { Product } from '@/lib/types/database';
+import type { Product, OrderItem } from '@/lib/types/database';
 
 const ORDERING_STEPS = ['Products', 'Source', 'Service', 'PO & Payment', 'Review'];
 
 const INITIAL_FORM = {
-  total_bags: 0,
+  jb_qty: 0,
+  sb_qty: 0,
   source: 'warehouse' as 'port' | 'warehouse',
   service_type: 'pickup' as 'pickup' | 'deliver',
   driver_name: '',
@@ -135,12 +136,12 @@ function NewOrderPage() {
       .then((draft) => {
         if (cancelled) return;
 
-        const jbItem = draft.items?.find((i: any) => i.bag_type === 'JB');
-        const sbItem = draft.items?.find((i: any) => i.bag_type === 'SB');
-        const totalBags = (jbItem?.requested_qty || 0) * 25 + (sbItem?.requested_qty || 0) * 50;
+        const jbItem = draft.items?.find((i: OrderItem) => i.bag_type === 'JB');
+        const sbItem = draft.items?.find((i: OrderItem) => i.bag_type === 'SB');
 
         updateForm({
-          total_bags: totalBags,
+          jb_qty: jbItem?.requested_qty || 0,
+          sb_qty: sbItem?.requested_qty || 0,
           source: draft.source || 'warehouse',
           service_type: draft.service_type || 'pickup',
           driver_name: draft.driver_name || '',
@@ -193,7 +194,7 @@ function NewOrderPage() {
     const newErrors: Record<string, string> = {};
 
     if (step === 0) {
-      const result = productsSchema.safeParse({ total_bags: form.total_bags });
+      const result = productsSchema.safeParse({ jb_qty: form.jb_qty, sb_qty: form.sb_qty });
       if (!result.success) {
         for (const issue of result.error.issues) {
           newErrors[issue.path[0] as string] = issue.message;
@@ -242,7 +243,8 @@ function NewOrderPage() {
         }
       }
       if (form.wants_split) {
-        const splitResult = getSplitSchema(form.total_bags).safeParse({
+        const totalBags = getTotalIndividualBags(form.jb_qty, form.sb_qty);
+        const splitResult = getSplitSchema(totalBags).safeParse({
           wants_split: form.wants_split,
           deliver_now_total: form.deliver_now_total,
         });
@@ -337,11 +339,11 @@ function NewOrderPage() {
 
       const jbProduct = products.find((p) => p.bag_type === 'JB');
       const sbProduct = products.find((p) => p.bag_type === 'SB');
-      const pricePerBag = getPrice(jbProduct, form.source);
+      const jbPrice = getPrice(jbProduct, form.source);
+      const sbPrice = getPrice(sbProduct, form.source);
 
-      const { jb, sb, remaining } = deriveJBAndSB(form.total_bags);
-      const jbQty = jb + (remaining > 0 && remaining >= 25 ? 1 : 0);
-      const sbQty = remaining > 0 && remaining < 25 ? sb + 1 : sb;
+      const jbQty = form.jb_qty;
+      const sbQty = form.sb_qty;
 
       const items: { product_id: string; bag_type: string; requested_qty: number }[] = [];
       if (jbQty > 0 && jbProduct) {
@@ -351,7 +353,7 @@ function NewOrderPage() {
         items.push({ product_id: sbProduct.id, bag_type: 'SB', requested_qty: sbQty });
       }
 
-      const subtotal = getSubtotal(form.total_bags, pricePerBag);
+      const subtotal = getSubtotalByBagType(jbQty, sbQty, jbPrice, sbPrice);
 
       let notes = '';
       if (form.service_type === 'pickup' && form.preferred_pickup_date) {
@@ -377,6 +379,7 @@ function NewOrderPage() {
         notes: notes.trim(),
       };
 
+      const totalBagsForSplit = getTotalIndividualBags(jbQty, sbQty);
       const deliverNowJB = form.wants_split ? Math.floor(form.deliver_now_total / 25) : 0;
       const deliverNowSB = form.wants_split ? Math.floor((form.deliver_now_total % 25) / 50) : 0;
       const splitDetails = form.wants_split
@@ -385,7 +388,7 @@ function NewOrderPage() {
             deliverNowQty: form.deliver_now_total,
             deliverNowJB,
             deliverNowSB,
-            splitNote: `Client requested ${form.deliver_now_total} bags now (${deliverNowJB} JB, ${deliverNowSB} SB). Service: ${form.service_type}.`,
+            splitNote: `Client requested ${form.deliver_now_total} bags now (${deliverNowJB} JB, ${deliverNowSB} SB) of ${totalBagsForSplit} total. Service: ${form.service_type}.`,
           }
         : undefined;
 
@@ -417,11 +420,11 @@ function NewOrderPage() {
 
       const jbProduct = products.find((p) => p.bag_type === 'JB');
       const sbProduct = products.find((p) => p.bag_type === 'SB');
-      const pricePerBag = getPrice(jbProduct, form.source);
+      const jbPrice = getPrice(jbProduct, form.source);
+      const sbPrice = getPrice(sbProduct, form.source);
 
-      const { jb, sb, remaining } = deriveJBAndSB(form.total_bags);
-      const jbQty = jb + (remaining > 0 && remaining >= 25 ? 1 : 0);
-      const sbQty = remaining > 0 && remaining < 25 ? sb + 1 : sb;
+      const jbQty = form.jb_qty;
+      const sbQty = form.sb_qty;
 
       const items: { product_id: string; bag_type: string; requested_qty: number }[] = [];
       if (jbQty > 0 && jbProduct) {
@@ -431,7 +434,7 @@ function NewOrderPage() {
         items.push({ product_id: sbProduct.id, bag_type: 'SB', requested_qty: sbQty });
       }
 
-      const subtotal = getSubtotal(form.total_bags, pricePerBag);
+      const subtotal = getSubtotalByBagType(jbQty, sbQty, jbPrice, sbPrice);
 
       const orderData = {
         source: form.source,
@@ -518,9 +521,11 @@ function NewOrderPage() {
         <div key={currentStep} className="animate-slide-in-right">
           {currentStep === 0 && (
             <StepProducts
-              totalBags={form.total_bags}
-              onQtyChange={(value) => updateField('total_bags', value)}
-              error={errors.total_bags}
+              jbQty={form.jb_qty}
+              sbQty={form.sb_qty}
+              onJbChange={(value) => updateField('jb_qty', value)}
+              onSbChange={(value) => updateField('sb_qty', value)}
+              error={errors.jb_qty}
             />
           )}
           {currentStep === 1 && (
@@ -528,7 +533,8 @@ function NewOrderPage() {
               value={form.source}
               onChange={(v) => updateField('source', v)}
               products={products}
-              totalBags={form.total_bags}
+              jbQty={form.jb_qty}
+              sbQty={form.sb_qty}
               error={errors.source}
             />
           )}
@@ -553,7 +559,7 @@ function NewOrderPage() {
                 else setCheckFile(file);
               }}
               errors={errors}
-              totalBags={form.total_bags}
+              totalBags={getTotalIndividualBags(form.jb_qty, form.sb_qty)}
             />
           )}
           {currentStep === 4 && (

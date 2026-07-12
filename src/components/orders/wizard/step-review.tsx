@@ -1,14 +1,15 @@
 'use client';
 
-import { Pencil, CheckCircle2, Loader2, Save, Info } from 'lucide-react';
+import { Pencil, CheckCircle2, Loader2, Save } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import type { Product } from '@/lib/types/database';
-import { getPrice, getSubtotal, deriveJBAndSB } from './order-schema';
+import { getPrice, getTotalIndividualBags, getSubtotalByBagType } from './order-schema';
 
 interface StepOrderReviewProps {
   form: {
-    total_bags: number;
+    jb_qty: number;
+    sb_qty: number;
     source: string;
     service_type: string;
     driver_name: string;
@@ -81,9 +82,11 @@ export function StepOrderReview({
   draftLoading,
 }: StepOrderReviewProps) {
   const jbProduct = products.find((p) => p.bag_type === 'JB');
-  const pricePerBag = getPrice(jbProduct, form.source);
-  const subtotal = getSubtotal(form.total_bags, pricePerBag);
-  const { jb, sb, remaining } = deriveJBAndSB(form.total_bags);
+  const sbProduct = products.find((p) => p.bag_type === 'SB');
+  const jbPrice = getPrice(jbProduct, form.source);
+  const sbPrice = getPrice(sbProduct, form.source);
+  const totalBags = getTotalIndividualBags(form.jb_qty, form.sb_qty);
+  const subtotal = getSubtotalByBagType(form.jb_qty, form.sb_qty, jbPrice, sbPrice);
 
   return (
     <div className="space-y-5">
@@ -97,26 +100,30 @@ export function StepOrderReview({
       <div className="space-y-3">
         {/* Products */}
         <ReviewSection title="Products" stepIndex={0} onEdit={onEditStep}>
-          <ReviewField label="Total individual bags" value={form.total_bags.toLocaleString()} />
-          <Separator className="my-2" />
-          <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3">
-            <Info className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
-            <div className="space-y-0.5 text-xs text-amber-700">
-              <p className="font-semibold">Equivalent breakdown:</p>
-              <p>{jb > 0 ? `${jb} JB unit(ies) = ${jb * 25} bags` : ''}</p>
-              <p>{sb > 0 ? `${sb} SB unit(ies) = ${sb * 50} bags` : ''}</p>
-              {remaining > 0 && <p>{remaining} loose bag(s)</p>}
-            </div>
-          </div>
+          {form.jb_qty > 0 && (
+            <ReviewField label="JB units" value={`${form.jb_qty} JB (${form.jb_qty * 25} bags)`} />
+          )}
+          {form.sb_qty > 0 && (
+            <ReviewField label="SB units" value={`${form.sb_qty} SB (${form.sb_qty * 50} bags)`} />
+          )}
+          <ReviewField label="Total individual bags" value={totalBags.toLocaleString()} />
         </ReviewSection>
 
         {/* Source */}
         <ReviewSection title="Source" stepIndex={1} onEdit={onEditStep}>
           <ReviewField label="Source" value={form.source === 'port' ? 'Port' : 'Warehouse'} />
-          <ReviewField
-            label="Price"
-            value={`₱${pricePerBag.toLocaleString()}/bag × ${form.total_bags} = ₱${subtotal.toLocaleString()}`}
-          />
+          {form.jb_qty > 0 && (
+            <ReviewField
+              label="JB price"
+              value={`₱${jbPrice.toLocaleString()}/bag × ${form.jb_qty * 25} bags = ₱${(form.jb_qty * 25 * jbPrice).toLocaleString()}`}
+            />
+          )}
+          {form.sb_qty > 0 && (
+            <ReviewField
+              label="SB price"
+              value={`₱${sbPrice.toLocaleString()}/bag × ${form.sb_qty * 50} bags = ₱${(form.sb_qty * 50 * sbPrice).toLocaleString()}`}
+            />
+          )}
         </ReviewSection>
 
         {/* Service Type */}
@@ -153,7 +160,7 @@ export function StepOrderReview({
               <Separator className="my-2" />
               <ReviewField
                 label="Split delivery"
-                value={`Deliver ${form.deliver_now_total.toLocaleString()} now, ${(form.total_bags - form.deliver_now_total).toLocaleString()} remaining`}
+                value={`Deliver ${form.deliver_now_total.toLocaleString()} now, ${(totalBags - form.deliver_now_total).toLocaleString()} remaining`}
               />
             </>
           )}
@@ -174,12 +181,22 @@ export function StepOrderReview({
           <p className="text-2xl font-bold">₱{subtotal.toLocaleString()}</p>
         </div>
         <div className="space-y-1 text-xs text-white/70">
-          <div className="flex justify-between">
-            <span>
-              Total: {form.total_bags} bags × ₱{pricePerBag.toLocaleString()}
-            </span>
-            <span>₱{subtotal.toLocaleString()}</span>
-          </div>
+          {form.jb_qty > 0 && (
+            <div className="flex justify-between">
+              <span>
+                {form.jb_qty} JB × {form.jb_qty * 25} bags × ₱{jbPrice.toLocaleString()}
+              </span>
+              <span>₱{(form.jb_qty * 25 * jbPrice).toLocaleString()}</span>
+            </div>
+          )}
+          {form.sb_qty > 0 && (
+            <div className="flex justify-between">
+              <span>
+                {form.sb_qty} SB × {form.sb_qty * 50} bags × ₱{sbPrice.toLocaleString()}
+              </span>
+              <span>₱{(form.sb_qty * 50 * sbPrice).toLocaleString()}</span>
+            </div>
+          )}
         </div>
       </div>
 

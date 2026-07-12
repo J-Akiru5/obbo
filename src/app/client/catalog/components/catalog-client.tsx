@@ -1,10 +1,9 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { PackageSearch, ShoppingCart, Building2, Anchor, ShieldAlert } from 'lucide-react';
+import { PackageSearch, ShoppingCart, Building2, Anchor } from 'lucide-react';
 import type { Product } from '@/lib/types/database';
 import { OptimizedImage } from '@/components/ui/optimized-image';
 import { useClientKyc } from '@/lib/context/client-kyc-context';
@@ -21,37 +20,6 @@ export default function CatalogClient({ products }: { products: Product[] }) {
         <p className="text-muted-foreground text-sm">
           Browse our available Portland Cement configurations and place your orders.
         </p>
-      </div>
-
-      <div className="bg-card border-border flex flex-col items-center justify-between gap-4 rounded-xl border p-4 shadow-sm sm:flex-row sm:p-6">
-        <div className="text-left">
-          <h3 className="text-foreground text-lg font-bold">Ready to place an order?</h3>
-          <p className="text-muted-foreground text-sm">
-            Select your desired quantities and source to generate your PO.
-          </p>
-        </div>
-
-        {!isVerified ? (
-          <div className="border-status-pending-border bg-status-pending-bg text-status-pending-text flex items-center gap-2 rounded-lg border px-4 py-2.5 text-sm">
-            <ShieldAlert className="text-status-pending-text h-4 w-4 shrink-0" />
-            <span className="hidden sm:inline">KYC verification required.</span>
-            <Link
-              href="/client/pending-kyc"
-              className="font-semibold underline underline-offset-2 hover:brightness-75"
-            >
-              Learn more
-            </Link>
-          </div>
-        ) : (
-          <Button
-            onClick={() => router.push('/client/orders/new')}
-            className="bg-primary hover:bg-primary/90"
-            size="lg"
-          >
-            <ShoppingCart className="mr-2 h-4 w-4" />
-            Create New Order
-          </Button>
-        )}
       </div>
 
       <div className="grid gap-6 md:grid-cols-2">
