@@ -381,15 +381,17 @@ function NewOrderPage() {
       };
 
       const totalBagsForSplit = getTotalIndividualBags(jbQty, sbQty);
-      const deliverNowJB = form.wants_split ? Math.floor(form.deliver_now_total / 25) : 0;
-      const deliverNowSB = form.wants_split ? Math.floor((form.deliver_now_total % 25) / 50) : 0;
+      const deliverNowQty = form.deliver_now_total;
+      const jbFraction = totalBagsForSplit > 0 ? jbQty / totalBagsForSplit : 0;
+      const deliverNowJB = Math.min(jbQty, Math.round(deliverNowQty * jbFraction));
+      const deliverNowSB = Math.min(sbQty, deliverNowQty - deliverNowJB);
       const splitDetails = form.wants_split
         ? {
             wantsSplit: true,
-            deliverNowQty: form.deliver_now_total,
+            deliverNowQty,
             deliverNowJB,
             deliverNowSB,
-            splitNote: `Client requested ${form.deliver_now_total} bags now (${deliverNowJB} JB, ${deliverNowSB} SB) of ${totalBagsForSplit} total. Service: ${form.service_type}.`,
+            splitNote: `Client requested ${deliverNowQty} bags now (${deliverNowJB} JB, ${deliverNowSB} SB) of ${totalBagsForSplit} total. Service: ${form.service_type}.`,
           }
         : undefined;
 
@@ -453,17 +455,18 @@ function NewOrderPage() {
         notes: '',
       };
 
-      const deliverNowJB = form.wants_split ? Math.floor(form.deliver_now_total / 25) : 0;
-      const deliverNowSB = form.wants_split ? Math.floor((form.deliver_now_total % 25) / 50) : 0;
+      const totalBags = getTotalIndividualBags(jbQty, sbQty);
+      const jbFrac = totalBags > 0 ? jbQty / totalBags : 0;
+      const dNowJB = Math.min(jbQty, Math.round(form.deliver_now_total * jbFrac));
+      const dNowSB = Math.min(sbQty, form.deliver_now_total - dNowJB);
       const splitDetails = form.wants_split
         ? {
             wantsSplit: true,
             deliverNowQty: form.deliver_now_total,
-            deliverNowJB,
-            deliverNowSB,
+            deliverNowJB: dNowJB,
+            deliverNowSB: dNowSB,
           }
         : undefined;
-
       await saveOrderDraft(orderData, splitDetails);
 
       toast.success('Order saved as draft.');

@@ -240,26 +240,26 @@ export function FulfillmentTab({
                     <div className="mt-2 flex gap-4 text-sm">
                       <div className="bg-muted rounded-md px-3 py-1.5">
                         <span className="text-muted-foreground mb-0.5 block text-xs tracking-wider uppercase">
-                          Approved JB
+                          JB bags
                         </span>
                         <span className="font-bold">
-                          {jbQty}
+                          {jbQty.toLocaleString()}
                           {isSplit && jbReq > 0 && (
                             <span className="text-muted-foreground ml-1 text-xs font-normal">
-                              / {jbReq}
+                              / {jbReq.toLocaleString()}
                             </span>
                           )}
                         </span>
                       </div>
                       <div className="bg-muted rounded-md px-3 py-1.5">
                         <span className="text-muted-foreground mb-0.5 block text-xs tracking-wider uppercase">
-                          Approved SB
+                          SB bags
                         </span>
                         <span className="font-bold">
-                          {sbQty}
+                          {sbQty.toLocaleString()}
                           {isSplit && sbReq > 0 && (
                             <span className="text-muted-foreground ml-1 text-xs font-normal">
-                              / {sbReq}
+                              / {sbReq.toLocaleString()}
                             </span>
                           )}
                         </span>
@@ -369,11 +369,33 @@ export function FulfillmentTab({
             <div className="space-y-4 py-4">
               <div className="bg-muted mb-2 grid grid-cols-2 gap-4 rounded-lg p-3 text-sm">
                 <div>
-                  <p className="text-muted-foreground mb-1 text-xs">Items to Deduct</p>
+                  <p className="text-muted-foreground mb-1 text-xs">To Deduct from Stock</p>
                   <p className="font-bold">
-                    {selectedOrder.items.find((i) => i.bag_type === 'JB')?.approved_qty || 0} JB
-                    {' · '}
-                    {selectedOrder.items.find((i) => i.bag_type === 'SB')?.approved_qty || 0} SB
+                    {(() => {
+                      const jbBags =
+                        selectedOrder.items.find((i) => i.bag_type === 'JB')?.approved_qty || 0;
+                      const sbBags =
+                        selectedOrder.items.find((i) => i.bag_type === 'SB')?.approved_qty || 0;
+                      const jbUnits = Math.ceil(jbBags / 25);
+                      const sbUnits = Math.ceil(sbBags / 50);
+                      return (
+                        <>
+                          {jbBags > 0 && (
+                            <>
+                              {jbBags.toLocaleString()} JB bags (≈{jbUnits} unit
+                              {jbUnits > 1 ? 's' : ''})
+                            </>
+                          )}
+                          {jbBags > 0 && sbBags > 0 && <> · </>}
+                          {sbBags > 0 && (
+                            <>
+                              {sbBags.toLocaleString()} SB bags (≈{sbUnits} unit
+                              {sbUnits > 1 ? 's' : ''})
+                            </>
+                          )}
+                        </>
+                      );
+                    })()}
                   </p>
                 </div>
                 <div>
@@ -392,12 +414,14 @@ export function FulfillmentTab({
                   </SelectTrigger>
                   <SelectContent>
                     {shipments.map((s) => {
-                      const jbNeed =
+                      const jbBags =
                         selectedOrder.items.find((i) => i.bag_type === 'JB')?.approved_qty || 0;
-                      const sbNeed =
+                      const sbBags =
                         selectedOrder.items.find((i) => i.bag_type === 'SB')?.approved_qty || 0;
+                      const jbNeed = Math.ceil(jbBags / 25);
+                      const sbNeed = Math.ceil(sbBags / 50);
                       const hasEnough = s.remaining_jb >= jbNeed && s.remaining_sb >= sbNeed;
-                      const labelText = `${s.batch_name} (Avail: ${s.remaining_jb} JB, ${s.remaining_sb} SB)${!hasEnough ? ' - Insufficient' : ''}`;
+                      const labelText = `${s.batch_name} (Avail: ${s.remaining_jb} JB, ${s.remaining_sb} SB · Need: ${jbNeed} JB, ${sbNeed} SB)${!hasEnough ? ' - Insufficient' : ''}`;
                       return (
                         <SelectItem key={s.id} value={s.id} disabled={!hasEnough} label={labelText}>
                           {labelText}

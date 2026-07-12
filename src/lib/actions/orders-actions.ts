@@ -207,13 +207,17 @@ export async function dispatchOrder(
     .single();
   if (!order) throw new Error('Order not found');
 
-  // Calculate JB and SB quantities
-  const jbQty = order.items
+  // Calculate JB and SB quantities (in individual bags)
+  const jbBags = order.items
     .filter((i: { bag_type: string }) => i.bag_type === 'JB')
     .reduce((s: number, i: { approved_qty: number }) => s + i.approved_qty, 0);
-  const sbQty = order.items
+  const sbBags = order.items
     .filter((i: { bag_type: string }) => i.bag_type === 'SB')
     .reduce((s: number, i: { approved_qty: number }) => s + i.approved_qty, 0);
+
+  // Convert bags to whole units for warehouse stock deduction
+  const jbUnits = Math.ceil(jbBags / 25);
+  const sbUnits = Math.ceil(sbBags / 50);
 
   // Get shipment
   const { data: shipment } = await supabase
@@ -222,17 +226,17 @@ export async function dispatchOrder(
     .eq('id', shipmentId)
     .single();
   if (!shipment) throw new Error('Shipment batch not found');
-  if (shipment.remaining_jb < jbQty || shipment.remaining_sb < sbQty) {
+  if (shipment.remaining_jb < jbUnits || shipment.remaining_sb < sbUnits) {
     throw new Error('Insufficient stock in selected batch');
   }
 
-  // Deduct stock
+  // Deduct stock (in whole units)
   const { error: stockError } = await supabase
     .from('shipments')
     .update({
-      remaining_jb: shipment.remaining_jb - jbQty,
-      remaining_sb: shipment.remaining_sb - sbQty,
-      good_stock: (shipment.good_stock || 0) - (jbQty + sbQty),
+      remaining_jb: shipment.remaining_jb - jbUnits,
+      remaining_sb: shipment.remaining_sb - sbUnits,
+      good_stock: (shipment.good_stock || 0) - (jbUnits + sbUnits),
     })
     .eq('id', shipmentId);
   if (stockError) throw new Error(`Failed to deduct stock: ${stockError.message}`);
@@ -247,9 +251,9 @@ export async function dispatchOrder(
   const poNumber = order.po_number || `SYS-${orderId.slice(0, 8).toUpperCase()}`;
   const dispatchDate = new Date().toISOString().split('T')[0];
 
-  // Compute profit values
+  // Compute profit values using actual bag count
   const costConfig = await getCostConfig();
-  const totalBags = jbQty * 25 + sbQty * 50;
+  const totalBags = jbBags + sbBags;
   // INVARIANT: total_amount is the goods subtotal only. shipping_fee is tracked
   // separately and must NEVER be folded into total_amount or included in profit.
   // See: implementation-plan §3.4 / structure diagrams §7 (Financial Invariant).
@@ -273,8 +277,8 @@ export async function dispatchOrder(
     plate_number: plateNumber,
     destination,
     service_type: order.service_type,
-    jb: jbQty,
-    sb: sbQty,
+    jb: jbUnits,
+    sb: sbUnits,
     payment_method: order.payment_method,
     check_number: order.payment_method === 'check' ? order.check_number : null,
     amount: totalSales || null,
@@ -402,8 +406,8 @@ export async function dispatchOrder(
     po_number: poNumber,
     client_id: order.client_id,
     client_name: clientName,
-    jb: jbQty,
-    sb: sbQty,
+    jb: jbUnits,
+    sb: sbUnits,
     date: dispatchDate,
     status: 'dispatched',
     source: order.source,
@@ -444,10 +448,10 @@ export async function dispatchOrder(
         client_name: clientName,
         client_id: order.client_id,
         po_number: poNumber,
-        jb: jbQty,
-        sb: sbQty,
-        quantity: jbQty + sbQty,
-        bag_type: jbQty > 0 ? 'JB' : 'SB',
+        jb: jbUnits,
+        sb: sbUnits,
+        quantity: jbUnits + sbUnits,
+        bag_type: jbUnits > 0 ? 'JB' : 'SB',
         received_date: dispatchDate,
         driver: driverName,
         plate_number: plateNumber,
@@ -474,8 +478,8 @@ export async function dispatchOrder(
   await logActivity(supabase, userId, 'order_dispatched', 'order', orderId, {
     shipment: shipment.batch_name,
     dr: drNumber,
-    jb: jbQty,
-    sb: sbQty,
+    jb: jbUnits,
+    sb: sbUnits,
   });
 
   return { success: true };

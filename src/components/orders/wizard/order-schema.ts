@@ -7,7 +7,7 @@ export const productsSchema = z
     sb_qty: z.number().min(0),
   })
   .refine((d) => d.jb_qty + d.sb_qty > 0, {
-    message: 'Please order at least 1 JB or SB unit',
+    message: 'Please order at least 1 bag',
     path: ['jb_qty'],
   });
 
@@ -78,15 +78,7 @@ export function getPrice(product: Product | undefined, source: string): number {
 }
 
 export function getTotalIndividualBags(jbQty: number, sbQty: number): number {
-  return jbQty * 25 + sbQty * 50;
-}
-
-export function deriveJBAndSB(totalBags: number): { jb: number; sb: number; remaining: number } {
-  const jb = Math.floor(totalBags / 25);
-  const remaining = totalBags % 25;
-  const sb = Math.floor(remaining / 50);
-  const finalRemaining = remaining % 50;
-  return { jb, sb, remaining: finalRemaining };
+  return jbQty + sbQty;
 }
 
 export function getSubtotal(totalBags: number, pricePerBag: number): number {

@@ -100,13 +100,9 @@ export function StepOrderReview({
       <div className="space-y-3">
         {/* Products */}
         <ReviewSection title="Products" stepIndex={0} onEdit={onEditStep}>
-          {form.jb_qty > 0 && (
-            <ReviewField label="JB units" value={`${form.jb_qty} JB (${form.jb_qty * 25} bags)`} />
-          )}
-          {form.sb_qty > 0 && (
-            <ReviewField label="SB units" value={`${form.sb_qty} SB (${form.sb_qty * 50} bags)`} />
-          )}
-          <ReviewField label="Total individual bags" value={totalBags.toLocaleString()} />
+          {form.jb_qty > 0 && <ReviewField label="JB bags" value={form.jb_qty.toLocaleString()} />}
+          {form.sb_qty > 0 && <ReviewField label="SB bags" value={form.sb_qty.toLocaleString()} />}
+          <ReviewField label="Total bags" value={totalBags.toLocaleString()} />
         </ReviewSection>
 
         {/* Source */}
@@ -115,13 +111,13 @@ export function StepOrderReview({
           {form.jb_qty > 0 && (
             <ReviewField
               label="JB price"
-              value={`₱${jbPrice.toLocaleString()}/bag × ${form.jb_qty * 25} bags = ₱${(form.jb_qty * 25 * jbPrice).toLocaleString()}`}
+              value={`₱${jbPrice.toLocaleString()}/bag × ${form.jb_qty.toLocaleString()} bags = ₱${(form.jb_qty * jbPrice).toLocaleString()}`}
             />
           )}
           {form.sb_qty > 0 && (
             <ReviewField
               label="SB price"
-              value={`₱${sbPrice.toLocaleString()}/bag × ${form.sb_qty * 50} bags = ₱${(form.sb_qty * 50 * sbPrice).toLocaleString()}`}
+              value={`₱${sbPrice.toLocaleString()}/bag × ${form.sb_qty.toLocaleString()} bags = ₱${(form.sb_qty * sbPrice).toLocaleString()}`}
             />
           )}
         </ReviewSection>
@@ -184,17 +180,17 @@ export function StepOrderReview({
           {form.jb_qty > 0 && (
             <div className="flex justify-between">
               <span>
-                {form.jb_qty} JB × {form.jb_qty * 25} bags × ₱{jbPrice.toLocaleString()}
+                {form.jb_qty.toLocaleString()} JB bags × ₱{jbPrice.toLocaleString()}
               </span>
-              <span>₱{(form.jb_qty * 25 * jbPrice).toLocaleString()}</span>
+              <span>₱{(form.jb_qty * jbPrice).toLocaleString()}</span>
             </div>
           )}
           {form.sb_qty > 0 && (
             <div className="flex justify-between">
               <span>
-                {form.sb_qty} SB × {form.sb_qty * 50} bags × ₱{sbPrice.toLocaleString()}
+                {form.sb_qty.toLocaleString()} SB bags × ₱{sbPrice.toLocaleString()}
               </span>
-              <span>₱{(form.sb_qty * 50 * sbPrice).toLocaleString()}</span>
+              <span>₱{(form.sb_qty * sbPrice).toLocaleString()}</span>
             </div>
           )}
         </div>
