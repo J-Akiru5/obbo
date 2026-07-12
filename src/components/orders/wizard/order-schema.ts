@@ -41,8 +41,7 @@ export const poPaymentSchema = z
     check_file: z.custom<File>().optional(),
     service_type: z.enum(['pickup', 'deliver']).optional(),
     wants_split: z.boolean(),
-    deliver_now_jb: z.number().min(0),
-    deliver_now_sb: z.number().min(0),
+    deliver_now_total: z.number().min(0),
   })
   .refine(
     (d) =>

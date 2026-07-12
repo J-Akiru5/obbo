@@ -67,15 +67,6 @@ import {
 import { cn } from '@/lib/utils';
 import { createClient } from '@/lib/supabase/client';
 
-function deriveJBAndSB(totalBags: number): { jb: number; sb: number } {
-  const jb = Math.floor(totalBags / 25);
-  const remaining = totalBags % 25;
-  const sb = Math.floor(remaining / 50);
-  const finalRemaining = remaining % 50;
-  const adjustedJb = finalRemaining >= 25 ? jb + 1 : jb;
-  return { jb: adjustedJb, sb };
-}
-
 export function PoListTab({
   purchaseOrders,
   loading,
@@ -109,6 +100,7 @@ export function PoListTab({
   const [poNumber, setPoNumber] = useState('');
   const [clientName, setClientName] = useState('');
   const [jbQty, setJbQty] = useState(0);
+  const [sbQty, setSbQty] = useState(0);
   const [source, setSource] = useState('warehouse');
   const [serviceType, setServiceType] = useState('pickup');
   const [checkNumber, setCheckNumber] = useState('');
@@ -149,13 +141,18 @@ export function PoListTab({
     if (!isDialogOpen) return;
 
     const jbProduct = catalogProducts.find((p) => p.bag_type === 'JB');
+    const sbProduct = catalogProducts.find((p) => p.bag_type === 'SB');
 
-    const pricePerBag =
+    const jbPrice =
       source === 'port'
         ? Number((jbProduct as any)?.price_port ?? 0)
         : Number((jbProduct as any)?.price_warehouse ?? 0);
+    const sbPrice =
+      source === 'port'
+        ? Number((sbProduct as any)?.price_port ?? 0)
+        : Number((sbProduct as any)?.price_warehouse ?? 0);
 
-    const computedTotal = jbQty * pricePerBag;
+    const computedTotal = jbQty * jbPrice + sbQty * sbPrice;
 
     if (paymentMethod === 'cash') {
       setCashAmount(computedTotal);
@@ -164,11 +161,12 @@ export function PoListTab({
       setCheckAmount(computedTotal);
       setCashAmount(0);
     }
-  }, [source, jbQty, paymentMethod, catalogProducts, isDialogOpen]);
+  }, [source, jbQty, sbQty, paymentMethod, catalogProducts, isDialogOpen]);
 
   const openCreate = async () => {
     setEditingPo(null);
     setJbQty(0);
+    setSbQty(0);
     setClientName('');
     setClientId(null);
     setPhotoFile(null);
@@ -189,7 +187,8 @@ export function PoListTab({
     setPoNumber(po.po_number);
     setClientName(po.client_name || '');
     setClientId(po.client_id || null);
-    setJbQty((po.jb || 0) * 25 + (po.sb || 0) * 50);
+    setJbQty(po.jb || 0);
+    setSbQty(po.sb || 0);
     setSource(po.source || 'warehouse');
     setServiceType(po.service_type || 'pickup');
     setCheckNumber(po.check_number || '');
@@ -232,15 +231,13 @@ export function PoListTab({
       const currentCheckAmt = paymentMethod === 'check' ? checkAmount : null;
       const currentCashAmt = paymentMethod === 'cash' ? cashAmount : null;
 
-      const { jb, sb } = deriveJBAndSB(jbQty);
-
       if (editingPo) {
         await updatePurchaseOrder(editingPo.id, {
           po_number: poNumber,
           client_name: clientName,
           client_id: clientId,
-          jb,
-          sb,
+          jb: jbQty,
+          sb: sbQty,
           source,
           service_type: serviceType,
           check_number: currentCheckNo,
@@ -254,8 +251,8 @@ export function PoListTab({
           po_number: poNumber,
           client_name: clientName,
           client_id: clientId,
-          jb,
-          sb,
+          jb: jbQty,
+          sb: sbQty,
           source,
           service_type: serviceType,
           check_number: currentCheckNo,
@@ -869,24 +866,32 @@ export function PoListTab({
                 </Select>
               </div>
             </div>
-            <div className="grid grid-cols-1 gap-4">
+            <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="po-total-quantity">Quantity (Individual Bags)</Label>
+                <Label htmlFor="po-jb-quantity">Quantity JB (Jumbo Bag)</Label>
                 <Input
-                  id="po-total-quantity"
+                  id="po-jb-quantity"
                   type="number"
                   min="0"
                   value={jbQty || ''}
-                  placeholder="Enter total number of bags"
-                  onChange={(e) => {
-                    const total = parseInt(e.target.value) || 0;
-                    setJbQty(total);
-                  }}
-                  className="text-lg font-bold"
+                  placeholder="0"
+                  onChange={(e) => setJbQty(parseInt(e.target.value) || 0)}
+                  className="font-bold"
+                  disabled={!!editingPo?.order?.dr_number}
                 />
-                <p className="rounded border border-amber-200 bg-amber-50 p-2 text-xs text-amber-600">
-                  💡 25 individual bags = 1 JB | 50 individual bags = 1 SB
-                </p>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="po-sb-quantity">Quantity SB (Sling Bag)</Label>
+                <Input
+                  id="po-sb-quantity"
+                  type="number"
+                  min="0"
+                  value={sbQty || ''}
+                  placeholder="0"
+                  onChange={(e) => setSbQty(parseInt(e.target.value) || 0)}
+                  className="font-bold"
+                  disabled={!!editingPo?.order?.dr_number}
+                />
               </div>
             </div>
 
