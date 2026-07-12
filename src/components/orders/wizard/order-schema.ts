@@ -33,12 +33,16 @@ export const poPaymentSchema = z
       .refine((f) => f instanceof File && f.size > 0, 'PO image is required'),
     payment_method: z.enum(['cash', 'check'], 'Please select a payment method'),
     check_file: z.custom<File>().optional(),
+    service_type: z.enum(['pickup', 'deliver']).optional(),
     wants_split: z.boolean(),
     deliver_now_jb: z.number().min(0),
     deliver_now_sb: z.number().min(0),
   })
   .refine(
-    (d) => d.payment_method !== 'check' || (d.check_file instanceof File && d.check_file.size > 0),
+    (d) =>
+      d.payment_method !== 'check' ||
+      d.service_type === 'deliver' ||
+      (d.check_file instanceof File && d.check_file.size > 0),
     { message: 'Check image is required for check payment', path: ['check_file'] },
   );
 

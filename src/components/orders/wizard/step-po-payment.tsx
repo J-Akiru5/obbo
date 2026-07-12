@@ -18,6 +18,7 @@ interface StepPoPaymentProps {
   form: {
     po_number: string;
     payment_method: 'cash' | 'check';
+    service_type: 'pickup' | 'deliver';
     wants_split: boolean;
     deliver_now_total: number;
   };
@@ -180,7 +181,7 @@ export function StepPoPayment({
       </div>
 
       {/* Check image (conditional) */}
-      {form.payment_method === 'check' && (
+      {form.payment_method === 'check' && form.service_type !== 'deliver' && (
         <div className="space-y-3 rounded-lg border border-blue-500/20 bg-blue-500/5 p-4">
           <div className="flex items-center gap-2 text-sm font-bold tracking-tight text-blue-600 uppercase">
             <Camera className="h-4 w-4" />
@@ -193,6 +194,13 @@ export function StepPoPayment({
             error={errors.check_file}
             inputId="check-upload"
           />
+        </div>
+      )}
+      {form.payment_method === 'check' && form.service_type === 'deliver' && (
+        <div className="rounded-lg border border-blue-500/20 bg-blue-500/5 p-4">
+          <p className="text-muted-foreground text-sm">
+            You&apos;ll be asked to upload your check after the shipping fee is confirmed.
+          </p>
         </div>
       )}
 

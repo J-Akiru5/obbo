@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { requireAdmin, logActivity, getCostConfig } from './admin-helpers';
 import { addLedgerEntry } from './ledger-actions';
-import { createRoleNotification } from './notification-actions';
+import { createRoleNotification, createUserNotification } from './notification-actions';
 
 export async function fetchOrders(status?: string) {
   const { supabase } = await requireAdmin();
@@ -109,6 +109,24 @@ export async function approveOrder(
           status: 'pending',
         });
       }
+    }
+  }
+
+  // Notify client when order transitions to awaiting_check
+  if (newStatus === 'awaiting_check') {
+    try {
+      const finalShippingFee = shippingFee ?? order.shipping_fee ?? 0;
+      const totalDue = Number(order.total_amount) + Number(finalShippingFee);
+      await createUserNotification({
+        userId: order.client_id,
+        title: 'Order approved — payment due',
+        message:
+          `Your order is approved. Total due: ₱${totalDue.toLocaleString()} ` +
+          `(includes ₱${Number(finalShippingFee).toLocaleString()} shipping). ` +
+          `Please upload your check to proceed.`,
+      });
+    } catch (notifError) {
+      console.error('Failed to send awaiting_check notification:', notifError);
     }
   }
 
@@ -232,6 +250,9 @@ export async function dispatchOrder(
   // Compute profit values
   const costConfig = await getCostConfig();
   const totalBags = jbQty * 25 + sbQty * 50;
+  // INVARIANT: total_amount is the goods subtotal only. shipping_fee is tracked
+  // separately and must NEVER be folded into total_amount or included in profit.
+  // See: implementation-plan §3.4 / structure diagrams §7 (Financial Invariant).
   const totalSales = Number(order.total_amount) || 0;
   const sellingPricePerBag = totalBags > 0 ? Math.round((totalSales / totalBags) * 100) / 100 : 0;
   const grossProfit =

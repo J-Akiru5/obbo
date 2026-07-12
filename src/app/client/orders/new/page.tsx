@@ -231,6 +231,7 @@ function NewOrderPage() {
         po_file: poFile,
         payment_method: form.payment_method,
         check_file: checkFile,
+        service_type: form.service_type,
         wants_split: form.wants_split,
         deliver_now_total: form.deliver_now_total,
       });
