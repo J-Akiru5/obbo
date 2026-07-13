@@ -62,17 +62,20 @@ function Tabs({
     setTriggers((prev) => prev.filter((t) => t.value !== val));
   }, []);
 
+  const contextValue = React.useMemo(
+    () => ({
+      value: activeValue,
+      onValueChange: handleValueChange,
+      defaultValue,
+      triggers,
+      registerTrigger,
+      unregisterTrigger,
+    }),
+    [activeValue, handleValueChange, defaultValue, triggers, registerTrigger, unregisterTrigger],
+  );
+
   return (
-    <TabsContext.Provider
-      value={{
-        value: activeValue,
-        onValueChange: handleValueChange,
-        defaultValue,
-        triggers,
-        registerTrigger,
-        unregisterTrigger,
-      }}
-    >
+    <TabsContext.Provider value={contextValue}>
       <TabsPrimitive.Root
         data-slot="tabs"
         data-orientation={orientation}
@@ -141,13 +144,14 @@ function TabsList({
 function TabsTrigger({ className, value, children, ...props }: TabsPrimitive.Tab.Props) {
   const ctx = React.useContext(TabsContext);
   const textLabel = React.useMemo(() => getElementText(children), [children]);
+  const { registerTrigger, unregisterTrigger } = ctx ?? {};
 
   React.useEffect(() => {
-    if (ctx && value) {
-      ctx.registerTrigger(value, textLabel);
-      return () => ctx.unregisterTrigger(value);
+    if (registerTrigger && unregisterTrigger && value) {
+      registerTrigger(value, textLabel);
+      return () => unregisterTrigger(value);
     }
-  }, [ctx, value, textLabel]);
+  }, [registerTrigger, unregisterTrigger, value, textLabel]);
 
   return (
     <TabsPrimitive.Tab
