@@ -257,18 +257,6 @@ export async function dispatchOrder(
     throw new Error('Insufficient stock in selected batch');
   }
 
-  // Deduct stock
-  const { error: stockError } = await supabase
-    .from('shipments')
-    .update({
-      remaining_jb: shipment.remaining_jb - jbQty,
-      remaining_sb: shipment.remaining_sb - sbQty,
-      good_stock: (shipment.good_stock || 0) - (jbQty + sbQty),
-    })
-    .eq('id', shipmentId);
-  if (stockError) throw new Error(`Failed to deduct stock: ${stockError.message}`);
-
-  // Create ledger row (with all new fields)
   const clientName = order.client?.company_name || order.client?.full_name || 'Unknown Client';
   const destination =
     [order.client?.address_street, order.client?.address_city, order.client?.address_province]
@@ -299,28 +287,33 @@ export async function dispatchOrder(
         100,
     ) / 100;
 
-  const { error: ledgerError } = await supabase.from('shipment_ledger').insert({
-    shipment_id: shipmentId,
-    dr_number: drNumber,
-    po_number: poNumber,
-    client_name: clientName,
-    driver_name: driverName,
-    plate_number: plateNumber,
-    destination,
-    service_type: order.service_type,
-    jb: jbQty,
-    sb: sbQty,
-    payment_method: order.payment_method,
-    check_number: order.payment_method === 'check' ? order.check_number : null,
-    amount: totalSales || null,
-    total_sales: totalSales,
-    gross_profit: grossProfit,
-    net_profit: netProfit,
-    selling_price_per_bag: sellingPricePerBag,
-    landed_cost_per_bag: costConfig.landed_cost_per_bag,
-    local_expenses_per_bag: costConfig.local_expenses_per_bag,
+  // ── ATOMIC CRITICAL WRITES VIA RPC ─────────────────────────
+  // Stock deduction, ledger entry, DR upsert, order status update,
+  // and DR-ledger linking all happen in a single DB transaction.
+  const { data: rpcResult, error: rpcError } = await supabase.rpc('dispatch_order_v2', {
+    p_order_id: orderId,
+    p_shipment_id: shipmentId,
+    p_dr_number: drNumber,
+    p_jb_qty: jbQty,
+    p_sb_qty: sbQty,
+    p_driver_name: driverName,
+    p_plate_number: plateNumber,
+    p_dr_image_url: drImageUrl,
+    p_client_name: clientName,
+    p_destination: destination,
+    p_po_number: poNumber,
+    p_total_sales: totalSales,
+    p_gross_profit: grossProfit,
+    p_net_profit: netProfit,
+    p_selling_price_per_bag: sellingPricePerBag,
+    p_landed_cost_per_bag: costConfig.landed_cost_per_bag,
+    p_local_expenses_per_bag: costConfig.local_expenses_per_bag,
   });
-  if (ledgerError) throw new Error(`Failed to create ledger entry: ${ledgerError.message}`);
+  if (rpcError) throw new Error(`Dispatch RPC failed: ${rpcError.message}`);
+  const rpcData = rpcResult as { success?: boolean; error?: string } | null;
+  if (!rpcData?.success) {
+    throw new Error(rpcData?.error ?? 'Dispatch RPC returned an unknown error');
+  }
 
   // Handle Split Delivery: Create customer balance for remaining quantities
   for (const item of order.items) {
@@ -402,23 +395,6 @@ export async function dispatchOrder(
     if (itemError) console.error(`Failed to update item ${item.id}:`, itemError);
   }
 
-  // Update order status
-  const { error: orderUpdateError } = await supabase
-    .from('orders')
-    .update({
-      status: 'dispatched',
-      tracking_status: 'pending_dispatch',
-      dr_number: drNumber,
-      dr_image_url: drImageUrl,
-      driver_name: driverName,
-      plate_number: plateNumber,
-      shipment_id: shipmentId,
-      updated_at: new Date().toISOString(),
-    })
-    .eq('id', orderId);
-  if (orderUpdateError)
-    throw new Error(`Failed to update order status: ${orderUpdateError.message}`);
-
   // ── AUTO-GENERATE PO RECORD ──────────────────────────────
   let checkNumberStr: string | null = null;
   let checkAmountNum: number | null = null;
@@ -467,46 +443,6 @@ export async function dispatchOrder(
 
   if (poResult?.error) {
     console.error('PO Auto-generation error:', poResult.error);
-  }
-
-  // ── AUTO-GENERATE DR RECORD ──────────────────────────────
-  const { data: drRecord, error: drError } = await supabase
-    .from('delivery_receipts')
-    .upsert(
-      {
-        dr_number: drNumber,
-        shipment_id: shipmentId,
-        client_name: clientName,
-        client_id: order.client_id,
-        po_number: poNumber,
-        jb: jbQty,
-        sb: sbQty,
-        quantity: jbQty + sbQty,
-        bag_type: jbQty > 0 ? 'JB' : 'SB',
-        received_date: dispatchDate,
-        driver: driverName,
-        plate_number: plateNumber,
-        shipping_fee: Number(order.shipping_fee) || 0,
-        dr_image_url: drImageUrl,
-        destination: destination,
-        order_id: orderId,
-      },
-      { onConflict: 'dr_number' },
-    )
-    .select()
-    .single();
-
-  if (drError) throw new Error(`Failed to auto-generate DR record: ${drError.message}`);
-
-  if (drRecord?.id) {
-    const { error: ledgerLinkError } = await supabase
-      .from('shipment_ledger')
-      .update({ delivery_receipt_id: drRecord.id })
-      .eq('dr_number', drNumber)
-      .eq('shipment_id', shipmentId);
-    if (ledgerLinkError) {
-      console.error('Failed to link DR to ledger entry:', ledgerLinkError);
-    }
   }
 
   await logActivity(supabase, userId, 'order_dispatched', 'order', orderId, {
