@@ -341,9 +341,18 @@ export function FulfillmentTab({
                       </div>
                     )}
                   </div>
-                  <div className="flex items-center">
+                  <div className="flex flex-col items-end gap-2">
+                    {jbQty + sbQty <= 0 && (
+                      <div className="rounded-md border border-red-300 bg-red-50 px-3 py-2 text-xs text-red-700">
+                        No approved quantity found for this order (0 JB / 0 SB). Re-confirm the
+                        order&apos;s quantities before dispatching — dispatching now would record ₱
+                        {Number(order.total_amount).toLocaleString()} in sales against 0 bags
+                        shipped.
+                      </div>
+                    )}
                     <Button
                       onClick={() => openAction(order, 'dispatch')}
+                      disabled={jbQty + sbQty <= 0}
                       className="bg-primary hover:bg-primary/90 h-12 w-full px-8 md:w-auto"
                     >
                       <Truck className="mr-2 h-4 w-4" /> Dispatch Now
@@ -371,9 +380,15 @@ export function FulfillmentTab({
                 <div>
                   <p className="text-muted-foreground mb-1 text-xs">Items to Deduct</p>
                   <p className="font-bold">
-                    {selectedOrder.items.find((i) => i.bag_type === 'JB')?.approved_qty || 0} JB
+                    {selectedOrder.items
+                      .filter((i) => i.bag_type === 'JB')
+                      .reduce((s, i) => s + i.approved_qty, 0)}{' '}
+                    JB
                     {' · '}
-                    {selectedOrder.items.find((i) => i.bag_type === 'SB')?.approved_qty || 0} SB
+                    {selectedOrder.items
+                      .filter((i) => i.bag_type === 'SB')
+                      .reduce((s, i) => s + i.approved_qty, 0)}{' '}
+                    SB
                   </p>
                 </div>
                 <div>
@@ -387,10 +402,12 @@ export function FulfillmentTab({
                   Select Shipment Batch (Source of Truth) <span className="text-red-500">*</span>
                 </Label>
                 {(() => {
-                  const jbBags =
-                    selectedOrder.items.find((i) => i.bag_type === 'JB')?.approved_qty || 0;
-                  const sbBags =
-                    selectedOrder.items.find((i) => i.bag_type === 'SB')?.approved_qty || 0;
+                  const jbBags = selectedOrder.items
+                    .filter((i) => i.bag_type === 'JB')
+                    .reduce((s, i) => s + i.approved_qty, 0);
+                  const sbBags = selectedOrder.items
+                    .filter((i) => i.bag_type === 'SB')
+                    .reduce((s, i) => s + i.approved_qty, 0);
                   const shipmentOptions = shipments.map((s) => {
                     const hasEnough = s.remaining_jb >= jbBags && s.remaining_sb >= sbBags;
                     const label = `${s.batch_name} (Avail: ${s.remaining_jb} JB, ${s.remaining_sb} SB · Need: ${jbBags} JB, ${sbBags} SB)${!hasEnough ? ' - Insufficient' : ''}`;

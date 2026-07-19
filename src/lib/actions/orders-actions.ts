@@ -153,13 +153,38 @@ export async function rejectOrder(orderId: string, reason: string) {
 export async function finalConfirmCheck(orderId: string) {
   const { supabase, userId } = await requireAdmin();
 
-  // Check if order was partially approved by looking at items
   const { data: order } = await supabase
     .from('orders')
     .select('*, items:order_items(*)')
     .eq('id', orderId)
     .single();
   if (!order) throw new Error('Order not found');
+
+  // Backfill approved_qty for orders that reached this step without ever
+  // passing through approveOrder() (e.g. draft → submitPaymentDetails).
+  // Left at the DB default of 0, approved_qty poisons every downstream
+  // calculation and causes the "Net = Gross" profit bug.
+  const neverApproved = order.items.every(
+    (i: { approved_qty: number; requested_qty: number }) =>
+      i.approved_qty === 0 && i.requested_qty > 0,
+  );
+  if (neverApproved) {
+    for (const item of order.items) {
+      const qty = order.is_split_delivery
+        ? item.bag_type === 'JB'
+          ? Math.min(item.requested_qty, order.deliver_now_jb || 0)
+          : item.bag_type === 'SB'
+            ? Math.min(item.requested_qty, order.deliver_now_sb || 0)
+            : item.requested_qty
+        : item.requested_qty;
+      const { error } = await supabase
+        .from('order_items')
+        .update({ approved_qty: qty })
+        .eq('id', item.id);
+      if (error) throw new Error(`Failed to set approved quantity: ${error.message}`);
+      item.approved_qty = qty;
+    }
+  }
 
   const isPartial = order.items.some(
     (i: { approved_qty: number; requested_qty: number }) => i.approved_qty < i.requested_qty,
@@ -198,6 +223,12 @@ export async function dispatchOrder(
     .single();
   if (!order) throw new Error('Order not found');
 
+  // Idempotency guard — a retry must never re-run the writes below
+  // for an order that has already gone out.
+  if (order.status === 'dispatched') {
+    throw new Error('This order has already been dispatched.');
+  }
+
   // Calculate JB and SB quantities
   const jbQty = order.items
     .filter((i: { bag_type: string }) => i.bag_type === 'JB')
@@ -205,6 +236,15 @@ export async function dispatchOrder(
   const sbQty = order.items
     .filter((i: { bag_type: string }) => i.bag_type === 'SB')
     .reduce((s: number, i: { approved_qty: number }) => s + i.approved_qty, 0);
+
+  // Fail fast — a zero-quantity order would pass 6+ writes before crashing
+  // on the delivery_receipts CHECK (quantity > 0) constraint.
+  if (jbQty + sbQty <= 0) {
+    throw new Error(
+      'Cannot dispatch: no approved quantity found for this order. ' +
+        'Confirm the approved JB/SB quantities before dispatching.',
+    );
+  }
 
   // Get shipment
   const { data: shipment } = await supabase
@@ -238,10 +278,17 @@ export async function dispatchOrder(
   const poNumber = order.po_number || `SYS-${orderId.slice(0, 8).toUpperCase()}`;
   const dispatchDate = new Date().toISOString().split('T')[0];
 
-  // Compute profit values
+  // Compute profit values — prorate revenue to only the bags actually
+  // going out on this dispatch, instead of using the full order's total_amount.
   const costConfig = await getCostConfig();
   const totalBags = jbQty * 25 + sbQty * 50;
-  const totalSales = Number(order.total_amount) || 0;
+  const totalRequestedBags = order.items.reduce(
+    (s: number, i: { requested_qty: number }) => s + (i.requested_qty || 0),
+    0,
+  );
+  const orderUnitPrice =
+    totalRequestedBags > 0 ? Number(order.total_amount) / totalRequestedBags : 0;
+  const totalSales = Math.round(orderUnitPrice * totalBags * 100) / 100;
   const sellingPricePerBag = totalBags > 0 ? Math.round((totalSales / totalBags) * 100) / 100 : 0;
   const grossProfit =
     Math.round((totalSales - totalBags * costConfig.landed_cost_per_bag) * 100) / 100;
