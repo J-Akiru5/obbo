@@ -55,11 +55,12 @@ export async function POST(req: NextRequest) {
     }
 
     // Invalidate any existing unused codes for this email
-    await supabase
+    const { error: invalidateError } = await supabase
       .from('email_verifications')
       .update({ used: true })
       .eq('email', email.toLowerCase())
       .eq('used', false);
+    if (invalidateError) console.error('Failed to invalidate old OTPs:', invalidateError);
 
     // Generate new OTP
     const code = generateOtp();

@@ -435,11 +435,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       } = await supabase.auth.getUser();
       if (!user) return;
 
-      await supabase
+      const { error } = await supabase
         .from('notifications')
         .update({ is_read: true })
         .eq('user_id', user.id)
         .eq('is_read', false);
+      if (error) throw error;
       setUnreadCount(0);
       setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
     } catch {
@@ -450,7 +451,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const markRead = async (id: string) => {
     try {
       const supabase = createClient();
-      await supabase.from('notifications').update({ is_read: true }).eq('id', id);
+      const { error } = await supabase.from('notifications').update({ is_read: true }).eq('id', id);
+      if (error) throw error;
       setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, is_read: true } : n)));
       loadNotifications(); // Refresh count properly
     } catch {
