@@ -67,7 +67,11 @@ export async function approveOrder(
 
   // Update each item's approved_qty
   for (const item of constrainedApprovedItems) {
-    await supabase.from('order_items').update({ approved_qty: item.qty }).eq('id', item.itemId);
+    const { error: itemError } = await supabase
+      .from('order_items')
+      .update({ approved_qty: item.qty })
+      .eq('id', item.itemId);
+    if (itemError) throw new Error(`Failed to update item ${item.itemId}: ${itemError.message}`);
   }
 
   // Check if any item is partially approved
@@ -92,7 +96,8 @@ export async function approveOrder(
   };
   if (shippingFee !== undefined) updates.shipping_fee = shippingFee;
 
-  await supabase.from('orders').update(updates).eq('id', orderId);
+  const { error: orderError } = await supabase.from('orders').update(updates).eq('id', orderId);
+  if (orderError) throw new Error(`Failed to update order: ${orderError.message}`);
 
   // Create customer balance records for partial quantities
   if (isPartial) {
@@ -100,7 +105,7 @@ export async function approveOrder(
       const original = order.items.find((i: { id: string }) => i.id === ai.itemId);
       if (original && ai.qty < original.requested_qty) {
         const remaining = original.requested_qty - ai.qty;
-        await supabase.from('customer_balances').insert({
+        const { error: balanceError } = await supabase.from('customer_balances').insert({
           client_id: order.client_id,
           order_id: orderId,
           product_id: original.product_id,
@@ -108,6 +113,9 @@ export async function approveOrder(
           remaining_qty: remaining,
           status: 'pending',
         });
+        if (balanceError) {
+          console.error('Failed to create customer balance:', balanceError);
+        }
       }
     }
   }
@@ -158,10 +166,11 @@ export async function finalConfirmCheck(orderId: string) {
   );
   const newStatus = isPartial ? 'partially_approved' : 'approved';
 
-  await supabase
+  const { error: confirmError } = await supabase
     .from('orders')
     .update({ status: newStatus, updated_at: new Date().toISOString() })
     .eq('id', orderId);
+  if (confirmError) throw new Error(`Failed to confirm order: ${confirmError.message}`);
 
   await logActivity(supabase, userId, 'order_check_confirmed', 'order', orderId, {
     status: newStatus,
@@ -443,11 +452,14 @@ export async function dispatchOrder(
   if (drError) throw new Error(`Failed to auto-generate DR record: ${drError.message}`);
 
   if (drRecord?.id) {
-    await supabase
+    const { error: ledgerLinkError } = await supabase
       .from('shipment_ledger')
       .update({ delivery_receipt_id: drRecord.id })
       .eq('dr_number', drNumber)
       .eq('shipment_id', shipmentId);
+    if (ledgerLinkError) {
+      console.error('Failed to link DR to ledger entry:', ledgerLinkError);
+    }
   }
 
   await logActivity(supabase, userId, 'order_dispatched', 'order', orderId, {
@@ -487,7 +499,8 @@ export async function updateTrackingStatus(
   if (trackingStatus === 'delivered' || isReturn) {
     updates.status = 'completed';
   }
-  await supabase.from('orders').update(updates).eq('id', orderId);
+  const { error: trackingError } = await supabase.from('orders').update(updates).eq('id', orderId);
+  if (trackingError) throw new Error(`Failed to update tracking: ${trackingError.message}`);
   await logActivity(supabase, userId, 'tracking_updated', 'order', orderId, { trackingStatus });
 
   if (isReturn && (bagsReturnedJb || bagsReturnedSb)) {

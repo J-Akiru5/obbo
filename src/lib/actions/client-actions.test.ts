@@ -1,40 +1,107 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { http, HttpResponse } from 'msw';
+import { server } from '../../../mocks/server';
+import { createBrowserClient } from '@supabase/ssr';
 
-// Test the KYC gating contract used by the ledger page (pattern tests)
-// The actual implementation uses Supabase server actions which are integration-tested separately.
+// revalidatePath throws in jsdom — stub it
+vi.mock('next/cache', () => ({
+  revalidatePath: vi.fn(),
+  revalidateTag: vi.fn(),
+}));
 
-describe("Ledger KYC Gating — Contract Tests", () => {
-    // The pattern used in ledger page.tsx:
-    //   const { kyc_status } = await getClientKycStatus();
-    //   if (kyc_status !== "verified") { return <KycRequired />; }
-    //   const [balances, summary] = await Promise.all([...]);
-    //   return <LedgerClient ... />;
-    
-    const simulateKycCheck = (kycStatus: string | null): "blocked" | "allowed" => {
-        if (kycStatus !== "verified") return "blocked";
-        return "allowed";
+const mockGetUser = vi.fn();
+
+vi.mock('@/lib/supabase/server', () => ({
+  createClient: () => {
+    const client = createBrowserClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://test-project.supabase.co',
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'test-anon-key',
+    );
+    (client.auth as unknown as { getUser: typeof mockGetUser }).getUser = mockGetUser;
+    return client;
+  },
+}));
+
+const { submitOrder } = await import('./client-actions');
+
+let orderDeleteCalled = false;
+
+describe('client-actions', () => {
+  describe('submitOrder', () => {
+    const validOrderData = {
+      source: 'warehouse',
+      service_type: 'pickup',
+      payment_method: 'cash',
+      po_image_url: 'https://example.com/po.jpg',
+      driver_name: 'Test Driver',
+      plate_number: 'ABC-123',
+      total_amount: 25000,
+      items: [{ product_id: 'prod-jb-001', bag_type: 'JB', requested_qty: 100 }],
     };
 
-    it("blocks access for unverified clients (null kyc_status)", () => {
-        expect(simulateKycCheck(null)).toBe("blocked");
+    beforeEach(() => {
+      vi.clearAllMocks();
+      orderDeleteCalled = false;
+
+      mockGetUser.mockResolvedValue({
+        data: { user: { id: 'client-001', email: 'juan@acme.com' } },
+        error: null,
+      });
+
+      server.use(
+        // Return client profile for .single() requests (requireClient)
+        http.get('*/rest/v1/profiles', ({ request }) => {
+          const accept = request.headers.get('accept') || '';
+          const isSingle = accept.includes('application/vnd.pgrst.object+json');
+          const profile = {
+            id: 'client-001',
+            email: 'juan@acme.com',
+            full_name: 'Juan Dela Cruz',
+            company_name: 'ACME Construction',
+            phone: '09171234567',
+            role: 'client',
+            account_type: 'company',
+            kyc_status: 'verified',
+            kyc_documents: null,
+            avatar_url: null,
+            notification_preferences: {
+              order_approval: true,
+              payment_required: true,
+              dispatch: true,
+              delivery_status: true,
+            },
+            created_at: '2026-01-15T00:00:00.000Z',
+            updated_at: '2026-01-15T00:00:00.000Z',
+          };
+          if (isSingle) return HttpResponse.json(profile);
+          return HttpResponse.json([profile]);
+        }),
+
+        // Track orders DELETE (rollback)
+        http.delete('*/rest/v1/orders', () => {
+          orderDeleteCalled = true;
+          return HttpResponse.json([]);
+        }),
+
+        // Stub notifications insert (called by createRoleNotification)
+        http.post('*/rest/v1/notifications', () => HttpResponse.json([])),
+      );
     });
 
-    it("blocks access for pending KYC", () => {
-        expect(simulateKycCheck("pending")).toBe("blocked");
+    it('throws when order_items insert fails and rolls back the order', async () => {
+      server.use(
+        http.post('*/rest/v1/order_items', () =>
+          HttpResponse.json({ message: 'violates foreign key constraint' }, { status: 409 }),
+        ),
+      );
+
+      await expect(submitOrder(validOrderData)).rejects.toThrow(/Failed to save order items/);
+
+      expect(orderDeleteCalled).toBe(true);
     });
 
-    it("blocks access for rejected KYC", () => {
-        expect(simulateKycCheck("rejected")).toBe("blocked");
+    it('succeeds when order_items insert succeeds', async () => {
+      await expect(submitOrder(validOrderData)).resolves.toBeDefined();
     });
-
-    it("allows access for verified clients", () => {
-        expect(simulateKycCheck("verified")).toBe("allowed");
-    });
-
-    it("only 'verified' status grants access — any other value is blocked", () => {
-        const invalidStatuses = ["", "unknown", "in_review", "expired", null, undefined];
-        for (const status of invalidStatuses) {
-            expect(simulateKycCheck(status as string | null)).toBe("blocked");
-        }
-    });
+  });
 });

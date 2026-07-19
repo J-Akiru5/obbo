@@ -76,7 +76,11 @@ export async function createPurchaseOrder(po: {
         status: 'approved',
       });
 
-      await supabase.from('purchase_orders').update({ order_id: orderData.id }).eq('id', data.id);
+      const { error: poLinkError } = await supabase
+        .from('purchase_orders')
+        .update({ order_id: orderData.id })
+        .eq('id', data.id);
+      if (poLinkError) console.error('Failed to link PO to order:', poLinkError);
       data.order_id = orderData.id;
 
       await createUserNotification({

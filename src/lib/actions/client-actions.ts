@@ -216,7 +216,11 @@ export async function submitOrder(
       dispatched_qty: 0,
       selling_price_per_bag: priceMap.get(item.product_id) ?? null,
     }));
-    await supabase.from('order_items').insert(itemsToInsert);
+    const { error: itemsError } = await supabase.from('order_items').insert(itemsToInsert);
+    if (itemsError) {
+      await supabase.from('orders').delete().eq('id', order.id);
+      throw new Error(`Failed to save order items: ${itemsError.message}`);
+    }
   }
 
   // Trigger Notification for Warehouse Manager
@@ -311,7 +315,11 @@ export async function saveOrderDraft(
       dispatched_qty: 0,
       selling_price_per_bag: priceMap.get(item.product_id) ?? null,
     }));
-    await supabase.from('order_items').insert(itemsToInsert);
+    const { error: itemsError } = await supabase.from('order_items').insert(itemsToInsert);
+    if (itemsError) {
+      await supabase.from('orders').delete().eq('id', order.id);
+      throw new Error(`Failed to save order items: ${itemsError.message}`);
+    }
   }
 
   revalidatePath('/client/catalog');
@@ -606,7 +614,7 @@ export async function submitRedeliveryRequest(
     .eq('id', balance.product_id)
     .single();
 
-  await supabase.from('order_items').insert({
+  const { error: itemsError } = await supabase.from('order_items').insert({
     order_id: order.id,
     product_id: balance.product_id,
     bag_type: balance.bag_type,
@@ -615,6 +623,10 @@ export async function submitRedeliveryRequest(
     dispatched_qty: 0,
     selling_price_per_bag: redeliveryProduct?.price_per_bag ?? null,
   });
+  if (itemsError) {
+    await supabase.from('orders').delete().eq('id', order.id);
+    throw new Error(`Failed to save order items: ${itemsError.message}`);
+  }
 
   // Note: Balance deduction now happens server-side in dispatchOrder when admin dispatches.
   // This avoids the RLS policy issue where clients cannot UPDATE customer_balances.
