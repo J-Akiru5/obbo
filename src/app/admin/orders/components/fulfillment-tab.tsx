@@ -386,26 +386,36 @@ export function FulfillmentTab({
                 <Label>
                   Select Shipment Batch (Source of Truth) <span className="text-red-500">*</span>
                 </Label>
-                <Select value={shipmentId} onValueChange={(v) => setShipmentId(v || '')}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select a shipment batch" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {shipments.map((s) => {
-                      const jbNeed =
-                        selectedOrder.items.find((i) => i.bag_type === 'JB')?.approved_qty || 0;
-                      const sbNeed =
-                        selectedOrder.items.find((i) => i.bag_type === 'SB')?.approved_qty || 0;
-                      const hasEnough = s.remaining_jb >= jbNeed && s.remaining_sb >= sbNeed;
-                      const labelText = `${s.batch_name} (Avail: ${s.remaining_jb} JB, ${s.remaining_sb} SB)${!hasEnough ? ' - Insufficient' : ''}`;
-                      return (
-                        <SelectItem key={s.id} value={s.id} disabled={!hasEnough} label={labelText}>
-                          {labelText}
-                        </SelectItem>
-                      );
-                    })}
-                  </SelectContent>
-                </Select>
+                {(() => {
+                  const jbBags =
+                    selectedOrder.items.find((i) => i.bag_type === 'JB')?.approved_qty || 0;
+                  const sbBags =
+                    selectedOrder.items.find((i) => i.bag_type === 'SB')?.approved_qty || 0;
+                  const shipmentOptions = shipments.map((s) => {
+                    const hasEnough = s.remaining_jb >= jbBags && s.remaining_sb >= sbBags;
+                    const label = `${s.batch_name} (Avail: ${s.remaining_jb} JB, ${s.remaining_sb} SB · Need: ${jbBags} JB, ${sbBags} SB)${!hasEnough ? ' - Insufficient' : ''}`;
+                    return { value: s.id, label, disabled: !hasEnough };
+                  });
+
+                  return (
+                    <Select
+                      items={shipmentOptions}
+                      value={shipmentId}
+                      onValueChange={(v) => setShipmentId(v ?? '')}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select a shipment batch" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {shipmentOptions.map((opt) => (
+                          <SelectItem key={opt.value} value={opt.value} disabled={opt.disabled}>
+                            {opt.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  );
+                })()}
               </div>
 
               <div className="space-y-2">
