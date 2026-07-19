@@ -46,8 +46,22 @@ const { mockSupabase, setTableData, clearTableData } = vi.hoisted(() => {
 
   const mockFrom = vi.fn((table: string) => buildChain(table));
 
+  function rpcResult() {
+    return {
+      then: (resolve: (v: any) => any) =>
+        Promise.resolve(store.get('rpc:dispatch_order_v2') ?? { data: null, error: null }).then(
+          resolve,
+        ),
+    };
+  }
+
+  const mockSupabaseObj = {
+    from: mockFrom,
+    rpc: vi.fn((_name: string, _params: any) => rpcResult()),
+  };
+
   return {
-    mockSupabase: { from: mockFrom },
+    mockSupabase: mockSupabaseObj,
     setTableData: (table: string, data: any) => store.set(table, data),
     clearTableData: () => store.clear(),
   };
@@ -139,6 +153,10 @@ describe('BUG-3: dispatchOrder', () => {
     setTableData('purchase_orders', null);
     setTableData('delivery_receipts', null);
     setTableData('customer_balances', null);
+    setTableData('rpc:dispatch_order_v2', {
+      data: { success: true, dr_id: 'dr-new-001' },
+      error: null,
+    });
   });
 
   it('throws when no approved quantity exists', async () => {

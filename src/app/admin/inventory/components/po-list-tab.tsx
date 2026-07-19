@@ -709,7 +709,7 @@ export function PoListTab({
                       <div className="absolute top-2 left-2">
                         <Badge
                           variant="secondary"
-                          className="text-foreground border-none bg-white/90 text-[10px] font-semibold shadow-sm backdrop-blur-sm"
+                          className="text-foreground bg-background/90 border-none text-[10px] font-semibold shadow-sm backdrop-blur-sm"
                         >
                           {new Date(po.date).toLocaleDateString()}
                         </Badge>

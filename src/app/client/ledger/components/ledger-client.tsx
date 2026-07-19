@@ -376,7 +376,7 @@ export default function LedgerClient({
                           ) : (
                             <Badge
                               variant="outline"
-                              className="border-emerald-200 bg-emerald-50 text-emerald-600 dark:border-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-400"
+                              className="border-status-success-bg bg-status-success-bg text-status-success-text"
                             >
                               <CheckCircle2 className="mr-1 h-3 w-3" />
                               Completed
@@ -436,7 +436,7 @@ export default function LedgerClient({
                           {b.total_purchase}
                         </TableCell>
                         <TableCell className="text-right">
-                          <span className="rounded border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[10px] font-bold tracking-wider text-emerald-600 uppercase">
+                          <span className="border-status-success-bg bg-status-success-bg text-status-success-text rounded border px-2 py-0.5 text-[10px] font-bold tracking-wider uppercase">
                             Fulfilled
                           </span>
                         </TableCell>

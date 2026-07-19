@@ -90,20 +90,20 @@ function TrackingProgressBar({ order }: { order: Order }) {
                       ? 'border-emerald-500 bg-emerald-500 text-white'
                       : isCurrent
                         ? 'border-primary text-primary bg-primary/10'
-                        : 'text-muted-foreground dark:bg-muted border-gray-200 bg-white dark:border-gray-600'
+                        : 'text-muted-foreground bg-background border-border'
                   }`}
                 >
                   <StepIcon className="h-4 w-4" />
                 </div>
                 <span
-                  className={`mt-1.5 max-w-[60px] text-center text-[9px] leading-tight ${isCompleted ? 'font-semibold text-emerald-700 dark:text-emerald-400' : 'text-muted-foreground'}`}
+                  className={`mt-1.5 max-w-[60px] text-center text-[9px] leading-tight ${isCompleted ? 'text-status-success-text font-semibold' : 'text-muted-foreground'}`}
                 >
                   {step.label}
                 </span>
               </div>
               {idx < TRACKING_STEPS.length - 1 && (
                 <div
-                  className={`mx-1.5 mt-[-14px] h-0.5 flex-1 ${idx < activeStep ? 'bg-emerald-400' : 'bg-gray-200 dark:bg-gray-600'}`}
+                  className={`mx-1.5 mt-[-14px] h-0.5 flex-1 ${idx < activeStep ? 'bg-emerald-400' : 'bg-muted'}`}
                 />
               )}
             </div>

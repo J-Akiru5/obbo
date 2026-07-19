@@ -516,7 +516,7 @@ export function DrListTab({
           <div className="bg-primary text-primary-foreground p-6">
             <div className="flex items-start justify-between">
               <div>
-                <Badge className="mb-2 border-none bg-white/20 text-[10px] text-white hover:bg-white/30">
+                <Badge className="bg-background/20 hover:bg-background/30 mb-2 border-none text-[10px] text-white">
                   Delivery Receipt Details
                 </Badge>
                 <h2 className="flex items-center gap-2 text-2xl font-bold tracking-tight">

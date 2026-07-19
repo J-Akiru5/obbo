@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useState, useEffect, useCallback } from 'react';
 import {
   Bell,
@@ -170,10 +170,11 @@ import { ThemeToggle } from '@/components/theme-toggle';
 
 function ClientLayoutInner({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
   const handleSignOut = async () => {
     const supabase = createClient();
     await supabase.auth.signOut();
-    window.location.href = '/login';
+    router.push('/login');
   };
   const { kycStatus } = useClientKyc();
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -458,17 +459,13 @@ function ClientLayoutInner({ children }: { children: React.ReactNode }) {
               </Avatar>
             </Link>
 
-            <button
-              type="button"
-              onClick={async () => {
-                const supabase = createClient();
-                await supabase.auth.signOut();
-                window.location.href = '/login';
-              }}
-              className="text-muted-foreground hover:bg-muted hidden items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors sm:inline-flex"
+            <Button
+              variant="ghost"
+              onClick={handleSignOut}
+              className="hidden gap-1.5 sm:inline-flex"
             >
               <LogOut className="h-4 w-4" /> Sign Out
-            </button>
+            </Button>
           </div>
         </header>
 

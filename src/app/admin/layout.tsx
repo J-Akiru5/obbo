@@ -209,7 +209,7 @@ function SidebarContent({
                         </Badge>
                       )}
                       {item.label === 'Clients' && (pendingKycCount ?? 0) > 0 && (
-                        <Badge className="bg-red-500 px-1.5 py-0 text-xs text-white hover:bg-red-500">
+                        <Badge className="bg-destructive text-destructive-foreground hover:bg-destructive/90 px-1.5 py-0 text-xs">
                           {pendingKycCount}
                         </Badge>
                       )}

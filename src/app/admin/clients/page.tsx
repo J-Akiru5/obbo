@@ -78,7 +78,7 @@ function KycBadge({ status }: { status: string }) {
   }
   if (status === 'rejected') {
     return (
-      <Badge className="border-destructive/20 bg-destructive/10 text-destructive hover:bg-red-100">
+      <Badge className="border-destructive/20 bg-destructive/10 text-destructive hover:bg-destructive/20">
         Rejected
       </Badge>
     );
@@ -293,7 +293,7 @@ function KycDialog({
             <>
               <Button
                 variant="outline"
-                className="border-red-200 text-red-700 hover:bg-red-50"
+                className="border-destructive/30 text-destructive hover:bg-destructive/10"
                 onClick={handleReject}
                 disabled={saving}
               >
@@ -937,13 +937,13 @@ function ClientsContent() {
                     {pending.map((profile) => (
                       <Card
                         key={profile.id}
-                        className="border-amber-200 bg-amber-50/40 shadow-sm dark:border-amber-800 dark:bg-amber-950/30"
+                        className="border-status-pending-border bg-status-pending-bg/40 shadow-sm"
                       >
                         <CardContent className="p-4">
                           <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
                             <Avatar className="h-10 w-10 flex-shrink-0">
                               <AvatarImage src={profile.avatar_url || ''} alt={profile.full_name} />
-                              <AvatarFallback className="bg-amber-200 text-xs font-bold text-amber-900 dark:bg-amber-700 dark:text-amber-100">
+                              <AvatarFallback className="bg-status-pending-bg text-status-pending-text text-xs font-bold">
                                 {getInitials(profile.full_name)}
                               </AvatarFallback>
                             </Avatar>
