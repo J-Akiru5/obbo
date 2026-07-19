@@ -163,30 +163,62 @@ export function NewRequestsTab({
         </div>
         <div className="flex gap-4">
           <div className="w-40">
-            <Select value={serviceFilter} onValueChange={(val) => setServiceFilter(val || 'all')}>
-              <SelectTrigger className="bg-background">
-                <Filter className="text-muted-foreground mr-2 h-4 w-4" />
-                <SelectValue placeholder="Service" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Services</SelectItem>
-                <SelectItem value="deliver">Delivery</SelectItem>
-                <SelectItem value="pickup">Pick-up</SelectItem>
-              </SelectContent>
-            </Select>
+            {(() => {
+              const serviceOptions = [
+                { value: 'all', label: 'All Services' },
+                { value: 'deliver', label: 'Delivery' },
+                { value: 'pickup', label: 'Pick-up' },
+              ];
+
+              return (
+                <Select
+                  items={serviceOptions}
+                  value={serviceFilter}
+                  onValueChange={(val) => setServiceFilter(val || 'all')}
+                >
+                  <SelectTrigger className="bg-background">
+                    <Filter className="text-muted-foreground mr-2 h-4 w-4" />
+                    <SelectValue placeholder="Service" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {serviceOptions.map((opt) => (
+                      <SelectItem key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              );
+            })()}
           </div>
           <div className="w-40">
-            <Select value={paymentFilter} onValueChange={(val) => setPaymentFilter(val || 'all')}>
-              <SelectTrigger className="bg-background">
-                <Filter className="text-muted-foreground mr-2 h-4 w-4" />
-                <SelectValue placeholder="Payment" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Payments</SelectItem>
-                <SelectItem value="cash">Cash</SelectItem>
-                <SelectItem value="check">Check</SelectItem>
-              </SelectContent>
-            </Select>
+            {(() => {
+              const paymentOptions = [
+                { value: 'all', label: 'All Payments' },
+                { value: 'cash', label: 'Cash' },
+                { value: 'check', label: 'Check' },
+              ];
+
+              return (
+                <Select
+                  items={paymentOptions}
+                  value={paymentFilter}
+                  onValueChange={(val) => setPaymentFilter(val || 'all')}
+                >
+                  <SelectTrigger className="bg-background">
+                    <Filter className="text-muted-foreground mr-2 h-4 w-4" />
+                    <SelectValue placeholder="Payment" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {paymentOptions.map((opt) => (
+                      <SelectItem key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              );
+            })()}
           </div>
         </div>
       </div>

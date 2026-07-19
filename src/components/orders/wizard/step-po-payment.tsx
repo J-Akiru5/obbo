@@ -183,20 +183,33 @@ export function StepPoPayment({
         <Label className="text-sm font-medium">
           Payment method <span className="text-destructive">*</span>
         </Label>
-        <Select
-          value={form.payment_method}
-          onValueChange={(v) => {
-            if (v) onFieldChange('payment_method', v);
-          }}
-        >
-          <SelectTrigger className="h-11">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="cash">Cash</SelectItem>
-            <SelectItem value="check">Check</SelectItem>
-          </SelectContent>
-        </Select>
+        {(() => {
+          const paymentOptions = [
+            { value: 'cash', label: 'Cash' },
+            { value: 'check', label: 'Check' },
+          ];
+
+          return (
+            <Select
+              items={paymentOptions}
+              value={form.payment_method}
+              onValueChange={(v) => {
+                if (v) onFieldChange('payment_method', v);
+              }}
+            >
+              <SelectTrigger className="h-11">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {paymentOptions.map((opt) => (
+                  <SelectItem key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          );
+        })()}
         {errors.payment_method && (
           <p className="text-destructive text-sm">{errors.payment_method}</p>
         )}
