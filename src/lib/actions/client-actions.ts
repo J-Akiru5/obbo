@@ -51,23 +51,36 @@ export async function fetchClientDashboardKPIs() {
     .in('tracking_status', ['pending_dispatch', 'in_transit'])
     .in('status', ['dispatched', 'approved']);
 
-  // Remaining Balance
+  // Remaining Balance (only for approved/dispatched/completed orders)
   const { data: balances } = await supabase
     .from('customer_balances')
-    .select('remaining_qty, bag_type')
+    .select('remaining_qty, bag_type, order:orders(status)')
     .eq('client_id', user.id)
     .eq('status', 'pending');
 
   let remainingBags = 0;
+  const validBalances: typeof balances = [];
   if (balances) {
-    remainingBags = balances.reduce((acc, b) => acc + b.remaining_qty, 0);
+    for (const b of balances) {
+      const orderStatus = (b.order as any)?.status;
+      if (
+        orderStatus === 'approved' ||
+        orderStatus === 'partially_approved' ||
+        orderStatus === 'dispatched' ||
+        orderStatus === 'completed'
+      ) {
+        validBalances.push(b);
+        const multiplier = b.bag_type === 'JB' ? 25 : 50;
+        remainingBags += (b.remaining_qty || 0) * multiplier;
+      }
+    }
   }
 
   return {
     pendingOrders: pendingOrders || 0,
     activeShipments: activeShipments || 0,
     remainingBags,
-    rawBalances: balances || [],
+    rawBalances: validBalances,
     clientName:
       profile.account_type === 'individual'
         ? profile.full_name
@@ -448,20 +461,38 @@ export async function fetchClientBalances() {
   const { data } = await supabase
     .from('customer_balances')
     .select(
-      '*, product:products(name, price_per_bag, bag_type), order:orders(po_number, po_image_url, created_at)',
+      '*, product:products(name, price_per_bag, bag_type), order:orders(po_number, po_image_url, created_at, status)',
     )
     .eq('client_id', user.id)
     .order('created_at', { ascending: false });
-  return data ?? [];
+
+  return (data ?? [])
+    .filter((b) => {
+      const orderStatus = (b.order as any)?.status;
+      return (
+        orderStatus === 'approved' ||
+        orderStatus === 'partially_approved' ||
+        orderStatus === 'dispatched' ||
+        orderStatus === 'completed'
+      );
+    })
+    .map((b) => {
+      const multiplier = b.bag_type === 'JB' ? 25 : 50;
+      return {
+        ...b,
+        total_purchase: (b.total_purchase || 0) * multiplier,
+        remaining_qty: (b.remaining_qty || 0) * multiplier,
+      };
+    });
 }
 
 export async function fetchBalanceSummary() {
   const { supabase, user } = await requireClient();
 
-  // Total purchased: sum of all requested_qty from all completed/dispatched orders
+  // Total purchased: sum of all requested_qty from all approved/completed/dispatched orders in individual bags
   const { data: orders } = await supabase
     .from('orders')
-    .select('items:order_items(requested_qty)')
+    .select('items:order_items(requested_qty, bag_type)')
     .eq('client_id', user.id)
     .neq('order_type', 'draft')
     .in('status', ['approved', 'partially_approved', 'dispatched', 'completed', 'awaiting_check']);
@@ -469,17 +500,18 @@ export async function fetchBalanceSummary() {
   let totalPurchased = 0;
   if (orders) {
     for (const order of orders) {
-      const items = order.items as { requested_qty: number }[];
-      totalPurchased += items.reduce((acc, item) => acc + item.requested_qty, 0);
+      const items = order.items as { requested_qty: number; bag_type: string }[];
+      totalPurchased += items.reduce(
+        (acc, item) => acc + (item.requested_qty || 0) * (item.bag_type === 'JB' ? 25 : 50),
+        0,
+      );
     }
   }
 
-  // Total delivered: sum of dispatched_qty ONLY from fully completed orders.
-  // Orders still in transit (status: 'dispatched') are intentionally excluded
-  // to prevent premature counting of bags that haven't been received yet.
+  // Total delivered: sum of dispatched_qty ONLY from fully completed orders in individual bags.
   const { data: dispatchedOrders } = await supabase
     .from('orders')
-    .select('items:order_items(dispatched_qty)')
+    .select('items:order_items(dispatched_qty, bag_type)')
     .eq('client_id', user.id)
     .neq('order_type', 'draft')
     .eq('status', 'completed');
@@ -487,19 +519,36 @@ export async function fetchBalanceSummary() {
   let totalDelivered = 0;
   if (dispatchedOrders) {
     for (const order of dispatchedOrders) {
-      const items = order.items as { dispatched_qty: number }[];
-      totalDelivered += items.reduce((acc, item) => acc + item.dispatched_qty, 0);
+      const items = order.items as { dispatched_qty: number; bag_type: string }[];
+      totalDelivered += items.reduce(
+        (acc, item) => acc + (item.dispatched_qty || 0) * (item.bag_type === 'JB' ? 25 : 50),
+        0,
+      );
     }
   }
 
-  // Remaining balance from customer_balances
+  // Remaining balance from customer_balances in individual bags
   const { data: balances } = await supabase
     .from('customer_balances')
-    .select('remaining_qty')
+    .select('remaining_qty, bag_type, order:orders(status)')
     .eq('client_id', user.id)
     .eq('status', 'pending');
 
-  const remainingBalance = balances?.reduce((acc, b) => acc + b.remaining_qty, 0) ?? 0;
+  let remainingBalance = 0;
+  if (balances) {
+    for (const b of balances) {
+      const orderStatus = (b.order as any)?.status;
+      if (
+        orderStatus === 'approved' ||
+        orderStatus === 'partially_approved' ||
+        orderStatus === 'dispatched' ||
+        orderStatus === 'completed'
+      ) {
+        const multiplier = b.bag_type === 'JB' ? 25 : 50;
+        remainingBalance += (b.remaining_qty || 0) * multiplier;
+      }
+    }
+  }
 
   return { totalPurchased, totalDelivered, remainingBalance };
 }
@@ -567,6 +616,10 @@ export async function submitRedeliveryRequest(
     notes += `\n[SPLIT DELIVERY REQUESTED]: Client requested ${splitDetails.deliverNowQty} total bags now (${splitDetails.deliverNowJB || 0} JB, ${splitDetails.deliverNowSB || 0} SB), and the rest to remain in balances.\n${splitDetails.splitNote}`;
   }
 
+  const rawDeliverNowQty = splitDetails?.wantsSplit
+    ? (splitDetails.deliverNowJB || 0) + (splitDetails.deliverNowSB || 0)
+    : 0;
+
   // Create a new order linked to the original PO
   const { data: order, error } = await supabase
     .from('orders')
@@ -583,7 +636,7 @@ export async function submitRedeliveryRequest(
       plate_number: orderData.plate_number,
       preferred_pickup_date: orderData.preferred_pickup_date || null,
       is_split_delivery: splitDetails?.wantsSplit ?? false,
-      deliver_now_qty: splitDetails?.deliverNowQty ?? 0,
+      deliver_now_qty: rawDeliverNowQty,
       deliver_now_jb: splitDetails?.deliverNowJB ?? 0,
       deliver_now_sb: splitDetails?.deliverNowSB ?? 0,
       order_type: 'redelivery',
@@ -595,10 +648,8 @@ export async function submitRedeliveryRequest(
 
   if (error) throw new Error(error.message);
 
-  // Insert order item for the balance
-  const requestedQty = splitDetails?.wantsSplit
-    ? splitDetails.deliverNowQty
-    : balance.remaining_qty;
+  // Insert order item for the balance in raw bags
+  const requestedQty = splitDetails?.wantsSplit ? rawDeliverNowQty : balance.remaining_qty;
 
   const { data: redeliveryProduct } = await supabase
     .from('products')

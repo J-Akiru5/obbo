@@ -47,6 +47,30 @@ import {
 
 import { Order, OrderItem } from '@/lib/types/database';
 
+function formatOrderItems(items: OrderItem[]) {
+  if (!items || items.length === 0) return '0 indiv. bags';
+
+  const jbIndiv = items
+    .filter((item) => item.bag_type === 'JB')
+    .reduce((acc, item) => acc + (item.requested_qty || 0) * 25, 0);
+
+  const sbIndiv = items
+    .filter((item) => item.bag_type === 'SB')
+    .reduce((acc, item) => acc + (item.requested_qty || 0) * 50, 0);
+
+  const totalIndiv = jbIndiv + sbIndiv;
+
+  if (jbIndiv > 0 && sbIndiv > 0) {
+    return `${totalIndiv.toLocaleString()} indiv. bags (${jbIndiv.toLocaleString()} JB / ${sbIndiv.toLocaleString()} SB)`;
+  } else if (jbIndiv > 0) {
+    return `${jbIndiv.toLocaleString()} JB bags`;
+  } else if (sbIndiv > 0) {
+    return `${sbIndiv.toLocaleString()} SB bags`;
+  } else {
+    return '0 indiv. bags';
+  }
+}
+
 // ─── Tracking progress steps ─────────────────────────────────
 const TRACKING_STEPS = [
   { key: 'approved', label: 'Approved', icon: CheckCircle2 },
@@ -289,10 +313,6 @@ export default function OrdersClient({
   };
 
   const renderOrderCard = (order: Order, type: 'pending' | 'active' | 'history') => {
-    const totalBags = order.items.reduce(
-      (acc: number, item: OrderItem) => acc + (item.requested_qty || 0),
-      0,
-    );
     const grandTotal = order.total_amount + (order.shipping_fee || 0);
     const isExpanded = expandedOrderId === order.id;
     const isRedelivery = order.order_type === 'redelivery';
@@ -351,8 +371,8 @@ export default function OrdersClient({
           <div className="grid grid-cols-2 gap-4 text-sm md:grid-cols-4">
             <div>
               <p className="text-muted-foreground text-xs">Items</p>
-              <p className="text-foreground font-medium">
-                {totalBags} <span className="text-muted-foreground font-normal">indiv. bags</span>
+              <p className="text-foreground text-xs font-medium sm:text-sm">
+                {formatOrderItems(order.items)}
               </p>
             </div>
             <div>

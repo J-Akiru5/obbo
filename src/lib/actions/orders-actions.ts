@@ -105,6 +105,7 @@ export async function approveOrder(
           order_id: orderId,
           product_id: original.product_id,
           bag_type: original.bag_type,
+          total_purchase: original.requested_qty,
           remaining_qty: remaining,
           status: 'pending',
         });
@@ -303,7 +304,7 @@ export async function dispatchOrder(
         .eq('order_id', orderId)
         .eq('product_id', item.product_id)
         .eq('bag_type', item.bag_type)
-        .single();
+        .maybeSingle();
 
       if (!existing) {
         const { error: balanceError } = await supabase.from('customer_balances').insert({
@@ -316,6 +317,15 @@ export async function dispatchOrder(
           status: 'pending',
         });
         if (balanceError) console.error('Balance creation error:', balanceError);
+      } else {
+        const { error: balanceUpdateError } = await supabase
+          .from('customer_balances')
+          .update({
+            total_purchase: item.requested_qty,
+            remaining_qty: remaining,
+          })
+          .eq('id', existing.id);
+        if (balanceUpdateError) console.error('Balance update error:', balanceUpdateError);
       }
     }
   }
