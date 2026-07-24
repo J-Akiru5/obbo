@@ -48,26 +48,36 @@ import {
 import { Order, OrderItem } from '@/lib/types/database';
 
 function formatOrderItems(items: OrderItem[]) {
-  if (!items || items.length === 0) return '0 indiv. bags';
+  if (!items || items.length === 0) return '0 bags';
 
-  const jbIndiv = items
-    .filter((item) => item.bag_type === 'JB')
-    .reduce((acc, item) => acc + (item.requested_qty || 0) * 25, 0);
+  let jbQty = 0;
+  let sbQty = 0;
+  let otherQty = 0;
 
-  const sbIndiv = items
-    .filter((item) => item.bag_type === 'SB')
-    .reduce((acc, item) => acc + (item.requested_qty || 0) * 50, 0);
+  for (const item of items) {
+    const qty = item.requested_qty || 0;
+    const bagType = (item.bag_type || item.product?.bag_type || '').toUpperCase();
+    if (bagType === 'JB') {
+      jbQty += qty;
+    } else if (bagType === 'SB') {
+      sbQty += qty;
+    } else {
+      otherQty += qty;
+    }
+  }
 
-  const totalIndiv = jbIndiv + sbIndiv;
+  const totalQty = jbQty + sbQty + otherQty;
 
-  if (jbIndiv > 0 && sbIndiv > 0) {
-    return `${totalIndiv.toLocaleString()} indiv. bags (${jbIndiv.toLocaleString()} JB / ${sbIndiv.toLocaleString()} SB)`;
-  } else if (jbIndiv > 0) {
-    return `${jbIndiv.toLocaleString()} JB bags`;
-  } else if (sbIndiv > 0) {
-    return `${sbIndiv.toLocaleString()} SB bags`;
+  if (jbQty > 0 && sbQty > 0) {
+    return `${totalQty.toLocaleString()} bags (${jbQty.toLocaleString()} JB / ${sbQty.toLocaleString()} SB)`;
+  } else if (jbQty > 0) {
+    return `${jbQty.toLocaleString()} JB bags`;
+  } else if (sbQty > 0) {
+    return `${sbQty.toLocaleString()} SB bags`;
+  } else if (otherQty > 0) {
+    return `${otherQty.toLocaleString()} bags`;
   } else {
-    return '0 indiv. bags';
+    return '0 bags';
   }
 }
 

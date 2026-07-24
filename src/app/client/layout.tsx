@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   Bell,
   CircleUserRound,
@@ -232,21 +232,28 @@ function ClientLayoutInner({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  const channelRef = useRef<ReturnType<ReturnType<typeof createClient>['channel']> | null>(null);
+
   useEffect(() => {
+    let cancelled = false;
     loadNotifications();
 
     window.addEventListener('profile-updated', loadNotifications);
 
-    let channel: any;
     const supabase = createClient();
 
     const setupSubscription = async () => {
       const {
         data: { user },
       } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!user || cancelled) return;
 
-      channel = supabase
+      if (channelRef.current) {
+        await supabase.removeChannel(channelRef.current);
+      }
+      if (cancelled) return;
+
+      channelRef.current = supabase
         .channel(`client-notifications-${user.id}`)
         .on(
           'postgres_changes',
@@ -265,7 +272,11 @@ function ClientLayoutInner({ children }: { children: React.ReactNode }) {
 
     setupSubscription();
     return () => {
-      if (channel) supabase.removeChannel(channel);
+      cancelled = true;
+      if (channelRef.current) {
+        supabase.removeChannel(channelRef.current);
+        channelRef.current = null;
+      }
       window.removeEventListener('profile-updated', loadNotifications);
     };
   }, [loadNotifications]);
