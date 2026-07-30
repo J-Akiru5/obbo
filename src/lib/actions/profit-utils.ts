@@ -1,3 +1,5 @@
+import Decimal from 'decimal.js';
+
 // Plain, synchronous helpers used by the server actions in this directory.
 //
 // Deliberately NOT a 'use server' file: Next.js requires every export from a
@@ -6,6 +8,16 @@
 // computeReturnProfitDelta are pure math/lookup functions with no I/O, so
 // they live here instead and get imported directly by the action files that
 // need them.
+
+Decimal.set({ precision: 40, rounding: Decimal.ROUND_HALF_UP });
+
+function money(value: Decimal.Value): Decimal {
+  return new Decimal(value).toDecimalPlaces(2, Decimal.ROUND_HALF_UP);
+}
+
+function asNumber(value: Decimal): number {
+  return Number(value.toFixed(2));
+}
 
 export function getSourcePrice(
   product:
@@ -19,10 +31,6 @@ export function getSourcePrice(
   return product.price_warehouse || product.price_per_bag || 0;
 }
 
-function round2(n: number): number {
-  return Math.round(n * 100) / 100;
-}
-
 export interface DispatchProfitFields {
   total_sales: number;
   gross_profit: number;
@@ -32,67 +40,94 @@ export interface DispatchProfitFields {
   local_expenses_per_bag: number;
 }
 
-/**
- * Profit fields for a dispatch (a bag actually going out the door).
- * Callers pass whichever rates should apply — live cost config for a brand
- * new dispatch, or the row's own stored rates when recomputing an edit.
- */
+/** Profit fields for a dispatch (a bag actually going out the door). */
 export function computeDispatchProfit(params: {
   totalBags: number;
-  totalSales: number;
-  landedCostPerBag: number;
-  localExpensesPerBag: number;
+  totalSales: Decimal.Value;
+  landedCostPerBag: Decimal.Value;
+  localExpensesPerBag: Decimal.Value;
 }): DispatchProfitFields {
   const { totalBags, totalSales, landedCostPerBag, localExpensesPerBag } = params;
-  const sellingPricePerBag = totalBags > 0 ? round2(totalSales / totalBags) : 0;
+  if (!Number.isSafeInteger(totalBags) || totalBags < 0) {
+    throw new Error('Total bags must be a non-negative integer.');
+  }
+
+  const sales = money(totalSales);
+  const landed = money(landedCostPerBag);
+  const local = money(localExpensesPerBag);
+  const quantity = new Decimal(totalBags);
+  const gross = sales.minus(quantity.mul(landed));
+  const net = gross.minus(quantity.mul(local));
+  const sellingPricePerBag = totalBags > 0 ? sales.div(quantity) : new Decimal(0);
+
   return {
-    total_sales: totalSales,
-    gross_profit: round2(totalSales - totalBags * landedCostPerBag),
-    net_profit: round2(totalSales - totalBags * (landedCostPerBag + localExpensesPerBag)),
-    selling_price_per_bag: sellingPricePerBag,
-    landed_cost_per_bag: landedCostPerBag,
-    local_expenses_per_bag: localExpensesPerBag,
+    total_sales: asNumber(sales),
+    gross_profit: asNumber(gross),
+    net_profit: asNumber(net),
+    selling_price_per_bag: asNumber(sellingPricePerBag),
+    landed_cost_per_bag: asNumber(landed),
+    local_expenses_per_bag: asNumber(local),
   };
 }
 
+export function prorateOrderSales(
+  totalOrderSales: Decimal.Value,
+  totalOrderBags: number,
+  dispatchedBags: number,
+): number {
+  if (!Number.isSafeInteger(totalOrderBags) || totalOrderBags <= 0) {
+    throw new Error('Total order bags must be a positive integer.');
+  }
+  if (
+    !Number.isSafeInteger(dispatchedBags) ||
+    dispatchedBags < 0 ||
+    dispatchedBags > totalOrderBags
+  ) {
+    throw new Error('Dispatched bags must be within the ordered quantity.');
+  }
+
+  return asNumber(
+    money(totalOrderSales)
+      .mul(dispatchedBags)
+      .div(totalOrderBags)
+      .toDecimalPlaces(2, Decimal.ROUND_HALF_UP),
+  );
+}
+
 /**
- * Profit DELTA for a return/waste/damage event, reversing a slice of an
- * ORIGINAL sale. Always uses that original sale's own stored rates —
- * never live cost config — so a later cost-config change can't retroactively
- * change what a past return was worth.
- *
- * - Restockable returns ('return'): the bag goes back to good stock, so both
- *   the revenue and the landed-cost/local-expense "spend" for that bag are
- *   reversed. Gross/net profit deltas are smaller in magnitude than the
- *   sales delta.
- * - Non-restockable returns ('waste' / 'damage'): the bag is gone and the
- *   cost to bring it here was already sunk and isn't recovered. The client
- *   isn't charged for it, so revenue reverses in full, and — since nothing
- *   about the incurred cost changes — that same full amount drops straight
- *   through to both gross and net profit.
+ * Profit delta for a return/waste/damage event, using the original sale's
+ * stored rates. Restockable returns reverse sales and landed cost only;
+ * local expenses remain sunk. Waste/damage reverses sales only.
  */
 export function computeReturnProfitDelta(params: {
   returnedBags: number;
-  sellingPricePerBag: number;
-  landedCostPerBag: number;
-  localExpensesPerBag: number;
+  sellingPricePerBag: Decimal.Value;
+  landedCostPerBag: Decimal.Value;
+  localExpensesPerBag: Decimal.Value;
   isRestockable: boolean;
 }): DispatchProfitFields {
   const { returnedBags, sellingPricePerBag, landedCostPerBag, localExpensesPerBag, isRestockable } =
     params;
-  const totalSalesDelta = -round2(returnedBags * sellingPricePerBag);
+  if (!Number.isSafeInteger(returnedBags) || returnedBags <= 0) {
+    throw new Error('Returned bags must be a positive integer.');
+  }
+
+  const quantity = new Decimal(returnedBags);
+  const sellingPrice = money(sellingPricePerBag);
+  const landed = money(landedCostPerBag);
+  const local = money(localExpensesPerBag);
+  const totalSalesDelta = quantity.mul(sellingPrice).neg();
   const grossProfitDelta = isRestockable
-    ? -round2(returnedBags * (sellingPricePerBag - landedCostPerBag))
+    ? totalSalesDelta.plus(quantity.mul(landed))
     : totalSalesDelta;
-  const netProfitDelta = isRestockable
-    ? -round2(returnedBags * (sellingPricePerBag - landedCostPerBag - localExpensesPerBag))
-    : totalSalesDelta;
+  const netProfitDelta = grossProfitDelta;
+
   return {
-    total_sales: totalSalesDelta,
-    gross_profit: grossProfitDelta,
-    net_profit: netProfitDelta,
-    selling_price_per_bag: sellingPricePerBag,
-    landed_cost_per_bag: landedCostPerBag,
-    local_expenses_per_bag: localExpensesPerBag,
+    total_sales: asNumber(totalSalesDelta),
+    gross_profit: asNumber(grossProfitDelta),
+    net_profit: asNumber(netProfitDelta),
+    selling_price_per_bag: asNumber(sellingPrice),
+    landed_cost_per_bag: asNumber(landed),
+    local_expenses_per_bag: asNumber(local),
   };
 }

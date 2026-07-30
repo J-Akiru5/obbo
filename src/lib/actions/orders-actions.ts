@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { requireAdmin, logActivity, getCostConfig } from './admin-helpers';
-import { computeDispatchProfit } from './profit-utils';
+import { computeDispatchProfit, prorateOrderSales } from './profit-utils';
 import { orderApproveSchema, orderRejectSchema, orderTrackingUpdateSchema } from './schemas';
 import { addLedgerEntry } from './ledger-actions';
 import { createRoleNotification } from './notification-actions';
@@ -277,12 +277,11 @@ export async function dispatchOrder(
   const costConfig = await getCostConfig();
   const totalBags = jbQty * 25 + sbQty * 50;
   const totalRequestedBags = order.items.reduce(
-    (s: number, i: { requested_qty: number }) => s + (i.requested_qty || 0),
+    (s: number, i: { requested_qty: number; bag_type: string }) =>
+      s + (i.requested_qty || 0) * (i.bag_type === 'JB' ? 25 : 50),
     0,
   );
-  const orderUnitPrice =
-    totalRequestedBags > 0 ? Number(order.total_amount) / totalRequestedBags : 0;
-  const totalSales = Math.round(orderUnitPrice * totalBags * 100) / 100;
+  const totalSales = prorateOrderSales(order.total_amount, totalRequestedBags, totalBags);
   const profitFields = computeDispatchProfit({
     totalBags,
     totalSales,
@@ -455,6 +454,9 @@ export async function dispatchOrder(
     sb: sbQty,
   });
 
+  revalidatePath('/admin/orders');
+  revalidatePath('/admin/dashboard');
+
   return { success: true };
 }
 
@@ -519,19 +521,25 @@ export async function updateTrackingStatus(
         .select('id')
         .eq('dr_number', order.dr_number)
         .maybeSingle();
-      await addLedgerEntry(order.shipment_id, {
-        date: new Date().toISOString().split('T')[0],
-        po_number: order.po_number,
-        dr_number: order.dr_number,
-        client_name: clientLabel,
-        jb: 0,
-        sb: 0,
-        bags_returned: (bagsReturnedJb || 0) + (bagsReturnedSb || 0),
-        bag_returned_type: bagsReturnedJb ? 'JB' : 'SB',
-        return_reason: reason,
-        client_reason: returnReason || undefined,
-        delivery_receipt_id: drRecord?.id || null,
-      });
+      for (const [returnedBags, bagReturnedType] of [
+        [bagsReturnedJb || 0, 'JB'],
+        [bagsReturnedSb || 0, 'SB'],
+      ] as const) {
+        if (returnedBags <= 0) continue;
+        await addLedgerEntry(order.shipment_id, {
+          date: new Date().toISOString().split('T')[0],
+          po_number: order.po_number,
+          dr_number: order.dr_number,
+          client_name: clientLabel,
+          jb: 0,
+          sb: 0,
+          bags_returned: returnedBags,
+          bag_returned_type: bagReturnedType,
+          return_reason: reason,
+          client_reason: returnReason || undefined,
+          delivery_receipt_id: drRecord?.id || null,
+        });
+      }
     }
   }
 

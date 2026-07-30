@@ -67,18 +67,18 @@ export async function addLedgerEntry(
       .limit(1)
       .maybeSingle();
 
-    if (originalDispatch) {
-      profitFields = computeReturnProfitDelta({
-        returnedBags: returned,
-        sellingPricePerBag: Number(originalDispatch.selling_price_per_bag) || 0,
-        landedCostPerBag: Number(originalDispatch.landed_cost_per_bag) || 0,
-        localExpensesPerBag: Number(originalDispatch.local_expenses_per_bag) || 0,
-        isRestockable: returnReason === 'return',
-      });
+    if (!originalDispatch) {
+      throw new Error(
+        `Cannot calculate return profit: no original dispatch matches DR ${entry.dr_number ?? '(missing)'}.`,
+      );
     }
-    // If no original dispatch row is found (e.g. a manually-created return
-    // with no matching DR), profitFields stays empty and the return is
-    // stock-only — same as prior behavior — rather than guessing at rates.
+    profitFields = computeReturnProfitDelta({
+      returnedBags: returned,
+      sellingPricePerBag: Number(originalDispatch.selling_price_per_bag) || 0,
+      landedCostPerBag: Number(originalDispatch.landed_cost_per_bag) || 0,
+      localExpensesPerBag: Number(originalDispatch.local_expenses_per_bag) || 0,
+      isRestockable: returnReason === 'return',
+    });
   }
 
   const { data, error } = await supabase
@@ -213,15 +213,18 @@ export async function updateLedgerEntry(
           .limit(1)
           .maybeSingle();
 
-        if (originalDispatch) {
-          profitUpdates = computeReturnProfitDelta({
-            returnedBags: newBagsReturned,
-            sellingPricePerBag: Number(originalDispatch.selling_price_per_bag) || 0,
-            landedCostPerBag: Number(originalDispatch.landed_cost_per_bag) || 0,
-            localExpensesPerBag: Number(originalDispatch.local_expenses_per_bag) || 0,
-            isRestockable: newReturnReason === 'return',
-          });
+        if (!originalDispatch) {
+          throw new Error(
+            `Cannot calculate return profit: no original dispatch matches DR ${drNumberForLookup || '(missing)'}.`,
+          );
         }
+        profitUpdates = computeReturnProfitDelta({
+          returnedBags: newBagsReturned,
+          sellingPricePerBag: Number(originalDispatch.selling_price_per_bag) || 0,
+          landedCostPerBag: Number(originalDispatch.landed_cost_per_bag) || 0,
+          localExpensesPerBag: Number(originalDispatch.local_expenses_per_bag) || 0,
+          isRestockable: newReturnReason === 'return',
+        });
       }
     }
   }

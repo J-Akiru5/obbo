@@ -101,7 +101,7 @@ describe('Ledger Server Actions — profit calculations', () => {
       const entry = captured[0];
       expect(entry.total_sales).toBe(-1250); // -5 * 250
       expect(entry.gross_profit).toBeCloseTo(-511.8, 2); // -5 * (250 - 147.64)
-      expect(entry.net_profit).toBeCloseTo(-411.8, 2); // -5 * (250 - 147.64 - 20)
+      expect(entry.net_profit).toBeCloseTo(-511.8, 2); // local expenses remain sunk
       expect(entry.selling_price_per_bag).toBe(250);
       expect(entry.landed_cost_per_bag).toBe(147.64);
     });

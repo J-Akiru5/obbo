@@ -201,10 +201,10 @@ describe('Orders Server Actions', () => {
           if (id === 'ship-profit-test') return HttpResponse.json(shipmentFixture);
           return HttpResponse.json([]);
         }),
-        http.post('*/rest/v1/shipment_ledger', async ({ request }) => {
+        http.post('*/rest/v1/rpc/dispatch_order_v2', async ({ request }) => {
           const body = (await request.json()) as Record<string, unknown>;
           capturedLedgers.push(body);
-          return HttpResponse.json({ id: 'ledger-captured', ...body });
+          return HttpResponse.json({ success: true, ledger_id: 'ledger-captured' });
         }),
       );
 
@@ -219,9 +219,10 @@ describe('Orders Server Actions', () => {
       );
 
       expect(capturedLedgers).toHaveLength(2);
-      expect(capturedLedgers[0].total_sales).toBe(capturedLedgers[1].total_sales);
-      expect(capturedLedgers[0].gross_profit).toBe(capturedLedgers[1].gross_profit);
-      expect(capturedLedgers[0].net_profit).toBe(capturedLedgers[1].net_profit);
+      expect(capturedLedgers[0].p_total_sales).toBe(5000);
+      expect(capturedLedgers[0].p_total_sales).toBe(capturedLedgers[1].p_total_sales);
+      expect(capturedLedgers[0].p_gross_profit).toBe(capturedLedgers[1].p_gross_profit);
+      expect(capturedLedgers[0].p_net_profit).toBe(capturedLedgers[1].p_net_profit);
     });
   });
 });
