@@ -205,7 +205,11 @@ export async function submitWarehouseReport(date: string) {
 
   if (fetchError || !report) throw new Error('Please save the report before submitting.');
 
-  await supabase.from('warehouse_reports').update({ submitted: true }).eq('id', report.id);
+  const { error: submitError } = await supabase
+    .from('warehouse_reports')
+    .update({ submitted: true })
+    .eq('id', report.id);
+  if (submitError) throw new Error(`Failed to submit report: ${submitError.message}`);
   await logActivity(supabase, userId, 'warehouse_report_submitted', 'warehouse_report', report.id, {
     date,
   });
@@ -237,7 +241,14 @@ export async function autoSubmitEndOfDayReports() {
     .eq('submitted', false);
 
   for (const report of pastReports ?? []) {
-    await supabase.from('warehouse_reports').update({ submitted: true }).eq('id', report.id);
+    const { error: autoSubmitError } = await supabase
+      .from('warehouse_reports')
+      .update({ submitted: true })
+      .eq('id', report.id);
+    if (autoSubmitError) {
+      console.error(`Auto-submit failed for ${report.report_date}:`, autoSubmitError);
+      continue;
+    }
     await logActivity(
       supabase,
       userId,
@@ -270,7 +281,7 @@ export async function autoSubmitEndOfDayReports() {
         generated.dispatched_sb +
         generated.returned_sb -
         generated.waste_sb;
-      const { data: newReport } = await supabase
+      const { data: newReport, error: upsertError } = await supabase
         .from('warehouse_reports')
         .upsert({
           report_date: yesterday,
@@ -290,7 +301,9 @@ export async function autoSubmitEndOfDayReports() {
         })
         .select()
         .single();
-      if (newReport) {
+      if (upsertError) {
+        console.error('Auto-generate upsert failed for', yesterday, upsertError);
+      } else if (newReport) {
         await logActivity(
           supabase,
           userId,

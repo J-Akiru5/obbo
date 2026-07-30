@@ -516,7 +516,7 @@ export function DrListTab({
           <div className="bg-primary text-primary-foreground p-6">
             <div className="flex items-start justify-between">
               <div>
-                <Badge className="mb-2 border-none bg-white/20 text-[10px] text-white hover:bg-white/30">
+                <Badge className="bg-background/20 hover:bg-background/30 mb-2 border-none text-[10px] text-white">
                   Delivery Receipt Details
                 </Badge>
                 <h2 className="flex items-center gap-2 text-2xl font-bold tracking-tight">
@@ -697,22 +697,32 @@ export function DrListTab({
               <Label>
                 Source Shipment Batch <span className="text-red-500">*</span>
               </Label>
-              <Select
-                value={shipmentId}
-                onValueChange={(v) => setShipmentId(v || '')}
-                disabled={!!editingDr}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select batch" />
-                </SelectTrigger>
-                <SelectContent>
-                  {shipments.map((s) => (
-                    <SelectItem key={s.id} value={s.id}>
-                      {s.batch_name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              {(() => {
+                const shipmentOptions = shipments.map((s) => ({
+                  value: s.id,
+                  label: s.batch_name,
+                }));
+
+                return (
+                  <Select
+                    items={shipmentOptions}
+                    value={shipmentId}
+                    onValueChange={(v) => setShipmentId(v || '')}
+                    disabled={!!editingDr}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select batch" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {shipmentOptions.map((opt) => (
+                        <SelectItem key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                );
+              })()}
               {!editingDr && (
                 <p className="text-muted-foreground text-xs">
                   Adding a DR will automatically add a ledger entry to this batch.

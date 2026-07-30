@@ -112,7 +112,7 @@ export default function AdminProfilePage() {
                 </Badge>
                 <Badge
                   variant="outline"
-                  className="border-emerald-200 bg-emerald-100 text-xs text-emerald-800 capitalize hover:bg-emerald-100 dark:border-emerald-700 dark:bg-emerald-950 dark:text-emerald-200 dark:hover:bg-emerald-900"
+                  className="border-status-success-border bg-status-success-bg text-status-success-text text-xs capitalize"
                 >
                   {profile.kyc_status.replace(/_/g, ' ')}
                 </Badge>

@@ -143,16 +143,17 @@ export function PoListTab({
     const jbProduct = catalogProducts.find((p) => p.bag_type === 'JB');
     const sbProduct = catalogProducts.find((p) => p.bag_type === 'SB');
 
-    const jbPrice =
+    const jbPriceRate =
       source === 'port'
         ? Number((jbProduct as any)?.price_port ?? 0)
         : Number((jbProduct as any)?.price_warehouse ?? 0);
-    const sbPrice =
+
+    const sbPriceRate =
       source === 'port'
         ? Number((sbProduct as any)?.price_port ?? 0)
         : Number((sbProduct as any)?.price_warehouse ?? 0);
 
-    const computedTotal = jbQty * jbPrice + sbQty * sbPrice;
+    const computedTotal = jbQty * jbPriceRate + sbQty * sbPriceRate;
 
     if (paymentMethod === 'cash') {
       setCashAmount(computedTotal);
@@ -439,27 +440,59 @@ export function PoListTab({
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <Select value={statusFilter} onValueChange={(v) => v && setStatusFilter(v)}>
-              <SelectTrigger className="h-8 w-[130px] text-xs">
-                <SelectValue placeholder="Status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Status</SelectItem>
-                <SelectItem value="pending">Pending</SelectItem>
-                <SelectItem value="dispatched">Dispatched</SelectItem>
-                <SelectItem value="completed">Completed</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select value={sourceFilter} onValueChange={(v) => v && setSourceFilter(v)}>
-              <SelectTrigger className="h-8 w-[130px] text-xs">
-                <SelectValue placeholder="Source" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Sources</SelectItem>
-                <SelectItem value="warehouse">Warehouse</SelectItem>
-                <SelectItem value="port">Port</SelectItem>
-              </SelectContent>
-            </Select>
+            {(() => {
+              const statusOptions = [
+                { value: 'all', label: 'All Status' },
+                { value: 'pending', label: 'Pending' },
+                { value: 'dispatched', label: 'Dispatched' },
+                { value: 'completed', label: 'Completed' },
+              ];
+
+              return (
+                <Select
+                  items={statusOptions}
+                  value={statusFilter}
+                  onValueChange={(v) => v && setStatusFilter(v)}
+                >
+                  <SelectTrigger className="h-8 w-[130px] text-xs">
+                    <SelectValue placeholder="Status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {statusOptions.map((opt) => (
+                      <SelectItem key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              );
+            })()}
+            {(() => {
+              const sourceOptions = [
+                { value: 'all', label: 'All Sources' },
+                { value: 'warehouse', label: 'Warehouse' },
+                { value: 'port', label: 'Port' },
+              ];
+
+              return (
+                <Select
+                  items={sourceOptions}
+                  value={sourceFilter}
+                  onValueChange={(v) => v && setSourceFilter(v)}
+                >
+                  <SelectTrigger className="h-8 w-[130px] text-xs">
+                    <SelectValue placeholder="Source" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {sourceOptions.map((opt) => (
+                      <SelectItem key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              );
+            })()}
             <div className="flex items-center gap-1">
               <Input
                 type="date"
@@ -676,7 +709,7 @@ export function PoListTab({
                       <div className="absolute top-2 left-2">
                         <Badge
                           variant="secondary"
-                          className="text-foreground border-none bg-white/90 text-[10px] font-semibold shadow-sm backdrop-blur-sm"
+                          className="text-foreground bg-background/90 border-none text-[10px] font-semibold shadow-sm backdrop-blur-sm"
                         >
                           {new Date(po.date).toLocaleDateString()}
                         </Badge>
@@ -843,27 +876,59 @@ export function PoListTab({
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Service Type</Label>
-                <Select value={serviceType} onValueChange={(v) => setServiceType(v || '')}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="pickup">Pick-up</SelectItem>
-                    <SelectItem value="deliver">Delivery</SelectItem>
-                  </SelectContent>
-                </Select>
+                {(() => {
+                  const serviceOptions = [
+                    { value: 'pickup', label: 'Pick-up' },
+                    { value: 'deliver', label: 'Delivery' },
+                  ];
+
+                  return (
+                    <Select
+                      items={serviceOptions}
+                      value={serviceType}
+                      onValueChange={(v) => setServiceType(v || '')}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {serviceOptions.map((opt) => (
+                          <SelectItem key={opt.value} value={opt.value}>
+                            {opt.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  );
+                })()}
               </div>
               <div className="space-y-2">
                 <Label className="text-primary font-bold">Pricing Source Matrix</Label>
-                <Select value={source} onValueChange={(v) => setSource(v || '')}>
-                  <SelectTrigger className="border-primary/40">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="warehouse">Warehouse Rate</SelectItem>
-                    <SelectItem value="port">Port Rate</SelectItem>
-                  </SelectContent>
-                </Select>
+                {(() => {
+                  const sourceOptions = [
+                    { value: 'warehouse', label: 'Warehouse Rate' },
+                    { value: 'port', label: 'Port Rate' },
+                  ];
+
+                  return (
+                    <Select
+                      items={sourceOptions}
+                      value={source}
+                      onValueChange={(v) => setSource(v || '')}
+                    >
+                      <SelectTrigger className="border-primary/40">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {sourceOptions.map((opt) => (
+                          <SelectItem key={opt.value} value={opt.value}>
+                            {opt.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  );
+                })()}
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
@@ -877,7 +942,6 @@ export function PoListTab({
                   placeholder="0"
                   onChange={(e) => setJbQty(parseInt(e.target.value) || 0)}
                   className="font-bold"
-                  disabled={!!editingPo?.order?.dr_number}
                 />
               </div>
               <div className="space-y-2">
@@ -890,7 +954,6 @@ export function PoListTab({
                   placeholder="0"
                   onChange={(e) => setSbQty(parseInt(e.target.value) || 0)}
                   className="font-bold"
-                  disabled={!!editingPo?.order?.dr_number}
                 />
               </div>
             </div>
@@ -901,15 +964,31 @@ export function PoListTab({
                 <p className="text-muted-foreground text-xs font-bold tracking-wider uppercase">
                   Payment Information (Auto-Computed)
                 </p>
-                <Select value={paymentMethod} onValueChange={(v: any) => setPaymentMethod(v)}>
-                  <SelectTrigger className="h-7 w-[100px] text-xs">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="cash">💵 Cash</SelectItem>
-                    <SelectItem value="check">🏦 Check</SelectItem>
-                  </SelectContent>
-                </Select>
+                {(() => {
+                  const paymentOptions = [
+                    { value: 'cash', label: 'Cash' },
+                    { value: 'check', label: 'Check' },
+                  ];
+
+                  return (
+                    <Select
+                      items={paymentOptions}
+                      value={paymentMethod}
+                      onValueChange={(v: any) => setPaymentMethod(v)}
+                    >
+                      <SelectTrigger className="h-7 w-[100px] text-xs">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {paymentOptions.map((opt) => (
+                          <SelectItem key={opt.value} value={opt.value}>
+                            {opt.value === 'cash' ? '💵 Cash' : '🏦 Check'}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  );
+                })()}
               </div>
 
               {paymentMethod === 'check' ? (

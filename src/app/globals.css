@@ -55,6 +55,8 @@
   --color-status-success-text: var(--status-success-text);
   --color-status-info-bg: var(--status-info-bg);
   --color-status-info-text: var(--status-info-text);
+  --color-status-info-border: var(--status-info-border);
+  --color-status-success-border: var(--status-success-border);
 
   /* Industrial palette custom colors */
   --color-industrial-blue: #1e3a5f;
@@ -117,6 +119,8 @@
 
   --status-info-bg: oklch(0.96 0.03 250); /* blue-50 equivalent */
   --status-info-text: oklch(0.35 0.08 250); /* blue-700 equivalent */
+  --status-info-border: oklch(0.9 0.03 250); /* blue-200 equivalent */
+  --status-success-border: oklch(0.9 0.05 150); /* emerald-200 equivalent */
 }
 
 .dark {
@@ -159,9 +163,11 @@
 
   --status-success-bg: oklch(0.2 0.08 150);
   --status-success-text: oklch(0.85 0.12 150);
+  --status-success-border: oklch(0.3 0.1 150);
 
   --status-info-bg: oklch(0.2 0.05 250);
   --status-info-text: oklch(0.85 0.08 250);
+  --status-info-border: oklch(0.3 0.06 250);
 
   /* Industrial palette — dark mode */
   --color-industrial-blue: #3b82f6;
@@ -248,6 +254,16 @@
     }
     50% {
       opacity: 0.8;
+    }
+  }
+  @keyframes slide-in-right {
+    from {
+      opacity: 0;
+      transform: translateX(16px);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0);
     }
   }
   @keyframes slide-in-right {

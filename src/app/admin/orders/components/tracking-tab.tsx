@@ -279,19 +279,35 @@ export function TrackingTab({
           <div className="space-y-4 py-4">
             <div className="space-y-2">
               <Label>Tracking Status</Label>
-              <Select value={status} onValueChange={(v) => setStatus(v || '')}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="pending_dispatch">Pending Dispatch (Loading)</SelectItem>
-                  <SelectItem value="in_transit">In Transit (On the road)</SelectItem>
-                  <SelectItem value="delivered">Delivered (No returns)</SelectItem>
-                  <SelectItem value="bags_returned">Delivered (With returned bags)</SelectItem>
-                  <SelectItem value="returned_good">Returned (Good Stock)</SelectItem>
-                  <SelectItem value="returned_waste">Returned (Waste/Damage)</SelectItem>
-                </SelectContent>
-              </Select>
+              {(() => {
+                const statusOptions = [
+                  { value: 'pending_dispatch', label: 'Pending Dispatch (Loading)' },
+                  { value: 'in_transit', label: 'In Transit (On the road)' },
+                  { value: 'delivered', label: 'Delivered (No returns)' },
+                  { value: 'bags_returned', label: 'Delivered (With returned bags)' },
+                  { value: 'returned_good', label: 'Returned (Good Stock)' },
+                  { value: 'returned_waste', label: 'Returned (Waste/Damage)' },
+                ];
+
+                return (
+                  <Select
+                    items={statusOptions}
+                    value={status}
+                    onValueChange={(v) => setStatus(v || '')}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {statusOptions.map((opt) => (
+                        <SelectItem key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                );
+              })()}
             </div>
 
             {(status === 'returned_good' || status === 'returned_waste') && (

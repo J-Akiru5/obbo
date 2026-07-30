@@ -243,9 +243,14 @@ export default function RegisterPage() {
         if (!bpUploadErr) kycPaths.push(bpPath);
       }
 
-      // 3. Update profiles postgres public reference array record row with split paths
+      // 3. Update profiles with KYC document paths
       if (kycPaths.length > 0) {
-        await supabase.from('profiles').update({ kyc_documents: kycPaths }).eq('id', userId);
+        const { error: profileUpdateError } = await supabase
+          .from('profiles')
+          .update({ kyc_documents: kycPaths })
+          .eq('id', userId);
+        if (profileUpdateError)
+          console.error('Failed to update profile KYC paths:', profileUpdateError);
       }
 
       // Trigger Admin Notification alert logs

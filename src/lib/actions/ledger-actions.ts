@@ -1,13 +1,11 @@
 'use server';
 
+import { requireAdmin, logActivity, getCostConfig } from './admin-helpers';
 import {
-  requireAdmin,
-  logActivity,
-  getCostConfig,
   computeDispatchProfit,
   computeReturnProfitDelta,
   type DispatchProfitFields,
-} from './admin-helpers';
+} from './profit-utils';
 import { ledgerEntryCreateSchema, ledgerEntryUpdateSchema } from './schemas';
 
 export async function addLedgerEntry(
@@ -106,7 +104,7 @@ export async function addLedgerEntry(
     const sbReturned = restockReturned && returnedType === 'SB' ? returned : 0;
     const newRemainingJb = Math.max(0, (shipment.remaining_jb ?? 0) - jbOut + jbReturned);
     const newRemainingSb = Math.max(0, (shipment.remaining_sb ?? 0) - sbOut + sbReturned);
-    await supabase
+    const { error: stockError } = await supabase
       .from('shipments')
       .update({
         remaining_jb: newRemainingJb,
@@ -114,6 +112,9 @@ export async function addLedgerEntry(
         good_stock: newRemainingJb + newRemainingSb,
       })
       .eq('id', shipmentId);
+    if (stockError) {
+      console.error('Failed to update shipment stock after ledger entry:', stockError);
+    }
   }
 
   await logActivity(supabase, userId, 'ledger_entry_added', 'shipment_ledger', data.id, entry);
@@ -263,7 +264,7 @@ export async function updateLedgerEntry(
     const correctedSb =
       (shipment.remaining_sb ?? 0) + oldEntry.sb - oldSbReturned - newSbOut + newSbReturned;
 
-    await supabase
+    const { error: stockError } = await supabase
       .from('shipments')
       .update({
         remaining_jb: Math.max(0, correctedJb),
@@ -271,6 +272,9 @@ export async function updateLedgerEntry(
         good_stock: Math.max(0, correctedJb) + Math.max(0, correctedSb),
       })
       .eq('id', shipmentId);
+    if (stockError) {
+      console.error('Failed to correct shipment stock on ledger edit:', stockError);
+    }
   }
 
   await logActivity(supabase, userId, 'ledger_entry_updated', 'shipment_ledger', id, updates);

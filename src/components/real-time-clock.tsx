@@ -16,7 +16,7 @@ export function RealTimeClock() {
   return (
     <div className="bg-sidebar-accent/40 border-sidebar-border rounded-xl border px-4 py-4 shadow-sm">
       <div className="space-y-1">
-        <p className="text-2xl font-bold tracking-tight text-white tabular-nums">
+        <p className="text-sidebar-foreground text-2xl font-bold tracking-tight tabular-nums">
           {time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
         </p>
         <p className="text-sidebar-foreground text-xs font-semibold opacity-90">

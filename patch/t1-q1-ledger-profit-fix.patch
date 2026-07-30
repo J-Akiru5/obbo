@@ -1,0 +1,515 @@
+diff --git a/src/lib/actions/admin-helpers.ts b/src/lib/actions/admin-helpers.ts
+index 96e60a9..64d50a1 100644
+--- a/src/lib/actions/admin-helpers.ts
++++ b/src/lib/actions/admin-helpers.ts
+@@ -70,6 +70,84 @@ export async function logActivity(
+   });
+ }
+ 
++function round2(n: number): number {
++  return Math.round(n * 100) / 100;
++}
++
++export interface DispatchProfitFields {
++  total_sales: number;
++  gross_profit: number;
++  net_profit: number;
++  selling_price_per_bag: number;
++  landed_cost_per_bag: number;
++  local_expenses_per_bag: number;
++}
++
++/**
++ * Profit fields for a dispatch (a bag actually going out the door).
++ * Callers pass whichever rates should apply — live cost config for a brand
++ * new dispatch, or the row's own stored rates when recomputing an edit.
++ */
++export function computeDispatchProfit(params: {
++  totalBags: number;
++  totalSales: number;
++  landedCostPerBag: number;
++  localExpensesPerBag: number;
++}): DispatchProfitFields {
++  const { totalBags, totalSales, landedCostPerBag, localExpensesPerBag } = params;
++  const sellingPricePerBag = totalBags > 0 ? round2(totalSales / totalBags) : 0;
++  return {
++    total_sales: totalSales,
++    gross_profit: round2(totalSales - totalBags * landedCostPerBag),
++    net_profit: round2(totalSales - totalBags * (landedCostPerBag + localExpensesPerBag)),
++    selling_price_per_bag: sellingPricePerBag,
++    landed_cost_per_bag: landedCostPerBag,
++    local_expenses_per_bag: localExpensesPerBag,
++  };
++}
++
++/**
++ * Profit DELTA for a return/waste/damage event, reversing a slice of an
++ * ORIGINAL sale. Always uses that original sale's own stored rates —
++ * never live cost config — so a later cost-config change can't retroactively
++ * change what a past return was worth.
++ *
++ * - Restockable returns ('return'): the bag goes back to good stock, so both
++ *   the revenue and the landed-cost/local-expense "spend" for that bag are
++ *   reversed. Gross/net profit deltas are smaller in magnitude than the
++ *   sales delta.
++ * - Non-restockable returns ('waste' / 'damage'): the bag is gone and the
++ *   cost to bring it here was already sunk and isn't recovered. The client
++ *   isn't charged for it, so revenue reverses in full, and — since nothing
++ *   about the incurred cost changes — that same full amount drops straight
++ *   through to both gross and net profit.
++ */
++export function computeReturnProfitDelta(params: {
++  returnedBags: number;
++  sellingPricePerBag: number;
++  landedCostPerBag: number;
++  localExpensesPerBag: number;
++  isRestockable: boolean;
++}): DispatchProfitFields {
++  const { returnedBags, sellingPricePerBag, landedCostPerBag, localExpensesPerBag, isRestockable } =
++    params;
++  const totalSalesDelta = -round2(returnedBags * sellingPricePerBag);
++  const grossProfitDelta = isRestockable
++    ? -round2(returnedBags * (sellingPricePerBag - landedCostPerBag))
++    : totalSalesDelta;
++  const netProfitDelta = isRestockable
++    ? -round2(returnedBags * (sellingPricePerBag - landedCostPerBag - localExpensesPerBag))
++    : totalSalesDelta;
++  return {
++    total_sales: totalSalesDelta,
++    gross_profit: grossProfitDelta,
++    net_profit: netProfitDelta,
++    selling_price_per_bag: sellingPricePerBag,
++    landed_cost_per_bag: landedCostPerBag,
++    local_expenses_per_bag: localExpensesPerBag,
++  };
++}
++
+ export async function getCostConfig(): Promise<CostConfig> {
+   const { supabase } = await requireAdmin();
+   const { data } = await supabase
+diff --git a/src/lib/actions/ledger-actions.test.ts b/src/lib/actions/ledger-actions.test.ts
+new file mode 100644
+index 0000000..3fc5f2a
+--- /dev/null
++++ b/src/lib/actions/ledger-actions.test.ts
+@@ -0,0 +1,205 @@
++import { describe, it, expect, vi } from 'vitest';
++import { http, HttpResponse } from 'msw';
++import { server } from '../../../mocks/server';
++import { addLedgerEntry, updateLedgerEntry } from './ledger-actions';
++
++// requireAdmin is globally stubbed in vitest.setup.ts, but getCostConfig()
++// calls requireAdmin() as an internal same-module reference, which bypasses
++// that mock. Override getCostConfig directly instead (same approach
++// orders-actions.test.ts uses) so it returns fixed, known rates.
++vi.mock('@/lib/actions/admin-helpers', async (importOriginal) => {
++  const actual = await importOriginal<typeof import('@/lib/actions/admin-helpers')>();
++  return {
++    ...actual,
++    requireAdmin: async () => {
++      const { createBrowserClient } = await import('@supabase/ssr');
++      return {
++        supabase: createBrowserClient(
++          process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://test-project.supabase.co',
++          process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'test-anon-key',
++        ),
++        userId: 'admin-001',
++        role: 'admin' as const,
++      };
++    },
++    getCostConfig: async () => ({
++      landed_cost_per_bag: 147.64,
++      local_expenses_per_bag: 20,
++    }),
++  };
++});
++
++const noopHandlers = () =>
++  server.use(
++    http.get('*/rest/v1/shipments', () =>
++      HttpResponse.json({ id: 'ship-001', remaining_jb: 100, remaining_sb: 100, good_stock: 200 }),
++    ),
++    http.patch('*/rest/v1/shipments', () => HttpResponse.json([])),
++    http.post('*/rest/v1/activity_log', () => HttpResponse.json([])),
++  );
++
++describe('Ledger Server Actions — profit calculations', () => {
++  describe('addLedgerEntry — dispatch', () => {
++    it('computes total_sales/gross_profit/net_profit/selling_price_per_bag from live cost config', async () => {
++      noopHandlers();
++      const captured: Record<string, unknown>[] = [];
++      server.use(
++        http.post('*/rest/v1/shipment_ledger', async ({ request }) => {
++          const body = (await request.json()) as Record<string, unknown>;
++          captured.push(body);
++          return HttpResponse.json({ id: 'ledger-new', ...body });
++        }),
++      );
++
++      // 4 JB = 100 bags, amount 18000 -> selling price 180/bag
++      await addLedgerEntry('ship-001', {
++        dr_number: 'DR-NEW-001',
++        jb: 4,
++        sb: 0,
++        amount: 18000,
++      });
++
++      expect(captured).toHaveLength(1);
++      const entry = captured[0];
++      expect(entry.selling_price_per_bag).toBe(180);
++      expect(entry.total_sales).toBe(18000);
++      // 18000 - 100*147.64 = 3236
++      expect(entry.gross_profit).toBe(3236);
++      // 18000 - 100*(147.64+20) = 1236
++      expect(entry.net_profit).toBe(1236);
++      expect(entry.landed_cost_per_bag).toBe(147.64);
++      expect(entry.local_expenses_per_bag).toBe(20);
++    });
++  });
++
++  describe('addLedgerEntry — returns adjust profit (Q1)', () => {
++    // Both cases below reuse the mockShipmentLedger fixture row 'ledger-001'
++    // (shipment_id 'ship-001', dr_number 'DR-2026-001', selling_price_per_bag
++    // 250, landed_cost_per_bag 147.64, local_expenses_per_bag 20) as the
++    // ORIGINAL dispatch row the return must look up and reuse rates from.
++
++    it('restockable return ("return") reverses revenue AND the cost the bag represents', async () => {
++      noopHandlers();
++      const captured: Record<string, unknown>[] = [];
++      server.use(
++        http.post('*/rest/v1/shipment_ledger', async ({ request }) => {
++          const body = (await request.json()) as Record<string, unknown>;
++          captured.push(body);
++          return HttpResponse.json({ id: 'ledger-return', ...body });
++        }),
++      );
++
++      await addLedgerEntry('ship-001', {
++        dr_number: 'DR-2026-001',
++        jb: 0,
++        sb: 0,
++        bags_returned: 5,
++        bag_returned_type: 'JB',
++        return_reason: 'return',
++      });
++
++      const entry = captured[0];
++      expect(entry.total_sales).toBe(-1250); // -5 * 250
++      expect(entry.gross_profit).toBeCloseTo(-511.8, 2); // -5 * (250 - 147.64)
++      expect(entry.net_profit).toBeCloseTo(-411.8, 2); // -5 * (250 - 147.64 - 20)
++      expect(entry.selling_price_per_bag).toBe(250);
++      expect(entry.landed_cost_per_bag).toBe(147.64);
++    });
++
++    it('waste/damage return reverses full revenue with NO cost offset (cost already sunk)', async () => {
++      noopHandlers();
++      const captured: Record<string, unknown>[] = [];
++      server.use(
++        http.post('*/rest/v1/shipment_ledger', async ({ request }) => {
++          const body = (await request.json()) as Record<string, unknown>;
++          captured.push(body);
++          return HttpResponse.json({ id: 'ledger-waste', ...body });
++        }),
++      );
++
++      await addLedgerEntry('ship-001', {
++        dr_number: 'DR-2026-001',
++        jb: 0,
++        sb: 0,
++        bags_returned: 5,
++        bag_returned_type: 'JB',
++        return_reason: 'waste',
++      });
++
++      const entry = captured[0];
++      expect(entry.total_sales).toBe(-1250);
++      // Unlike a restockable return, gross AND net take the FULL hit —
++      // the landed/local cost already spent on these bags isn't recovered.
++      expect(entry.gross_profit).toBe(-1250);
++      expect(entry.net_profit).toBe(-1250);
++    });
++  });
++
++  describe('updateLedgerEntry — T-1 regression', () => {
++    it('recomputes profit fields when jb/amount change on an existing dispatch row', async () => {
++      noopHandlers();
++      const patched: Record<string, unknown>[] = [];
++      server.use(
++        http.get('*/rest/v1/shipment_ledger', () =>
++          HttpResponse.json({
++            id: 'ledger-001',
++            jb: 20,
++            sb: 10,
++            amount: 7500,
++            bags_returned: 0,
++            return_reason: 'return',
++            dr_number: 'DR-2026-001',
++            landed_cost_per_bag: 147.64,
++            local_expenses_per_bag: 20,
++          }),
++        ),
++        http.patch('*/rest/v1/shipment_ledger', async ({ request }) => {
++          const body = (await request.json()) as Record<string, unknown>;
++          patched.push(body);
++          return HttpResponse.json([]);
++        }),
++      );
++
++      await updateLedgerEntry(
++        'ledger-001',
++        'ship-001',
++        { jb: 20, sb: 10, bags_returned: 0, bag_returned_type: null, return_reason: 'return' },
++        { jb: 30, amount: 9000 }, // jb 20 -> 30, amount 7500 -> 9000
++      );
++
++      expect(patched).toHaveLength(1);
++      const patch = patched[0];
++      // totalBags = 30*25 + 10*50 = 1250; sellingPricePerBag = 9000/1250 = 7.2
++      expect(patch.selling_price_per_bag).toBe(7.2);
++      expect(patch.gross_profit).toBe(-175550); // 9000 - 1250*147.64, rounded to 2dp
++      expect(patch.net_profit).toBe(-200550); // 9000 - 1250*(147.64+20), rounded to 2dp
++      // Recomputed from THIS row's own stored rates, never a fresh cost-config lookup
++      expect(patch.landed_cost_per_bag).toBe(147.64);
++      expect(patch.local_expenses_per_bag).toBe(20);
++    });
++
++    it('does not touch profit fields when the edit only changes unrelated fields', async () => {
++      noopHandlers();
++      const patched: Record<string, unknown>[] = [];
++      server.use(
++        http.patch('*/rest/v1/shipment_ledger', async ({ request }) => {
++          const body = (await request.json()) as Record<string, unknown>;
++          patched.push(body);
++          return HttpResponse.json([]);
++        }),
++      );
++
++      await updateLedgerEntry(
++        'ledger-001',
++        'ship-001',
++        { jb: 20, sb: 10, bags_returned: 0, bag_returned_type: null, return_reason: 'return' },
++        { notes: 'Updated delivery note only' },
++      );
++
++      const patch = patched[0];
++      expect(patch.total_sales).toBeUndefined();
++      expect(patch.gross_profit).toBeUndefined();
++      expect(patch.net_profit).toBeUndefined();
++    });
++  });
++});
+diff --git a/src/lib/actions/ledger-actions.ts b/src/lib/actions/ledger-actions.ts
+index c878eb5..2d835d4 100644
+--- a/src/lib/actions/ledger-actions.ts
++++ b/src/lib/actions/ledger-actions.ts
+@@ -1,6 +1,13 @@
+ 'use server';
+ 
+-import { requireAdmin, logActivity, getCostConfig } from './admin-helpers';
++import {
++  requireAdmin,
++  logActivity,
++  getCostConfig,
++  computeDispatchProfit,
++  computeReturnProfitDelta,
++  type DispatchProfitFields,
++} from './admin-helpers';
+ 
+ export async function addLedgerEntry(
+   shipmentId: string,
+@@ -34,28 +41,43 @@ export async function addLedgerEntry(
+   const returnReason = entry.return_reason ?? 'return';
+ 
+   const isDispatch = !entry.bags_returned || entry.bags_returned === 0;
+-  let profitFields = {};
++  let profitFields: Partial<DispatchProfitFields> = {};
+   if (isDispatch && (jbOut > 0 || sbOut > 0)) {
+     const costConfig = await getCostConfig();
+-    const totalBags = jbOut * 25 + sbOut * 50;
+-    const totalSales = entry.amount ?? 0;
+-    const sellingPricePerBag = totalBags > 0 ? Math.round((totalSales / totalBags) * 100) / 100 : 0;
+-    const grossProfit =
+-      Math.round((totalSales - totalBags * costConfig.landed_cost_per_bag) * 100) / 100;
+-    const netProfit =
+-      Math.round(
+-        (totalSales -
+-          totalBags * (costConfig.landed_cost_per_bag + costConfig.local_expenses_per_bag)) *
+-          100,
+-      ) / 100;
+-    profitFields = {
+-      total_sales: totalSales,
+-      gross_profit: grossProfit,
+-      net_profit: netProfit,
+-      selling_price_per_bag: sellingPricePerBag,
+-      landed_cost_per_bag: costConfig.landed_cost_per_bag,
+-      local_expenses_per_bag: costConfig.local_expenses_per_bag,
+-    };
++    profitFields = computeDispatchProfit({
++      totalBags: jbOut * 25 + sbOut * 50,
++      totalSales: entry.amount ?? 0,
++      landedCostPerBag: costConfig.landed_cost_per_bag,
++      localExpensesPerBag: costConfig.local_expenses_per_bag,
++    });
++  } else if (!isDispatch && returned > 0) {
++    // A return/waste/damage event reverses a slice of an ORIGINAL sale.
++    // Look that original dispatch row up (same shipment + DR number, the
++    // earliest row with jb/sb > 0) and use ITS stored rates — never live
++    // cost config — so this reversal can't drift from what was actually
++    // charged, even if cost config has changed since.
++    const { data: originalDispatch } = await supabase
++      .from('shipment_ledger')
++      .select('selling_price_per_bag, landed_cost_per_bag, local_expenses_per_bag')
++      .eq('shipment_id', shipmentId)
++      .eq('dr_number', entry.dr_number ?? '')
++      .or('jb.gt.0,sb.gt.0')
++      .order('created_at', { ascending: true })
++      .limit(1)
++      .maybeSingle();
++
++    if (originalDispatch) {
++      profitFields = computeReturnProfitDelta({
++        returnedBags: returned,
++        sellingPricePerBag: Number(originalDispatch.selling_price_per_bag) || 0,
++        landedCostPerBag: Number(originalDispatch.landed_cost_per_bag) || 0,
++        localExpensesPerBag: Number(originalDispatch.local_expenses_per_bag) || 0,
++        isRestockable: returnReason === 'return',
++      });
++    }
++    // If no original dispatch row is found (e.g. a manually-created return
++    // with no matching DR), profitFields stays empty and the return is
++    // stock-only — same as prior behavior — rather than guessing at rates.
+   }
+ 
+   const { data, error } = await supabase
+@@ -126,9 +148,81 @@ export async function updateLedgerEntry(
+   }>,
+ ) {
+   const { supabase, userId } = await requireAdmin();
++
++  // T-1 fix: whenever jb/sb/amount/bags_returned/return_reason change, the
++  // stored total_sales/gross_profit/net_profit/selling_price_per_bag go
++  // stale unless we recompute them here. We always recompute from THIS
++  // row's own stored landed_cost_per_bag/local_expenses_per_bag (or, for a
++  // return row, the original dispatch row's stored rates) — never live
++  // cost config — so historical immutability holds even through an edit.
++  const recomputeTrigger =
++    updates.jb !== undefined ||
++    updates.sb !== undefined ||
++    updates.amount !== undefined ||
++    updates.bags_returned !== undefined ||
++    updates.return_reason !== undefined ||
++    updates.dr_number !== undefined;
++
++  let profitUpdates: Partial<DispatchProfitFields> = {};
++  if (recomputeTrigger) {
++    const { data: currentRow } = await supabase
++      .from('shipment_ledger')
++      .select(
++        'jb, sb, amount, bags_returned, return_reason, dr_number, landed_cost_per_bag, local_expenses_per_bag',
++      )
++      .eq('id', id)
++      .single();
++
++    if (currentRow) {
++      const newJb = updates.jb ?? currentRow.jb ?? 0;
++      const newSb = updates.sb ?? currentRow.sb ?? 0;
++      const newAmount = updates.amount ?? Number(currentRow.amount) ?? 0;
++      const newBagsReturned = updates.bags_returned ?? currentRow.bags_returned ?? 0;
++      const newReturnReason = updates.return_reason ?? currentRow.return_reason ?? 'return';
++      const landedCostPerBag = Number(currentRow.landed_cost_per_bag) || 0;
++      const localExpensesPerBag = Number(currentRow.local_expenses_per_bag) || 0;
++
++      if (!newBagsReturned || newBagsReturned === 0) {
++        // Still a dispatch row after the edit — reuse THIS row's own
++        // historic rates, not a fresh getCostConfig() call.
++        profitUpdates = computeDispatchProfit({
++          totalBags: newJb * 25 + newSb * 50,
++          totalSales: newAmount,
++          landedCostPerBag,
++          localExpensesPerBag,
++        });
++      } else {
++        // This row is (or is becoming) a return/waste/damage row — its
++        // profit fields are a delta against the ORIGINAL dispatch row, so
++        // look that up again rather than reusing this row's own rates
++        // (which, for an existing return row, are already the original's).
++        const drNumberForLookup = updates.dr_number ?? currentRow.dr_number ?? '';
++        const { data: originalDispatch } = await supabase
++          .from('shipment_ledger')
++          .select('selling_price_per_bag, landed_cost_per_bag, local_expenses_per_bag')
++          .eq('shipment_id', shipmentId)
++          .eq('dr_number', drNumberForLookup)
++          .or('jb.gt.0,sb.gt.0')
++          .order('created_at', { ascending: true })
++          .limit(1)
++          .maybeSingle();
++
++        if (originalDispatch) {
++          profitUpdates = computeReturnProfitDelta({
++            returnedBags: newBagsReturned,
++            sellingPricePerBag: Number(originalDispatch.selling_price_per_bag) || 0,
++            landedCostPerBag: Number(originalDispatch.landed_cost_per_bag) || 0,
++            localExpensesPerBag: Number(originalDispatch.local_expenses_per_bag) || 0,
++            isRestockable: newReturnReason === 'return',
++          });
++        }
++      }
++    }
++  }
++
+   const { error } = await supabase
+     .from('shipment_ledger')
+-    .update({ ...updates, updated_at: new Date().toISOString() })
++    .update({ ...updates, ...profitUpdates, updated_at: new Date().toISOString() })
+     .eq('id', id);
+   if (error) throw new Error(error.message);
+ 
+diff --git a/src/lib/actions/orders-actions.ts b/src/lib/actions/orders-actions.ts
+index b2ed60c..121cc3d 100644
+--- a/src/lib/actions/orders-actions.ts
++++ b/src/lib/actions/orders-actions.ts
+@@ -1,7 +1,7 @@
+ 'use server';
+ 
+ import { revalidatePath } from 'next/cache';
+-import { requireAdmin, logActivity, getCostConfig } from './admin-helpers';
++import { requireAdmin, logActivity, getCostConfig, computeDispatchProfit } from './admin-helpers';
+ import { addLedgerEntry } from './ledger-actions';
+ import { createRoleNotification, createUserNotification } from './notification-actions';
+ 
+@@ -259,15 +259,12 @@ export async function dispatchOrder(
+   // separately and must NEVER be folded into total_amount or included in profit.
+   // See: implementation-plan §3.4 / structure diagrams §7 (Financial Invariant).
+   const totalSales = Number(order.total_amount) || 0;
+-  const sellingPricePerBag = totalBags > 0 ? Math.round((totalSales / totalBags) * 100) / 100 : 0;
+-  const grossProfit =
+-    Math.round((totalSales - totalBags * costConfig.landed_cost_per_bag) * 100) / 100;
+-  const netProfit =
+-    Math.round(
+-      (totalSales -
+-        totalBags * (costConfig.landed_cost_per_bag + costConfig.local_expenses_per_bag)) *
+-        100,
+-    ) / 100;
++  const profitFields = computeDispatchProfit({
++    totalBags,
++    totalSales,
++    landedCostPerBag: costConfig.landed_cost_per_bag,
++    localExpensesPerBag: costConfig.local_expenses_per_bag,
++  });
+ 
+   const { error: ledgerError } = await supabase.from('shipment_ledger').insert({
+     shipment_id: shipmentId,
+@@ -283,12 +280,7 @@ export async function dispatchOrder(
+     payment_method: order.payment_method,
+     check_number: order.payment_method === 'check' ? order.check_number : null,
+     amount: totalSales || null,
+-    total_sales: totalSales,
+-    gross_profit: grossProfit,
+-    net_profit: netProfit,
+-    selling_price_per_bag: sellingPricePerBag,
+-    landed_cost_per_bag: costConfig.landed_cost_per_bag,
+-    local_expenses_per_bag: costConfig.local_expenses_per_bag,
++    ...profitFields,
+   });
+   if (ledgerError) throw new Error(`Failed to create ledger entry: ${ledgerError.message}`);
+ 

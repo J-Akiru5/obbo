@@ -8,6 +8,7 @@ import type {
   OrderStatus,
   BagType,
 } from '@/lib/types/database';
+import { getSourcePrice } from './profit-utils';
 
 export function getSourcePrice(
   product:
@@ -73,13 +74,16 @@ export async function logActivity(
   entityId: string,
   metadata?: Record<string, unknown>,
 ) {
-  await supabase.from('activity_log').insert({
+  const { error } = await supabase.from('activity_log').insert({
     actor_id: actorId,
     action,
     entity_type: entityType,
     entity_id: entityId,
     metadata: metadata ?? {},
   });
+  if (error) {
+    console.error('Failed to log activity:', error);
+  }
 }
 
 function round2(n: number): number {
@@ -278,7 +282,11 @@ export async function createOrderForClientPortal(
     });
   }
   if (orderItems.length > 0) {
-    await supabase.from('order_items').insert(orderItems);
+    const { error: itemsError } = await supabase.from('order_items').insert(orderItems);
+    if (itemsError) {
+      await supabase.from('orders').delete().eq('id', orderData.id);
+      throw new Error(`Failed to save order items: ${itemsError.message}`);
+    }
   }
 
   return orderData;

@@ -81,7 +81,7 @@ export async function createDeliveryReceipt(rawDr: Record<string, unknown>) {
   if (effectiveClientId) {
     try {
       if (poData?.order_id) {
-        await supabase
+        const { error: syncError } = await supabase
           .from('orders')
           .update({
             status: 'dispatched',
@@ -95,6 +95,7 @@ export async function createDeliveryReceipt(rawDr: Record<string, unknown>) {
             updated_at: new Date().toISOString(),
           })
           .eq('id', poData.order_id);
+        if (syncError) console.error('Failed to sync order status:', syncError);
 
         const { data: orderItems } = await supabase
           .from('order_items')
@@ -104,18 +105,20 @@ export async function createDeliveryReceipt(rawDr: Record<string, unknown>) {
           for (const item of orderItems) {
             const dispatchedQty = item.bag_type === 'JB' ? jb : sb;
             if (dispatchedQty > 0) {
-              await supabase
+              const { error: itemError } = await supabase
                 .from('order_items')
                 .update({ dispatched_qty: dispatchedQty })
                 .eq('id', item.id);
+              if (itemError) console.error('Failed to sync order item dispatch:', itemError);
             }
           }
         }
 
-        await supabase
+        const { error: drLinkError } = await supabase
           .from('delivery_receipts')
           .update({ order_id: poData.order_id })
           .eq('id', data.id);
+        if (drLinkError) console.error('Failed to link DR to order:', drLinkError);
         data.order_id = poData.order_id;
 
         await createUserNotification({
@@ -147,15 +150,17 @@ export async function createDeliveryReceipt(rawDr: Record<string, unknown>) {
         });
 
         if (poData?.id) {
-          await supabase
+          const { error: poLinkError } = await supabase
             .from('purchase_orders')
             .update({ order_id: orderData.id })
             .eq('id', poData.id);
+          if (poLinkError) console.error('Failed to link PO to order:', poLinkError);
         }
-        await supabase
+        const { error: drLinkError } = await supabase
           .from('delivery_receipts')
           .update({ order_id: orderData.id })
           .eq('id', data.id);
+        if (drLinkError) console.error('Failed to link DR to new order:', drLinkError);
         data.order_id = orderData.id;
 
         await createUserNotification({
@@ -235,10 +240,11 @@ export async function updateDeliveryReceipt(id: string, rawUpdates: Record<strin
         .maybeSingle();
       ledgerEntry = fallback;
       if (fallback) {
-        await supabase
+        const { error: ledgerLinkError } = await supabase
           .from('shipment_ledger')
           .update({ delivery_receipt_id: id })
           .eq('id', fallback.id);
+        if (ledgerLinkError) console.error('Failed to link ledger entry to DR:', ledgerLinkError);
       }
     }
 
@@ -253,7 +259,7 @@ export async function updateDeliveryReceipt(id: string, rawUpdates: Record<strin
         const correctedJb = Math.max(0, (shipment.remaining_jb ?? 0) + (oldDr.jb || 0) - newJb);
         const correctedSb = Math.max(0, (shipment.remaining_sb ?? 0) + (oldDr.sb || 0) - newSb);
 
-        await supabase
+        const { error: correctError } = await supabase
           .from('shipments')
           .update({
             remaining_jb: correctedJb,
@@ -261,6 +267,7 @@ export async function updateDeliveryReceipt(id: string, rawUpdates: Record<strin
             good_stock: correctedJb + correctedSb,
           })
           .eq('id', oldDr.shipment_id);
+        if (correctError) console.error('Failed to correct shipment stock:', correctError);
       }
 
       if (updates.shipment_id && updates.shipment_id !== oldDr.shipment_id) {
@@ -272,7 +279,7 @@ export async function updateDeliveryReceipt(id: string, rawUpdates: Record<strin
         if (newShipment) {
           const newRemJb = Math.max(0, (newShipment.remaining_jb ?? 0) - newJb);
           const newRemSb = Math.max(0, (newShipment.remaining_sb ?? 0) - newSb);
-          await supabase
+          const { error: newCorrectError } = await supabase
             .from('shipments')
             .update({
               remaining_jb: newRemJb,
@@ -280,10 +287,12 @@ export async function updateDeliveryReceipt(id: string, rawUpdates: Record<strin
               good_stock: newRemJb + newRemSb,
             })
             .eq('id', newShipmentId);
+          if (newCorrectError)
+            console.error('Failed to correct new shipment stock:', newCorrectError);
         }
       }
 
-      await supabase
+      const { error: ledgerUpdateError } = await supabase
         .from('shipment_ledger')
         .update({
           dr_number: newDrNumber,
@@ -297,6 +306,7 @@ export async function updateDeliveryReceipt(id: string, rawUpdates: Record<strin
           updated_at: new Date().toISOString(),
         })
         .eq('id', ledgerEntry.id);
+      if (ledgerUpdateError) console.error('Failed to update ledger entry:', ledgerUpdateError);
     } else if (updates.jb !== undefined || updates.sb !== undefined) {
       await addLedgerEntry(newShipmentId, {
         dr_number: newDrNumber,

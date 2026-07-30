@@ -365,7 +365,7 @@ export function ProductCatalogTab({
                       <div className="absolute top-2 right-2">
                         <Badge
                           variant="outline"
-                          className="text-foreground border-none bg-white/80 font-mono text-[10px] font-black backdrop-blur-sm"
+                          className="text-foreground bg-background/80 border-none font-mono text-[10px] font-black backdrop-blur-sm"
                         >
                           {p.bag_type}
                         </Badge>
@@ -439,19 +439,19 @@ export function ProductCatalogTab({
           <div className="bg-primary text-primary-foreground p-6">
             <div className="flex items-start justify-between">
               <div>
-                <Badge className="mb-2 border-none bg-white/20 text-[10px] text-white hover:bg-white/30">
+                <Badge className="bg-primary-foreground/20 text-primary-foreground hover:bg-primary-foreground/30 mb-2 border-none text-[10px]">
                   Product Information Matrix
                 </Badge>
-                <h2 className="flex items-center gap-2 text-2xl font-bold tracking-tight text-white">
+                <h2 className="text-primary-foreground flex items-center gap-2 text-2xl font-bold tracking-tight">
                   {viewingProduct?.name}
                   <Badge
                     variant="outline"
-                    className="ml-2 border-white/40 font-mono text-[10px] text-white"
+                    className="border-primary-foreground/40 text-primary-foreground ml-2 font-mono text-[10px]"
                   >
                     {viewingProduct?.bag_type}
                   </Badge>
                 </h2>
-                <p className="mt-1 text-sm text-white/80">
+                <p className="text-primary-foreground/80 mt-1 text-sm">
                   {viewingProduct?.description ||
                     'High-quality wholesale construction infrastructure cement.'}
                 </p>
@@ -460,7 +460,7 @@ export function ProductCatalogTab({
                 variant="ghost"
                 size="icon"
                 onClick={() => setIsViewOpen(false)}
-                className="h-8 w-8 rounded-full text-white hover:bg-white/10"
+                className="text-primary-foreground hover:bg-primary-foreground/10 h-8 w-8 rounded-full"
               >
                 <X className="h-5 w-5" />
               </Button>

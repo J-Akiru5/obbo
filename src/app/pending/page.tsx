@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card';
 
 export default function PendingVerificationPage() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-slate-100 via-slate-50 to-white px-4">
+    <div className="from-secondary via-secondary/50 to-background flex min-h-screen items-center justify-center bg-gradient-to-br px-4">
       <Card className="shadow-primary/10 border-border w-full max-w-md text-center shadow-2xl">
         <CardHeader className="pt-10 pb-2">
           <div className="bg-accent/10 mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full">
@@ -20,7 +20,7 @@ export default function PendingVerificationPage() {
             Your account is currently under review. An administrator will verify your details and
             approve your access shortly.
           </p>
-          <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm text-blue-800">
+          <div className="bg-status-info-bg border-status-info-border text-status-info-text rounded-lg border p-4 text-sm">
             <p className="mb-1 font-semibold">What happens next?</p>
             <ul className="list-inside list-disc space-y-1 text-left">
               <li>Our team reviews your submitted information</li>

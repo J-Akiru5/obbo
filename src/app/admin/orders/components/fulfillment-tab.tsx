@@ -240,26 +240,26 @@ export function FulfillmentTab({
                     <div className="mt-2 flex gap-4 text-sm">
                       <div className="bg-muted rounded-md px-3 py-1.5">
                         <span className="text-muted-foreground mb-0.5 block text-xs tracking-wider uppercase">
-                          JB bags
+                          Approved JB
                         </span>
                         <span className="font-bold">
-                          {jbQty.toLocaleString()}
+                          {jbQty}
                           {isSplit && jbReq > 0 && (
                             <span className="text-muted-foreground ml-1 text-xs font-normal">
-                              / {jbReq.toLocaleString()}
+                              / {jbReq}
                             </span>
                           )}
                         </span>
                       </div>
                       <div className="bg-muted rounded-md px-3 py-1.5">
                         <span className="text-muted-foreground mb-0.5 block text-xs tracking-wider uppercase">
-                          SB bags
+                          Approved SB
                         </span>
                         <span className="font-bold">
-                          {sbQty.toLocaleString()}
+                          {sbQty}
                           {isSplit && sbReq > 0 && (
                             <span className="text-muted-foreground ml-1 text-xs font-normal">
-                              / {sbReq.toLocaleString()}
+                              / {sbReq}
                             </span>
                           )}
                         </span>
@@ -341,9 +341,18 @@ export function FulfillmentTab({
                       </div>
                     )}
                   </div>
-                  <div className="flex items-center">
+                  <div className="flex flex-col items-end gap-2">
+                    {jbQty + sbQty <= 0 && (
+                      <div className="rounded-md border border-red-300 bg-red-50 px-3 py-2 text-xs text-red-700">
+                        No approved quantity found for this order (0 JB / 0 SB). Re-confirm the
+                        order&apos;s quantities before dispatching — dispatching now would record ₱
+                        {Number(order.total_amount).toLocaleString()} in sales against 0 bags
+                        shipped.
+                      </div>
+                    )}
                     <Button
                       onClick={() => openAction(order, 'dispatch')}
+                      disabled={jbQty + sbQty <= 0}
                       className="bg-primary hover:bg-primary/90 h-12 w-full px-8 md:w-auto"
                     >
                       <Truck className="mr-2 h-4 w-4" /> Dispatch Now
@@ -369,33 +378,17 @@ export function FulfillmentTab({
             <div className="space-y-4 py-4">
               <div className="bg-muted mb-2 grid grid-cols-2 gap-4 rounded-lg p-3 text-sm">
                 <div>
-                  <p className="text-muted-foreground mb-1 text-xs">To Deduct from Stock</p>
+                  <p className="text-muted-foreground mb-1 text-xs">Items to Deduct</p>
                   <p className="font-bold">
-                    {(() => {
-                      const jbBags =
-                        selectedOrder.items.find((i) => i.bag_type === 'JB')?.approved_qty || 0;
-                      const sbBags =
-                        selectedOrder.items.find((i) => i.bag_type === 'SB')?.approved_qty || 0;
-                      const jbUnits = Math.ceil(jbBags / 25);
-                      const sbUnits = Math.ceil(sbBags / 50);
-                      return (
-                        <>
-                          {jbBags > 0 && (
-                            <>
-                              {jbBags.toLocaleString()} JB bags (≈{jbUnits} unit
-                              {jbUnits > 1 ? 's' : ''})
-                            </>
-                          )}
-                          {jbBags > 0 && sbBags > 0 && <> · </>}
-                          {sbBags > 0 && (
-                            <>
-                              {sbBags.toLocaleString()} SB bags (≈{sbUnits} unit
-                              {sbUnits > 1 ? 's' : ''})
-                            </>
-                          )}
-                        </>
-                      );
-                    })()}
+                    {selectedOrder.items
+                      .filter((i) => i.bag_type === 'JB')
+                      .reduce((s, i) => s + i.approved_qty, 0)}{' '}
+                    JB
+                    {' · '}
+                    {selectedOrder.items
+                      .filter((i) => i.bag_type === 'SB')
+                      .reduce((s, i) => s + i.approved_qty, 0)}{' '}
+                    SB
                   </p>
                 </div>
                 <div>
@@ -408,28 +401,38 @@ export function FulfillmentTab({
                 <Label>
                   Select Shipment Batch (Source of Truth) <span className="text-red-500">*</span>
                 </Label>
-                <Select value={shipmentId} onValueChange={(v) => setShipmentId(v || '')}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select a shipment batch" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {shipments.map((s) => {
-                      const jbBags =
-                        selectedOrder.items.find((i) => i.bag_type === 'JB')?.approved_qty || 0;
-                      const sbBags =
-                        selectedOrder.items.find((i) => i.bag_type === 'SB')?.approved_qty || 0;
-                      const jbNeed = Math.ceil(jbBags / 25);
-                      const sbNeed = Math.ceil(sbBags / 50);
-                      const hasEnough = s.remaining_jb >= jbNeed && s.remaining_sb >= sbNeed;
-                      const labelText = `${s.batch_name} (Avail: ${s.remaining_jb} JB, ${s.remaining_sb} SB · Need: ${jbNeed} JB, ${sbNeed} SB)${!hasEnough ? ' - Insufficient' : ''}`;
-                      return (
-                        <SelectItem key={s.id} value={s.id} disabled={!hasEnough} label={labelText}>
-                          {labelText}
-                        </SelectItem>
-                      );
-                    })}
-                  </SelectContent>
-                </Select>
+                {(() => {
+                  const jbBags = selectedOrder.items
+                    .filter((i) => i.bag_type === 'JB')
+                    .reduce((s, i) => s + i.approved_qty, 0);
+                  const sbBags = selectedOrder.items
+                    .filter((i) => i.bag_type === 'SB')
+                    .reduce((s, i) => s + i.approved_qty, 0);
+                  const shipmentOptions = shipments.map((s) => {
+                    const hasEnough = s.remaining_jb >= jbBags && s.remaining_sb >= sbBags;
+                    const label = `${s.batch_name} (Avail: ${s.remaining_jb} JB, ${s.remaining_sb} SB · Need: ${jbBags} JB, ${sbBags} SB)${!hasEnough ? ' - Insufficient' : ''}`;
+                    return { value: s.id, label, disabled: !hasEnough };
+                  });
+
+                  return (
+                    <Select
+                      items={shipmentOptions}
+                      value={shipmentId}
+                      onValueChange={(v) => setShipmentId(v ?? '')}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select a shipment batch" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {shipmentOptions.map((opt) => (
+                          <SelectItem key={opt.value} value={opt.value} disabled={opt.disabled}>
+                            {opt.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  );
+                })()}
               </div>
 
               <div className="space-y-2">

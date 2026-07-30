@@ -209,7 +209,7 @@ function SidebarContent({
                         </Badge>
                       )}
                       {item.label === 'Clients' && (pendingKycCount ?? 0) > 0 && (
-                        <Badge className="bg-red-500 px-1.5 py-0 text-xs text-white hover:bg-red-500">
+                        <Badge className="bg-destructive text-destructive-foreground hover:bg-destructive/90 px-1.5 py-0 text-xs">
                           {pendingKycCount}
                         </Badge>
                       )}
@@ -435,11 +435,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       } = await supabase.auth.getUser();
       if (!user) return;
 
-      await supabase
+      const { error } = await supabase
         .from('notifications')
         .update({ is_read: true })
         .eq('user_id', user.id)
         .eq('is_read', false);
+      if (error) throw error;
       setUnreadCount(0);
       setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
     } catch {
@@ -450,7 +451,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const markRead = async (id: string) => {
     try {
       const supabase = createClient();
-      await supabase.from('notifications').update({ is_read: true }).eq('id', id);
+      const { error } = await supabase.from('notifications').update({ is_read: true }).eq('id', id);
+      if (error) throw error;
       setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, is_read: true } : n)));
       loadNotifications(); // Refresh count properly
     } catch {
@@ -575,11 +577,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                         >
                           <div className="flex items-start gap-2">
                             {n.severity === 'warning' ? (
-                              <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-500" />
+                              <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-500 dark:text-amber-400" />
                             ) : n.severity === 'success' ? (
-                              <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-500" />
+                              <CheckCircle2 className="text-status-success-text mt-0.5 h-3.5 w-3.5 shrink-0" />
                             ) : (
-                              <Info className="mt-0.5 h-3.5 w-3.5 shrink-0 text-blue-500" />
+                              <Info className="text-status-info-text mt-0.5 h-3.5 w-3.5 shrink-0" />
                             )}
                             <div>
                               <p

@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OBBO iManage — Sales &amp; Profit Tracking Module: Project Tracker</title>
+<style>
+  :root {
+    --bg: #0f172a;
+    --surface: #1e293b;
+    --surface-2: #334155;
+    --border: #334155;
+    --text: #f1f5f9;
+    --text-muted: #94a3b8;
+    --blue: #3b82f6;
+    --green: #10b981;
+    --yellow: #f59e0b;
+    --red: #ef4444;
+    --purple: #8b5cf6;
+    --cyan: #06b6d4;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+  }
+  .container { max-width: 1160px; margin: 0 auto; padding: 0 24px; }
+
+  .report-header {
+    background: linear-gradient(135deg, #1e3a5f 0%, #0f172a 100%);
+    border-bottom: 1px solid var(--border);
+    padding: 44px 0 36px;
+    position: relative;
+    overflow: hidden;
+  }
+  .report-header h1 { font-size: 2.1rem; font-weight: 800; letter-spacing: -0.02em; }
+  .report-header .subtitle { font-size: 1.05rem; color: var(--text-muted); margin-top: 8px; max-width: 780px; }
+  .report-meta { display: flex; gap: 12px; margin-top: 20px; flex-wrap: wrap; }
+  .report-meta .meta-item {
+    background: rgba(255,255,255,0.05); border: 1px solid var(--border);
+    border-radius: 8px; padding: 7px 14px; font-size: 0.82rem;
+  }
+  .report-meta .meta-item strong { color: var(--blue); }
+
+  .section { padding: 36px 0; border-bottom: 1px solid var(--border); }
+  .section:last-child { border-bottom: none; }
+  .section h2 { font-size: 1.4rem; font-weight: 700; margin-bottom: 18px; display:flex; align-items:center; gap:10px; }
+  .section h3 { font-size: 1.05rem; font-weight: 600; margin: 22px 0 10px; color: var(--blue); }
+  .section p.lead { color: var(--text-muted); font-size: 0.95rem; margin-bottom: 14px; max-width: 820px; }
+
+  .sev-critical, .sev-high, .sev-medium, .sev-low, .sev-info {
+    display: inline-block; padding: 2px 10px; border-radius: 999px;
+    font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;
+  }
+  .sev-critical { background: rgba(239,68,68,0.15); color: var(--red); border: 1px solid rgba(239,68,68,0.3); }
+  .sev-high { background: rgba(245,158,11,0.15); color: var(--yellow); border: 1px solid rgba(245,158,11,0.3); }
+  .sev-medium { background: rgba(59,130,246,0.15); color: var(--blue); border: 1px solid rgba(59,130,246,0.3); }
+  .sev-low { background: rgba(148,163,184,0.15); color: var(--text-muted); border: 1px solid rgba(148,163,184,0.3); }
+  .sev-info { background: rgba(16,185,129,0.15); color: var(--green); border: 1px solid rgba(16,185,129,0.3); }
+
+  .summary-banner {
+    background: linear-gradient(135deg, var(--surface), var(--surface-2));
+    border: 1px solid var(--border); border-radius: 12px; padding: 24px;
+    display: flex; gap: 20px; flex-wrap: wrap; margin-bottom: 20px;
+  }
+  .summary-banner .stat { flex: 1; min-width: 110px; }
+  .summary-banner .stat .num { font-size: 2rem; font-weight: 800; line-height: 1.1; }
+  .summary-banner .stat .lbl { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); }
+
+  .task-list { list-style: none; margin: 14px 0; }
+  .task-list li {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+    padding: 16px 20px; margin-bottom: 12px; border-left: 4px solid var(--blue);
+  }
+  .task-list li.crit { border-left-color: var(--red); }
+  .task-list li.high { border-left-color: var(--yellow); }
+  .task-list li.med { border-left-color: var(--blue); }
+  .task-list li.low { border-left-color: var(--text-muted); }
+  .task-list li.resolved { border-left-color: var(--green); }
+  .task-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 6px; flex-wrap: wrap; }
+  .task-title { font-size: 1rem; font-weight: 700; }
+  .task-desc { font-size: 0.88rem; color: var(--text-muted); margin-top: 4px; }
+  .task-loc {
+    font-size: 0.75rem; color: var(--cyan); font-family: 'SF Mono', 'Fira Code', monospace;
+    margin-top: 10px; background: rgba(6,182,212,0.06); border: 1px solid rgba(6,182,212,0.2);
+    border-radius: 6px; padding: 6px 10px; display: inline-block;
+  }
+  .task-fix {
+    font-size: 0.85rem; margin-top: 10px; padding: 10px 12px;
+    background: rgba(59,130,246,0.06); border: 1px solid rgba(59,130,246,0.2); border-radius: 8px;
+  }
+  .task-fix strong { color: var(--blue); }
+
+  code {
+    font-family: 'SF Mono', 'Fira Code', monospace; font-size: 0.85em;
+    background: rgba(255,255,255,0.06); padding: 1px 6px; border-radius: 4px; color: var(--cyan);
+  }
+  pre {
+    background: #0b1220; border: 1px solid var(--border); border-radius: 8px;
+    padding: 12px 14px; overflow-x: auto; font-size: 0.8rem; margin: 10px 0;
+    font-family: 'SF Mono', 'Fira Code', monospace; color: #d1d9e6;
+  }
+
+  table { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: 0.85rem; }
+  th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  th { background: var(--surface); font-weight: 600; color: var(--text-muted); text-transform: uppercase; font-size: 0.7rem; letter-spacing: 0.05em; }
+  tr:hover td { background: rgba(255,255,255,0.02); }
+
+  .qcard {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+    padding: 16px 20px; margin-bottom: 12px; border-left: 4px solid var(--purple);
+  }
+  .qcard .qnum { color: var(--purple); font-weight: 800; font-size: 0.8rem; }
+  .qcard .qtext { font-weight: 700; margin: 4px 0 6px; }
+  .qcard .qwhy { font-size: 0.85rem; color: var(--text-muted); }
+
+  .tag { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 0.7rem; font-weight: 600; margin-right: 4px; }
+  .tag-green { background: rgba(16,185,129,0.15); color: var(--green); }
+  .tag-yellow { background: rgba(245,158,11,0.15); color: var(--yellow); }
+  .tag-red { background: rgba(239,68,68,0.15); color: var(--red); }
+  .tag-blue { background: rgba(59,130,246,0.15); color: var(--blue); }
+
+  .report-footer {
+    background: var(--surface); border-top: 1px solid var(--border);
+    padding: 20px 0; text-align: center; color: var(--text-muted); font-size: 0.82rem;
+  }
+
+  @media (max-width: 700px) {
+    .report-header h1 { font-size: 1.5rem; }
+    .summary-banner { flex-direction: column; }
+  }
+</style>
+</head>
+<body>
+
+<header class="report-header">
+  <div class="container">
+    <h1>💰 Sales &amp; Profit Tracking Module — Project Tracker</h1>
+    <p class="subtitle">Gap analysis against <code>sales-profit-tracking-module.md</code>, verified directly against the live <code>J-Akiru5/obbo</code> codebase (both branches).</p>
+    <div class="report-meta">
+      <span class="meta-item"><strong>Repo:</strong> J-Akiru5/obbo</span>
+      <span class="meta-item"><strong>Commit scanned:</strong> b3962ab2</span>
+      <span class="meta-item"><strong>Branches:</strong> main + develop (identical)</span>
+      <span class="meta-item"><strong>Method:</strong> Direct code read, not doc-inference</span>
+    </div>
+  </div>
+</header>
+
+<div class="container">
+
+<section class="section">
+  <h2>📊 Summary</h2>
+  <div class="summary-banner">
+    <div class="stat"><div class="num" style="color:var(--red)">1</div><div class="lbl">Critical</div></div>
+    <div class="stat"><div class="num" style="color:var(--yellow)">2</div><div class="lbl">High</div></div>
+    <div class="stat"><div class="num" style="color:var(--blue)">3</div><div class="lbl">Medium</div></div>
+    <div class="stat"><div class="num" style="color:var(--text-muted)">2</div><div class="lbl">Low</div></div>
+    <div class="stat"><div class="num" style="color:var(--green)">9</div><div class="lbl">Confirmed resolved</div></div>
+    <div class="stat"><div class="num" style="color:var(--purple)">1</div><div class="lbl">Still needs your call</div></div>
+  </div>
+  <p class="lead">
+    <code>main</code> and <code>develop</code> point to the exact same commit right now — nothing to reconcile between branches this round.
+    The domain spec doc (<code>sales-profit-tracking-module.md</code>) turned out to be mostly accurate about the model but several of its own
+    "open questions" are already answered in code — and the code had picked up a few new problems the spec doc never anticipated. T-1
+    (the most serious one — a live, reachable bug in ledger editing) is now fixed, tested, and included as a patch below, along with the
+    Q1 return-adjustment behavior you confirmed.
+  </p>
+</section>
+
+<!-- ═══════════════════ REMAINING TASKS ═══════════════════ -->
+<section class="section">
+  <h2>🛠️ Remaining Tasks</h2>
+  <p class="lead">Ordered by severity. Each one is backed by an exact file/line reference — nothing here is inferred from the docs alone.</p>
+
+  <ul class="task-list">
+    <li class="crit">
+      <div class="task-header">
+        <span class="task-title">T-1: Editing a ledger entry silently corrupts its profit numbers</span>
+        <span class="sev-critical">critical</span>
+        <span class="tag tag-green">✅ Fixed &amp; tested this session</span>
+      </div>
+      <div class="task-desc">
+        <code>updateLedgerEntry()</code> writes whatever <code>jb</code>, <code>sb</code>, or <code>amount</code> changes an admin makes directly to
+        <code>shipment_ledger</code> — but never recomputes <code>total_sales</code>, <code>gross_profit</code>, <code>net_profit</code>, or
+        <code>selling_price_per_bag</code>. Its <code>updates</code> type doesn't even include those fields. This is fully reachable: the
+        "Edit" action on an existing ledger row in <strong>Inventory → Shipments tab</strong> lets an admin change quantity and amount, and
+        the dialog wires straight into this function. After such an edit, the row is internally inconsistent (e.g. jb changes from 8 → 10,
+        but total_sales/profit still reflect 8) — and every dashboard/report that sums these columns silently carries the stale number forward.
+      </div>
+      <div class="task-loc">src/lib/actions/ledger-actions.ts:98-179 (fn updateLedgerEntry) · src/app/admin/inventory/components/shipments-tab.tsx:247 (call site) · src/app/admin/inventory/components/ledger-entry-dialog.tsx (edit UI)</div>
+      <div class="task-fix">
+        <strong>Implemented:</strong> <code>updateLedgerEntry</code> now fetches the row's own current stored rates and recomputes
+        <code>total_sales</code>/<code>gross_profit</code>/<code>net_profit</code>/<code>selling_price_per_bag</code> whenever
+        <code>jb</code>, <code>sb</code>, <code>amount</code>, <code>bags_returned</code>, <code>return_reason</code>, or <code>dr_number</code>
+        change — using that row's own historic <code>landed_cost_per_bag</code>/<code>local_expenses_per_bag</code>,
+        <strong>never</strong> a fresh <code>getCostConfig()</code> call, preserving historical immutability. Folded in the Q1 decision
+        at the same time: <code>addLedgerEntry</code> now gives return/waste/damage events real profit deltas instead of leaving them at
+        zero, computed against the <em>original dispatch row's</em> stored rates (restockable returns reverse cost too; waste/damage
+        don't, since that cost was already sunk). The duplicated dispatch-formula math in <code>orders-actions.ts</code> (T-5) was
+        folded into one shared helper as part of this change.
+        <br><br>
+        <strong>Verified:</strong> 5 new tests in <code>ledger-actions.test.ts</code> (dispatch formula, restockable-return delta,
+        waste-return delta, the T-1 regression itself, and a no-op check for unrelated-field edits) — all passing alongside the
+        existing 24. Clean <code>tsc --noEmit</code> and <code>eslint</code> on every touched file.
+        <br><br>
+        <strong>Delivery note:</strong> I don't have push access to the actual GitHub repo (this was an anonymous read-only clone) —
+        the change is included as <code>t1-q1-ledger-profit-fix.patch</code> alongside this tracker. Apply with
+        <code>git apply t1-q1-ledger-profit-fix.patch</code> from the repo root, or copy the two changed files
+        (<code>admin-helpers.ts</code>, <code>ledger-actions.ts</code>, <code>orders-actions.ts</code>) and the new test file in by hand.
+      </div>
+    </li>
+
+    <li class="high">
+      <div class="task-header">
+        <span class="task-title">T-2: Order line items record the wrong per-bag price</span>
+        <span class="sev-high">high</span>
+      </div>
+      <div class="task-desc">
+        The order <em>total</em> is correctly computed from the source-dependent price (<code>price_port</code> vs
+        <code>price_warehouse</code>, per the client's Port/Warehouse selection) — but <code>order_items.selling_price_per_bag</code> is
+        recorded from the flat <code>price_per_bag</code> field instead, in <strong>both</strong> order-creation paths. Line items won't
+        reconcile against the order total whenever the two prices differ, which is the normal case (₱210 vs ₱185 by default).
+      </div>
+      <div class="task-loc">
+        src/lib/actions/admin-helpers.ts:172-193 (createOrderForClientPortal — used by admin manual PO + DR-triggered order creation)<br>
+        src/lib/actions/client-actions.ts:216-230 (submitOrder — the primary client order-wizard path)
+      </div>
+      <div class="task-fix">
+        <strong>Fix shape:</strong> in both places, look up the price the same way <code>totalAmount</code> already does
+        (source-aware: <code>price_port</code> for Port, <code>price_warehouse</code> for Warehouse, falling back to <code>price_per_bag</code>),
+        and use that per-item value for <code>selling_price_per_bag</code> instead of the flat field.
+      </div>
+    </li>
+
+    <li class="high">
+      <div class="task-header">
+        <span class="task-title">T-3: Most of the Zod validation the CHANGELOG claims exists... doesn't</span>
+        <span class="sev-high">high</span>
+      </div>
+      <div class="task-desc">
+        <code>CHANGELOG.md</code> (v1.0.0) states: <em>"Added Zod validation schemas for all server action inputs (16 schemas across 15 domain
+        files)."</em> In the actual code, <code>schemas.ts</code> does define 16 schemas — but only <strong>3 are ever imported and called</strong>
+        (<code>deliveryReceiptCreateSchema</code>, <code>deliveryReceiptUpdateSchema</code>, <code>purchaseOrderUpdateSchema</code>). The other 13 —
+        including <code>ledgerEntryCreateSchema</code>, <code>ledgerEntryUpdateSchema</code>, and <code>costConfigSchema</code>, all directly in
+        this module's blast radius — are dead code that nothing ever calls <code>.parse()</code> or <code>.safeParse()</code> on.
+        Worse: <code>submitOrder()</code> — the client-facing action that actually creates money-bearing orders — has <strong>no schema at all</strong>,
+        not even an unused one.
+      </div>
+      <div class="task-loc">
+        src/lib/actions/schemas.ts (16 schemas defined) · src/lib/actions/ledger-actions.ts, settings-actions.ts, products-actions.ts,
+        shipments-actions.ts, orders-actions.ts, client-actions.ts (schemas never imported)
+      </div>
+      <div class="task-fix">
+        <strong>Fix shape:</strong> wire the existing unused schemas into their matching functions (low effort — they're already written and
+        shaped correctly) starting with <code>ledgerEntryCreateSchema</code>/<code>ledgerEntryUpdateSchema</code> and
+        <code>costConfigSchema</code>. Separately, write and wire a schema for <code>submitOrder</code>'s input — this one doesn't exist yet
+        and is the highest-value gap since it's the only client-role-reachable action in this list.
+      </div>
+    </li>
+
+    <li class="med">
+      <div class="task-header">
+        <span class="task-title">T-4: No server-side floor on cost config or product prices</span>
+        <span class="sev-medium">medium</span>
+      </div>
+      <div class="task-desc">
+        <code>cost-configuration-tab.tsx</code> blocks values ≤ 0 client-side, but <code>saveCostConfig()</code> /
+        <code>saveCostConfiguration()</code> apply no server-side check — same for <code>createProduct</code>/<code>updateProduct</code> on
+        <code>price_per_bag</code>/<code>price_port</code>/<code>price_warehouse</code>. A direct action call (bypassing the UI) could set a
+        negative or zero cost/price with no complaint from the server.
+      </div>
+      <div class="task-loc">src/lib/actions/settings-actions.ts:24-32 (saveCostConfig) · src/lib/actions/products-actions.ts (createProduct/updateProduct)</div>
+      <div class="task-fix"><strong>Fix shape:</strong> part of T-3 — wiring the already-written <code>costConfigSchema</code> covers most of this in one move; add an equivalent min-bound schema for product price fields.</div>
+    </li>
+
+    <li class="med">
+      <div class="task-header">
+        <span class="task-title">T-5: Currency math uses JS floats + Math.round, not a decimal library</span>
+        <span class="sev-medium">medium</span>
+      </div>
+      <div class="task-desc">
+        <code>grossProfit</code>/<code>netProfit</code>/<code>sellingPricePerBag</code> are computed with plain JS number arithmetic and
+        <code>Math.round(x * 100) / 100</code>, repeated near-identically in three places, even though the DB columns are
+        <code>Decimal(14,2)</code>/<code>Decimal(10,2)</code>. At 2-decimal precision and current volumes this probably isn't producing visible
+        errors today, but it's the kind of thing that eventually does, silently, on the exact numbers this module exists to get right.
+      </div>
+      <div class="task-loc">src/lib/actions/ledger-actions.ts:40-58 · src/lib/actions/orders-actions.ts:255-283 (same formula, duplicated)</div>
+      <div class="task-fix"><strong>Fix shape:</strong> extract the shared formula into one helper (it's currently copy-pasted across two files, which is also its own maintenance risk), backed by a decimal library.</div>
+    </li>
+
+    <li class="med">
+      <div class="task-header">
+        <span class="task-title">T-6: Default cost config isn't seeded in the base schema</span>
+        <span class="sev-medium">medium</span>
+      </div>
+      <div class="task-desc">
+        The <code>cost_config</code> row in <code>admin_settings</code> is only inserted by the
+        <code>20260603_sales_profit_tracking.sql</code> migration, not in <code>supabase/schema.sql</code> itself. A fresh DB bootstrapped
+        from the base schema alone won't have it. Not a crash risk — <code>getCostConfig()</code> silently falls back to a hardcoded JS
+        default — but it's a silent gap consistent with the "32 SQL files, no fresh-install guarantee" issue already on record.
+      </div>
+      <div class="task-loc">supabase/schema.sql (no cost_config seed) vs supabase/migrations/20260603_sales_profit_tracking.sql:10-12</div>
+    </li>
+
+    <li class="low">
+      <div class="task-header">
+        <span class="task-title">T-7: Dead duplicate cost-config page outside the App Router</span>
+        <span class="sev-low">low</span>
+      </div>
+      <div class="task-desc">
+        <code>src/cost-configuration/page.tsx</code> is a 262-line, unstyled, first-draft duplicate of the real
+        <code>cost-configuration-tab.tsx</code>. It lives outside <code>src/app/</code>, so Next's router can never reach it — pure dead
+        weight left over from an earlier iteration.
+      </div>
+      <div class="task-loc">src/cost-configuration/page.tsx</div>
+      <div class="task-fix"><strong>Fix shape:</strong> delete it.</div>
+    </li>
+
+    <li class="low">
+      <div class="task-header">
+        <span class="task-title">T-8: No direct test coverage for the two functions that write every profit number</span>
+        <span class="sev-low">low</span>
+      </div>
+      <div class="task-desc">
+        There is no <code>ledger-actions.test.ts</code> at all. The only profit-related assertion anywhere is one check inside
+        <code>orders-actions.test.ts</code> confirming two split-delivery ledger rows carry identical profit values — useful, but it
+        doesn't verify the formula itself against known inputs, and doesn't touch <code>updateLedgerEntry</code> (see T-1) at all.
+      </div>
+      <div class="task-loc">src/lib/actions/orders-actions.test.ts:220-224 (only existing profit assertion)</div>
+      <div class="task-fix"><strong>Fix shape:</strong> a <code>ledger-actions.test.ts</code> with direct formula assertions, plus a case reproducing T-1 to lock in the fix.</div>
+    </li>
+  </ul>
+</section>
+
+<!-- ═══════════════════ RESOLVED / ALREADY CORRECT ═══════════════════ -->
+<section class="section">
+  <h2>✅ Confirmed Resolved (no action needed)</h2>
+  <p class="lead">Worth stating plainly so these don't get "rediscovered" and re-litigated next time someone reads the spec doc.</p>
+  <table>
+    <thead><tr><th>Item</th><th>Spec doc reference</th><th>What the code actually does</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><span class="tag tag-green">Resolved</span> "Cut price" ambiguity</td>
+        <td>Open Question #1</td>
+        <td>No separate cut-price entity exists or is needed. <code>price_port</code> and <code>price_warehouse</code> are two
+        independently editable <code>Decimal</code> fields on <code>Product</code>; the ₱25 gap at default values is descriptive, not enforced.</td>
+      </tr>
+      <tr>
+        <td><span class="tag tag-green">Resolved</span> Port vs. Warehouse selection</td>
+        <td>Open Question #2</td>
+        <td>Explicit client-selected field per order (<code>step-source.tsx</code> in the order wizard), each option showing its own live subtotal.</td>
+      </tr>
+      <tr>
+        <td><span class="tag tag-green">Resolved</span> Shipping fee data model</td>
+        <td>Open Question #6</td>
+        <td>Plain <code>shipping_fee Decimal(12,2)</code> column on <code>Order</code>. Explicitly and correctly excluded from profit math,
+        with an invariant comment in code <em>and</em> a passing regression test guarding it.</td>
+      </tr>
+      <tr>
+        <td><span class="tag tag-green">Resolved</span> Historical immutability</td>
+        <td>Open Question #7</td>
+        <td><code>shipment_ledger</code> stores a full point-in-time snapshot (<code>selling_price_per_bag</code>, <code>landed_cost_per_bag</code>,
+        <code>local_expenses_per_bag</code>, plus the three totals). Every read path (dashboard, reports) sums stored values —
+        never recomputes from live <code>cost_config</code>. (T-1 above is about the one <em>write</em> path that doesn't honor this on edit.)</td>
+      </tr>
+      <tr>
+        <td><span class="tag tag-green">Confirmed fixed</span> ShipmentLedger schema drift</td>
+        <td>system-assessment.html, issue M-7</td>
+        <td>Verified directly: <code>schema.sql</code> now contains all 7 profit columns matching the migration. The audit's own
+        "What Was Done" banner claim checks out.</td>
+      </tr>
+      <tr>
+        <td><span class="tag tag-green">Confirmed done</span> Shipping-fee invariant regression test</td>
+        <td>check-payment-flow-implementation-plan.md §3.4</td>
+        <td>The spec'd test exists and passes: <code>orders-actions.test.ts</code> asserts identical profit output regardless of
+        <code>shipping_fee</code>.</td>
+      </tr>
+      <tr>
+        <td><span class="tag tag-green">Non-issue</span> Cost component sub-totals</td>
+        <td>Open Question #4</td>
+        <td>85.80 + 27.84 + 22.00 + 12.00 = 147.64 exactly; 10 + 4 + 3 + 3 = 20.00 exactly. No rounding discrepancy — confirmed by arithmetic, not code, but worth closing out.</td>
+      </tr>
+      <tr>
+        <td><span class="tag tag-blue">Doc was stale, not the code</span> admin-actions.ts monolith</td>
+        <td>obbo-structure-report.md, June 6 2026</td>
+        <td>Described as a 1,858-line file. As of the v1.0.0 refactor (July 2, 2026) it's a 57-line barrel re-export over ~24 focused
+        action files. Good change — the doc just predates it.</td>
+      </tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- ═══════════════════ NEEDS YOUR CALL ═══════════════════ -->
+<section class="section">
+  <h2>🟣 Decisions Made This Session</h2>
+  <table>
+    <thead><tr><th>#</th><th>Question</th><th>Your call</th><th>Result</th></tr></thead>
+    <tbody>
+      <tr>
+        <td>Q1</td>
+        <td>Should a bag return adjust the original sale's profit numbers, or is stock-only correct?</td>
+        <td><span class="tag tag-green">Adjust profit too</span></td>
+        <td>Implemented as part of the T-1 fix — see above. Restockable returns reverse cost, waste/damage don't.</td>
+      </tr>
+      <tr>
+        <td>Q2</td>
+        <td>Do granular cost sub-components (freight, duties, etc.) need to become real editable fields?</td>
+        <td><span class="tag tag-green">Keep 2 aggregates</span></td>
+        <td>No code change needed — current <code>CostConfig</code> shape already matches this. Closed.</td>
+      </tr>
+      <tr>
+        <td>Q4</td>
+        <td>OK to start on T-1 first, ahead of anything else in flight?</td>
+        <td><span class="tag tag-green">Yes, start there</span></td>
+        <td>Done this session — see patch file.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>🟣 Still Open</h3>
+  <div class="qcard">
+    <div class="qnum">Q3</div>
+    <div class="qtext">Do the "implementation-plan §3.4 / structure diagrams §7" docs referenced in code exist somewhere I don't have access to?</div>
+    <div class="qwhy">
+      A code comment in <code>orders-actions.ts</code> references both a "structure diagrams §7" doc and an implementation-plan doc.
+      I found and read the implementation-plan (<code>docs/check-payment-flow-implementation-plan.md</code>) — but no "structure
+      diagrams" doc turned up in this scan. If it exists, it's worth adding to this project's file set since other code comments may
+      reference it too.
+    </div>
+  </div>
+</section>
+
+</div>
+
+<footer class="report-footer">
+  <div class="container">
+    <p>OBBO iManage — Sales &amp; Profit Tracking Module Tracker · Scanned against commit b3962ab2 (main = develop) · Generated by direct code inspection, not documentation inference</p>
+  </div>
+</footer>
+
+</body>
+</html>

@@ -93,7 +93,9 @@ export default function ProfileClient({ profile, email }: { profile: any; email:
   };
 
   if (!profile)
-    return <div className="animate-pulse p-8 text-center text-gray-500">Loading profile...</div>;
+    return (
+      <div className="text-muted-foreground animate-pulse p-8 text-center">Loading profile...</div>
+    );
 
   return (
     <div className="max-w-4xl space-y-6">
@@ -189,7 +191,7 @@ export default function ProfileClient({ profile, email }: { profile: any; email:
             </div>
             <div className="flex items-center gap-2 border-t pt-4 text-sm">
               <ShieldCheck className="h-4 w-4 text-emerald-600" />
-              <span className="font-medium text-emerald-700">KYC Verified Account</span>
+              <span className="text-status-success-text font-medium">KYC Verified Account</span>
             </div>
           </CardContent>
         </Card>

@@ -1,10 +1,11 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { requireAdmin, logActivity, getCostConfig, computeDispatchProfit } from './admin-helpers';
+import { requireAdmin, logActivity, getCostConfig } from './admin-helpers';
+import { computeDispatchProfit } from './profit-utils';
 import { orderApproveSchema, orderRejectSchema, orderTrackingUpdateSchema } from './schemas';
 import { addLedgerEntry } from './ledger-actions';
-import { createRoleNotification, createUserNotification } from './notification-actions';
+import { createRoleNotification } from './notification-actions';
 
 export async function fetchOrders(status?: string) {
   const { supabase } = await requireAdmin();
@@ -70,7 +71,11 @@ export async function approveOrder(
 
   // Update each item's approved_qty
   for (const item of constrainedApprovedItems) {
-    await supabase.from('order_items').update({ approved_qty: item.qty }).eq('id', item.itemId);
+    const { error: itemError } = await supabase
+      .from('order_items')
+      .update({ approved_qty: item.qty })
+      .eq('id', item.itemId);
+    if (itemError) throw new Error(`Failed to update item ${item.itemId}: ${itemError.message}`);
   }
 
   // Check if any item is partially approved
@@ -95,7 +100,8 @@ export async function approveOrder(
   };
   if (shippingFee !== undefined) updates.shipping_fee = shippingFee;
 
-  await supabase.from('orders').update(updates).eq('id', orderId);
+  const { error: orderError } = await supabase.from('orders').update(updates).eq('id', orderId);
+  if (orderError) throw new Error(`Failed to update order: ${orderError.message}`);
 
   // Create customer balance records for partial quantities
   if (isPartial) {
@@ -103,34 +109,18 @@ export async function approveOrder(
       const original = order.items.find((i: { id: string }) => i.id === ai.itemId);
       if (original && ai.qty < original.requested_qty) {
         const remaining = original.requested_qty - ai.qty;
-        await supabase.from('customer_balances').insert({
+        const { error: balanceError } = await supabase.from('customer_balances').insert({
           client_id: order.client_id,
           order_id: orderId,
           product_id: original.product_id,
           bag_type: original.bag_type,
-          total_purchase: original.requested_qty,
           remaining_qty: remaining,
           status: 'pending',
         });
+        if (balanceError) {
+          console.error('Failed to create customer balance:', balanceError);
+        }
       }
-    }
-  }
-
-  // Notify client when order transitions to awaiting_check
-  if (newStatus === 'awaiting_check') {
-    try {
-      const finalShippingFee = shippingFee ?? order.shipping_fee ?? 0;
-      const totalDue = Number(order.total_amount) + Number(finalShippingFee);
-      await createUserNotification({
-        userId: order.client_id,
-        title: 'Order approved — payment due',
-        message:
-          `Your order is approved. Total due: ₱${totalDue.toLocaleString()} ` +
-          `(includes ₱${Number(finalShippingFee).toLocaleString()} shipping). ` +
-          `Please upload your check to proceed.`,
-      });
-    } catch (notifError) {
-      console.error('Failed to send awaiting_check notification:', notifError);
     }
   }
 
@@ -169,7 +159,6 @@ export async function rejectOrder(orderId: string, reason: string) {
 export async function finalConfirmCheck(orderId: string) {
   const { supabase, userId } = await requireAdmin();
 
-  // Check if order was partially approved by looking at items
   const { data: order } = await supabase
     .from('orders')
     .select('*, items:order_items(*)')
@@ -177,15 +166,42 @@ export async function finalConfirmCheck(orderId: string) {
     .single();
   if (!order) throw new Error('Order not found');
 
+  // Backfill approved_qty for orders that reached this step without ever
+  // passing through approveOrder() (e.g. draft → submitPaymentDetails).
+  // Left at the DB default of 0, approved_qty poisons every downstream
+  // calculation and causes the "Net = Gross" profit bug.
+  const neverApproved = order.items.every(
+    (i: { approved_qty: number; requested_qty: number }) =>
+      i.approved_qty === 0 && i.requested_qty > 0,
+  );
+  if (neverApproved) {
+    for (const item of order.items) {
+      const qty = order.is_split_delivery
+        ? item.bag_type === 'JB'
+          ? Math.min(item.requested_qty, order.deliver_now_jb || 0)
+          : item.bag_type === 'SB'
+            ? Math.min(item.requested_qty, order.deliver_now_sb || 0)
+            : item.requested_qty
+        : item.requested_qty;
+      const { error } = await supabase
+        .from('order_items')
+        .update({ approved_qty: qty })
+        .eq('id', item.id);
+      if (error) throw new Error(`Failed to set approved quantity: ${error.message}`);
+      item.approved_qty = qty;
+    }
+  }
+
   const isPartial = order.items.some(
     (i: { approved_qty: number; requested_qty: number }) => i.approved_qty < i.requested_qty,
   );
   const newStatus = isPartial ? 'partially_approved' : 'approved';
 
-  await supabase
+  const { error: confirmError } = await supabase
     .from('orders')
     .update({ status: newStatus, updated_at: new Date().toISOString() })
     .eq('id', orderId);
+  if (confirmError) throw new Error(`Failed to confirm order: ${confirmError.message}`);
 
   await logActivity(supabase, userId, 'order_check_confirmed', 'order', orderId, {
     status: newStatus,
@@ -213,17 +229,28 @@ export async function dispatchOrder(
     .single();
   if (!order) throw new Error('Order not found');
 
-  // Calculate JB and SB quantities (in individual bags)
-  const jbBags = order.items
+  // Idempotency guard — a retry must never re-run the writes below
+  // for an order that has already gone out.
+  if (order.status === 'dispatched') {
+    throw new Error('This order has already been dispatched.');
+  }
+
+  // Calculate JB and SB quantities
+  const jbQty = order.items
     .filter((i: { bag_type: string }) => i.bag_type === 'JB')
     .reduce((s: number, i: { approved_qty: number }) => s + i.approved_qty, 0);
-  const sbBags = order.items
+  const sbQty = order.items
     .filter((i: { bag_type: string }) => i.bag_type === 'SB')
     .reduce((s: number, i: { approved_qty: number }) => s + i.approved_qty, 0);
 
-  // Convert bags to whole units for warehouse stock deduction
-  const jbUnits = Math.ceil(jbBags / 25);
-  const sbUnits = Math.ceil(sbBags / 50);
+  // Fail fast — a zero-quantity order would pass 6+ writes before crashing
+  // on the delivery_receipts CHECK (quantity > 0) constraint.
+  if (jbQty + sbQty <= 0) {
+    throw new Error(
+      'Cannot dispatch: no approved quantity found for this order. ' +
+        'Confirm the approved JB/SB quantities before dispatching.',
+    );
+  }
 
   // Get shipment
   const { data: shipment } = await supabase
@@ -232,22 +259,10 @@ export async function dispatchOrder(
     .eq('id', shipmentId)
     .single();
   if (!shipment) throw new Error('Shipment batch not found');
-  if (shipment.remaining_jb < jbUnits || shipment.remaining_sb < sbUnits) {
+  if (shipment.remaining_jb < jbQty || shipment.remaining_sb < sbQty) {
     throw new Error('Insufficient stock in selected batch');
   }
 
-  // Deduct stock (in whole units)
-  const { error: stockError } = await supabase
-    .from('shipments')
-    .update({
-      remaining_jb: shipment.remaining_jb - jbUnits,
-      remaining_sb: shipment.remaining_sb - sbUnits,
-      good_stock: (shipment.good_stock || 0) - (jbUnits + sbUnits),
-    })
-    .eq('id', shipmentId);
-  if (stockError) throw new Error(`Failed to deduct stock: ${stockError.message}`);
-
-  // Create ledger row (with all new fields)
   const clientName = order.client?.company_name || order.client?.full_name || 'Unknown Client';
   const destination =
     [order.client?.address_street, order.client?.address_city, order.client?.address_province]
@@ -257,7 +272,8 @@ export async function dispatchOrder(
   const poNumber = order.po_number || `SYS-${orderId.slice(0, 8).toUpperCase()}`;
   const dispatchDate = new Date().toISOString().split('T')[0];
 
-  // Compute profit values using actual bag count
+  // Compute profit values — prorate revenue to only the bags actually
+  // going out on this dispatch, instead of using the full order's total_amount.
   const costConfig = await getCostConfig();
   const totalBags = jbQty * 25 + sbQty * 50;
   const totalRequestedBags = order.items.reduce(
@@ -314,7 +330,7 @@ export async function dispatchOrder(
         .eq('order_id', orderId)
         .eq('product_id', item.product_id)
         .eq('bag_type', item.bag_type)
-        .maybeSingle();
+        .single();
 
       if (!existing) {
         const { error: balanceError } = await supabase.from('customer_balances').insert({
@@ -327,15 +343,6 @@ export async function dispatchOrder(
           status: 'pending',
         });
         if (balanceError) console.error('Balance creation error:', balanceError);
-      } else {
-        const { error: balanceUpdateError } = await supabase
-          .from('customer_balances')
-          .update({
-            total_purchase: item.requested_qty,
-            remaining_qty: remaining,
-          })
-          .eq('id', existing.id);
-        if (balanceUpdateError) console.error('Balance update error:', balanceUpdateError);
       }
     }
   }
@@ -391,23 +398,6 @@ export async function dispatchOrder(
     if (itemError) console.error(`Failed to update item ${item.id}:`, itemError);
   }
 
-  // Update order status
-  const { error: orderUpdateError } = await supabase
-    .from('orders')
-    .update({
-      status: 'dispatched',
-      tracking_status: 'pending_dispatch',
-      dr_number: drNumber,
-      dr_image_url: drImageUrl,
-      driver_name: driverName,
-      plate_number: plateNumber,
-      shipment_id: shipmentId,
-      updated_at: new Date().toISOString(),
-    })
-    .eq('id', orderId);
-  if (orderUpdateError)
-    throw new Error(`Failed to update order status: ${orderUpdateError.message}`);
-
   // ── AUTO-GENERATE PO RECORD ──────────────────────────────
   let checkNumberStr: string | null = null;
   let checkAmountNum: number | null = null;
@@ -426,8 +416,8 @@ export async function dispatchOrder(
     po_number: poNumber,
     client_id: order.client_id,
     client_name: clientName,
-    jb: jbUnits,
-    sb: sbUnits,
+    jb: jbQty,
+    sb: sbQty,
     date: dispatchDate,
     status: 'dispatched',
     source: order.source,
@@ -458,48 +448,11 @@ export async function dispatchOrder(
     console.error('PO Auto-generation error:', poResult.error);
   }
 
-  // ── AUTO-GENERATE DR RECORD ──────────────────────────────
-  const { data: drRecord, error: drError } = await supabase
-    .from('delivery_receipts')
-    .upsert(
-      {
-        dr_number: drNumber,
-        shipment_id: shipmentId,
-        client_name: clientName,
-        client_id: order.client_id,
-        po_number: poNumber,
-        jb: jbUnits,
-        sb: sbUnits,
-        quantity: jbUnits + sbUnits,
-        bag_type: jbUnits > 0 ? 'JB' : 'SB',
-        received_date: dispatchDate,
-        driver: driverName,
-        plate_number: plateNumber,
-        shipping_fee: Number(order.shipping_fee) || 0,
-        dr_image_url: drImageUrl,
-        destination: destination,
-        order_id: orderId,
-      },
-      { onConflict: 'dr_number' },
-    )
-    .select()
-    .single();
-
-  if (drError) throw new Error(`Failed to auto-generate DR record: ${drError.message}`);
-
-  if (drRecord?.id) {
-    await supabase
-      .from('shipment_ledger')
-      .update({ delivery_receipt_id: drRecord.id })
-      .eq('dr_number', drNumber)
-      .eq('shipment_id', shipmentId);
-  }
-
   await logActivity(supabase, userId, 'order_dispatched', 'order', orderId, {
     shipment: shipment.batch_name,
     dr: drNumber,
-    jb: jbUnits,
-    sb: sbUnits,
+    jb: jbQty,
+    sb: sbQty,
   });
 
   return { success: true };
@@ -540,7 +493,8 @@ export async function updateTrackingStatus(
   if (trackingStatus === 'delivered' || isReturn) {
     updates.status = 'completed';
   }
-  await supabase.from('orders').update(updates).eq('id', orderId);
+  const { error: trackingError } = await supabase.from('orders').update(updates).eq('id', orderId);
+  if (trackingError) throw new Error(`Failed to update tracking: ${trackingError.message}`);
   await logActivity(supabase, userId, 'tracking_updated', 'order', orderId, { trackingStatus });
 
   if (isReturn && (bagsReturnedJb || bagsReturnedSb)) {
