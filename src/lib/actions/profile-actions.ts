@@ -1,6 +1,7 @@
 'use server';
 
 import { requireAdminOnly, logActivity } from './admin-helpers';
+import { manualClientCreateSchema } from './schemas';
 import { createAdminClient } from '@/lib/supabase/admin';
 
 export async function updateProfileRole(
@@ -43,6 +44,8 @@ export async function createManualClient(input: {
   businessPermitNo?: string;
   tinNo?: string;
 }) {
+  const parsed = manualClientCreateSchema.safeParse(input);
+  if (!parsed.success) throw new Error(parsed.error.issues.map((i) => i.message).join('; '));
   const { supabase, userId } = await requireAdminOnly();
   const adminClient = createAdminClient();
 

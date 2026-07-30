@@ -1,6 +1,7 @@
 'use server';
 
 import { requireAdmin, logActivity } from './admin-helpers';
+import { productUpdateSchema, productCreateSchema } from './schemas';
 
 export async function fetchProducts() {
   const { supabase } = await requireAdmin();
@@ -26,6 +27,8 @@ export async function updateProduct(
   },
 ) {
   const { supabase, userId } = await requireAdmin();
+  const parsed = productUpdateSchema.safeParse(updates);
+  if (!parsed.success) throw new Error(parsed.error.issues.map((i) => i.message).join('; '));
   const { error } = await supabase.from('products').update(updates).eq('id', id);
   if (error) throw new Error(error.message);
   await logActivity(supabase, userId, 'product_updated', 'product', id, updates);
@@ -42,6 +45,8 @@ export async function createProduct(product: {
   is_active: boolean;
   image_url?: string;
 }) {
+  const parsed = productCreateSchema.safeParse(product);
+  if (!parsed.success) throw new Error(parsed.error.issues.map((i) => i.message).join('; '));
   const { supabase, userId } = await requireAdmin();
   const { data, error } = await supabase.from('products').insert(product).select().single();
   if (error) throw new Error(error.message);

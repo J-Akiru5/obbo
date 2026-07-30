@@ -1,7 +1,8 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { requireAdmin, logActivity, getCostConfig } from './admin-helpers';
+import { requireAdmin, logActivity, getCostConfig, computeDispatchProfit } from './admin-helpers';
+import { orderApproveSchema, orderRejectSchema, orderTrackingUpdateSchema } from './schemas';
 import { addLedgerEntry } from './ledger-actions';
 import { createRoleNotification, createUserNotification } from './notification-actions';
 
@@ -23,6 +24,8 @@ export async function approveOrder(
   approvedItems: { itemId: string; qty: number }[],
   shippingFee?: number,
 ) {
+  const parsed = orderApproveSchema.safeParse({ orderId, approvedItems, shippingFee });
+  if (!parsed.success) throw new Error(parsed.error.issues.map((i) => i.message).join('; '));
   const { supabase, userId } = await requireAdmin();
 
   // Get order
@@ -151,6 +154,8 @@ export async function approveOrder(
 }
 
 export async function rejectOrder(orderId: string, reason: string) {
+  const parsed = orderRejectSchema.safeParse({ orderId, reason });
+  if (!parsed.success) throw new Error(parsed.error.issues.map((i) => i.message).join('; '));
   const { supabase, userId } = await requireAdmin();
   const { error } = await supabase
     .from('orders')
@@ -254,43 +259,48 @@ export async function dispatchOrder(
 
   // Compute profit values using actual bag count
   const costConfig = await getCostConfig();
-  const totalBags = jbBags + sbBags;
-  // INVARIANT: total_amount is the goods subtotal only. shipping_fee is tracked
-  // separately and must NEVER be folded into total_amount or included in profit.
-  // See: implementation-plan §3.4 / structure diagrams §7 (Financial Invariant).
-  const totalSales = Number(order.total_amount) || 0;
-  const sellingPricePerBag = totalBags > 0 ? Math.round((totalSales / totalBags) * 100) / 100 : 0;
-  const grossProfit =
-    Math.round((totalSales - totalBags * costConfig.landed_cost_per_bag) * 100) / 100;
-  const netProfit =
-    Math.round(
-      (totalSales -
-        totalBags * (costConfig.landed_cost_per_bag + costConfig.local_expenses_per_bag)) *
-        100,
-    ) / 100;
-
-  const { error: ledgerError } = await supabase.from('shipment_ledger').insert({
-    shipment_id: shipmentId,
-    dr_number: drNumber,
-    po_number: poNumber,
-    client_name: clientName,
-    driver_name: driverName,
-    plate_number: plateNumber,
-    destination,
-    service_type: order.service_type,
-    jb: jbUnits,
-    sb: sbUnits,
-    payment_method: order.payment_method,
-    check_number: order.payment_method === 'check' ? order.check_number : null,
-    amount: totalSales || null,
-    total_sales: totalSales,
-    gross_profit: grossProfit,
-    net_profit: netProfit,
-    selling_price_per_bag: sellingPricePerBag,
-    landed_cost_per_bag: costConfig.landed_cost_per_bag,
-    local_expenses_per_bag: costConfig.local_expenses_per_bag,
+  const totalBags = jbQty * 25 + sbQty * 50;
+  const totalRequestedBags = order.items.reduce(
+    (s: number, i: { requested_qty: number }) => s + (i.requested_qty || 0),
+    0,
+  );
+  const orderUnitPrice =
+    totalRequestedBags > 0 ? Number(order.total_amount) / totalRequestedBags : 0;
+  const totalSales = Math.round(orderUnitPrice * totalBags * 100) / 100;
+  const profitFields = computeDispatchProfit({
+    totalBags,
+    totalSales,
+    landedCostPerBag: costConfig.landed_cost_per_bag,
+    localExpensesPerBag: costConfig.local_expenses_per_bag,
   });
-  if (ledgerError) throw new Error(`Failed to create ledger entry: ${ledgerError.message}`);
+
+  // ── ATOMIC CRITICAL WRITES VIA RPC ─────────────────────────
+  // Stock deduction, ledger entry, DR upsert, order status update,
+  // and DR-ledger linking all happen in a single DB transaction.
+  const { data: rpcResult, error: rpcError } = await supabase.rpc('dispatch_order_v2', {
+    p_order_id: orderId,
+    p_shipment_id: shipmentId,
+    p_dr_number: drNumber,
+    p_jb_qty: jbQty,
+    p_sb_qty: sbQty,
+    p_driver_name: driverName,
+    p_plate_number: plateNumber,
+    p_dr_image_url: drImageUrl,
+    p_client_name: clientName,
+    p_destination: destination,
+    p_po_number: poNumber,
+    p_total_sales: profitFields.total_sales,
+    p_gross_profit: profitFields.gross_profit,
+    p_net_profit: profitFields.net_profit,
+    p_selling_price_per_bag: profitFields.selling_price_per_bag,
+    p_landed_cost_per_bag: profitFields.landed_cost_per_bag,
+    p_local_expenses_per_bag: profitFields.local_expenses_per_bag,
+  });
+  if (rpcError) throw new Error(`Dispatch RPC failed: ${rpcError.message}`);
+  const rpcData = rpcResult as { success?: boolean; error?: string } | null;
+  if (!rpcData?.success) {
+    throw new Error(rpcData?.error ?? 'Dispatch RPC returned an unknown error');
+  }
 
   // Handle Split Delivery: Create customer balance for remaining quantities
   for (const item of order.items) {
@@ -502,6 +512,14 @@ export async function updateTrackingStatus(
   bagsReturnedSb?: number,
   returnReason?: string,
 ) {
+  const parsed = orderTrackingUpdateSchema.safeParse({
+    orderId,
+    trackingStatus,
+    bagsReturnedJb,
+    bagsReturnedSb,
+    returnReason,
+  });
+  if (!parsed.success) throw new Error(parsed.error.issues.map((i) => i.message).join('; '));
   const { supabase, userId } = await requireAdmin();
   const updates: Record<string, unknown> = {
     tracking_status: trackingStatus,

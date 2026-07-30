@@ -9,6 +9,18 @@ import type {
   BagType,
 } from '@/lib/types/database';
 
+export function getSourcePrice(
+  product:
+    | { price_per_bag: number; price_port?: number | null; price_warehouse?: number | null }
+    | null
+    | undefined,
+  source: string,
+): number {
+  if (!product) return 0;
+  if (source === 'port') return product.price_port || product.price_per_bag || 0;
+  return product.price_warehouse || product.price_per_bag || 0;
+}
+
 export interface CostConfig {
   landed_cost_per_bag: number;
   local_expenses_per_bag: number;
@@ -70,6 +82,84 @@ export async function logActivity(
   });
 }
 
+function round2(n: number): number {
+  return Math.round(n * 100) / 100;
+}
+
+export interface DispatchProfitFields {
+  total_sales: number;
+  gross_profit: number;
+  net_profit: number;
+  selling_price_per_bag: number;
+  landed_cost_per_bag: number;
+  local_expenses_per_bag: number;
+}
+
+/**
+ * Profit fields for a dispatch (a bag actually going out the door).
+ * Callers pass whichever rates should apply — live cost config for a brand
+ * new dispatch, or the row's own stored rates when recomputing an edit.
+ */
+export function computeDispatchProfit(params: {
+  totalBags: number;
+  totalSales: number;
+  landedCostPerBag: number;
+  localExpensesPerBag: number;
+}): DispatchProfitFields {
+  const { totalBags, totalSales, landedCostPerBag, localExpensesPerBag } = params;
+  const sellingPricePerBag = totalBags > 0 ? round2(totalSales / totalBags) : 0;
+  return {
+    total_sales: totalSales,
+    gross_profit: round2(totalSales - totalBags * landedCostPerBag),
+    net_profit: round2(totalSales - totalBags * (landedCostPerBag + localExpensesPerBag)),
+    selling_price_per_bag: sellingPricePerBag,
+    landed_cost_per_bag: landedCostPerBag,
+    local_expenses_per_bag: localExpensesPerBag,
+  };
+}
+
+/**
+ * Profit DELTA for a return/waste/damage event, reversing a slice of an
+ * ORIGINAL sale. Always uses that original sale's own stored rates —
+ * never live cost config — so a later cost-config change can't retroactively
+ * change what a past return was worth.
+ *
+ * - Restockable returns ('return'): the bag goes back to good stock, so both
+ *   the revenue and the landed-cost/local-expense "spend" for that bag are
+ *   reversed. Gross/net profit deltas are smaller in magnitude than the
+ *   sales delta.
+ * - Non-restockable returns ('waste' / 'damage'): the bag is gone and the
+ *   cost to bring it here was already sunk and isn't recovered. The client
+ *   isn't charged for it, so revenue reverses in full, and — since nothing
+ *   about the incurred cost changes — that same full amount drops straight
+ *   through to both gross and net profit.
+ */
+export function computeReturnProfitDelta(params: {
+  returnedBags: number;
+  sellingPricePerBag: number;
+  landedCostPerBag: number;
+  localExpensesPerBag: number;
+  isRestockable: boolean;
+}): DispatchProfitFields {
+  const { returnedBags, sellingPricePerBag, landedCostPerBag, localExpensesPerBag, isRestockable } =
+    params;
+  const totalSalesDelta = -round2(returnedBags * sellingPricePerBag);
+  const grossProfitDelta = isRestockable
+    ? -round2(returnedBags * (sellingPricePerBag - landedCostPerBag))
+    : totalSalesDelta;
+  const netProfitDelta = isRestockable
+    ? -round2(returnedBags * (sellingPricePerBag - landedCostPerBag - localExpensesPerBag))
+    : totalSalesDelta;
+  return {
+    total_sales: totalSalesDelta,
+    gross_profit: grossProfitDelta,
+    net_profit: netProfitDelta,
+    selling_price_per_bag: sellingPricePerBag,
+    landed_cost_per_bag: landedCostPerBag,
+    local_expenses_per_bag: localExpensesPerBag,
+  };
+}
+
 export async function getCostConfig(): Promise<CostConfig> {
   const { supabase } = await requireAdmin();
   const { data } = await supabase
@@ -121,15 +211,9 @@ export async function createOrderForClientPortal(
     params.checkNumber && params.checkAmount && params.checkAmount > 0 ? 'check' : 'cash';
 
   let totalAmount = (params.checkAmount || 0) + (params.cashAmount || 0);
+  const jbPrice = getSourcePrice(jbProduct, params.source);
+  const sbPrice = getSourcePrice(sbProduct, params.source);
   if (totalAmount === 0 && params.jbQty + params.sbQty > 0) {
-    const jbPrice =
-      params.source === 'port'
-        ? jbProduct?.price_port || jbProduct?.price_per_bag || 0
-        : jbProduct?.price_warehouse || jbProduct?.price_per_bag || 0;
-    const sbPrice =
-      params.source === 'port'
-        ? sbProduct?.price_port || sbProduct?.price_per_bag || 0
-        : sbProduct?.price_warehouse || sbProduct?.price_per_bag || 0;
     totalAmount = params.jbQty * jbPrice + params.sbQty * sbPrice;
   }
 
@@ -179,7 +263,7 @@ export async function createOrderForClientPortal(
       requested_qty: params.jbQty,
       approved_qty: params.jbQty,
       dispatched_qty: isDispatched ? params.jbQty : 0,
-      selling_price_per_bag: Number(jbProduct.price_per_bag),
+      selling_price_per_bag: jbPrice,
     });
   }
   if (params.sbQty > 0 && sbProduct) {
@@ -190,7 +274,7 @@ export async function createOrderForClientPortal(
       requested_qty: params.sbQty,
       approved_qty: params.sbQty,
       dispatched_qty: isDispatched ? params.sbQty : 0,
-      selling_price_per_bag: Number(sbProduct.price_per_bag),
+      selling_price_per_bag: sbPrice,
     });
   }
   if (orderItems.length > 0) {
