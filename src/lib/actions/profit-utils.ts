@@ -27,8 +27,8 @@ export function getSourcePrice(
   source: string,
 ): number {
   if (!product) return 0;
-  if (source === 'port') return product.price_port || product.price_per_bag || 0;
-  return product.price_warehouse || product.price_per_bag || 0;
+  if (source === 'port') return product.price_port ?? product.price_per_bag ?? 0;
+  return product.price_warehouse ?? product.price_per_bag ?? 0;
 }
 
 export interface DispatchProfitFields {
@@ -94,10 +94,63 @@ export function prorateOrderSales(
   );
 }
 
+export interface OrderItemPrice {
+  requested_qty: number;
+  approved_qty: number;
+  selling_price_per_bag: number;
+}
+
+/**
+ * Prorate an order's total sales to a partial dispatch by the VALUE
+ * (price × quantity) of the bags actually going out, not by weight.
+ * Handles mixed-product orders where JB and SB have different per-bag prices.
+ */
+export function prorateOrderSalesByValue(
+  totalOrderSales: Decimal.Value,
+  items: OrderItemPrice[],
+): number {
+  if (!Array.isArray(items) || items.length === 0) {
+    throw new Error('Order items array must be non-empty.');
+  }
+  let approvedValue = new Decimal(0);
+  let totalOrderValue = new Decimal(0);
+  for (const item of items) {
+    if (
+      !Number.isSafeInteger(item.requested_qty) ||
+      item.requested_qty < 0 ||
+      !Number.isSafeInteger(item.approved_qty) ||
+      item.approved_qty < 0 ||
+      item.approved_qty > item.requested_qty
+    ) {
+      throw new Error(
+        'Each item must have valid non-negative quantities with approved ≤ requested.',
+      );
+    }
+    const price = money(item.selling_price_per_bag);
+    approvedValue = approvedValue.plus(price.mul(item.approved_qty));
+    totalOrderValue = totalOrderValue.plus(price.mul(item.requested_qty));
+  }
+  if (totalOrderValue.isZero()) {
+    throw new Error('Total order value must be greater than zero.');
+  }
+  return asNumber(
+    money(totalOrderSales)
+      .mul(approvedValue)
+      .div(totalOrderValue)
+      .toDecimalPlaces(2, Decimal.ROUND_HALF_UP),
+  );
+}
+
 /**
  * Profit delta for a return/waste/damage event, using the original sale's
- * stored rates. Restockable returns reverse sales and landed cost only;
- * local expenses remain sunk. Waste/damage reverses sales only.
+ * stored rates.
+ *
+ * Restockable returns ('return'): the bag goes back to good stock, so the
+ * full revenue, landed cost, and local expenses for that bag all reverse.
+ *
+ * Non-restockable returns ('waste'/'damage'): the bag is destroyed.
+ * Revenue reverses in full but no cost is recovered — the amount the
+ * client wasn't charged for drops straight through to profit as a loss.
  */
 export function computeReturnProfitDelta(params: {
   returnedBags: number;
@@ -116,11 +169,23 @@ export function computeReturnProfitDelta(params: {
   const sellingPrice = money(sellingPricePerBag);
   const landed = money(landedCostPerBag);
   const local = money(localExpensesPerBag);
+
+  // Revenue always reverses in full (client isn't charged for returned bags)
   const totalSalesDelta = quantity.mul(sellingPrice).neg();
+
+  // Gross reverses sales + landed cost (cost of the bag itself is recovered)
+  // Non-restockable destroys the bag → landed cost is NOT recovered
   const grossProfitDelta = isRestockable
     ? totalSalesDelta.plus(quantity.mul(landed))
     : totalSalesDelta;
-  const netProfitDelta = grossProfitDelta;
+
+  // Net = gross + local-expense reversal when restockable.
+  // Local expenses (handling, storage) also reverse for restockable because
+  // those costs are tied to a bag that's going back into inventory.
+  // For waste/damage, local stays sunk — only sales reverses on both lines.
+  const netProfitDelta = isRestockable
+    ? grossProfitDelta.plus(quantity.mul(local))
+    : totalSalesDelta;
 
   return {
     total_sales: asNumber(totalSalesDelta),

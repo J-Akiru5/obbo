@@ -36,7 +36,9 @@ describe('client-actions', () => {
       driver_name: 'Test Driver',
       plate_number: 'ABC-123',
       total_amount: 25000,
-      items: [{ product_id: 'prod-jb-001', bag_type: 'JB', requested_qty: 100 }],
+      items: [
+        { product_id: '550e8400-e29b-41d4-a716-446655440000', bag_type: 'JB', requested_qty: 100 },
+      ],
     };
 
     beforeEach(() => {

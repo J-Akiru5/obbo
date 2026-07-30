@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { requireAdmin, logActivity, getCostConfig } from './admin-helpers';
-import { computeDispatchProfit, prorateOrderSales } from './profit-utils';
+import { computeDispatchProfit, prorateOrderSalesByValue } from './profit-utils';
 import { orderApproveSchema, orderRejectSchema, orderTrackingUpdateSchema } from './schemas';
 import { addLedgerEntry } from './ledger-actions';
 import { createRoleNotification } from './notification-actions';
@@ -273,15 +273,19 @@ export async function dispatchOrder(
   const dispatchDate = new Date().toISOString().split('T')[0];
 
   // Compute profit values — prorate revenue to only the bags actually
-  // going out on this dispatch, instead of using the full order's total_amount.
+  // going out on this dispatch, by value (price × qty) instead of weight.
   const costConfig = await getCostConfig();
   const totalBags = jbQty * 25 + sbQty * 50;
-  const totalRequestedBags = order.items.reduce(
-    (s: number, i: { requested_qty: number; bag_type: string }) =>
-      s + (i.requested_qty || 0) * (i.bag_type === 'JB' ? 25 : 50),
-    0,
+  const totalSales = prorateOrderSalesByValue(
+    order.total_amount,
+    order.items.map(
+      (i: { requested_qty: number; approved_qty: number; selling_price_per_bag: number }) => ({
+        requested_qty: i.requested_qty || 0,
+        approved_qty: i.approved_qty || 0,
+        selling_price_per_bag: i.selling_price_per_bag || 0,
+      }),
+    ),
   );
-  const totalSales = prorateOrderSales(order.total_amount, totalRequestedBags, totalBags);
   const profitFields = computeDispatchProfit({
     totalBags,
     totalSales,
