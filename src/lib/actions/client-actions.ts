@@ -2,6 +2,8 @@
 
 import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
+import { getSourcePrice } from './admin-helpers';
+import { submitOrderSchema } from './schemas';
 import { generateGlobalNextPoNumber } from './po-utils';
 import { createRoleNotification } from './notification-actions';
 
@@ -145,6 +147,9 @@ export async function submitOrder(
 ) {
   const { supabase, user } = await requireClient();
 
+  const parsed = submitOrderSchema.safeParse(orderData);
+  if (!parsed.success) throw new Error(parsed.error.issues.map((i) => i.message).join('; '));
+
   // Auto-generate PO number if missing
   let finalPoNumber = orderData.po_number?.trim();
   if (!finalPoNumber) {
@@ -204,9 +209,11 @@ export async function submitOrder(
     const productIds = orderData.items.map((i) => i.product_id);
     const { data: products } = await supabase
       .from('products')
-      .select('id, price_per_bag')
+      .select('id, price_per_bag, price_port, price_warehouse')
       .in('id', productIds);
-    const priceMap = new Map(products?.map((p) => [p.id, p.price_per_bag]) ?? []);
+    const priceMap = new Map(
+      products?.map((p) => [p.id, getSourcePrice(p, orderData.source)]) ?? [],
+    );
     const itemsToInsert = orderData.items.map((item) => ({
       order_id: order.id,
       product_id: item.product_id,
@@ -261,6 +268,9 @@ export async function saveOrderDraft(
 ) {
   const { supabase, user } = await requireClient();
 
+  const parsed = submitOrderSchema.safeParse(orderData);
+  if (!parsed.success) throw new Error(parsed.error.issues.map((i) => i.message).join('; '));
+
   // Auto-generate PO number for draft if blank
   const finalPoNumber = orderData.po_number?.trim() || (await generateNextPoNumber());
 
@@ -303,9 +313,11 @@ export async function saveOrderDraft(
     const productIds = orderData.items.map((i) => i.product_id);
     const { data: products } = await supabase
       .from('products')
-      .select('id, price_per_bag')
+      .select('id, price_per_bag, price_port, price_warehouse')
       .in('id', productIds);
-    const priceMap = new Map(products?.map((p) => [p.id, p.price_per_bag]) ?? []);
+    const priceMap = new Map(
+      products?.map((p) => [p.id, getSourcePrice(p, orderData.source)]) ?? [],
+    );
     const itemsToInsert = orderData.items.map((item) => ({
       order_id: order.id,
       product_id: item.product_id,
@@ -610,7 +622,7 @@ export async function submitRedeliveryRequest(
 
   const { data: redeliveryProduct } = await supabase
     .from('products')
-    .select('price_per_bag')
+    .select('price_per_bag, price_port, price_warehouse')
     .eq('id', balance.product_id)
     .single();
 
@@ -621,7 +633,7 @@ export async function submitRedeliveryRequest(
     requested_qty: requestedQty,
     approved_qty: 0,
     dispatched_qty: 0,
-    selling_price_per_bag: redeliveryProduct?.price_per_bag ?? null,
+    selling_price_per_bag: getSourcePrice(redeliveryProduct, orderData.source),
   });
   if (itemsError) {
     await supabase.from('orders').delete().eq('id', order.id);

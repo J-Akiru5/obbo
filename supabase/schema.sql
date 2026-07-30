@@ -374,6 +374,10 @@ create table if not exists public.admin_settings (
   updated_at timestamptz not null default now()
 );
 
+INSERT INTO public.admin_settings (key, value)
+VALUES ('cost_config', '{"landed_cost_per_bag": 147.64, "local_expenses_per_bag": 20.00}'::jsonb)
+ON CONFLICT (key) DO NOTHING;
+
 -- ── ACTIVITY LOG ─────────────────────────────────────────────
 create table if not exists public.activity_log (
   id          uuid primary key default gen_random_uuid(),

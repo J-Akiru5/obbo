@@ -233,3 +233,27 @@ export const customerBalanceUpdateSchema = z.object({
   remaining_qty: z.number().int().min(0),
   status: z.enum(['pending', 'fulfilled']),
 });
+
+// ─── Client Order Submission ───────────────────────────────────
+export const submitOrderSchema = z.object({
+  source: z.enum(['port', 'warehouse']),
+  service_type: z.enum(['pickup', 'deliver']),
+  payment_method: z.enum(['cash', 'check']),
+  po_number: z.string().trim().optional(),
+  po_image_url: z.string().min(1, 'PO image is required'),
+  supplier_name: z.string().trim().optional(),
+  driver_name: z.string().trim().nullable().optional(),
+  plate_number: z.string().trim().nullable().optional(),
+  total_amount: z.number().min(0),
+  items: z
+    .array(
+      z.object({
+        product_id: z.string().uuid(),
+        bag_type: z.enum(['JB', 'SB']),
+        requested_qty: z.number().int().min(1),
+      }),
+    )
+    .min(1, 'At least one item is required'),
+  notes: z.string().optional(),
+  preferred_pickup_date: z.string().optional(),
+});

@@ -1,6 +1,7 @@
 'use server';
 
 import { requireAdmin, logActivity } from './admin-helpers';
+import { warehouseReportSaveSchema } from './schemas';
 import { createRoleNotification } from './notification-actions';
 import type { WarehouseReport } from '@/lib/types/database';
 
@@ -178,6 +179,8 @@ export async function saveWarehouseReport(report: {
   closing_sb: number;
   notes?: string;
 }) {
+  const parsed = warehouseReportSaveSchema.safeParse(report);
+  if (!parsed.success) throw new Error(parsed.error.issues.map((i) => i.message).join('; '));
   const { supabase, userId } = await requireAdmin();
   const { data, error } = await supabase
     .from('warehouse_reports')

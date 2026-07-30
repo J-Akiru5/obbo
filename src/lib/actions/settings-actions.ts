@@ -2,6 +2,7 @@
 
 import { requireAdmin, logActivity } from './admin-helpers';
 import type { CostConfig } from './admin-helpers';
+import { costConfigSchema } from './schemas';
 
 export async function getAdminSetting(key: string) {
   const { supabase } = await requireAdmin();
@@ -20,6 +21,8 @@ export async function saveAdminSetting(key: string, value: Record<string, unknow
 }
 
 export async function saveCostConfig(config: CostConfig) {
+  const parsed = costConfigSchema.safeParse(config);
+  if (!parsed.success) throw new Error(parsed.error.issues.map((i) => i.message).join('; '));
   const { supabase, userId } = await requireAdmin();
   const { error } = await supabase
     .from('admin_settings')

@@ -1,6 +1,7 @@
 'use server';
 
 import { requireAdmin, logActivity } from './admin-helpers';
+import { shipmentCreateSchema, shipmentUpdateSchema } from './schemas';
 import { createRoleNotification } from './notification-actions';
 
 export async function fetchShipments() {
@@ -21,6 +22,15 @@ export async function createShipment(
   damagedJb: number = 0,
   damagedSb: number = 0,
 ) {
+  const parsed = shipmentCreateSchema.safeParse({
+    batchName,
+    totalJb,
+    totalSb,
+    arrivalDate,
+    damagedJb,
+    damagedSb,
+  });
+  if (!parsed.success) throw new Error(parsed.error.issues.map((i) => i.message).join('; '));
   const { supabase, userId } = await requireAdmin();
   const totalBags = totalJb + totalSb;
   const goodJb = totalJb - damagedJb;
@@ -75,6 +85,8 @@ export async function updateShipment(
     arrival_date: string;
   }>,
 ) {
+  const parsed = shipmentUpdateSchema.safeParse(updates);
+  if (!parsed.success) throw new Error(parsed.error.issues.map((i) => i.message).join('; '));
   const { supabase, userId } = await requireAdmin();
   const { error } = await supabase
     .from('shipments')

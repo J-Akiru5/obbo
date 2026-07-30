@@ -1,7 +1,8 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { requireAdmin, logActivity, getCostConfig } from './admin-helpers';
+import { requireAdmin, logActivity, getCostConfig, computeDispatchProfit } from './admin-helpers';
+import { orderApproveSchema, orderRejectSchema, orderTrackingUpdateSchema } from './schemas';
 import { addLedgerEntry } from './ledger-actions';
 import { createRoleNotification } from './notification-actions';
 
@@ -23,6 +24,8 @@ export async function approveOrder(
   approvedItems: { itemId: string; qty: number }[],
   shippingFee?: number,
 ) {
+  const parsed = orderApproveSchema.safeParse({ orderId, approvedItems, shippingFee });
+  if (!parsed.success) throw new Error(parsed.error.issues.map((i) => i.message).join('; '));
   const { supabase, userId } = await requireAdmin();
 
   // Get order
@@ -140,6 +143,8 @@ export async function approveOrder(
 }
 
 export async function rejectOrder(orderId: string, reason: string) {
+  const parsed = orderRejectSchema.safeParse({ orderId, reason });
+  if (!parsed.success) throw new Error(parsed.error.issues.map((i) => i.message).join('; '));
   const { supabase, userId } = await requireAdmin();
   const { error } = await supabase
     .from('orders')
@@ -277,15 +282,12 @@ export async function dispatchOrder(
   const orderUnitPrice =
     totalRequestedBags > 0 ? Number(order.total_amount) / totalRequestedBags : 0;
   const totalSales = Math.round(orderUnitPrice * totalBags * 100) / 100;
-  const sellingPricePerBag = totalBags > 0 ? Math.round((totalSales / totalBags) * 100) / 100 : 0;
-  const grossProfit =
-    Math.round((totalSales - totalBags * costConfig.landed_cost_per_bag) * 100) / 100;
-  const netProfit =
-    Math.round(
-      (totalSales -
-        totalBags * (costConfig.landed_cost_per_bag + costConfig.local_expenses_per_bag)) *
-        100,
-    ) / 100;
+  const profitFields = computeDispatchProfit({
+    totalBags,
+    totalSales,
+    landedCostPerBag: costConfig.landed_cost_per_bag,
+    localExpensesPerBag: costConfig.local_expenses_per_bag,
+  });
 
   // ── ATOMIC CRITICAL WRITES VIA RPC ─────────────────────────
   // Stock deduction, ledger entry, DR upsert, order status update,
@@ -302,12 +304,12 @@ export async function dispatchOrder(
     p_client_name: clientName,
     p_destination: destination,
     p_po_number: poNumber,
-    p_total_sales: totalSales,
-    p_gross_profit: grossProfit,
-    p_net_profit: netProfit,
-    p_selling_price_per_bag: sellingPricePerBag,
-    p_landed_cost_per_bag: costConfig.landed_cost_per_bag,
-    p_local_expenses_per_bag: costConfig.local_expenses_per_bag,
+    p_total_sales: profitFields.total_sales,
+    p_gross_profit: profitFields.gross_profit,
+    p_net_profit: profitFields.net_profit,
+    p_selling_price_per_bag: profitFields.selling_price_per_bag,
+    p_landed_cost_per_bag: profitFields.landed_cost_per_bag,
+    p_local_expenses_per_bag: profitFields.local_expenses_per_bag,
   });
   if (rpcError) throw new Error(`Dispatch RPC failed: ${rpcError.message}`);
   const rpcData = rpcResult as { success?: boolean; error?: string } | null;
@@ -462,6 +464,14 @@ export async function updateTrackingStatus(
   bagsReturnedSb?: number,
   returnReason?: string,
 ) {
+  const parsed = orderTrackingUpdateSchema.safeParse({
+    orderId,
+    trackingStatus,
+    bagsReturnedJb,
+    bagsReturnedSb,
+    returnReason,
+  });
+  if (!parsed.success) throw new Error(parsed.error.issues.map((i) => i.message).join('; '));
   const { supabase, userId } = await requireAdmin();
   const updates: Record<string, unknown> = {
     tracking_status: trackingStatus,

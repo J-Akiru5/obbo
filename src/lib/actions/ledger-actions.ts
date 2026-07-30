@@ -1,6 +1,14 @@
 'use server';
 
-import { requireAdmin, logActivity, getCostConfig } from './admin-helpers';
+import {
+  requireAdmin,
+  logActivity,
+  getCostConfig,
+  computeDispatchProfit,
+  computeReturnProfitDelta,
+  type DispatchProfitFields,
+} from './admin-helpers';
+import { ledgerEntryCreateSchema, ledgerEntryUpdateSchema } from './schemas';
 
 export async function addLedgerEntry(
   shipmentId: string,
@@ -26,6 +34,8 @@ export async function addLedgerEntry(
     delivery_receipt_id?: string | null;
   },
 ) {
+  const parsed = ledgerEntryCreateSchema.safeParse(entry);
+  if (!parsed.success) throw new Error(parsed.error.issues.map((i) => i.message).join('; '));
   const { supabase, userId } = await requireAdmin();
   const jbOut = entry.jb ?? 0;
   const sbOut = entry.sb ?? 0;
@@ -34,28 +44,43 @@ export async function addLedgerEntry(
   const returnReason = entry.return_reason ?? 'return';
 
   const isDispatch = !entry.bags_returned || entry.bags_returned === 0;
-  let profitFields = {};
+  let profitFields: Partial<DispatchProfitFields> = {};
   if (isDispatch && (jbOut > 0 || sbOut > 0)) {
     const costConfig = await getCostConfig();
-    const totalBags = jbOut * 25 + sbOut * 50;
-    const totalSales = entry.amount ?? 0;
-    const sellingPricePerBag = totalBags > 0 ? Math.round((totalSales / totalBags) * 100) / 100 : 0;
-    const grossProfit =
-      Math.round((totalSales - totalBags * costConfig.landed_cost_per_bag) * 100) / 100;
-    const netProfit =
-      Math.round(
-        (totalSales -
-          totalBags * (costConfig.landed_cost_per_bag + costConfig.local_expenses_per_bag)) *
-          100,
-      ) / 100;
-    profitFields = {
-      total_sales: totalSales,
-      gross_profit: grossProfit,
-      net_profit: netProfit,
-      selling_price_per_bag: sellingPricePerBag,
-      landed_cost_per_bag: costConfig.landed_cost_per_bag,
-      local_expenses_per_bag: costConfig.local_expenses_per_bag,
-    };
+    profitFields = computeDispatchProfit({
+      totalBags: jbOut * 25 + sbOut * 50,
+      totalSales: entry.amount ?? 0,
+      landedCostPerBag: costConfig.landed_cost_per_bag,
+      localExpensesPerBag: costConfig.local_expenses_per_bag,
+    });
+  } else if (!isDispatch && returned > 0) {
+    // A return/waste/damage event reverses a slice of an ORIGINAL sale.
+    // Look that original dispatch row up (same shipment + DR number, the
+    // earliest row with jb/sb > 0) and use ITS stored rates — never live
+    // cost config — so this reversal can't drift from what was actually
+    // charged, even if cost config has changed since.
+    const { data: originalDispatch } = await supabase
+      .from('shipment_ledger')
+      .select('selling_price_per_bag, landed_cost_per_bag, local_expenses_per_bag')
+      .eq('shipment_id', shipmentId)
+      .eq('dr_number', entry.dr_number ?? '')
+      .or('jb.gt.0,sb.gt.0')
+      .order('created_at', { ascending: true })
+      .limit(1)
+      .maybeSingle();
+
+    if (originalDispatch) {
+      profitFields = computeReturnProfitDelta({
+        returnedBags: returned,
+        sellingPricePerBag: Number(originalDispatch.selling_price_per_bag) || 0,
+        landedCostPerBag: Number(originalDispatch.landed_cost_per_bag) || 0,
+        localExpensesPerBag: Number(originalDispatch.local_expenses_per_bag) || 0,
+        isRestockable: returnReason === 'return',
+      });
+    }
+    // If no original dispatch row is found (e.g. a manually-created return
+    // with no matching DR), profitFields stays empty and the return is
+    // stock-only — same as prior behavior — rather than guessing at rates.
   }
 
   const { data, error } = await supabase
@@ -128,10 +153,84 @@ export async function updateLedgerEntry(
     notes: string;
   }>,
 ) {
+  const parsed = ledgerEntryUpdateSchema.safeParse(updates);
+  if (!parsed.success) throw new Error(parsed.error.issues.map((i) => i.message).join('; '));
   const { supabase, userId } = await requireAdmin();
+
+  // T-1 fix: whenever jb/sb/amount/bags_returned/return_reason change, the
+  // stored total_sales/gross_profit/net_profit/selling_price_per_bag go
+  // stale unless we recompute them here. We always recompute from THIS
+  // row's own stored landed_cost_per_bag/local_expenses_per_bag (or, for a
+  // return row, the original dispatch row's stored rates) — never live
+  // cost config — so historical immutability holds even through an edit.
+  const recomputeTrigger =
+    updates.jb !== undefined ||
+    updates.sb !== undefined ||
+    updates.amount !== undefined ||
+    updates.bags_returned !== undefined ||
+    updates.return_reason !== undefined ||
+    updates.dr_number !== undefined;
+
+  let profitUpdates: Partial<DispatchProfitFields> = {};
+  if (recomputeTrigger) {
+    const { data: currentRow } = await supabase
+      .from('shipment_ledger')
+      .select(
+        'jb, sb, amount, bags_returned, return_reason, dr_number, landed_cost_per_bag, local_expenses_per_bag',
+      )
+      .eq('id', id)
+      .single();
+
+    if (currentRow) {
+      const newJb = updates.jb ?? currentRow.jb ?? 0;
+      const newSb = updates.sb ?? currentRow.sb ?? 0;
+      const newAmount = updates.amount ?? Number(currentRow.amount) ?? 0;
+      const newBagsReturned = updates.bags_returned ?? currentRow.bags_returned ?? 0;
+      const newReturnReason = updates.return_reason ?? currentRow.return_reason ?? 'return';
+      const landedCostPerBag = Number(currentRow.landed_cost_per_bag) || 0;
+      const localExpensesPerBag = Number(currentRow.local_expenses_per_bag) || 0;
+
+      if (!newBagsReturned || newBagsReturned === 0) {
+        // Still a dispatch row after the edit — reuse THIS row's own
+        // historic rates, not a fresh getCostConfig() call.
+        profitUpdates = computeDispatchProfit({
+          totalBags: newJb * 25 + newSb * 50,
+          totalSales: newAmount,
+          landedCostPerBag,
+          localExpensesPerBag,
+        });
+      } else {
+        // This row is (or is becoming) a return/waste/damage row — its
+        // profit fields are a delta against the ORIGINAL dispatch row, so
+        // look that up again rather than reusing this row's own rates
+        // (which, for an existing return row, are already the original's).
+        const drNumberForLookup = updates.dr_number ?? currentRow.dr_number ?? '';
+        const { data: originalDispatch } = await supabase
+          .from('shipment_ledger')
+          .select('selling_price_per_bag, landed_cost_per_bag, local_expenses_per_bag')
+          .eq('shipment_id', shipmentId)
+          .eq('dr_number', drNumberForLookup)
+          .or('jb.gt.0,sb.gt.0')
+          .order('created_at', { ascending: true })
+          .limit(1)
+          .maybeSingle();
+
+        if (originalDispatch) {
+          profitUpdates = computeReturnProfitDelta({
+            returnedBags: newBagsReturned,
+            sellingPricePerBag: Number(originalDispatch.selling_price_per_bag) || 0,
+            landedCostPerBag: Number(originalDispatch.landed_cost_per_bag) || 0,
+            localExpensesPerBag: Number(originalDispatch.local_expenses_per_bag) || 0,
+            isRestockable: newReturnReason === 'return',
+          });
+        }
+      }
+    }
+  }
+
   const { error } = await supabase
     .from('shipment_ledger')
-    .update({ ...updates, updated_at: new Date().toISOString() })
+    .update({ ...updates, ...profitUpdates, updated_at: new Date().toISOString() })
     .eq('id', id);
   if (error) throw new Error(error.message);
 

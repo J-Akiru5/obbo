@@ -1,6 +1,7 @@
 'use server';
 
 import { requireAdmin, logActivity } from './admin-helpers';
+import { customerBalanceUpdateSchema } from './schemas';
 
 export async function fetchCustomerBalances() {
   const { supabase } = await requireAdmin();
@@ -14,6 +15,8 @@ export async function fetchCustomerBalances() {
 }
 
 export async function updateCustomerBalance(id: string, remaining_qty: number, status: string) {
+  const parsed = customerBalanceUpdateSchema.safeParse({ remaining_qty, status });
+  if (!parsed.success) throw new Error(parsed.error.issues.map((i) => i.message).join('; '));
   const { supabase, userId } = await requireAdmin();
   const { error } = await supabase
     .from('customer_balances')
