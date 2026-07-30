@@ -1,13 +1,11 @@
 'use server';
 
+import { requireAdmin, logActivity, getCostConfig } from './admin-helpers';
 import {
-  requireAdmin,
-  logActivity,
-  getCostConfig,
   computeDispatchProfit,
   computeReturnProfitDelta,
   type DispatchProfitFields,
-} from './admin-helpers';
+} from './profit-utils';
 import { ledgerEntryCreateSchema, ledgerEntryUpdateSchema } from './schemas';
 
 export async function addLedgerEntry(

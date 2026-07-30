@@ -57,7 +57,7 @@ describe('Orders Server Actions', () => {
     it('rejects an order with a reason', async () => {
       server.use(http.patch('*/rest/v1/orders', () => HttpResponse.json([])));
 
-      const result = await rejectOrder('order-001', 'Out of stock');
+      const result = await rejectOrder('550e8400-e29b-41d4-a716-446655440000', 'Out of stock');
       expect(result).toEqual({ success: true });
     });
   });

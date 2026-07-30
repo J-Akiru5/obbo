@@ -576,11 +576,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                         >
                           <div className="flex items-start gap-2">
                             {n.severity === 'warning' ? (
-                              <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-500" />
+                              <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-500 dark:text-amber-400" />
                             ) : n.severity === 'success' ? (
-                              <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-500" />
+                              <CheckCircle2 className="text-status-success-text mt-0.5 h-3.5 w-3.5 shrink-0" />
                             ) : (
-                              <Info className="mt-0.5 h-3.5 w-3.5 shrink-0 text-blue-500" />
+                              <Info className="text-status-info-text mt-0.5 h-3.5 w-3.5 shrink-0" />
                             )}
                             <div>
                               <p

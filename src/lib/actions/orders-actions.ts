@@ -1,7 +1,8 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { requireAdmin, logActivity, getCostConfig, computeDispatchProfit } from './admin-helpers';
+import { requireAdmin, logActivity, getCostConfig } from './admin-helpers';
+import { computeDispatchProfit } from './profit-utils';
 import { orderApproveSchema, orderRejectSchema, orderTrackingUpdateSchema } from './schemas';
 import { addLedgerEntry } from './ledger-actions';
 import { createRoleNotification } from './notification-actions';
