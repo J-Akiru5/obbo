@@ -1,0 +1,790 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OBBO iManage — QA Manual Review Checklist</title>
+<style>
+  :root {
+    --bg: #0a0f1e;
+    --surface: #111827;
+    --surface-2: #1e2a3a;
+    --surface-3: #243044;
+    --border: #1e2d42;
+    --border-bright: #2d4060;
+    --text: #e2e8f0;
+    --text-muted: #64748b;
+    --text-dim: #94a3b8;
+    --blue: #3b82f6;
+    --blue-dark: #1d4ed8;
+    --blue-glow: rgba(59,130,246,0.15);
+    --green: #10b981;
+    --green-glow: rgba(16,185,129,0.12);
+    --yellow: #f59e0b;
+    --yellow-glow: rgba(245,158,11,0.12);
+    --red: #ef4444;
+    --red-glow: rgba(239,68,68,0.12);
+    --purple: #8b5cf6;
+    --cyan: #06b6d4;
+    --orange: #f97316;
+    --pass: #10b981;
+    --fail: #ef4444;
+    --skip: #f59e0b;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    min-height: 100vh;
+  }
+  .header {
+    background: linear-gradient(135deg, #0d1f3c 0%, #0a0f1e 60%, #0d1525 100%);
+    border-bottom: 1px solid var(--border-bright);
+    padding: 48px 0 36px;
+    position: relative;
+    overflow: hidden;
+  }
+  .header::before {
+    content: '';
+    position: absolute; inset: 0;
+    background: radial-gradient(ellipse at 20% 50%, rgba(59,130,246,0.08) 0%, transparent 60%),
+                radial-gradient(ellipse at 80% 20%, rgba(139,92,246,0.06) 0%, transparent 50%);
+    pointer-events: none;
+  }
+  .header-inner { max-width: 1200px; margin: 0 auto; padding: 0 32px; position: relative; }
+  .header-badge {
+    display: inline-flex; align-items: center; gap: 7px;
+    background: rgba(59,130,246,0.1); border: 1px solid rgba(59,130,246,0.25);
+    border-radius: 99px; padding: 5px 14px; font-size: 0.72rem;
+    font-weight: 600; color: var(--blue); letter-spacing: 0.08em;
+    text-transform: uppercase; margin-bottom: 16px;
+  }
+  .header-badge .dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: var(--blue); animation: pulse 2s infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.5; transform: scale(1.3); }
+  }
+  .header h1 {
+    font-size: 2.4rem; font-weight: 800; letter-spacing: -0.03em;
+    background: linear-gradient(135deg, #e2e8f0 0%, #94a3b8 100%);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .header h1 span { -webkit-text-fill-color: var(--blue); }
+  .header .subtitle { font-size: 1rem; color: var(--text-muted); margin-top: 10px; max-width: 700px; }
+  .header-meta { display: flex; gap: 10px; margin-top: 22px; flex-wrap: wrap; align-items: center; }
+  .meta-chip {
+    background: rgba(255,255,255,0.04); border: 1px solid var(--border-bright);
+    border-radius: 8px; padding: 6px 14px; font-size: 0.8rem; color: var(--text-dim);
+  }
+  .meta-chip strong { color: var(--text); font-weight: 600; }
+  .toolbar {
+    position: sticky; top: 0; z-index: 100;
+    background: rgba(10,15,30,0.96);
+    backdrop-filter: blur(20px);
+    border-bottom: 1px solid var(--border);
+    padding: 0 32px;
+  }
+  .toolbar-inner {
+    max-width: 1200px; margin: 0 auto;
+    display: flex; align-items: center; gap: 16px;
+    height: 58px;
+  }
+  .toolbar-label { font-size: 0.78rem; font-weight: 600; color: var(--text-muted); white-space: nowrap; }
+  .reviewer-tabs { display: flex; gap: 4px; background: var(--surface); border-radius: 10px; padding: 4px; border: 1px solid var(--border); }
+  .reviewer-tab {
+    padding: 6px 16px; border-radius: 7px; font-size: 0.82rem; font-weight: 600;
+    cursor: pointer; transition: all 0.2s; color: var(--text-muted); border: none;
+    background: transparent; white-space: nowrap;
+  }
+  .reviewer-tab:hover { color: var(--text); background: rgba(255,255,255,0.05); }
+  .reviewer-tab.active { background: var(--blue); color: #fff; box-shadow: 0 2px 12px rgba(59,130,246,0.35); }
+  .toolbar-spacer { flex: 1; }
+  .progress-summary { display: flex; gap: 14px; align-items: center; }
+  .prog-stat { display: flex; align-items: center; gap: 6px; font-size: 0.8rem; font-weight: 600; }
+  .prog-dot { width: 8px; height: 8px; border-radius: 50%; }
+  .prog-stat.pass .prog-dot { background: var(--pass); }
+  .prog-stat.fail .prog-dot { background: var(--fail); }
+  .prog-stat.skip .prog-dot { background: var(--skip); }
+  .prog-stat.pass { color: var(--pass); }
+  .prog-stat.fail { color: var(--fail); }
+  .prog-stat.skip { color: var(--skip); }
+  .prog-bar-wrap { width: 120px; height: 5px; background: var(--surface-2); border-radius: 99px; overflow: hidden; }
+  .prog-bar { height: 100%; background: linear-gradient(90deg, var(--pass), var(--cyan)); border-radius: 99px; transition: width 0.4s ease; }
+  .btn-print {
+    padding: 7px 16px; border-radius: 8px; font-size: 0.8rem; font-weight: 600;
+    background: transparent; border: 1px solid var(--border-bright); color: var(--text-dim);
+    cursor: pointer; transition: all 0.2s; display: flex; align-items: center; gap: 6px;
+  }
+  .btn-print:hover { border-color: var(--blue); color: var(--blue); }
+  .main { max-width: 1200px; margin: 0 auto; padding: 32px 32px 80px; }
+  .reviewer-panel { display: none; }
+  .reviewer-panel.active { display: block; }
+  .reviewer-header {
+    display: flex; align-items: center; gap: 16px;
+    margin-bottom: 28px; padding: 20px 24px;
+    background: var(--surface); border-radius: 14px;
+    border: 1px solid var(--border-bright);
+  }
+  .reviewer-avatar {
+    width: 52px; height: 52px; border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.4rem; font-weight: 800; flex-shrink: 0;
+  }
+  .reviewer-info h2 { font-size: 1.15rem; font-weight: 700; }
+  .reviewer-info p { font-size: 0.83rem; color: var(--text-muted); margin-top: 2px; }
+  .reviewer-stats { margin-left: auto; display: flex; gap: 20px; }
+  .stat-box { text-align: center; }
+  .stat-box .num { font-size: 1.5rem; font-weight: 800; }
+  .stat-box .lbl { font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+  .overall-progress {
+    margin-bottom: 28px; padding: 18px 22px;
+    background: var(--surface); border-radius: 12px;
+    border: 1px solid var(--border);
+  }
+  .overall-progress h4 { font-size: 0.8rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 12px; }
+  .progress-bars { display: flex; gap: 10px; }
+  .prog-track { flex: 1; }
+  .prog-track-label { font-size: 0.72rem; color: var(--text-muted); margin-bottom: 4px; display: flex; justify-content: space-between; }
+  .prog-track-bar { height: 6px; background: var(--surface-2); border-radius: 99px; overflow: hidden; }
+  .prog-track-fill { height: 100%; border-radius: 99px; transition: width 0.4s ease; }
+  .prog-track-fill.pass { background: var(--pass); }
+  .prog-track-fill.fail { background: var(--fail); }
+  .prog-track-fill.skip { background: var(--skip); }
+  .category {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 14px; margin-bottom: 16px; overflow: hidden;
+    transition: border-color 0.2s;
+  }
+  .category:hover { border-color: var(--border-bright); }
+  .cat-header {
+    display: flex; align-items: center; gap: 14px;
+    padding: 16px 20px; cursor: pointer;
+    user-select: none; transition: background 0.2s;
+  }
+  .cat-header:hover { background: rgba(255,255,255,0.03); }
+  .cat-icon {
+    width: 38px; height: 38px; border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.1rem; flex-shrink: 0;
+  }
+  .cat-title { flex: 1; }
+  .cat-title h3 { font-size: 1rem; font-weight: 700; }
+  .cat-title span { font-size: 0.79rem; color: var(--text-muted); margin-top: 1px; display: block; }
+  .cat-badge { display: flex; gap: 6px; align-items: center; }
+  .badge {
+    padding: 3px 10px; border-radius: 99px; font-size: 0.7rem; font-weight: 700;
+    letter-spacing: 0.03em;
+  }
+  .badge.pass { background: var(--green-glow); color: var(--green); border: 1px solid rgba(16,185,129,0.25); }
+  .badge.fail { background: var(--red-glow); color: var(--red); border: 1px solid rgba(239,68,68,0.25); }
+  .badge.skip { background: var(--yellow-glow); color: var(--yellow); border: 1px solid rgba(245,158,11,0.25); }
+  .badge.total { background: rgba(255,255,255,0.05); color: var(--text-dim); border: 1px solid var(--border); }
+  .cat-chevron { color: var(--text-muted); font-size: 0.85rem; transition: transform 0.25s; }
+  .category.open .cat-chevron { transform: rotate(180deg); }
+  .cat-body { display: none; padding: 0 12px 12px; }
+  .category.open .cat-body { display: block; }
+  .test-item {
+    border-radius: 10px; margin-bottom: 8px; overflow: hidden;
+    border: 1px solid var(--border); transition: border-color 0.2s;
+  }
+  .test-item.state-pass { border-color: rgba(16,185,129,0.3); background: rgba(16,185,129,0.03); }
+  .test-item.state-fail { border-color: rgba(239,68,68,0.3); background: rgba(239,68,68,0.03); }
+  .test-item.state-skip { border-color: rgba(245,158,11,0.3); background: rgba(245,158,11,0.03); }
+  .test-row {
+    display: flex; align-items: flex-start; gap: 12px;
+    padding: 12px 14px; cursor: pointer;
+  }
+  .test-num {
+    width: 24px; height: 24px; border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.68rem; font-weight: 700; flex-shrink: 0; margin-top: 1px;
+    background: rgba(255,255,255,0.05); color: var(--text-muted);
+  }
+  .test-content { flex: 1; min-width: 0; }
+  .test-name { font-size: 0.88rem; font-weight: 600; color: var(--text); }
+  .test-desc { font-size: 0.78rem; color: var(--text-muted); margin-top: 3px; line-height: 1.5; }
+  .test-desc code { font-family: 'Courier New', monospace; font-size: 0.75rem; background: rgba(255,255,255,0.06); padding: 1px 5px; border-radius: 4px; color: var(--cyan); }
+  .test-tags { display: flex; gap: 5px; margin-top: 6px; flex-wrap: wrap; }
+  .tag {
+    font-size: 0.65rem; font-weight: 600; letter-spacing: 0.04em;
+    padding: 2px 8px; border-radius: 99px; text-transform: uppercase;
+    background: rgba(59,130,246,0.08); color: var(--blue); border: 1px solid rgba(59,130,246,0.15);
+  }
+  .tag.ui { background: rgba(139,92,246,0.08); color: var(--purple); border-color: rgba(139,92,246,0.2); }
+  .tag.api { background: rgba(6,182,212,0.08); color: var(--cyan); border-color: rgba(6,182,212,0.2); }
+  .tag.db { background: rgba(249,115,22,0.08); color: var(--orange); border-color: rgba(249,115,22,0.2); }
+  .tag.perm { background: rgba(245,158,11,0.08); color: var(--yellow); border-color: rgba(245,158,11,0.2); }
+  .tag.critical { background: rgba(239,68,68,0.08); color: var(--red); border-color: rgba(239,68,68,0.2); }
+  .test-actions { display: flex; gap: 5px; align-items: center; flex-shrink: 0; margin-top: 1px; }
+  .action-btn {
+    width: 32px; height: 32px; border-radius: 8px; border: 1px solid var(--border);
+    background: transparent; cursor: pointer; font-size: 0.85rem;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.15s; color: var(--text-muted);
+  }
+  .action-btn:hover { border-color: var(--text-muted); color: var(--text); transform: scale(1.08); }
+  .action-btn.pass-btn.active { border-color: var(--pass); color: var(--pass); background: var(--green-glow); box-shadow: 0 0 8px rgba(16,185,129,0.2); }
+  .action-btn.fail-btn.active { border-color: var(--fail); color: var(--fail); background: var(--red-glow); box-shadow: 0 0 8px rgba(239,68,68,0.2); }
+  .action-btn.skip-btn.active { border-color: var(--skip); color: var(--skip); background: var(--yellow-glow); box-shadow: 0 0 8px rgba(245,158,11,0.2); }
+  .action-btn.comment-btn.active { border-color: var(--blue); color: var(--blue); background: var(--blue-glow); }
+  .comment-area { display: none; padding: 0 14px 12px 14px; }
+  .comment-area.open { display: block; }
+  .comment-area textarea {
+    width: 100%; min-height: 70px; resize: vertical;
+    background: var(--bg); border: 1px solid var(--border-bright);
+    border-radius: 8px; padding: 10px 12px;
+    font-size: 0.82rem; color: var(--text); font-family: inherit;
+    line-height: 1.55; outline: none; transition: border-color 0.2s;
+  }
+  .comment-area textarea::placeholder { color: var(--text-muted); }
+  .comment-area textarea:focus { border-color: var(--blue); box-shadow: 0 0 0 3px rgba(59,130,246,0.1); }
+  .comment-meta { display: flex; justify-content: space-between; align-items: center; margin-top: 6px; }
+  .comment-meta span { font-size: 0.72rem; color: var(--text-muted); }
+  .comment-meta .clear-btn {
+    font-size: 0.72rem; color: var(--text-muted); cursor: pointer;
+    background: none; border: none; padding: 2px 6px; border-radius: 4px; transition: color 0.15s;
+  }
+  .comment-meta .clear-btn:hover { color: var(--red); }
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border-bright); border-radius: 99px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+  @media print {
+    .toolbar, .test-actions { display: none !important; }
+    .cat-body { display: block !important; }
+    .category { break-inside: avoid; }
+    body { background: #fff; color: #111; }
+  }
+</style>
+</head>
+<body>
+
+<header class="header">
+  <div class="header-inner">
+    <div class="header-badge"><span class="dot"></span> QA Manual Review</div>
+    <h1>OBBO <span>iManage</span> &mdash; Test Checklist</h1>
+    <p class="subtitle">Interactive manual review document for end-to-end functional testing. Toggle pass/fail/skip per test case and leave inline comments. State is auto-saved in browser.</p>
+    <div class="header-meta">
+      <div class="meta-chip">Version <strong>1.0</strong></div>
+      <div class="meta-chip">Sprint <strong>2026-Q3</strong></div>
+      <div class="meta-chip">Stack <strong>Next.js &middot; Prisma &middot; Supabase</strong></div>
+      <div class="meta-chip">Date <strong id="today-date">-</strong></div>
+    </div>
+  </div>
+</header>
+
+<div class="toolbar">
+  <div class="toolbar-inner">
+    <span class="toolbar-label">Reviewer:</span>
+    <div class="reviewer-tabs">
+      <button class="reviewer-tab active" onclick="switchReviewer('admin')" id="tab-admin">Shield Admin</button>
+      <button class="reviewer-tab" onclick="switchReviewer('client')" id="tab-client">Client</button>
+      <button class="reviewer-tab" onclick="switchReviewer('warehouse')" id="tab-warehouse">Warehouse Mgr</button>
+    </div>
+    <div class="toolbar-spacer"></div>
+    <div class="progress-summary">
+      <div class="prog-stat pass"><div class="prog-dot"></div><span id="tp-pass">0</span> Pass</div>
+      <div class="prog-stat fail"><div class="prog-dot"></div><span id="tp-fail">0</span> Fail</div>
+      <div class="prog-stat skip"><div class="prog-dot"></div><span id="tp-skip">0</span> Skip</div>
+      <div class="prog-bar-wrap"><div class="prog-bar" id="tp-bar" style="width:0%"></div></div>
+    </div>
+    <button class="btn-print" onclick="window.print()">Print</button>
+  </div>
+</div>
+
+<main class="main">
+
+<!-- =========================================================
+     ADMIN
+     ========================================================= -->
+<div class="reviewer-panel active" id="panel-admin">
+  <div class="reviewer-header">
+    <div class="reviewer-avatar" style="background:rgba(59,130,246,0.15);color:var(--blue);">A</div>
+    <div class="reviewer-info">
+      <h2>Admin Reviewer</h2>
+      <p>Tests all admin-facing features: order management, inventory, clients, products, reports, settings</p>
+    </div>
+    <div class="reviewer-stats">
+      <div class="stat-box"><div class="num" id="admin-total" style="color:var(--blue)">-</div><div class="lbl">Total</div></div>
+      <div class="stat-box"><div class="num" id="admin-pass" style="color:var(--green)">0</div><div class="lbl">Pass</div></div>
+      <div class="stat-box"><div class="num" id="admin-fail" style="color:var(--red)">0</div><div class="lbl">Fail</div></div>
+    </div>
+  </div>
+  <div class="overall-progress">
+    <h4>Review Progress</h4>
+    <div class="progress-bars">
+      <div class="prog-track"><div class="prog-track-label"><span>Pass</span><span id="admin-pass-pct">0%</span></div><div class="prog-track-bar"><div class="prog-track-fill pass" id="admin-pass-bar" style="width:0%"></div></div></div>
+      <div class="prog-track"><div class="prog-track-label"><span>Fail</span><span id="admin-fail-pct">0%</span></div><div class="prog-track-bar"><div class="prog-track-fill fail" id="admin-fail-bar" style="width:0%"></div></div></div>
+      <div class="prog-track"><div class="prog-track-label"><span>Skip</span><span id="admin-skip-pct">0%</span></div><div class="prog-track-bar"><div class="prog-track-fill skip" id="admin-skip-bar" style="width:0%"></div></div></div>
+    </div>
+  </div>
+
+  <!-- AUTH -->
+  <div class="category open">
+    <div class="cat-header" onclick="toggleCat(this)">
+      <div class="cat-icon" style="background:rgba(59,130,246,0.12);color:var(--blue);">🔐</div>
+      <div class="cat-title"><h3>Authentication &amp; Access</h3><span>Login, session, role guard, KYC gate</span></div>
+      <div class="cat-badge" id="badge-admin-auth"></div>
+      <span class="cat-chevron">&#9650;</span>
+    </div>
+    <div class="cat-body">
+      <div class="test-item" data-id="admin-auth-1" data-cat="admin-auth" data-panel="admin"><div class="test-row" onclick="cycleState(this.parentElement)"><div class="test-num">1</div><div class="test-content"><div class="test-name">Admin Login with valid credentials</div><div class="test-desc">Navigate to <code>/login</code>, enter valid admin email + password, expect redirect to <code>/admin/dashboard</code>.</div><div class="test-tags"><span class="tag">UI</span><span class="tag api">API</span><span class="tag critical">critical</span></div></div><div class="test-actions" onclick="event.stopPropagation()"><button class="action-btn pass-btn" onclick="setState(this,'pass')" title="Pass">&#10003;</button><button class="action-btn fail-btn" onclick="setState(this,'fail')" title="Fail">&#10007;</button><button class="action-btn skip-btn" onclick="setState(this,'skip')" title="Skip">&ndash;</button><button class="action-btn comment-btn" onclick="toggleComment(this)" title="Comment">&#128172;</button></div></div><div class="comment-area"><textarea placeholder="Add a comment, bug reference, or screenshot note..."></textarea><div class="comment-meta"><span>Observation / Notes</span><button class="clear-btn" onclick="clearComment(this)">Clear</button></div></div></div>
+      <div class="test-item" data-id="admin-auth-2" data-cat="admin-auth" data-panel="admin"><div class="test-row" onclick="cycleState(this.parentElement)"><div class="test-num">2</div><div class="test-content"><div class="test-name">Admin Login with invalid credentials shows error</div><div class="test-desc">Enter incorrect password &mdash; expect inline error message, no redirect.</div><div class="test-tags"><span class="tag">UI</span><span class="tag critical">critical</span></div></div><div class="test-actions" onclick="event.stopPropagation()"><button class="action-btn pass-btn" onclick="setState(this,'pass')" title="Pass">&#10003;</button><button class="action-btn fail-btn" onclick="setState(this,'fail')" title="Fail">&#10007;</button><button class="action-btn skip-btn" onclick="setState(this,'skip')" title="Skip">&ndash;</button><button class="action-btn comment-btn" onclick="toggleComment(this)" title="Comment">&#128172;</button></div></div><div class="comment-area"><textarea placeholder="Add a comment, bug reference, or screenshot note..."></textarea><div class="comment-meta"><span>Observation / Notes</span><button class="clear-btn" onclick="clearComment(this)">Clear</button></div></div></div>
+      <div class="test-item" data-id="admin-auth-3" data-cat="admin-auth" data-panel="admin"><div class="test-row" onclick="cycleState(this.parentElement)"><div class="test-num">3</div><div class="test-content"><div class="test-name">Client cannot access /admin/* routes</div><div class="test-desc">Log in as a client account, manually visit <code>/admin/dashboard</code> &mdash; expect redirect or 403.</div><div class="test-tags"><span class="tag perm">permissions</span><span class="tag critical">critical</span></div></div><div class="test-actions" onclick="event.stopPropagation()"><button class="action-btn pass-btn" onclick="setState(this,'pass')" title="Pass">&#10003;</button><button class="action-btn fail-btn" onclick="setState(this,'fail')" title="Fail">&#10007;</button><button class="action-btn skip-btn" onclick="setState(this,'skip')" title="Skip">&ndash;</button><button class="action-btn comment-btn" onclick="toggleComment(this)" title="Comment">&#128172;</button></div></div><div class="comment-area"><textarea placeholder="Add a comment, bug reference, or screenshot note..."></textarea><div class="comment-meta"><span>Observation / Notes</span><button class="clear-btn" onclick="clearComment(this)">Clear</button></div></div></div>
+      <div class="test-item" data-id="admin-auth-4" data-cat="admin-auth" data-panel="admin"><div class="test-row" onclick="cycleState(this.parentElement)"><div class="test-num">4</div><div class="test-content"><div class="test-name">Session persistence after page reload</div><div class="test-desc">After login, reload the page &mdash; user should remain authenticated without re-login prompt.</div><div class="test-tags"><span class="tag">UI</span></div></div><div class="test-actions" onclick="event.stopPropagation()"><button class="action-btn pass-btn" onclick="setState(this,'pass')" title="Pass">&#10003;</button><button class="action-btn fail-btn" onclick="setState(this,'fail')" title="Fail">&#10007;</button><button class="action-btn skip-btn" onclick="setState(this,'skip')" title="Skip">&ndash;</button><button class="action-btn comment-btn" onclick="toggleComment(this)" title="Comment">&#128172;</button></div></div><div class="comment-area"><textarea placeholder="Add a comment, bug reference, or screenshot note..."></textarea><div class="comment-meta"><span>Observation / Notes</span><button class="clear-btn" onclick="clearComment(this)">Clear</button></div></div></div>
+    </div>
+  </div>
+
+  <!-- DASHBOARD -->
+  <div class="category">
+    <div class="cat-header" onclick="toggleCat(this)">
+      <div class="cat-icon" style="background:rgba(139,92,246,0.12);color:var(--purple);">&#128202;</div>
+      <div class="cat-title"><h3>Admin Dashboard</h3><span>KPIs, stats, order summaries, charts</span></div>
+      <div class="cat-badge" id="badge-admin-dashboard"></div>
+      <span class="cat-chevron">&#9650;</span>
+    </div>
+    <div class="cat-body">
+      <div class="test-item" data-id="admin-dash-1" data-cat="admin-dashboard" data-panel="admin"><div class="test-row" onclick="cycleState(this.parentElement)"><div class="test-num">1</div><div class="test-content"><div class="test-name">Dashboard loads without errors</div><div class="test-desc">Navigate to <code>/admin/dashboard</code> &mdash; no console errors, all stat cards visible and populated.</div><div class="test-tags"><span class="tag">UI</span><span class="tag api">API</span></div></div><div class="test-actions" onclick="event.stopPropagation()"><button class="action-btn pass-btn" onclick="setState(this,'pass')" title="Pass">&#10003;</button><button class="action-btn fail-btn" onclick="setState(this,'fail')" title="Fail">&#10007;</button><button class="action-btn skip-btn" onclick="setState(this,'skip')" title="Skip">&ndash;</button><button class="action-btn comment-btn" onclick="toggleComment(this)" title="Comment">&#128172;</button></div></div><div class="comment-area"><textarea placeholder="Add a comment, bug reference, or screenshot note..."></textarea><div class="comment-meta"><span>Observation / Notes</span><button class="clear-btn" onclick="clearComment(this)">Clear</button></div></div></div>
+      <div class="test-item" data-id="admin-dash-2" data-cat="admin-dashboard" data-panel="admin"><div class="test-row" onclick="cycleState(this.parentElement)"><div class="test-num">2</div><div class="test-content"><div class="test-name">Pending orders count is accurate</div><div class="test-desc">KPI card for pending orders reflects actual DB count (cross-check with Orders list filtered by status=pending).</div><div class="test-tags"><span class="tag db">db</span><span class="tag critical">critical</span></div></div><div class="test-actions" onclick="event.stopPropagation()"><button class="action-btn pass-btn" onclick="setState(this,'pass')" title="Pass">&#10003;</button><button class="action-btn fail-btn" onclick="setState(this,'fail')" title="Fail">&#10007;</button><button class="action-btn skip-btn" onclick="setState(this,'skip')" title="Skip">&ndash;</button><button class="action-btn comment-btn" onclick="toggleComment(this)" title="Comment">&#128172;</button></div></div><div class="comment-area"><textarea placeholder="Add a comment, bug reference, or screenshot note..."></textarea><div class="comment-meta"><span>Observation / Notes</span><button class="clear-btn" onclick="clearComment(this)">Clear</button></div></div></div>
+      <div class="test-item" data-id="admin-dash-3" data-cat="admin-dashboard" data-panel="admin"><div class="test-row" onclick="cycleState(this.parentElement)"><div class="test-num">3</div><div class="test-content"><div class="test-name">Sidebar active state on navigation</div><div class="test-desc">Each sidebar link highlights the correct active item when visited. No duplicate active highlights.</div><div class="test-tags"><span class="tag ui">ui</span></div></div><div class="test-actions" onclick="event.stopPropagation()"><button class="action-btn pass-btn" onclick="setState(this,'pass')" title="Pass">&#10003;</button><button class="action-btn fail-btn" onclick="setState(this,'fail')" title="Fail">&#10007;</button><button class="action-btn skip-btn" onclick="setState(this,'skip')" title="Skip">&ndash;</button><button class="action-btn comment-btn" onclick="toggleComment(this)" title="Comment">&#128172;</button></div></div><div class="comment-area"><textarea placeholder="Add a comment, bug reference, or screenshot note..."></textarea><div class="comment-meta"><span>Observation / Notes</span><button class="clear-btn" onclick="clearComment(this)">Clear</button></div></div></div>
+    </div>
+  </div>
+
+  <!-- ORDERS -->
+  <div class="category">
+    <div class="cat-header" onclick="toggleCat(this)">
+      <div class="cat-icon" style="background:rgba(16,185,129,0.12);color:var(--green);">&#128203;</div>
+      <div class="cat-title"><h3>Order Management</h3><span>Approve, reject, dispatch, split delivery, returns</span></div>
+      <div class="cat-badge" id="badge-admin-orders"></div>
+      <span class="cat-chevron">&#9650;</span>
+    </div>
+    <div class="cat-body">
+      <div class="test-item" data-id="admin-order-1" data-cat="admin-orders" data-panel="admin"><div class="test-row" onclick="cycleState(this.parentElement)"><div class="test-num">1</div><div class="test-content"><div class="test-name">Order list loads with correct status badges</div><div class="test-desc">Visit <code>/admin/orders</code> &mdash; all orders appear with correct status badges. Pagination or infinite scroll works.</div><div class="test-tags"><span class="tag">UI</span><span class="tag api">API</span></div></div><div class="test-actions" onclick="event.stopPropagation()"><button class="action-btn pass-btn" onclick="setState(this,'pass')" title="Pass">&#10003;</button><button class="action-btn fail-btn" onclick="setState(this,'fail')" title="Fail">&#10007;</button><button class="action-btn skip-btn" onclick="setState(this,'skip')" title="Skip">&ndash;</button><button class="action-btn comment-btn" onclick="toggleComment(this)" title="Comment">&#128172;</button></div></div><div class="comment-area"><textarea placeholder="Add a comment, bug reference, or screenshot note..."></textarea><div class="comment-meta"><span>Observation / Notes</span><button class="clear-btn" onclick="clearComment(this)">Clear</button></div></div></div>
+      <div class="test-item" data-id="admin-order-2" data-cat="admin-orders" data-panel="admin"><div class="test-row" onclick="cycleState(this.parentElement)"><div class="test-num">2</div><div class="test-content"><div class="test-name">Approve a pending order</div><div class="test-desc">Select a pending order, click Approve, provide approved qty, submit. Status changes to <em>approved</em>. Client receives notification.</div><div class="test-tags"><span class="tag critical">critical</span><span class="tag api">API</span><span class="tag db">db</span></div></div><div class="test-actions" onclick="event.stopPropagation()"><button class="action-btn pass-btn" onclick="setState(this,'pass')" title="Pass">&#10003;</button><button class="action-btn fail-btn" onclick="setState(this,'fail')" title="Fail">&#10007;</button><button class="action-btn skip-btn" onclick="setState(this,'skip')" title="Skip">&ndash;</button><button class="action-btn comment-btn" onclick="toggleComment(this)" title="Comment">&#128172;</button></div></div><div class="comment-area"><textarea placeholder="Add a comment, bug reference, or screenshot note..."></textarea><div class="comment-meta"><span>Observation / Notes</span><button class="clear-btn" onclick="clearComment(this)">Clear</button></div></div></div>
+      <div class="test-item" data-id="admin-order-3" data-cat="admin-orders" data-panel="admin"><div class="test-row" onclick="cycleState(this.parentElement)"><div class="test-num">3</div><div class="test-content"><div class="test-name">Reject a pending order with reason</div><div class="test-desc">Click Reject, fill in rejection reason, confirm. Order status becomes <em>rejected</em>. Reason stored in <code>rejectionReason</code>.</div><div class="test-tags"><span class="tag critical">critical</span><span class="tag db">db</span></div></div><div class="test-actions" onclick="event.stopPropagation()"><button class="action-btn pass-btn" onclick="setState(this,'pass')" title="Pass">&#10003;</button><button class="action-btn fail-btn" onclick="setState(this,'fail')" title="Fail">&#10007;</button><button class="action-btn skip-btn" onclick="setState(this,'skip')" title="Skip">&ndash;</button><button class="action-btn comment-btn" onclick="toggleComment(this)" title="Comment">&#128172;</button></div></div><div class="comment-area"><textarea placeholder="Add a comment, bug reference, or screenshot note..."></textarea><div class="comment-meta"><span>Observation / Notes</span><button class="clear-btn" onclick="clearComment(this)">Clear</button></div></div></div>
+      <div class="test-item" data-id="admin-order-4" data-cat="admin-orders" data-panel="admin"><div class="test-row" onclick="cycleState(this.parentElement)"><div class="test-num">4</div><div class="test-content"><div class="test-name">Dispatch an approved order</div><div class="test-desc">Fill driver name, plate number, DR number then dispatch. Shipment stock decrements correctly.</div><div class="test-tags"><span class="tag critical">critical</span><span class="tag db">db</span><span class="tag api">API</span></div></div><div class="test-actions" onclick="event.stopPropagation()"><button class="action-btn pass-btn" onclick="setState(this,'pass')" title="Pass">&#10003;</button><button class="action-btn fail-btn" onclick="setState(this,'fail')" title="Fail">&#10007;</button><button class="action-btn skip-btn" onclick="setState(this,'skip')" title="Skip">&ndash;</button><button class="action-btn comment-btn" onclick="toggleComment(this)" title="Comment">&#128172;</button></div></div><div class="comment-area"><textarea placeholder="Add a comment, bug reference, or screenshot note..."></textarea><div class="comment-meta"><span>Observation / Notes</span><button class="clear-btn" onclick="clearComment(this)">Clear</button></div></div></div>
+      <div class="test-item" data-id="admin-order-5" data-cat="admin-orders" data-panel="admin"><div class="test-row" onclick="cycleState(this.parentElement)"><div class="test-num">5</div><div class="test-content"><div class="test-name">Split delivery order flow</div><div class="test-desc"><code>isSplitDelivery=true</code>, <code>deliverNowQty</code> populated. Partial dispatch works. Balance stored in CustomerBalance.</div><div class="test-tags"><span class="tag db">db</span><span class="tag critical">critical</span></div></div><div class="test-actions" onclick="event.stopPropagation()"><button class="action-btn pass-btn" onclick="setState(this,'pass')" title="Pass">&#10003;</button><button class="action-btn fail-btn" onclick="setState(this,'fail')" title="Fail">&#10007;</button><button class="action-btn skip-btn" onclick="setState(this,'skip')" title="Skip">&ndash;</button><button class="action-btn comment-btn" onclick="toggleComment(this)" title="Comment">&#128172;</button></div></div><div class="comment-area"><textarea placeholder="Add a comment, bug reference, or screenshot note..."></textarea><div class="comment-meta"><span>Observation / Notes</span><button class="clear-btn" onclick="clearComment(this)">Clear</button></div></div></div>
+      <div class="test-item" data-id="admin-order-6" data-cat="admin-orders" data-panel="admin"><div class="test-row" onclick="cycleState(this.parentElement)"><div class="test-num">6</div><div class="test-content"><div class="test-name">Process order return (JB / SB qty)</div><div class="test-desc">Initiate return for a delivered order, enter JB/SB qty and reason. Return status transitions correctly and stock is adjusted.</div><div class="test-tags"><span class="tag db">db</span><span class="tag api">API</span></div></div><div class="test-actions" onclick="event.stopPropagation()"><button class="action-btn pass-btn" onclick="setState(this,'pass')" title="Pass">&#10003;</button><button class="action-btn fail-btn" onclick="setState(this,'fail')" title="Fail">&#10007;</button><button class="action-btn skip-btn" onclick="setState(this,'skip')" title="Skip">&ndash;</button><button class="action-btn comment-btn" onclick="toggleComment(this)" title="Comment">&#128172;</button></div></div><div class="comment-area"><textarea placeholder="Add a comment, bug reference, or screenshot note..."></textarea><div class="comment-meta"><span>Observation / Notes</span><button class="clear-btn" onclick="clearComment(this)">Clear</button></div></div></div>
+    </div>
+  </div>
+
+  <!-- INVENTORY -->
+  <div class="category">
+    <div class="cat-header" onclick="toggleCat(this)">
+      <div class="cat-icon" style="background:rgba(245,158,11,0.12);color:var(--yellow);">&#128230;</div>
+      <div class="cat-title"><h3>Inventory &amp; Shipments</h3><span>Batches, stock levels, ledger, JB/SB tracking</span></div>
+      <div class="cat-badge" id="badge-admin-inventory"></div>
+      <span class="cat-chevron">&#9650;</span>
+    </div>
+    <div class="cat-body">
+      <div class="test-item" data-id="admin-inv-1" data-cat="admin-inventory" data-panel="admin"><div class="test-row" onclick="cycleState(this.parentElement)"><div class="test-num">1</div><div class="test-content"><div class="test-name">Shipment list loads with batch details</div><div class="test-desc">All shipment batches visible with <code>batchName</code>, <code>arrivalDate</code>, JB/SB stock counts.</div><div class="test-tags"><span class="tag">UI</span><span class="tag api">API</span></div></div><div class="test-actions" onclick="event.stopPropagation()"><button class="action-btn pass-btn" onclick="setState(this,'pass')" title="Pass">&#10003;</button><button class="action-btn fail-btn" onclick="setState(this,'fail')" title="Fail">&#10007;</button><button class="action-btn skip-btn" onclick="setState(this,'skip')" title="Skip">&ndash;</button><button class="action-btn comment-btn" onclick="toggleComment(this)" title="Comment">&#128172;</button></div></div><div class="comment-area"><textarea placeholder="Add a comment, bug reference, or screenshot note..."></textarea><div class="comment-meta"><span>Observation / Notes</span><button class="clear-btn" onclick="clearComment(this)">Clear</button></div></div></div>
+      <div class="test-item" data-id="admin-inv-2" data-cat="admin-inventory" data-panel="admin"><div class="test-row" onclick="cycleState(this.parentElement)"><div class="test-num">2</div><div class="test-content"><div class="test-name">Shipment ledger profit calculations are accurate</div><div class="test-desc">Open a shipment, view ledger rows. <code>totalSales</code>, <code>grossProfit</code>, <code>netProfit</code> match expected formula.</div><div class="test-tags"><span class="tag db">db</span><span class="tag critical">critical</span></div></div><div class="test-actions" onclick="event.stopPropagation()"><button class="action-btn pass-btn" onclick="setState(this,'pass')" title="Pass">&#10003;</button><button class="action-btn fail-btn" onclick="setState(this,'fail')" title="Fail">&#10007;</button><button class="action-btn skip-btn" onclick="setState(this,'skip')" title="Skip">&ndash;</button><button class="action-btn comment-btn" onclick="toggleComment(this)" title="Comment">&#128172;</button></div></div><div class="comment-area"><textarea placeholder="Add a comment, bug reference, or screenshot note..."></textarea><div class="comment-meta"><span>Observation / Notes</span><button class="clear-btn" onclick="clearComment(this)">Clear</button></div></div></div>
+      <div class="test-item" data-id="admin-inv-3" data-cat="admin-inventory" data-panel="admin"><div class="test-row" onclick="cycleState(this.parentElement)"><div class="test-num">3</div><div class="test-content"><div class="test-name">Damaged stock separated from good stock</div><div class="test-desc">Damaged JB/SB tracked separately. Totals correct on shipment card. No damaged bags counted as sellable.</div><div class="test-tags"><span class="tag db">db</span></div></div><div class="test-actions" onclick="event.stopPropagation()"><button class="action-btn pass-btn" onclick="setState(this,'pass')" title="Pass">&#10003;</button><button class="action-btn fail-btn" onclick="setState(this,'fail')" title="Fail">&#10007;</button><button class="action-btn skip-btn" onclick="setState(this,'skip')" title="Skip">&ndash;</button><button class="action-btn comment-btn" onclick="toggleComment(this)" title="Comment">&#128172;</button></div></div><div class="comment-area"><textarea placeholder="Add a comment, bug reference, or screenshot note..."></textarea><div class="comment-meta"><span>Observation / Notes</span><button class="clear-btn" onclick="clearComment(this)">Clear</button></div></div></div>
+      <div class="test-item" data-id="admin-inv-4" data-cat="admin-inventory" data-panel="admin"><div class="test-row" onclick="cycleState(this.parentElement)"><div class="test-num">4</div><div class="test-content"><div class="test-name">Delivery receipt creation and linking</div><div class="test-desc">Create a DR linked to a shipment and client. DR number is unique. <code>drImageUrl</code> upload works.</div><div class="test-tags"><span class="tag api">API</span><span class="tag db">db</span></div></div><div class="test-actions" onclick="event.stopPropagation()"><button class="action-btn pass-btn" onclick="setState(this,'pass')" title="Pass">&#10003;</button><button class="action-btn fail-btn" onclick="setState(this,'fail')" title="Fail">&#10007;</button><button class="action-btn skip-btn" onclick="setState(this,'skip')" title="Skip">&ndash;</button><button class="action-btn comment-btn" onclick="toggleComment(this)" title="Comment">&#128172;</button></div></div><div class="comment-area"><textarea placeholder="Add a comment, bug reference, or screenshot note..."></textarea><div class="comment-meta"><span>Observation / Notes</span><button class="clear-btn" onclick="clearComment(this)">Clear</button></div></div></div>
+    </div>
+  </div>
+
+  <!-- CLIENTS -->
+  <div class="category">
+    <div class="cat-header" onclick="toggleCat(this)">
+      <div class="cat-icon" style="background:rgba(6,182,212,0.12);color:var(--cyan);">&#128101;</div>
+      <div class="cat-title"><h3>Client Management</h3><span>KYC verification, profile view, account types</span></div>
+      <div class="cat-badge" id="badge-admin-clients"></div>
+      <span class="cat-chevron">&#9650;</span>
+    </div>
+    <div class="cat-body">
+      <div class="test-item" data-id="admin-client-1" data-cat="admin-clients" data-panel="admin"><div class="test-row" onclick="cycleState(this.parentElement)"><div class="test-num">1</div><div class="test-content"><div class="test-name">Client list loads with KYC status</div><div class="test-desc"><code>/admin/clients</code> shows all registered profiles with role=client. KYC status badge (pending/verified/rejected) visible per row.</div><div class="test-tags"><span class="tag">UI</span></div></div><div class="test-actions" onclick="event.stopPropagation()"><button class="action-btn pass-btn" onclick="setState(this,'pass')" title="Pass">&#10003;</button><button class="action-btn fail-btn" onclick="setState(this,'fail')" title="Fail">&#10007;</button><button class="action-btn skip-btn" onclick="setState(this,'skip')" title="Skip">&ndash;</button><button class="action-btn comment-btn" onclick="toggleComment(this)" title="Comment">&#128172;</button></div></div><div class="comment-area"><textarea placeholder="Add a comment, bug reference, or screenshot note..."></textarea><div class="comment-meta"><span>Observation / Notes</span><button class="clear-btn" onclick="clearComment(this)">Clear</button></div></div></div>
+      <div class="test-item" data-id="admin-client-2" data-cat="admin-clients" data-panel="admin"><div class="test-row" onclick="cycleState(this.parentElement)"><div class="test-num">2</div><div class="test-content"><div class="test-name">Approve client KYC documents</div><div class="test-desc">Open a pending KYC profile, view uploaded documents, set status to <em>verified</em>. Client gains full ordering access.</div><div class="test-tags"><span class="tag perm">permissions</span><span class="tag critical">critical</span><span class="tag db">db</span></div></div><div class="test-actions" onclick="event.stopPropagation()"><button class="action-btn pass-btn" onclick="setState(this,'pass')" title="Pass">&#10003;</button><button class="action-btn fail-btn" onclick="setState(this,'fail')" title="Fail">&#10007;</button><button class="action-btn skip-btn" onclick="setState(this,'skip')" title="Skip">&ndash;</button><button class="action-btn comment-btn" onclick="toggleComment(this)" title="Comment">&#128172;</button></div></div><div class="comment-area"><textarea placeholder="Add a comment, bug reference, or screenshot note..."></textarea><div class="comment-meta"><span>Observation / Notes</span><button class="clear-btn" onclick="clearComment(this)">Clear</button></div></div></div>
+      <div class="test-item" data-id="admin-client-3" data-cat="admin-clients" data-panel="admin"><div class="test-row" onclick="cycleState(this.parentElement)"><div class="test-num">3</div><div class="test-content"><div class="test-name">View client order history from admin panel</div><div class="test-desc">From client profile, access their order list &mdash; all orders visible, filterable by status.</div><div class="test-tags"><span class="tag">UI</span><span class="tag api">API</span></div></div><div class="test-actions" onclick="event.stopPropagation()"><button class="action-btn pass-btn" onclick="setState(this,'pass')" title="Pass">&#10003;</button><button class="action-btn fail-btn" onclick="setState(this,'fail')" title="Fail">&#10007;</button><button class="action-btn skip-btn" onclick="setState(this,'skip')" title="Skip">&ndash;</button><button class="action-btn comment-btn" onclick="toggleComment(this)" title="Comment">&#128172;</button></div></div><div class="comment-area"><textarea placeholder="Add a comment, bug reference, or screenshot note..."></textarea><div class="comment-meta"><span>Observation / Notes</span><button class="clear-btn" onclick="clearComment(this)">Clear</button></div></div></div>
+    </div>
+  </div>
+
+  <!-- PRODUCTS -->
+  <div class="category">
+    <div class="cat-header" onclick="toggleCat(this)">
+      <div class="cat-icon" style="background:rgba(249,115,22,0.12);color:var(--orange);">&#127991;</div>
+      <div class="cat-title"><h3>Products</h3><span>CRUD, pricing (port/warehouse), bag types</span></div>
+      <div class="cat-badge" id="badge-admin-products"></div>
+      <span class="cat-chevron">&#9650;</span>
+    </div>
+    <div class="cat-body">
+      <div class="test-item" data-id="admin-prod-1" data-cat="admin-products" data-panel="admin"><div class="test-row" onclick="cycleState(this.parentElement)"><div class="test-num">1</div><div class="test-content"><div class="test-name">Create product with both bag types</div><div class="test-desc">Add product with name, bag type (JB/SB), <code>pricePerBag</code>, <code>pricePort</code>, <code>priceWarehouse</code>. Unique constraint name+bagType enforced.</div><div class="test-tags"><span class="tag api">API</span><span class="tag db">db</span></div></div><div class="test-actions" onclick="event.stopPropagation()"><button class="action-btn pass-btn" onclick="setState(this,'pass')" title="Pass">&#10003;</button><button class="action-btn fail-btn" onclick="setState(this,'fail')" title="Fail">&#10007;</button><button class="action-btn skip-btn" onclick="setState(this,'skip')" title="Skip">&ndash;</button><button class="action-btn comment-btn" onclick="toggleComment(this)" title="Comment">&#128172;</button></div></div><div class="comment-area"><textarea placeholder="Add a comment, bug reference, or screenshot note..."></textarea><div class="comment-meta"><span>Observation / Notes</span><button class="clear-btn" onclick="clearComment(this)">Clear</button></div></div></div>
+      <div class="test-item" data-id="admin-prod-2" data-cat="admin-products" data-panel="admin"><div class="test-row" onclick="cycleState(this.parentElement)"><div class="test-num">2</div><div class="test-content"><div class="test-name">Deactivate a product hides it from client catalog</div><div class="test-desc">Toggle <code>isActive=false</code> &mdash; product no longer appears in client catalog. Admin sees it with an "inactive" badge.</div><div class="test-tags"><span class="tag perm">permissions</span><span class="tag db">db</span></div></div><div class="test-actions" onclick="event.stopPropagation()"><button class="action-btn pass-btn" onclick="setState(this,'pass')" title="Pass">&#10003;</button><button class="action-btn fail-btn" onclick="setState(this,'fail')" title="Fail">&#10007;</button><button class="action-btn skip-btn" onclick="setState(this,'skip')" title="Skip">&ndash;</button><button class="action-btn comment-btn" onclick="toggleComment(this)" title="Comment">&#128172;</button></div></div><div class="comment-area"><textarea placeholder="Add a comment, bug reference, or screenshot note..."></textarea><div class="comment-meta"><span>Observation / Notes</span><button class="clear-btn" onclick="clearComment(this)">Clear</button></div></div></div>
+    </div>
+  </div>
+
+  <!-- REPORTS -->
+  <div class="category">
+    <div class="cat-header" onclick="toggleCat(this)">
+      <div class="cat-icon" style="background:rgba(139,92,246,0.12);color:var(--purple);">&#128200;</div>
+      <div class="cat-title"><h3>Reports</h3><span>Sales, profit, warehouse manager report</span></div>
+      <div class="cat-badge" id="badge-admin-reports"></div>
+      <span class="cat-chevron">&#9650;</span>
+    </div>
+    <div class="cat-body">
+      <div class="test-item" data-id="admin-rep-1" data-cat="admin-reports" data-panel="admin"><div class="test-row" onclick="cycleState(this.parentElement)"><div class="test-num">1</div><div class="test-content"><div class="test-name">Profit report shows correct aggregated totals</div><div class="test-desc"><code>/admin/reports</code> &mdash; verify <code>totalSales</code>, <code>grossProfit</code>, <code>netProfit</code> aggregate correctly for selected date range.</div><div class="test-tags"><span class="tag critical">critical</span><span class="tag db">db</span></div></div><div class="test-actions" onclick="event.stopPropagation()"><button class="action-btn pass-btn" onclick="setState(this,'pass')" title="Pass">&#10003;</button><button class="action-btn fail-btn" onclick="setState(this,'fail')" title="Fail">&#10007;</button><button class="action-btn skip-btn" onclick="setState(this,'skip')" title="Skip">&ndash;</button><button class="action-btn comment-btn" onclick="toggleComment(this)" title="Comment">&#128172;</button></div></div><div class="comment-area"><textarea placeholder="Add a comment, bug reference, or screenshot note..."></textarea><div class="comment-meta"><span>Observation / Notes</span><button class="clear-btn" onclick="clearComment(this)">Clear</button></div></div></div>
+      <div class="test-item" data-id="admin-rep-2" data-cat="admin-reports" data-panel="admin"><div class="test-row" onclick="cycleState(this.parentElement)"><div class="test-num">2</div><div class="test-content"><div class="test-name">Warehouse daily report visible to admin</div><div class="test-desc">After warehouse manager submits, admin sees it on <code>/admin/reports/warehouse-manager</code> with correct JB/SB figures.</div><div class="test-tags"><span class="tag db">db</span><span class="tag api">API</span></div></div><div class="test-actions" onclick="event.stopPropagation()"><button class="action-btn pass-btn" onclick="setState(this,'pass')" title="Pass">&#10003;</button><button class="action-btn fail-btn" onclick="setState(this,'fail')" title="Fail">&#10007;</button><button class="action-btn skip-btn" onclick="setState(this,'skip')" title="Skip">&ndash;</button><button class="action-btn comment-btn" onclick="toggleComment(this)" title="Comment">&#128172;</button></div></div><div class="comment-area"><textarea placeholder="Add a comment, bug reference, or screenshot note..."></textarea><div class="comment-meta"><span>Observation / Notes</span><button class="clear-btn" onclick="clearComment(this)">Clear</button></div></div></div>
+    </div>
+  </div>
+
+  <!-- SETTINGS -->
+  <div class="category">
+    <div class="cat-header" onclick="toggleCat(this)">
+      <div class="cat-icon" style="background:rgba(100,116,139,0.12);color:var(--text-dim);">&#9881;</div>
+      <div class="cat-title"><h3>Settings &amp; Admin Profile</h3><span>Admin settings key-value, profile update</span></div>
+      <div class="cat-badge" id="badge-admin-settings"></div>
+      <span class="cat-chevron">&#9650;</span>
+    </div>
+    <div class="cat-body">
+      <div class="test-item" data-id="admin-set-1" data-cat="admin-settings" data-panel="admin"><div class="test-row" onclick="cycleState(this.parentElement)"><div class="test-num">1</div><div class="test-content"><div class="test-name">Admin profile update (name, phone)</div><div class="test-desc">Edit profile fields, save, reload &mdash; changes persist in DB.</div><div class="test-tags"><span class="tag api">API</span><span class="tag db">db</span></div></div><div class="test-actions" onclick="event.stopPropagation()"><button class="action-btn pass-btn" onclick="setState(this,'pass')" title="Pass">&#10003;</button><button class="action-btn fail-btn" onclick="setState(this,'fail')" title="Fail">&#10007;</button><button class="action-btn skip-btn" onclick="setState(this,'skip')" title="Skip">&ndash;</button><button class="action-btn comment-btn" onclick="toggleComment(this)" title="Comment">&#128172;</button></div></div><div class="comment-area"><textarea placeholder="Add a comment, bug reference, or screenshot note..."></textarea><div class="comment-meta"><span>Observation / Notes</span><button class="clear-btn" onclick="clearComment(this)">Clear</button></div></div></div>
+      <div class="test-item" data-id="admin-set-2" data-cat="admin-settings" data-panel="admin"><div class="test-row" onclick="cycleState(this.parentElement)"><div class="test-num">2</div><div class="test-content"><div class="test-name">AdminSetting key-value persistence</div><div class="test-desc">Update an AdminSetting entry (e.g., pricing config) &mdash; JSON value saved. Re-fetch reflects update.</div><div class="test-tags"><span class="tag db">db</span></div></div><div class="test-actions" onclick="event.stopPropagation()"><button class="action-btn pass-btn" onclick="setState(this,'pass')" title="Pass">&#10003;</button><button class="action-btn fail-btn" onclick="setState(this,'fail')" title="Fail">&#10007;</button><button class="action-btn skip-btn" onclick="setState(this,'skip')" title="Skip">&ndash;</button><button class="action-btn comment-btn" onclick="toggleComment(this)" title="Comment">&#128172;</button></div></div><div class="comment-area"><textarea placeholder="Add a comment, bug reference, or screenshot note..."></textarea><div class="comment-meta"><span>Observation / Notes</span><button class="clear-btn" onclick="clearComment(this)">Clear</button></div></div></div>
+    </div>
+  </div>
+
+</div><!-- /panel-admin -->
+
+<!-- =========================================================
+     CLIENT
+     ========================================================= -->
+<div class="reviewer-panel" id="panel-client">
+  <div class="reviewer-header">
+    <div class="reviewer-avatar" style="background:rgba(16,185,129,0.15);color:var(--green);">C</div>
+    <div class="reviewer-info"><h2>Client Reviewer</h2><p>Tests all client-facing flows: registration, catalog, order placement, ledger, notifications, profile</p></div>
+    <div class="reviewer-stats">
+      <div class="stat-box"><div class="num" id="client-total" style="color:var(--green)">-</div><div class="lbl">Total</div></div>
+      <div class="stat-box"><div class="num" id="client-pass" style="color:var(--green)">0</div><div class="lbl">Pass</div></div>
+      <div class="stat-box"><div class="num" id="client-fail" style="color:var(--red)">0</div><div class="lbl">Fail</div></div>
+    </div>
+  </div>
+  <div class="overall-progress">
+    <h4>Review Progress</h4>
+    <div class="progress-bars">
+      <div class="prog-track"><div class="prog-track-label"><span>Pass</span><span id="client-pass-pct">0%</span></div><div class="prog-track-bar"><div class="prog-track-fill pass" id="client-pass-bar" style="width:0%"></div></div></div>
+      <div class="prog-track"><div class="prog-track-label"><span>Fail</span><span id="client-fail-pct">0%</span></div><div class="prog-track-bar"><div class="prog-track-fill fail" id="client-fail-bar" style="width:0%"></div></div></div>
+      <div class="prog-track"><div class="prog-track-label"><span>Skip</span><span id="client-skip-pct">0%</span></div><div class="prog-track-bar"><div class="prog-track-fill skip" id="client-skip-bar" style="width:0%"></div></div></div>
+    </div>
+  </div>
+
+  <!-- REGISTRATION -->
+  <div class="category open">
+    <div class="cat-header" onclick="toggleCat(this)">
+      <div class="cat-icon" style="background:rgba(16,185,129,0.12);color:var(--green);">&#128221;</div>
+      <div class="cat-title"><h3>Registration &amp; KYC</h3><span>Register flow, document upload, pending gate</span></div>
+      <div class="cat-badge" id="badge-client-auth"></div>
+      <span class="cat-chevron">&#9650;</span>
+    </div>
+    <div class="cat-body">
+      <div class="test-item" data-id="client-auth-1" data-cat="client-auth" data-panel="client"><div class="test-row" onclick="cycleState(this.parentElement)"><div class="test-num">1</div><div class="test-content"><div class="test-name">New client registration flow completes</div><div class="test-desc">Complete <code>/register</code>, fill all fields, upload KYC docs, submit. Redirected to <code>/pending</code>. Profile created with <code>kycStatus=pending_verification</code>.</div><div class="test-tags"><span class="tag critical">critical</span><span class="tag api">API</span><span class="tag db">db</span></div></div><div class="test-actions" onclick="event.stopPropagation()"><button class="action-btn pass-btn" onclick="setState(this,'pass')" title="Pass">&#10003;</button><button class="action-btn fail-btn" onclick="setState(this,'fail')" title="Fail">&#10007;</button><button class="action-btn skip-btn" onclick="setState(this,'skip')" title="Skip">&ndash;</button><button class="action-btn comment-btn" onclick="toggleComment(this)" title="Comment">&#128172;</button></div></div><div class="comment-area"><textarea placeholder="Add a comment, bug reference, or screenshot note..."></textarea><div class="comment-meta"><span>Observation / Notes</span><button class="clear-btn" onclick="clearComment(this)">Clear</button></div></div></div>
+      <div class="test-item" data-id="client-auth-2" data-cat="client-auth" data-panel="client"><div class="test-row" onclick="cycleState(this.parentElement)"><div class="test-num">2</div><div class="test-content"><div class="test-name">Pending KYC gate blocks dashboard access</div><div class="test-desc">Unverified client visiting <code>/client/dashboard</code> is redirected to <code>/pending-kyc</code>. No access to catalog or orders.</div><div class="test-tags"><span class="tag perm">permissions</span><span class="tag critical">critical</span></div></div><div class="test-actions" onclick="event.stopPropagation()"><button class="action-btn pass-btn" onclick="setState(this,'pass')" title="Pass">&#10003;</button><button class="action-btn fail-btn" onclick="setState(this,'fail')" title="Fail">&#10007;</button><button class="action-btn skip-btn" onclick="setState(this,'skip')" title="Skip">&ndash;</button><button class="action-btn comment-btn" onclick="toggleComment(this)" title="Comment">&#128172;</button></div></div><div class="comment-area"><textarea placeholder="Add a comment, bug reference, or screenshot note..."></textarea><div class="comment-meta"><span>Observation / Notes</span><button class="clear-btn" onclick="clearComment(this)">Clear</button></div></div></div>
+      <div class="test-item" data-id="client-auth-3" data-cat="client-auth" data-panel="client"><div class="test-row" onclick="cycleState(this.parentElement)"><div class="test-num">3</div><div class="test-content"><div class="test-name">Back to Home button visible on /pending page</div><div class="test-desc">The pending KYC page has a visible "Back to Home" link with ArrowLeft icon at top-left, and it is functional.</div><div class="test-tags"><span class="tag ui">ui</span></div></div><div class="test-actions" onclick="event.stopPropagation()"><button class="action-btn pass-btn" onclick="setState(this,'pass')" title="Pass">&#10003;</button><button class="action-btn fail-btn" onclick="setState(this,'fail')" title="Fail">&#10007;</button><button class="action-btn skip-btn" onclick="setState(this,'skip')" title="Skip">&ndash;</button><button class="action-btn comment-btn" onclick="toggleComment(this)" title="Comment">&#128172;</button></div></div><div class="comment-area"><textarea placeholder="Add a comment, bug reference, or screenshot note..."></textarea><div class="comment-meta"><span>Observation / Notes</span><button class="clear-btn" onclick="clearComment(this)">Clear</button></div></div></div>
+    </div>
+  </div>
+
+  <!-- CATALOG -->
+  <div class="category">
+    <div class="cat-header" onclick="toggleCat(this)">
+      <div class="cat-icon" style="background:rgba(249,115,22,0.12);color:var(--orange);">&#128722;</div>
+      <div class="cat-title"><h3>Product Catalog</h3><span>Browse products, pricing display, bag type filter</span></div>
+      <div class="cat-badge" id="badge-client-catalog"></div>
+      <span class="cat-chevron">&#9650;</span>
+    </div>
+    <div class="cat-body">
+      <div class="test-item" data-id="client-cat-1" data-cat="client-catalog" data-panel="client"><div class="test-row" onclick="cycleState(this.parentElement)"><div class="test-num">1</div><div class="test-content"><div class="test-name">Catalog shows only active products</div><div class="test-desc"><code>/client/catalog</code> &mdash; only products with <code>isActive=true</code> are visible. Deactivated products hidden.</div><div class="test-tags"><span class="tag">UI</span><span class="tag api">API</span></div></div><div class="test-actions" onclick="event.stopPropagation()"><button class="action-btn pass-btn" onclick="setState(this,'pass')" title="Pass">&#10003;</button><button class="action-btn fail-btn" onclick="setState(this,'fail')" title="Fail">&#10007;</button><button class="action-btn skip-btn" onclick="setState(this,'skip')" title="Skip">&ndash;</button><button class="action-btn comment-btn" onclick="toggleComment(this)" title="Comment">&#128172;</button></div></div><div class="comment-area"><textarea placeholder="Add a comment, bug reference, or screenshot note..."></textarea><div class="comment-meta"><span>Observation / Notes</span><button class="clear-btn" onclick="clearComment(this)">Clear</button></div></div></div>
+      <div class="test-item" data-id="client-cat-2" data-cat="client-catalog" data-panel="client"><div class="test-row" onclick="cycleState(this.parentElement)"><div class="test-num">2</div><div class="test-content"><div class="test-name">Correct price displayed per source (Port vs Warehouse)</div><div class="test-desc">Client sees <code>pricePort</code> when source=port and <code>priceWarehouse</code> when source=warehouse. No price mismatch.</div><div class="test-tags"><span class="tag critical">critical</span><span class="tag db">db</span></div></div><div class="test-actions" onclick="event.stopPropagation()"><button class="action-btn pass-btn" onclick="setState(this,'pass')" title="Pass">&#10003;</button><button class="action-btn fail-btn" onclick="setState(this,'fail')" title="Fail">&#10007;</button><button class="action-btn skip-btn" onclick="setState(this,'skip')" title="Skip">&ndash;</button><button class="action-btn comment-btn" onclick="toggleComment(this)" title="Comment">&#128172;</button></div></div><div class="comment-area"><textarea placeholder="Add a comment, bug reference, or screenshot note..."></textarea><div class="comment-meta"><span>Observation / Notes</span><button class="clear-btn" onclick="clearComment(this)">Clear</button></div></div></div>
+    </div>
+  </div>
+
+  <!-- ORDERS -->
+  <div class="category">
+    <div class="cat-header" onclick="toggleCat(this)">
+      <div class="cat-icon" style="background:rgba(59,130,246,0.12);color:var(--blue);">&#128203;</div>
+      <div class="cat-title"><h3>Order Placement</h3><span>Cash/check, PO upload, tracking status</span></div>
+      <div class="cat-badge" id="badge-client-orders"></div>
+      <span class="cat-chevron">&#9650;</span>
+    </div>
+    <div class="cat-body">
+      <div class="test-item" data-id="client-ord-1" data-cat="client-orders" data-panel="client"><div class="test-row" onclick="cycleState(this.parentElement)"><div class="test-num">1</div><div class="test-content"><div class="test-name">Place order with cash payment</div><div class="test-desc">Select product + qty, set payment=cash, submit. Order appears in <code>/client/orders</code> with status=pending. Admin sees it in queue.</div><div class="test-tags"><span class="tag critical">critical</span><span class="tag api">API</span><span class="tag db">db</span></div></div><div class="test-actions" onclick="event.stopPropagation()"><button class="action-btn pass-btn" onclick="setState(this,'pass')" title="Pass">&#10003;</button><button class="action-btn fail-btn" onclick="setState(this,'fail')" title="Fail">&#10007;</button><button class="action-btn skip-btn" onclick="setState(this,'skip')" title="Skip">&ndash;</button><button class="action-btn comment-btn" onclick="toggleComment(this)" title="Comment">&#128172;</button></div></div><div class="comment-area"><textarea placeholder="Add a comment, bug reference, or screenshot note..."></textarea><div class="comment-meta"><span>Observation / Notes</span><button class="clear-btn" onclick="clearComment(this)">Clear</button></div></div></div>
+      <div class="test-item" data-id="client-ord-2" data-cat="client-orders" data-panel="client"><div class="test-row" onclick="cycleState(this.parentElement)"><div class="test-num">2</div><div class="test-content"><div class="test-name">Place order with check payment + image upload</div><div class="test-desc">Select payment=check, upload check image, add check number, submit. <code>checkImageUrl</code> stored and visible to admin.</div><div class="test-tags"><span class="tag critical">critical</span><span class="tag api">API</span></div></div><div class="test-actions" onclick="event.stopPropagation()"><button class="action-btn pass-btn" onclick="setState(this,'pass')" title="Pass">&#10003;</button><button class="action-btn fail-btn" onclick="setState(this,'fail')" title="Fail">&#10007;</button><button class="action-btn skip-btn" onclick="setState(this,'skip')" title="Skip">&ndash;</button><button class="action-btn comment-btn" onclick="toggleComment(this)" title="Comment">&#128172;</button></div></div><div class="comment-area"><textarea placeholder="Add a comment, bug reference, or screenshot note..."></textarea><div class="comment-meta"><span>Observation / Notes</span><button class="clear-btn" onclick="clearComment(this)">Clear</button></div></div></div>
+      <div class="test-item" data-id="client-ord-3" data-cat="client-orders" data-panel="client"><div class="test-row" onclick="cycleState(this.parentElement)"><div class="test-num">3</div><div class="test-content"><div class="test-name">Order tracking status updates correctly</div><div class="test-desc">As admin changes order status (approved, dispatched, delivered), <code>/client/orders</code> tracking status reflects changes.</div><div class="test-tags"><span class="tag critical">critical</span><span class="tag ui">ui</span></div></div><div class="test-actions" onclick="event.stopPropagation()"><button class="action-btn pass-btn" onclick="setState(this,'pass')" title="Pass">&#10003;</button><button class="action-btn fail-btn" onclick="setState(this,'fail')" title="Fail">&#10007;</button><button class="action-btn skip-btn" onclick="setState(this,'skip')" title="Skip">&ndash;</button><button class="action-btn comment-btn" onclick="toggleComment(this)" title="Comment">&#128172;</button></div></div><div class="comment-area"><textarea placeholder="Add a comment, bug reference, or screenshot note..."></textarea><div class="comment-meta"><span>Observation / Notes</span><button class="clear-btn" onclick="clearComment(this)">Clear</button></div></div></div>
+      <div class="test-item" data-id="client-ord-4" data-cat="client-orders" data-panel="client"><div class="test-row" onclick="cycleState(this.parentElement)"><div class="test-num">4</div><div class="test-content"><div class="test-name">PO number and PO image upload</div><div class="test-desc">Attach PO during order &mdash; <code>poNumber</code> and <code>poImageUrl</code> stored. Admin can view the PO image from order detail.</div><div class="test-tags"><span class="tag api">API</span><span class="tag db">db</span></div></div><div class="test-actions" onclick="event.stopPropagation()"><button class="action-btn pass-btn" onclick="setState(this,'pass')" title="Pass">&#10003;</button><button class="action-btn fail-btn" onclick="setState(this,'fail')" title="Fail">&#10007;</button><button class="action-btn skip-btn" onclick="setState(this,'skip')" title="Skip">&ndash;</button><button class="action-btn comment-btn" onclick="toggleComment(this)" title="Comment">&#128172;</button></div></div><div class="comment-area"><textarea placeholder="Add a comment, bug reference, or screenshot note..."></textarea><div class="comment-meta"><span>Observation / Notes</span><button class="clear-btn" onclick="clearComment(this)">Clear</button></div></div></div>
+    </div>
+  </div>
+
+  <!-- LEDGER -->
+  <div class="category">
+    <div class="cat-header" onclick="toggleCat(this)">
+      <div class="cat-icon" style="background:rgba(245,158,11,0.12);color:var(--yellow);">&#128210;</div>
+      <div class="cat-title"><h3>Client Ledger &amp; Balances</h3><span>Statement of account, remaining qty, customer balance</span></div>
+      <div class="cat-badge" id="badge-client-ledger"></div>
+      <span class="cat-chevron">&#9650;</span>
+    </div>
+    <div class="cat-body">
+      <div class="test-item" data-id="client-led-1" data-cat="client-ledger" data-panel="client"><div class="test-row" onclick="cycleState(this.parentElement)"><div class="test-num">1</div><div class="test-content"><div class="test-name">Ledger shows all client transactions</div><div class="test-desc"><code>/client/ledger</code> &mdash; all orders, deliveries, payments visible. Dates, quantities, amounts accurate.</div><div class="test-tags"><span class="tag db">db</span><span class="tag critical">critical</span></div></div><div class="test-actions" onclick="event.stopPropagation()"><button class="action-btn pass-btn" onclick="setState(this,'pass')" title="Pass">&#10003;</button><button class="action-btn fail-btn" onclick="setState(this,'fail')" title="Fail">&#10007;</button><button class="action-btn skip-btn" onclick="setState(this,'skip')" title="Skip">&ndash;</button><button class="action-btn comment-btn" onclick="toggleComment(this)" title="Comment">&#128172;</button></div></div><div class="comment-area"><textarea placeholder="Add a comment, bug reference, or screenshot note..."></textarea><div class="comment-meta"><span>Observation / Notes</span><button class="clear-btn" onclick="clearComment(this)">Clear</button></div></div></div>
+      <div class="test-item" data-id="client-led-2" data-cat="client-ledger" data-panel="client"><div class="test-row" onclick="cycleState(this.parentElement)"><div class="test-num">2</div><div class="test-content"><div class="test-name">CustomerBalance remaining qty is correct</div><div class="test-desc">After split delivery, <code>CustomerBalance.remainingQty</code> reflects undelivered bags. Updates after each partial dispatch.</div><div class="test-tags"><span class="tag db">db</span><span class="tag critical">critical</span></div></div><div class="test-actions" onclick="event.stopPropagation()"><button class="action-btn pass-btn" onclick="setState(this,'pass')" title="Pass">&#10003;</button><button class="action-btn fail-btn" onclick="setState(this,'fail')" title="Fail">&#10007;</button><button class="action-btn skip-btn" onclick="setState(this,'skip')" title="Skip">&ndash;</button><button class="action-btn comment-btn" onclick="toggleComment(this)" title="Comment">&#128172;</button></div></div><div class="comment-area"><textarea placeholder="Add a comment, bug reference, or screenshot note..."></textarea><div class="comment-meta"><span>Observation / Notes</span><button class="clear-btn" onclick="clearComment(this)">Clear</button></div></div></div>
+    </div>
+  </div>
+
+  <!-- NOTIFICATIONS -->
+  <div class="category">
+    <div class="cat-header" onclick="toggleCat(this)">
+      <div class="cat-icon" style="background:rgba(6,182,212,0.12);color:var(--cyan);">&#128276;</div>
+      <div class="cat-title"><h3>Notifications</h3><span>Order status push, in-app alerts, read state</span></div>
+      <div class="cat-badge" id="badge-client-notif"></div>
+      <span class="cat-chevron">&#9650;</span>
+    </div>
+    <div class="cat-body">
+      <div class="test-item" data-id="client-notif-1" data-cat="client-notif" data-panel="client"><div class="test-row" onclick="cycleState(this.parentElement)"><div class="test-num">1</div><div class="test-content"><div class="test-name">Order approval notification received</div><div class="test-desc">When admin approves order, client receives notification. Bell shows unread count badge increment.</div><div class="test-tags"><span class="tag api">API</span><span class="tag db">db</span></div></div><div class="test-actions" onclick="event.stopPropagation()"><button class="action-btn pass-btn" onclick="setState(this,'pass')" title="Pass">&#10003;</button><button class="action-btn fail-btn" onclick="setState(this,'fail')" title="Fail">&#10007;</button><button class="action-btn skip-btn" onclick="setState(this,'skip')" title="Skip">&ndash;</button><button class="action-btn comment-btn" onclick="toggleComment(this)" title="Comment">&#128172;</button></div></div><div class="comment-area"><textarea placeholder="Add a comment, bug reference, or screenshot note..."></textarea><div class="comment-meta"><span>Observation / Notes</span><button class="clear-btn" onclick="clearComment(this)">Clear</button></div></div></div>
+      <div class="test-item" data-id="client-notif-2" data-cat="client-notif" data-panel="client"><div class="test-row" onclick="cycleState(this.parentElement)"><div class="test-num">2</div><div class="test-content"><div class="test-name">Mark notification as read</div><div class="test-desc">Click a notification &mdash; <code>isRead</code> becomes true, count badge decrements. Navigates to <code>href</code> if set.</div><div class="test-tags"><span class="tag ui">ui</span><span class="tag api">API</span></div></div><div class="test-actions" onclick="event.stopPropagation()"><button class="action-btn pass-btn" onclick="setState(this,'pass')" title="Pass">&#10003;</button><button class="action-btn fail-btn" onclick="setState(this,'fail')" title="Fail">&#10007;</button><button class="action-btn skip-btn" onclick="setState(this,'skip')" title="Skip">&ndash;</button><button class="action-btn comment-btn" onclick="toggleComment(this)" title="Comment">&#128172;</button></div></div><div class="comment-area"><textarea placeholder="Add a comment, bug reference, or screenshot note..."></textarea><div class="comment-meta"><span>Observation / Notes</span><button class="clear-btn" onclick="clearComment(this)">Clear</button></div></div></div>
+      <div class="test-item" data-id="client-notif-3" data-cat="client-notif" data-panel="client"><div class="test-row" onclick="cycleState(this.parentElement)"><div class="test-num">3</div><div class="test-content"><div class="test-name">Notification preference toggles respected</div><div class="test-desc">Client disables dispatch alerts &mdash; that type is no longer sent. <code>notificationPreferences</code> JSON stored correctly.</div><div class="test-tags"><span class="tag db">db</span><span class="tag perm">preferences</span></div></div><div class="test-actions" onclick="event.stopPropagation()"><button class="action-btn pass-btn" onclick="setState(this,'pass')" title="Pass">&#10003;</button><button class="action-btn fail-btn" onclick="setState(this,'fail')" title="Fail">&#10007;</button><button class="action-btn skip-btn" onclick="setState(this,'skip')" title="Skip">&ndash;</button><button class="action-btn comment-btn" onclick="toggleComment(this)" title="Comment">&#128172;</button></div></div><div class="comment-area"><textarea placeholder="Add a comment, bug reference, or screenshot note..."></textarea><div class="comment-meta"><span>Observation / Notes</span><button class="clear-btn" onclick="clearComment(this)">Clear</button></div></div></div>
+    </div>
+  </div>
+
+  <!-- PROFILE -->
+  <div class="category">
+    <div class="cat-header" onclick="toggleCat(this)">
+      <div class="cat-icon" style="background:rgba(139,92,246,0.12);color:var(--purple);">&#128100;</div>
+      <div class="cat-title"><h3>Client Profile</h3><span>Update personal info, avatar upload</span></div>
+      <div class="cat-badge" id="badge-client-profile"></div>
+      <span class="cat-chevron">&#9650;</span>
+    </div>
+    <div class="cat-body">
+      <div class="test-item" data-id="client-prof-1" data-cat="client-profile" data-panel="client"><div class="test-row" onclick="cycleState(this.parentElement)"><div class="test-num">1</div><div class="test-content"><div class="test-name">Update profile info (address, phone)</div><div class="test-desc">Edit and save <code>addressStreet</code>, <code>phone</code> &mdash; changes persist in DB and reflect after reload.</div><div class="test-tags"><span class="tag api">API</span><span class="tag db">db</span></div></div><div class="test-actions" onclick="event.stopPropagation()"><button class="action-btn pass-btn" onclick="setState(this,'pass')" title="Pass">&#10003;</button><button class="action-btn fail-btn" onclick="setState(this,'fail')" title="Fail">&#10007;</button><button class="action-btn skip-btn" onclick="setState(this,'skip')" title="Skip">&ndash;</button><button class="action-btn comment-btn" onclick="toggleComment(this)" title="Comment">&#128172;</button></div></div><div class="comment-area"><textarea placeholder="Add a comment, bug reference, or screenshot note..."></textarea><div class="comment-meta"><span>Observation / Notes</span><button class="clear-btn" onclick="clearComment(this)">Clear</button></div></div></div>
+      <div class="test-item" data-id="client-prof-2" data-cat="client-profile" data-panel="client"><div class="test-row" onclick="cycleState(this.parentElement)"><div class="test-num">2</div><div class="test-content"><div class="test-name">Avatar image upload and immediate display</div><div class="test-desc">Upload a new avatar &mdash; <code>avatarUrl</code> updated. Image visible in nav/sidebar immediately without reload.</div><div class="test-tags"><span class="tag ui">ui</span><span class="tag api">API</span></div></div><div class="test-actions" onclick="event.stopPropagation()"><button class="action-btn pass-btn" onclick="setState(this,'pass')" title="Pass">&#10003;</button><button class="action-btn fail-btn" onclick="setState(this,'fail')" title="Fail">&#10007;</button><button class="action-btn skip-btn" onclick="setState(this,'skip')" title="Skip">&ndash;</button><button class="action-btn comment-btn" onclick="toggleComment(this)" title="Comment">&#128172;</button></div></div><div class="comment-area"><textarea placeholder="Add a comment, bug reference, or screenshot note..."></textarea><div class="comment-meta"><span>Observation / Notes</span><button class="clear-btn" onclick="clearComment(this)">Clear</button></div></div></div>
+    </div>
+  </div>
+
+</div><!-- /panel-client -->
+
+<!-- =========================================================
+     WAREHOUSE
+     ========================================================= -->
+<div class="reviewer-panel" id="panel-warehouse">
+  <div class="reviewer-header">
+    <div class="reviewer-avatar" style="background:rgba(245,158,11,0.15);color:var(--yellow);">W</div>
+    <div class="reviewer-info"><h2>Warehouse Manager Reviewer</h2><p>Tests warehouse-specific features: daily stock report, opening/closing balances, waste tracking, access boundaries</p></div>
+    <div class="reviewer-stats">
+      <div class="stat-box"><div class="num" id="warehouse-total" style="color:var(--yellow)">-</div><div class="lbl">Total</div></div>
+      <div class="stat-box"><div class="num" id="warehouse-pass" style="color:var(--green)">0</div><div class="lbl">Pass</div></div>
+      <div class="stat-box"><div class="num" id="warehouse-fail" style="color:var(--red)">0</div><div class="lbl">Fail</div></div>
+    </div>
+  </div>
+  <div class="overall-progress">
+    <h4>Review Progress</h4>
+    <div class="progress-bars">
+      <div class="prog-track"><div class="prog-track-label"><span>Pass</span><span id="warehouse-pass-pct">0%</span></div><div class="prog-track-bar"><div class="prog-track-fill pass" id="warehouse-pass-bar" style="width:0%"></div></div></div>
+      <div class="prog-track"><div class="prog-track-label"><span>Fail</span><span id="warehouse-fail-pct">0%</span></div><div class="prog-track-bar"><div class="prog-track-fill fail" id="warehouse-fail-bar" style="width:0%"></div></div></div>
+      <div class="prog-track"><div class="prog-track-label"><span>Skip</span><span id="warehouse-skip-pct">0%</span></div><div class="prog-track-bar"><div class="prog-track-fill skip" id="warehouse-skip-bar" style="width:0%"></div></div></div>
+    </div>
+  </div>
+
+  <!-- DAILY REPORT -->
+  <div class="category open">
+    <div class="cat-header" onclick="toggleCat(this)">
+      <div class="cat-icon" style="background:rgba(245,158,11,0.12);color:var(--yellow);">&#128202;</div>
+      <div class="cat-title"><h3>Daily Warehouse Report</h3><span>Submit opening/closing, received, dispatched, waste</span></div>
+      <div class="cat-badge" id="badge-wh-report"></div>
+      <span class="cat-chevron">&#9650;</span>
+    </div>
+    <div class="cat-body">
+      <div class="test-item" data-id="wh-rep-1" data-cat="wh-report" data-panel="warehouse"><div class="test-row" onclick="cycleState(this.parentElement)"><div class="test-num">1</div><div class="test-content"><div class="test-name">Submit daily warehouse report successfully</div><div class="test-desc">Fill in <code>yesterdayJb/Sb</code>, <code>receivedJb/Sb</code>, <code>dispatchedJb/Sb</code>, <code>wasteJb/Sb</code>, submit. Record created with today's date and <code>submitted=true</code>.</div><div class="test-tags"><span class="tag critical">critical</span><span class="tag api">API</span><span class="tag db">db</span></div></div><div class="test-actions" onclick="event.stopPropagation()"><button class="action-btn pass-btn" onclick="setState(this,'pass')" title="Pass">&#10003;</button><button class="action-btn fail-btn" onclick="setState(this,'fail')" title="Fail">&#10007;</button><button class="action-btn skip-btn" onclick="setState(this,'skip')" title="Skip">&ndash;</button><button class="action-btn comment-btn" onclick="toggleComment(this)" title="Comment">&#128172;</button></div></div><div class="comment-area"><textarea placeholder="Add a comment, bug reference, or screenshot note..."></textarea><div class="comment-meta"><span>Observation / Notes</span><button class="clear-btn" onclick="clearComment(this)">Clear</button></div></div></div>
+      <div class="test-item" data-id="wh-rep-2" data-cat="wh-report" data-panel="warehouse"><div class="test-row" onclick="cycleState(this.parentElement)"><div class="test-num">2</div><div class="test-content"><div class="test-name">Closing stock auto-calculated correctly</div><div class="test-desc">Formula: <code>closingJb = yesterdayJb + receivedJb - dispatchedJb - wasteJb + returnedJb</code>. Verify on UI and in DB.</div><div class="test-tags"><span class="tag critical">critical</span><span class="tag db">db</span></div></div><div class="test-actions" onclick="event.stopPropagation()"><button class="action-btn pass-btn" onclick="setState(this,'pass')" title="Pass">&#10003;</button><button class="action-btn fail-btn" onclick="setState(this,'fail')" title="Fail">&#10007;</button><button class="action-btn skip-btn" onclick="setState(this,'skip')" title="Skip">&ndash;</button><button class="action-btn comment-btn" onclick="toggleComment(this)" title="Comment">&#128172;</button></div></div><div class="comment-area"><textarea placeholder="Add a comment, bug reference, or screenshot note..."></textarea><div class="comment-meta"><span>Observation / Notes</span><button class="clear-btn" onclick="clearComment(this)">Clear</button></div></div></div>
+      <div class="test-item" data-id="wh-rep-3" data-cat="wh-report" data-panel="warehouse"><div class="test-row" onclick="cycleState(this.parentElement)"><div class="test-num">3</div><div class="test-content"><div class="test-name">Duplicate daily report prevented</div><div class="test-desc">Attempt to submit a second report for same date &mdash; system rejects with validation error. <code>reportDate</code> is unique.</div><div class="test-tags"><span class="tag db">db</span><span class="tag api">API</span></div></div><div class="test-actions" onclick="event.stopPropagation()"><button class="action-btn pass-btn" onclick="setState(this,'pass')" title="Pass">&#10003;</button><button class="action-btn fail-btn" onclick="setState(this,'fail')" title="Fail">&#10007;</button><button class="action-btn skip-btn" onclick="setState(this,'skip')" title="Skip">&ndash;</button><button class="action-btn comment-btn" onclick="toggleComment(this)" title="Comment">&#128172;</button></div></div><div class="comment-area"><textarea placeholder="Add a comment, bug reference, or screenshot note..."></textarea><div class="comment-meta"><span>Observation / Notes</span><button class="clear-btn" onclick="clearComment(this)">Clear</button></div></div></div>
+      <div class="test-item" data-id="wh-rep-4" data-cat="wh-report" data-panel="warehouse"><div class="test-row" onclick="cycleState(this.parentElement)"><div class="test-num">4</div><div class="test-content"><div class="test-name">Historical reports viewable</div><div class="test-desc">Previous dates' reports visible in list/calendar view. Data loads correctly from DB without errors.</div><div class="test-tags"><span class="tag ui">ui</span><span class="tag api">API</span></div></div><div class="test-actions" onclick="event.stopPropagation()"><button class="action-btn pass-btn" onclick="setState(this,'pass')" title="Pass">&#10003;</button><button class="action-btn fail-btn" onclick="setState(this,'fail')" title="Fail">&#10007;</button><button class="action-btn skip-btn" onclick="setState(this,'skip')" title="Skip">&ndash;</button><button class="action-btn comment-btn" onclick="toggleComment(this)" title="Comment">&#128172;</button></div></div><div class="comment-area"><textarea placeholder="Add a comment, bug reference, or screenshot note..."></textarea><div class="comment-meta"><span>Observation / Notes</span><button class="clear-btn" onclick="clearComment(this)">Clear</button></div></div></div>
+    </div>
+  </div>
+
+  <!-- ACCESS -->
+  <div class="category">
+    <div class="cat-header" onclick="toggleCat(this)">
+      <div class="cat-icon" style="background:rgba(239,68,68,0.12);color:var(--red);">&#128274;</div>
+      <div class="cat-title"><h3>Access &amp; Permission Boundaries</h3><span>What warehouse manager can and cannot access</span></div>
+      <div class="cat-badge" id="badge-wh-access"></div>
+      <span class="cat-chevron">&#9650;</span>
+    </div>
+    <div class="cat-body">
+      <div class="test-item" data-id="wh-acc-1" data-cat="wh-access" data-panel="warehouse"><div class="test-row" onclick="cycleState(this.parentElement)"><div class="test-num">1</div><div class="test-content"><div class="test-name">Warehouse manager cannot access /admin/* routes</div><div class="test-desc">Attempt to visit <code>/admin/orders</code> or <code>/admin/clients</code> as warehouse role &mdash; expect redirect or permission denied.</div><div class="test-tags"><span class="tag perm">permissions</span><span class="tag critical">critical</span></div></div><div class="test-actions" onclick="event.stopPropagation()"><button class="action-btn pass-btn" onclick="setState(this,'pass')" title="Pass">&#10003;</button><button class="action-btn fail-btn" onclick="setState(this,'fail')" title="Fail">&#10007;</button><button class="action-btn skip-btn" onclick="setState(this,'skip')" title="Skip">&ndash;</button><button class="action-btn comment-btn" onclick="toggleComment(this)" title="Comment">&#128172;</button></div></div><div class="comment-area"><textarea placeholder="Add a comment, bug reference, or screenshot note..."></textarea><div class="comment-meta"><span>Observation / Notes</span><button class="clear-btn" onclick="clearComment(this)">Clear</button></div></div></div>
+      <div class="test-item" data-id="wh-acc-2" data-cat="wh-access" data-panel="warehouse"><div class="test-row" onclick="cycleState(this.parentElement)"><div class="test-num">2</div><div class="test-content"><div class="test-name">Warehouse manager login and correct redirect</div><div class="test-desc">Login with warehouse manager credentials &mdash; redirected to the correct warehouse dashboard, not admin or client. Correct sidebar shown.</div><div class="test-tags"><span class="tag critical">critical</span><span class="tag perm">permissions</span></div></div><div class="test-actions" onclick="event.stopPropagation()"><button class="action-btn pass-btn" onclick="setState(this,'pass')" title="Pass">&#10003;</button><button class="action-btn fail-btn" onclick="setState(this,'fail')" title="Fail">&#10007;</button><button class="action-btn skip-btn" onclick="setState(this,'skip')" title="Skip">&ndash;</button><button class="action-btn comment-btn" onclick="toggleComment(this)" title="Comment">&#128172;</button></div></div><div class="comment-area"><textarea placeholder="Add a comment, bug reference, or screenshot note..."></textarea><div class="comment-meta"><span>Observation / Notes</span><button class="clear-btn" onclick="clearComment(this)">Clear</button></div></div></div>
+      <div class="test-item" data-id="wh-acc-3" data-cat="wh-access" data-panel="warehouse"><div class="test-row" onclick="cycleState(this.parentElement)"><div class="test-num">3</div><div class="test-content"><div class="test-name">ActivityLog records warehouse actions</div><div class="test-desc">After report submission, <code>ActivityLog</code> records the action with <code>actorId</code>, <code>entityType=WarehouseReport</code>.</div><div class="test-tags"><span class="tag db">db</span></div></div><div class="test-actions" onclick="event.stopPropagation()"><button class="action-btn pass-btn" onclick="setState(this,'pass')" title="Pass">&#10003;</button><button class="action-btn fail-btn" onclick="setState(this,'fail')" title="Fail">&#10007;</button><button class="action-btn skip-btn" onclick="setState(this,'skip')" title="Skip">&ndash;</button><button class="action-btn comment-btn" onclick="toggleComment(this)" title="Comment">&#128172;</button></div></div><div class="comment-area"><textarea placeholder="Add a comment, bug reference, or screenshot note..."></textarea><div class="comment-meta"><span>Observation / Notes</span><button class="clear-btn" onclick="clearComment(this)">Clear</button></div></div></div>
+    </div>
+  </div>
+
+</div><!-- /panel-warehouse -->
+
+</main>
+
+<script>
+const STORE_KEY = 'obbo_qa_state_v1';
+let state = {};
+let activePanel = 'admin';
+
+function loadState() {
+  try { state = JSON.parse(localStorage.getItem(STORE_KEY) || '{}'); } catch(e) { state = {}; }
+}
+function saveState() { localStorage.setItem(STORE_KEY, JSON.stringify(state)); }
+
+document.addEventListener('DOMContentLoaded', function() {
+  document.getElementById('today-date').textContent = new Date().toLocaleDateString('en-PH', {year:'numeric',month:'long',day:'numeric'});
+  loadState();
+  restoreAllStates();
+  updateAllBadges();
+});
+
+function switchReviewer(id) {
+  document.querySelectorAll('.reviewer-panel').forEach(function(p) { p.classList.remove('active'); });
+  document.querySelectorAll('.reviewer-tab').forEach(function(t) { t.classList.remove('active'); });
+  document.getElementById('panel-' + id).classList.add('active');
+  document.getElementById('tab-' + id).classList.add('active');
+  activePanel = id;
+  updateAllBadges();
+}
+
+function toggleCat(header) {
+  header.closest('.category').classList.toggle('open');
+}
+
+function setState(btn, s) {
+  var item = btn.closest('.test-item');
+  var id = item.dataset.id;
+  var prev = state[id] ? state[id].status : null;
+  var next = (prev === s) ? null : s;
+  if (!state[id]) state[id] = {};
+  state[id].status = next;
+  saveState();
+  applyItemState(item, next);
+  updateAllBadges();
+}
+
+function cycleState(item) {
+  var id = item.dataset.id;
+  var cur = state[id] ? state[id].status : null;
+  var order = [null, 'pass', 'fail', 'skip'];
+  var next = order[(order.indexOf(cur) + 1) % order.length];
+  if (!state[id]) state[id] = {};
+  state[id].status = next;
+  saveState();
+  applyItemState(item, next);
+  updateAllBadges();
+}
+
+function applyItemState(item, s) {
+  item.classList.remove('state-pass','state-fail','state-skip');
+  if (s) item.classList.add('state-' + s);
+  item.querySelectorAll('.action-btn').forEach(function(b) {
+    if (b.classList.contains('pass-btn')) b.classList.toggle('active', s === 'pass');
+    else if (b.classList.contains('fail-btn')) b.classList.toggle('active', s === 'fail');
+    else if (b.classList.contains('skip-btn')) b.classList.toggle('active', s === 'skip');
+  });
+}
+
+function toggleComment(btn) {
+  var item = btn.closest('.test-item');
+  var area = item.querySelector('.comment-area');
+  var isOpen = area.classList.toggle('open');
+  btn.classList.toggle('active', isOpen);
+  if (isOpen) area.querySelector('textarea').focus();
+}
+
+function clearComment(btn) {
+  var area = btn.closest('.comment-area');
+  area.querySelector('textarea').value = '';
+  var id = area.closest('.test-item').dataset.id;
+  if (state[id]) { state[id].comment = ''; saveState(); }
+}
+
+document.addEventListener('input', function(e) {
+  if (e.target.tagName === 'TEXTAREA') {
+    var item = e.target.closest('.test-item');
+    if (item) {
+      var id = item.dataset.id;
+      if (!state[id]) state[id] = {};
+      state[id].comment = e.target.value;
+      saveState();
+    }
+  }
+});
+
+function restoreAllStates() {
+  document.querySelectorAll('.test-item').forEach(function(item) {
+    var id = item.dataset.id;
+    var s = state[id];
+    if (!s) return;
+    if (s.status) applyItemState(item, s.status);
+    if (s.comment) { var ta = item.querySelector('textarea'); if (ta) ta.value = s.comment; }
+  });
+}
+
+function updateAllBadges() {
+  var cats = {};
+  document.querySelectorAll('.test-item').forEach(function(item) {
+    var cat = item.dataset.cat;
+    var panel = item.dataset.panel;
+    var s = (state[item.dataset.id] || {}).status || null;
+    if (!cats[cat]) cats[cat] = {panel:panel, pass:0, fail:0, skip:0, total:0};
+    cats[cat].total++;
+    if (s) cats[cat][s]++;
+  });
+
+  Object.keys(cats).forEach(function(cat) {
+    var c = cats[cat];
+    var el = document.getElementById('badge-' + cat);
+    if (!el) return;
+    var html = '';
+    if (c.pass) html += '<span class="badge pass">' + c.pass + ' Pass</span>';
+    if (c.fail) html += '<span class="badge fail">' + c.fail + ' Fail</span>';
+    if (c.skip) html += '<span class="badge skip">' + c.skip + ' Skip</span>';
+    html += '<span class="badge total">' + c.total + '</span>';
+    el.innerHTML = html;
+  });
+
+  ['admin','client','warehouse'].forEach(function(panel) {
+    var items = document.querySelectorAll('[data-panel="' + panel + '"]');
+    var pass = 0, fail = 0, skip = 0;
+    items.forEach(function(item) {
+      var s = (state[item.dataset.id] || {}).status;
+      if (s === 'pass') pass++;
+      else if (s === 'fail') fail++;
+      else if (s === 'skip') skip++;
+    });
+    var total = items.length;
+    var et = document.getElementById(panel + '-total');
+    var ep = document.getElementById(panel + '-pass');
+    var ef = document.getElementById(panel + '-fail');
+    if (et) et.textContent = total;
+    if (ep) ep.textContent = pass;
+    if (ef) ef.textContent = fail;
+    function pct(v) { return total ? Math.round(v / total * 100) : 0; }
+    setBar(panel + '-pass-bar', panel + '-pass-pct', pct(pass));
+    setBar(panel + '-fail-bar', panel + '-fail-pct', pct(fail));
+    setBar(panel + '-skip-bar', panel + '-skip-pct', pct(skip));
+  });
+
+  var panelItems = document.querySelectorAll('[data-panel="' + activePanel + '"]');
+  var tp = 0, tf = 0, ts = 0;
+  panelItems.forEach(function(item) {
+    var s = (state[item.dataset.id] || {}).status;
+    if (s === 'pass') tp++;
+    else if (s === 'fail') tf++;
+    else if (s === 'skip') ts++;
+  });
+  document.getElementById('tp-pass').textContent = tp;
+  document.getElementById('tp-fail').textContent = tf;
+  document.getElementById('tp-skip').textContent = ts;
+  var tot = panelItems.length;
+  document.getElementById('tp-bar').style.width = (tot ? Math.round(tp / tot * 100) : 0) + '%';
+}
+
+function setBar(barId, pctId, pct) {
+  var bar = document.getElementById(barId);
+  var lbl = document.getElementById(pctId);
+  if (bar) bar.style.width = pct + '%';
+  if (lbl) lbl.textContent = pct + '%';
+}
+</script>
+</body>
+</html>

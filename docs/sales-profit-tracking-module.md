@@ -55,7 +55,7 @@ Total cost to bring cement to the Philippine port.
 | --------------------------------------- | ------------ | ---------------------------------------- |
 | Base cost per bag                       | 85.80        | Cost of cement from Vietnam supplier     |
 | Freight                                 | 27.84        | Transport cost from Vietnam to PH port   |
-| Duties (DTI Anti-Dumping and Safeguard) | 22.00        | Government import duties                 |
+| Duties (DTI Anti-Dumping and Safeguard) | 22.00        | Government import djhuties               |
 | Port Handling                           | 12.00        | Fees for handling at the Philippine port |
 | **Total Landed Cost**                   | **147.64**   | Total cost to bring cement to PH port    |
 

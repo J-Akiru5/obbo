@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OBBO iManage — Critical Remediation Plan</title>
+<style>
+  :root {
+    --bg: #0f172a; --surface: #1e293b; --surface-2: #334155; --border: #334155;
+    --text: #f1f5f9; --text-muted: #94a3b8;
+    --blue: #3b82f6; --green: #10b981; --yellow: #f59e0b; --red: #ef4444;
+    --purple: #8b5cf6; --cyan: #06b6d4;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg); color: var(--text); line-height: 1.6; }
+  .container { max-width: 1160px; margin: 0 auto; padding: 0 24px; }
+  .header { background: linear-gradient(135deg, #3f1414 0%, #0f172a 60%); border-bottom: 1px solid var(--border); padding: 44px 0 36px; }
+  .header h1 { font-size: 2.1rem; font-weight: 800; letter-spacing: -0.02em; }
+  .header .subtitle { font-size: 1.05rem; color: var(--text-muted); margin-top: 8px; max-width: 780px; }
+  .header-meta { display: flex; gap: 10px; margin-top: 20px; flex-wrap: wrap; }
+  .meta-chip { background: rgba(255,255,255,0.05); border: 1px solid var(--border); border-radius: 8px; padding: 6px 14px; font-size: 0.82rem; color: var(--text-muted); }
+  .meta-chip strong { color: var(--text); }
+
+  .alert-box { background: rgba(239,68,68,0.08); border: 1px solid rgba(239,68,68,0.35); border-radius: 12px; padding: 18px 22px; margin: 20px 0; }
+  .alert-box.ok { background: rgba(16,185,129,0.08); border-color: rgba(16,185,129,0.35); }
+  .alert-box .alert-title { color: var(--red); font-weight: 800; font-size: 0.95rem; margin-bottom: 6px; }
+  .alert-box.ok .alert-title { color: var(--green); }
+  .alert-box p { font-size: 0.9rem; color: var(--text-muted); }
+
+  .section { padding: 36px 0; border-bottom: 1px solid var(--border); }
+  .section:last-child { border-bottom: none; }
+  .section h2 { font-size: 1.35rem; font-weight: 700; margin-bottom: 6px; display: flex; align-items: center; gap: 10px; }
+  .section .section-sub { font-size: 0.88rem; color: var(--text-muted); margin-bottom: 18px; }
+  .section h3 { font-size: 1.02rem; font-weight: 600; margin: 20px 0 10px; color: var(--blue); }
+
+  .sev-p0, .sev-p1, .sev-p2, .sev-done { display: inline-block; padding: 3px 12px; border-radius: 999px; font-size: 0.7rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em; }
+  .sev-p0 { background: rgba(239,68,68,0.15); color: var(--red); border: 1px solid rgba(239,68,68,0.35); }
+  .sev-p1 { background: rgba(245,158,11,0.15); color: var(--yellow); border: 1px solid rgba(245,158,11,0.35); }
+  .sev-p2 { background: rgba(59,130,246,0.15); color: var(--blue); border: 1px solid rgba(59,130,246,0.35); }
+  .sev-done { background: rgba(16,185,129,0.15); color: var(--green); border: 1px solid rgba(16,185,129,0.35); }
+
+  .evidence-box { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 16px 20px; margin: 12px 0; }
+  .evidence-box .ev-label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); margin-bottom: 8px; font-weight: 700; }
+  code { font-family: 'SF Mono', 'Fira Code', monospace; font-size: 0.85em; background: rgba(255,255,255,0.06); padding: 1px 6px; border-radius: 4px; color: var(--cyan); }
+  pre { background: #0b1220; border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; overflow-x: auto; font-size: 0.8rem; margin: 10px 0; font-family: 'SF Mono', 'Fira Code', monospace; color: #d1d9e6; }
+  p.lead { color: var(--text-muted); font-size: 0.95rem; margin-bottom: 14px; max-width: 820px; }
+
+  .task-list { list-style: none; margin: 14px 0; }
+  .task-list li { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 16px 20px; margin-bottom: 12px; border-left: 4px solid var(--blue); }
+  .task-list li.p0 { border-left-color: var(--red); }
+  .task-list li.p1 { border-left-color: var(--yellow); }
+  .task-list li.done { border-left-color: var(--green); }
+  .task-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 6px; flex-wrap: wrap; }
+  .task-title { font-size: 1rem; font-weight: 700; }
+  .task-desc { font-size: 0.88rem; color: var(--text-muted); margin-top: 4px; }
+
+  table { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: 0.85rem; }
+  th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  th { background: var(--surface); font-weight: 600; color: var(--text-muted); text-transform: uppercase; font-size: 0.7rem; letter-spacing: 0.05em; }
+
+  .qcard { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 16px 20px; margin-bottom: 12px; border-left: 4px solid var(--purple); }
+  .qcard .qnum { color: var(--purple); font-weight: 800; font-size: 0.8rem; }
+  .qcard .qtext { font-weight: 700; margin: 4px 0 6px; }
+  .qcard .qwhy { font-size: 0.85rem; color: var(--text-muted); }
+
+  .footer { background: var(--surface); border-top: 1px solid var(--border); padding: 20px 0; text-align: center; color: var(--text-muted); font-size: 0.82rem; }
+</style>
+</head>
+<body>
+
+<header class="header">
+  <div class="container">
+    <h1>🔥 Critical Remediation Plan</h1>
+    <p class="subtitle">Two systemic bugs found while investigating the order-submission crash — plus the approval-workflow revision you asked for.</p>
+    <div class="header-meta">
+      <span class="meta-chip"><strong>Repo:</strong> J-Akiru5/obbo</span>
+      <span class="meta-chip"><strong>Commit scanned:</strong> 2818788 (main)</span>
+      <span class="meta-chip"><strong>Trigger:</strong> Client order-submission crash screenshot</span>
+      <span class="meta-chip"><strong>Deployment:</strong> Verified current on Vercel ✓</span>
+    </div>
+  </div>
+</header>
+
+<div class="container">
+
+<div class="alert-box ok">
+  <div class="alert-title">✅ Deployment verified — production is running the latest main</div>
+  <p>
+    Confirmed: Vercel's live deployment matches the latest <code>main</code>, including the "Approve Qty" pre-fill and all of
+    this session's build fixes (the <code>admin-helpers.ts</code> export violation, the <code>jbQty</code>/<code>sbQty</code>
+    typo in <code>dispatchOrder</code>). A stale deploy is <strong>ruled out</strong> as the cause of the missing qty field —
+    the P1 section below has been updated accordingly, and the remaining investigation there is data-level, not
+    deployment-level.
+  </p>
+</div>
+
+<!-- ═══════════════════ P0-A ═══════════════════ -->
+<section class="section">
+  <h2>🔴 P0-A: Production error messages are invisible to every user, on every action</h2>
+  <p class="section-sub">This is almost certainly the direct cause of the crash screenshot.</p>
+
+  <p class="lead">
+    Next.js redacts every uncaught <code>throw</code> inside a Server Action in production builds — the client never receives
+    <code>error.message</code>, only a generic digest. Confirmed directly against the docs shipped with the installed
+    Next.js version (not from memory):
+  </p>
+  <div class="evidence-box">
+    <div class="ev-label">node_modules/next/dist/docs/01-app/01-getting-started/10-error-handling.md</div>
+    <p style="font-style:italic;color:var(--text-muted);">"For [expected] errors, avoid using try/catch blocks and throw errors. Instead, model expected errors as return values."</p>
+  </div>
+  <p class="lead">
+    This codebase does the opposite everywhere — <code>submitOrder</code>, <code>dispatchOrder</code>, <code>addLedgerEntry</code>,
+    <code>rejectOrder</code>, and every other server action use <code>throw new Error('helpful message')</code> paired with a
+    client-side <code>catch(err) { toast.error(err.message) }</code>. This works fine in dev mode (real messages pass through)
+    and silently breaks in production for <strong>every validation error on every role</strong>. A client can't see "PO image is
+    required" or "Driver name is required" — they see exactly the banner in the screenshot, with zero actionable information.
+  </p>
+
+  <h3>Fix shape</h3>
+  <ul class="task-list">
+    <li class="p0">
+      <div class="task-header"><span class="task-title">Migrate server actions to the return-value error pattern</span><span class="sev-p0">critical</span></div>
+      <div class="task-desc">
+        Per Next's own recommended pattern: instead of <code>throw new Error(msg)</code>, return
+        <code>{ error: msg }</code> (or a discriminated <code>{ success: false, error: msg } | { success: true, data }</code> shape)
+        from every server action that currently throws for expected/validation errors. Update every call site to check the
+        returned shape instead of relying on <code>try/catch</code>. This touches every file in <code>src/lib/actions/</code> —
+        it's a mechanical but wide-reaching change, not a quick patch.
+      </div>
+    </li>
+    <li class="p0">
+      <div class="task-header"><span class="task-title">Add a global error boundary as a safety net</span><span class="sev-p0">critical</span></div>
+      <div class="task-desc">
+        Add <code>error.tsx</code> boundaries at the <code>/admin</code>, <code>/client</code>, and root levels for the
+        <em>genuinely unexpected</em> crashes (real bugs, not validation) that should still fail loudly — using
+        <code>error.digest</code> to let you look up what happened server-side via logs, while showing the user something
+        better than a blank red banner.
+      </div>
+    </li>
+  </ul>
+</section>
+
+<!-- ═══════════════════ P0-B ═══════════════════ -->
+<section class="section">
+  <h2>🔴 P0-B: Orders are priced using unit count instead of individual-bag count — 25–50x undercharge</h2>
+  <p class="section-sub">Found independently while tracing the crash. Unrelated bug, more severe than P0-A.</p>
+
+  <p class="lead">
+    The screenshot's own numbers prove it: <strong>1,200 SB × ₱185 = ₱222,000</strong>. Per the domain spec (and the project's
+    own dead-but-correct legacy pricing module), 1 SB = 50 individual 40kg bags, and price is per individual bag. Correct total:
+    <code>1,200 × 50 × 185 = ₱11,100,000</code>.
+  </p>
+  <div class="evidence-box">
+    <div class="ev-label">Live (broken) — src/components/orders/wizard/order-schema.ts</div>
+    <pre>export function getSubtotalByBagType(jbQty, sbQty, jbPrice, sbPrice) {
+  return jbQty * jbPrice + sbQty * sbPrice;   // treats unit count as bag count
+}
+export function getTotalIndividualBags(jbQty, sbQty) {
+  return jbQty + sbQty;                        // same bug, used for split-delivery math too
+}</pre>
+  </div>
+  <div class="evidence-box">
+    <div class="ev-label">Also broken — src/lib/actions/admin-helpers.ts (createOrderForClientPortal, admin-side manual orders)</div>
+    <pre>totalAmount = params.jbQty * jbPrice + params.sbQty * sbPrice;   // identical bug</pre>
+  </div>
+  <div class="evidence-box">
+    <div class="ev-label">Correct formula already exists — dead code, src/lib/client-portal-data.ts (not imported anywhere)</div>
+    <pre>export const BAG_EQUIVALENT = { JB: 25, SB: 50 };
+export function getIndividualBagCount(jbQty, sbQty) {
+  return jbQty * BAG_EQUIVALENT.JB + sbQty * BAG_EQUIVALENT.SB;   // this one's right
+}</pre>
+  </div>
+
+  <h3>Fix shape</h3>
+  <ul class="task-list">
+    <li class="p0">
+      <div class="task-header"><span class="task-title">Fix both live pricing formulas to use individual-bag count</span><span class="sev-p0">critical</span></div>
+      <div class="task-desc">
+        <code>getSubtotalByBagType</code> → <code>(jbQty × 25 × jbPrice) + (sbQty × 50 × sbPrice)</code>.
+        <code>getTotalIndividualBags</code> → <code>jbQty × 25 + sbQty × 50</code> (this also feeds the split-delivery
+        proportion math, so fixing it corrects that too). Same fix in <code>createOrderForClientPortal</code>. Consider deleting
+        <code>client-portal-data.ts</code> once the fix lands — it's dead code, but it's also the ONE place that had this right,
+        which is worth using as the reference implementation before removing it.
+      </div>
+    </li>
+    <li class="p0">
+      <div class="task-header"><span class="task-title">Audit every existing order for this undercharge</span><span class="sev-p0">critical</span></div>
+      <div class="task-desc">
+        Every order placed since this bug was introduced has a wrong <code>total_amount</code>, which flows into
+        <code>shipment_ledger.total_sales</code>/<code>gross_profit</code>/<code>net_profit</code> on dispatch. This needs a
+        read-only audit script (same pattern as the transactional-data wipe script) to find affected orders and quantify total
+        revenue impact before deciding on any correction — not a silent auto-fix.
+      </div>
+    </li>
+  </ul>
+</section>
+
+<!-- ═══════════════════ P1 ═══════════════════ -->
+<section class="section">
+  <h2>🟡 P1: Approval workflow — deployment confirmed current, field still missing</h2>
+  <p class="section-sub">The pre-fill code is verified live in production, so a stale deploy is ruled out — the remaining cause is data-level.</p>
+
+  <p class="lead">
+    <code>new-requests-tab.tsx</code>'s Approve dialog already defaults <code>approvedQtys</code> to
+    <code>item.requested_qty</code> for standard orders (and to <code>deliver_now_qty</code> for split-delivery orders) — so the
+    "manager just confirms, doesn't manually fill in a number" behavior you described is already implemented on
+    <code>main</code>, <strong>and the Vercel deployment is confirmed to be serving that exact code</strong>. With a stale
+    deploy ruled out and the query + RLS policies both checking out fine, the remaining explanation for "no qty field appears
+    at all" is data-level: most likely <code>order.items</code> isn't populated for the specific order you tested with (the
+    dialog renders one qty input per item, so an order with no <code>order_items</code> rows shows no fields at all).
+  </p>
+
+  <div class="evidence-box">
+    <div class="ev-label">One real (minor) bug found while checking this — worth fixing regardless</div>
+    <pre>value={approvedQtys[item.id] || ''}   // if approved qty is legitimately 0, input shows BLANK not "0"
+// should be:
+value={approvedQtys[item.id] ?? ''}</pre>
+  </div>
+
+  <h3>Next step</h3>
+  <ul class="task-list">
+    <li class="done">
+      <div class="task-header"><span class="task-title">Confirm production deployment matches main</span><span class="sev-done">done</span></div>
+      <div class="task-desc">Verified — Vercel's live deployment matches the latest <code>main</code>, including the Approve-dialog pre-fill and this session's fixes. A stale deploy is ruled out as the cause.</div>
+    </li>
+    <li class="p1">
+      <div class="task-header"><span class="task-title">Reproduce with the exact order that showed the missing field</span><span class="sev-p1">blocking</span></div>
+      <div class="task-desc">Check whether <code>order.items</code> is actually populated for that specific order — query <code>order_items</code> by that order's id in Supabase. If it comes back empty, the order was likely created through a different/older path that skipped the <code>order_items</code> insert, which would produce exactly the "no qty field at all" symptom without any code being wrong.</div>
+    </li>
+  </ul>
+</section>
+
+</div>
+
+<footer class="footer">
+  <div class="container">
+    <p>OBBO iManage — Critical Remediation Plan · Scanned against commit 2818788 (main) · Found while investigating a client order-submission crash</p>
+  </div>
+</footer>
+
+</body>
+</html>
