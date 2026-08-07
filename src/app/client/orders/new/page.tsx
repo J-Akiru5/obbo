@@ -23,6 +23,7 @@ import {
   getSplitSchema,
   getPrice,
   getSubtotalByBagType,
+  getSplitDeliveryUnits,
   getTotalIndividualBags,
 } from '@/components/orders/wizard/order-schema';
 import {
@@ -382,9 +383,8 @@ function NewOrderPage() {
 
       const totalBagsForSplit = getTotalIndividualBags(jbQty, sbQty);
       const deliverNowQty = form.deliver_now_total;
-      const jbFraction = totalBagsForSplit > 0 ? jbQty / totalBagsForSplit : 0;
-      const deliverNowJB = Math.min(jbQty, Math.round(deliverNowQty * jbFraction));
-      const deliverNowSB = Math.min(sbQty, deliverNowQty - deliverNowJB);
+      // deliverNowQty is individual bags; deliverNowJB/SB must be whole units.
+      const { deliverNowJB, deliverNowSB } = getSplitDeliveryUnits(jbQty, sbQty, deliverNowQty);
       const splitDetails = form.wants_split
         ? {
             wantsSplit: true,
@@ -455,10 +455,12 @@ function NewOrderPage() {
         notes: '',
       };
 
-      const totalBags = getTotalIndividualBags(jbQty, sbQty);
-      const jbFrac = totalBags > 0 ? jbQty / totalBags : 0;
-      const dNowJB = Math.min(jbQty, Math.round(form.deliver_now_total * jbFrac));
-      const dNowSB = Math.min(sbQty, form.deliver_now_total - dNowJB);
+      // deliver_now_total is individual bags; deliverNowJB/SB must be whole units.
+      const { deliverNowJB: dNowJB, deliverNowSB: dNowSB } = getSplitDeliveryUnits(
+        jbQty,
+        sbQty,
+        form.deliver_now_total,
+      );
       const splitDetails = form.wants_split
         ? {
             wantsSplit: true,

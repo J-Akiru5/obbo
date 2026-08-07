@@ -246,7 +246,7 @@ export function StepPoPayment({
           <div className="space-y-4 border-t border-blue-500/20 pt-3">
             <div>
               <Label className="text-xs font-bold text-blue-600 uppercase">
-                Bags to receive now (max {totalBags})
+                Individual bags to receive now (max {totalBags.toLocaleString()})
               </Label>
               <Input
                 type="number"

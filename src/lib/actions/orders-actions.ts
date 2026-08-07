@@ -52,7 +52,15 @@ export async function approveOrder(
   );
 
   if (order.is_split_delivery && order.deliver_now_qty > 0) {
-    const splitTarget = Math.min(order.deliver_now_qty, requestedOrderQty);
+    // deliver_now_qty is denominated in individual bags, but approved
+    // quantities are JB/SB units — cap against the per-type unit split, which
+    // is also what the approval dialog pre-fills. Fall back to deliver_now_qty
+    // for legacy rows that predate the per-type split columns.
+    const splitUnits = (order.deliver_now_jb || 0) + (order.deliver_now_sb || 0);
+    const splitTarget = Math.min(
+      splitUnits > 0 ? splitUnits : order.deliver_now_qty,
+      requestedOrderQty,
+    );
     const totalApprovedQty = constrainedApprovedItems.reduce(
       (sum: number, item: { itemId: string; qty: number }) => sum + item.qty,
       0,

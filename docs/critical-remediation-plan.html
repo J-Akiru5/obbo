@@ -142,8 +142,8 @@
 
 <!-- ═══════════════════ P0-B ═══════════════════ -->
 <section class="section">
-  <h2>🔴 P0-B: Orders are priced using unit count instead of individual-bag count — 25–50x undercharge</h2>
-  <p class="section-sub">Found independently while tracing the crash. Unrelated bug, more severe than P0-A.</p>
+  <h2>🟢 P0-B: Orders are priced using unit count instead of individual-bag count — 25–50x undercharge <span class="sev-done">fixed</span></h2>
+  <p class="section-sub">Found independently while tracing the crash. Code fix landed with regression tests — remaining work is auditing historical data.</p>
 
   <p class="lead">
     The screenshot's own numbers prove it: <strong>1,200 SB × ₱185 = ₱222,000</strong>. Per the domain spec (and the project's
@@ -171,25 +171,50 @@ export function getIndividualBagCount(jbQty, sbQty) {
 }</pre>
   </div>
 
-  <h3>Fix shape</h3>
+  <h3>Fix status</h3>
   <ul class="task-list">
-    <li class="p0">
-      <div class="task-header"><span class="task-title">Fix both live pricing formulas to use individual-bag count</span><span class="sev-p0">critical</span></div>
+    <li class="done">
+      <div class="task-header"><span class="task-title">Fix both live pricing formulas to use individual-bag count</span><span class="sev-done">done</span></div>
       <div class="task-desc">
-        <code>getSubtotalByBagType</code> → <code>(jbQty × 25 × jbPrice) + (sbQty × 50 × sbPrice)</code>.
-        <code>getTotalIndividualBags</code> → <code>jbQty × 25 + sbQty × 50</code> (this also feeds the split-delivery
-        proportion math, so fixing it corrects that too). Same fix in <code>createOrderForClientPortal</code>. Consider deleting
-        <code>client-portal-data.ts</code> once the fix lands — it's dead code, but it's also the ONE place that had this right,
-        which is worth using as the reference implementation before removing it.
+        Landed. <code>getSubtotalByBagType</code> → <code>(jbQty × 25 × jbPrice) + (sbQty × 50 × sbPrice)</code>;
+        <code>getTotalIndividualBags</code> → <code>jbQty × 25 + sbQty × 50</code>; same fix in
+        <code>createOrderForClientPortal</code>. The screenshot scenario is locked in as a regression test
+        (1,200 SB @ ₱185 → ₱11,100,000) in <code>order-schema.test.ts</code> and <code>admin-helpers.test.ts</code>.
+        The dead <code>client-portal-data.ts</code> reference module was deleted once the correct formula landed in live code.
       </div>
     </li>
-    <li class="p0">
-      <div class="task-header"><span class="task-title">Audit every existing order for this undercharge</span><span class="sev-p0">critical</span></div>
+    <li class="done">
+      <div class="task-header"><span class="task-title">Fix the split-delivery unit bug exposed by the pricing fix</span><span class="sev-done">done</span></div>
       <div class="task-desc">
-        Every order placed since this bug was introduced has a wrong <code>total_amount</code>, which flows into
-        <code>shipment_ledger.total_sales</code>/<code>gross_profit</code>/<code>net_profit</code> on dispatch. This needs a
-        read-only audit script (same pattern as the transactional-data wipe script) to find affected orders and quantify total
-        revenue impact before deciding on any correction — not a silent auto-fix.
+        The wizard's split math divided jbQty <em>units</em> by total <em>bags</em> and subtracted units from bags
+        (e.g. a 300-bag request on a 4 JB + 10 SB order recorded 2 JB + 10 SB = 550 bags). Resolved by pinning the
+        denominations: <code>deliver_now_qty</code>/the wizard field are <strong>individual bags</strong>;
+        <code>deliver_now_jb</code>/<code>deliver_now_sb</code> are <strong>whole units</strong> — matching what the
+        resume-draft and redelivery code already assumed. New <code>getSplitDeliveryUnits()</code> helper does the
+        bags→units conversion (proportional by bag-share, capped per type) and is used by the wizard's submit/draft
+        paths and the <code>client-actions</code> fallback. <code>approveOrder</code>'s split cap now compares units to
+        units, and the split UI labels the field "individual bags". Regression tests cover the exact old failure.
+      </div>
+    </li>
+    <li class="p1">
+      <div class="task-header"><span class="task-title">Run the read-only audit against production data</span><span class="sev-p1">next</span></div>
+      <div class="task-desc">
+        Tooling landed: <code>node scripts/audit-order-totals.mjs</code> (read-only, same pattern as the
+        transactional-data wipe script). It recomputes every order's expected total as
+        <code>Σ requested_qty × bag_equivalent × selling_price_per_bag</code>, lists each mismatch with its delta,
+        quantifies total undercharge/overcharge, and counts the <code>shipment_ledger</code> rows that derived from
+        wrong totals. Run it, review the rows manually (admin-entered cash/check amounts may legitimately differ),
+        then decide on corrections — no auto-fix.
+      </div>
+    </li>
+    <li class="p1">
+      <div class="task-header"><span class="task-title">Decide the denomination of customer_balances.remaining_qty</span><span class="sev-p1">follow-up</span></div>
+      <div class="task-desc">
+        Adjacent issue found during the split fix, deliberately not touched: <code>approveOrder</code> writes
+        <code>remaining_qty</code> as requested_qty − approved_qty (<strong>units</strong>), but the client ledger UI
+        labels it "individual bags" and the redelivery dialog divides it by 25/50 as if it were bags. One of the two
+        sides is wrong; fixing it changes balance math and dispatch deductions, so it needs its own pass with a
+        product decision — same discipline as the split fix, not a silent bundle.
       </div>
     </li>
   </ul>

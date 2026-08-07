@@ -128,7 +128,8 @@ export async function createOrderForClientPortal(
   const jbPrice = getSourcePrice(jbProduct, params.source);
   const sbPrice = getSourcePrice(sbProduct, params.source);
   if (totalAmount === 0 && params.jbQty + params.sbQty > 0) {
-    totalAmount = params.jbQty * jbPrice + params.sbQty * sbPrice;
+    // 1 JB = 25 individual bags, 1 SB = 50 — prices are per individual bag.
+    totalAmount = params.jbQty * 25 * jbPrice + params.sbQty * 50 * sbPrice;
   }
 
   const { data: orderData, error: orderError } = await supabase

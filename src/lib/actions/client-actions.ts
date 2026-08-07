@@ -3,6 +3,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { getSourcePrice } from './profit-utils';
+import { getSplitDeliveryUnits } from '@/components/orders/wizard/order-schema';
 import { submitOrderSchema } from './schemas';
 import { generateGlobalNextPoNumber } from './po-utils';
 import { createRoleNotification } from './notification-actions';
@@ -170,12 +171,17 @@ export async function submitOrder(
     notes += `\n[SPLIT DELIVERY REQUESTED]: Client requested ${splitDetails.deliverNowQty} total bags now (${splitDetails.deliverNowJB || 0} JB, ${splitDetails.deliverNowSB || 0} SB), and the rest to be saved to balances.\n${splitDetails.splitNote}`;
   }
 
-  // Ensure deliver_now_jb/sb are correctly set if only deliverNowQty is provided
-  const mainBagType = orderData.items[0]?.bag_type || 'SB';
-  const deliverNowJB =
-    splitDetails?.deliverNowJB ?? (mainBagType === 'JB' ? splitDetails?.deliverNowQty : 0);
-  const deliverNowSB =
-    splitDetails?.deliverNowSB ?? (mainBagType === 'SB' ? splitDetails?.deliverNowQty : 0);
+  // Ensure deliver_now_jb/sb are correctly set if only deliverNowQty is provided.
+  // deliverNowQty is individual bags, but deliver_now_jb/sb are JB/SB units —
+  // convert via the order's bag composition instead of dumping a bag count
+  // into a unit-denominated column.
+  const fallbackSplit = getSplitDeliveryUnits(
+    orderData.items.filter((i) => i.bag_type === 'JB').reduce((sum, i) => sum + i.requested_qty, 0),
+    orderData.items.filter((i) => i.bag_type === 'SB').reduce((sum, i) => sum + i.requested_qty, 0),
+    splitDetails?.deliverNowQty ?? 0,
+  );
+  const deliverNowJB = splitDetails?.deliverNowJB ?? fallbackSplit.deliverNowJB;
+  const deliverNowSB = splitDetails?.deliverNowSB ?? fallbackSplit.deliverNowSB;
 
   const { data: order, error } = await supabase
     .from('orders')
@@ -274,12 +280,17 @@ export async function saveOrderDraft(
   // Auto-generate PO number for draft if blank
   const finalPoNumber = orderData.po_number?.trim() || (await generateNextPoNumber());
 
-  // Ensure deliver_now_jb/sb are correctly set if only deliverNowQty is provided
-  const mainBagType = orderData.items[0]?.bag_type || 'SB';
-  const deliverNowJB =
-    splitDetails?.deliverNowJB ?? (mainBagType === 'JB' ? splitDetails?.deliverNowQty : 0);
-  const deliverNowSB =
-    splitDetails?.deliverNowSB ?? (mainBagType === 'SB' ? splitDetails?.deliverNowQty : 0);
+  // Ensure deliver_now_jb/sb are correctly set if only deliverNowQty is provided.
+  // deliverNowQty is individual bags, but deliver_now_jb/sb are JB/SB units —
+  // convert via the order's bag composition instead of dumping a bag count
+  // into a unit-denominated column.
+  const fallbackSplit = getSplitDeliveryUnits(
+    orderData.items.filter((i) => i.bag_type === 'JB').reduce((sum, i) => sum + i.requested_qty, 0),
+    orderData.items.filter((i) => i.bag_type === 'SB').reduce((sum, i) => sum + i.requested_qty, 0),
+    splitDetails?.deliverNowQty ?? 0,
+  );
+  const deliverNowJB = splitDetails?.deliverNowJB ?? fallbackSplit.deliverNowJB;
+  const deliverNowSB = splitDetails?.deliverNowSB ?? fallbackSplit.deliverNowSB;
 
   const { data: order, error } = await supabase
     .from('orders')

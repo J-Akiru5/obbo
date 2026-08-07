@@ -77,8 +77,14 @@ export function getPrice(product: Product | undefined, source: string): number {
   return source === 'port' ? product.price_port || 0 : product.price_warehouse || 0;
 }
 
+// 1 Jumbo Bag (JB) = 25 individual 40kg bags. 1 Sling Bag (SB) = 50 individual
+// 40kg bags. Prices (price_port/price_warehouse) are per INDIVIDUAL bag, not
+// per JB/SB unit — every quantity must be converted before multiplying by
+// price. See sales-profit-tracking-module.md, formula #1.
+const BAG_EQUIVALENT = { JB: 25, SB: 50 } as const;
+
 export function getTotalIndividualBags(jbQty: number, sbQty: number): number {
-  return jbQty + sbQty;
+  return jbQty * BAG_EQUIVALENT.JB + sbQty * BAG_EQUIVALENT.SB;
 }
 
 export function getSubtotal(totalBags: number, pricePerBag: number): number {
@@ -91,5 +97,36 @@ export function getSubtotalByBagType(
   jbPrice: number,
   sbPrice: number,
 ): number {
-  return jbQty * jbPrice + sbQty * sbPrice;
+  return jbQty * BAG_EQUIVALENT.JB * jbPrice + sbQty * BAG_EQUIVALENT.SB * sbPrice;
+}
+
+/**
+ * Split a "deliver now" amount (individual bags, as entered by the client)
+ * into whole JB/SB units, proportional to the order's bag composition.
+ *
+ * Denominations matter: deliverNowBags is INDIVIDUAL BAGS (same as the
+ * wizard's deliver_now_total and the deliver_now_qty column), while the
+ * returned deliverNowJB/deliverNowSB are JB/SB UNITS — the denomination of
+ * deliver_now_jb/deliver_now_sb, requested_qty, and every approval/dispatch
+ * quantity downstream. Splitting is approximate by nature: 25/50-bag units
+ * can't always add up to the exact bag count, so the split note tells the
+ * warehouse manager exactly what was allocated.
+ */
+export function getSplitDeliveryUnits(
+  jbQty: number,
+  sbQty: number,
+  deliverNowBags: number,
+): { deliverNowJB: number; deliverNowSB: number } {
+  const totalBags = getTotalIndividualBags(jbQty, sbQty);
+  const target = Math.max(0, Math.min(deliverNowBags, totalBags));
+  if (target === 0 || totalBags === 0) return { deliverNowJB: 0, deliverNowSB: 0 };
+
+  // JB's share of the order measured in individual bags, so both sides of
+  // the ratio are bags. (The old code divided jbQty UNITS by total BAGS,
+  // which is what mixed the denominations.)
+  const jbBagShare = (jbQty * BAG_EQUIVALENT.JB) / totalBags;
+  const deliverNowJB = Math.min(jbQty, Math.round((target * jbBagShare) / BAG_EQUIVALENT.JB));
+  const remainingBags = target - deliverNowJB * BAG_EQUIVALENT.JB;
+  const deliverNowSB = Math.min(sbQty, Math.round(remainingBags / BAG_EQUIVALENT.SB));
+  return { deliverNowJB, deliverNowSB };
 }
