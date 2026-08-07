@@ -72,20 +72,39 @@ const peso = (n) =>
   `₱${n.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 async function fetchAllOrders() {
+  // Prefer the order-time price snapshot; fall back to the product's CURRENT
+  // price_per_bag when migration 20260629_order_items_price_snapshot.sql has
+  // not been applied to the target database yet (the column won't exist).
+  const snapshotSelect =
+    'id, po_number, source, status, order_type, payment_method, total_amount, shipment_id, created_at, ' +
+    'items:order_items(bag_type, requested_qty, selling_price_per_bag, product:products(price_per_bag))';
+  const fallbackSelect =
+    'id, po_number, source, status, order_type, payment_method, total_amount, shipment_id, created_at, ' +
+    'items:order_items(bag_type, requested_qty, product:products(price_per_bag))';
+
+  let usingSnapshot = true;
   const rows = [];
   let from = 0;
   for (;;) {
-    const { data, error } = await db
+    let q = db
       .from('orders')
-      .select(
-        'id, po_number, source, status, order_type, payment_method, total_amount, shipment_id, created_at, ' +
-          'items:order_items(bag_type, requested_qty, selling_price_per_bag)',
-      )
+      .select(usingSnapshot ? snapshotSelect : fallbackSelect)
       .order('created_at', { ascending: true })
       .range(from, from + PAGE - 1);
+    let { data, error } = await q;
+    if (error && /selling_price_per_bag.*does not exist/.test(error.message)) {
+      if (!usingSnapshot) throw new Error(`Failed to fetch orders: ${error.message}`);
+      usingSnapshot = false;
+      q = db
+        .from('orders')
+        .select(fallbackSelect)
+        .order('created_at', { ascending: true })
+        .range(from, from + PAGE - 1);
+      ({ data, error } = await q);
+    }
     if (error) throw new Error(`Failed to fetch orders: ${error.message}`);
     rows.push(...data);
-    if (data.length < PAGE) return rows;
+    if (data.length < PAGE) return { rows, usingSnapshot };
     from += PAGE;
   }
 }
@@ -93,8 +112,15 @@ async function fetchAllOrders() {
 async function main() {
   console.log('━━━ ORDER TOTALS AUDIT (read-only, P0-B pricing bug) ━━━\n');
 
-  const orders = await fetchAllOrders();
-  console.log(`Scanned ${orders.length} order(s).\n`);
+  const { rows: orders, usingSnapshot } = await fetchAllOrders();
+  console.log(`Scanned ${orders.length} order(s).`);
+  if (!usingSnapshot) {
+    console.log(
+      '⚠  order_items.selling_price_per_bag is missing (migration not applied) — ' +
+        "using each product's CURRENT price_per_bag instead of the order-time snapshot.\n",
+    );
+  }
+  console.log('');
 
   const mismatches = [];
   let skippedRedelivery = 0;
@@ -112,7 +138,7 @@ async function main() {
       unauditableNoItems += 1;
       continue;
     }
-    if (items.some((i) => i.selling_price_per_bag == null)) {
+    if (items.some((i) => i.selling_price_per_bag == null && i.product?.price_per_bag == null)) {
       unauditableNoPrice += 1;
       continue;
     }
@@ -120,7 +146,10 @@ async function main() {
     audited += 1;
     const expected = items.reduce(
       (sum, i) =>
-        sum + i.requested_qty * (BAG_EQUIVALENT[i.bag_type] ?? 1) * i.selling_price_per_bag,
+        sum +
+        i.requested_qty *
+          (BAG_EQUIVALENT[i.bag_type] ?? 1) *
+          (i.selling_price_per_bag != null ? i.selling_price_per_bag : i.product?.price_per_bag),
       0,
     );
     const stored = Number(order.total_amount) || 0;

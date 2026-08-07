@@ -1,6 +1,7 @@
 'use server';
 
 import { requireAdmin } from './admin-helpers';
+import { unitsFromIndividualBags } from './profit-utils';
 
 export async function fetchDashboardKPIs() {
   const { supabase } = await requireAdmin();
@@ -41,10 +42,18 @@ export async function fetchDashboardKPIs() {
 
   const totalJB = shipments.data?.reduce((s, r) => s + (r.remaining_jb ?? 0), 0) ?? 0;
   const totalSB = shipments.data?.reduce((s, r) => s + (r.remaining_sb ?? 0), 0) ?? 0;
-  const jbBalance =
-    balances.data?.filter((b) => b.bag_type === 'JB').reduce((s, b) => s + b.remaining_qty, 0) ?? 0;
-  const sbBalance =
-    balances.data?.filter((b) => b.bag_type === 'SB').reduce((s, b) => s + b.remaining_qty, 0) ?? 0;
+  // remaining_qty is stored in INDIVIDUAL bags; shipment stock (remaining_jb/
+  // remaining_sb) is in JB/SB units. Convert balances to units so the stock
+  // chart's good/obligated/net values all share one unit (as they did before
+  // balances moved to bags).
+  const jbBalance = unitsFromIndividualBags(
+    'JB',
+    balances.data?.filter((b) => b.bag_type === 'JB').reduce((s, b) => s + b.remaining_qty, 0) ?? 0,
+  );
+  const sbBalance = unitsFromIndividualBags(
+    'SB',
+    balances.data?.filter((b) => b.bag_type === 'SB').reduce((s, b) => s + b.remaining_qty, 0) ?? 0,
+  );
 
   const todayRows = todayLedger.data ?? [];
   const todayRevenue = todayRows.reduce((s, r) => s + (Number(r.total_sales) || 0), 0);

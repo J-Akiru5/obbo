@@ -371,7 +371,9 @@ async function step4_orders(sb, jb, sbBatch, jbBatch) {
 
       // Customer balance for partially_approved split
       if (o.status === 'partially_approved' && o.isSplit) {
-        const remaining = o.qty - o.approved;
+        // remaining_qty is stored in INDIVIDUAL bags (1 JB=25, 1 SB=50)
+        const equiv = o.product.bag_type === 'JB' ? 25 : 50;
+        const remaining = (o.qty - o.approved) * equiv;
         const { error: bErr } = await db.from('customer_balances').insert({
           client_id: client.id,
           order_id: order.id,

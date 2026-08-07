@@ -2,7 +2,11 @@
 
 import { revalidatePath } from 'next/cache';
 import { requireAdmin, logActivity, getCostConfig } from './admin-helpers';
-import { computeDispatchProfit, prorateOrderSalesByValue } from './profit-utils';
+import {
+  computeDispatchProfit,
+  prorateOrderSalesByValue,
+  individualBagsFromUnits,
+} from './profit-utils';
 import { orderApproveSchema, orderRejectSchema, orderTrackingUpdateSchema } from './schemas';
 import { addLedgerEntry } from './ledger-actions';
 import { createRoleNotification } from './notification-actions';
@@ -116,12 +120,19 @@ export async function approveOrder(
     for (const ai of constrainedApprovedItems) {
       const original = order.items.find((i: { id: string }) => i.id === ai.itemId);
       if (original && ai.qty < original.requested_qty) {
-        const remaining = original.requested_qty - ai.qty;
+        // requested_qty/approved_qty are JB/SB UNITS — but
+        // customer_balances.remaining_qty (and total_purchase, since the
+        // ledger UI computes total_purchase - remaining_qty) must be stored
+        // in INDIVIDUAL bags, the unit the balance page and redelivery flow
+        // already assume. Convert before storing.
+        const bagType = original.bag_type as 'JB' | 'SB';
+        const remaining = individualBagsFromUnits(bagType, original.requested_qty - ai.qty);
         const { error: balanceError } = await supabase.from('customer_balances').insert({
           client_id: order.client_id,
           order_id: orderId,
           product_id: original.product_id,
           bag_type: original.bag_type,
+          total_purchase: individualBagsFromUnits(bagType, original.requested_qty),
           remaining_qty: remaining,
           status: 'pending',
         });
@@ -332,7 +343,13 @@ export async function dispatchOrder(
   // Handle Split Delivery: Create customer balance for remaining quantities
   for (const item of order.items) {
     if ((item.approved_qty || 0) < (item.requested_qty || 0)) {
-      const remaining = item.requested_qty - item.approved_qty;
+      // Same unit fix as approveOrder: requested_qty/approved_qty are JB/SB
+      // UNITS, but customer_balances (both remaining_qty and total_purchase,
+      // since the ledger UI computes total_purchase - remaining_qty) must be
+      // in INDIVIDUAL bags.
+      const bagType = item.bag_type as 'JB' | 'SB';
+      const remaining = individualBagsFromUnits(bagType, item.requested_qty - item.approved_qty);
+      const totalPurchase = individualBagsFromUnits(bagType, item.requested_qty);
 
       // Check if a balance already exists for this item in this order (idempotency)
       const { data: existing } = await supabase
@@ -349,7 +366,7 @@ export async function dispatchOrder(
           order_id: orderId,
           product_id: item.product_id,
           bag_type: item.bag_type,
-          total_purchase: item.requested_qty,
+          total_purchase: totalPurchase,
           remaining_qty: remaining,
           status: 'pending',
         });
@@ -368,8 +385,15 @@ export async function dispatchOrder(
 
     if (originalOrder) {
       for (const item of order.items) {
-        const dispatchedQty = item.approved_qty || 0;
-        if (dispatchedQty <= 0) continue;
+        const dispatchedUnits = item.approved_qty || 0;
+        if (dispatchedUnits <= 0) continue;
+        // A redelivery order's approved_qty is also in JB/SB UNITS (it's an
+        // order_items row like any other) — convert before touching a
+        // balance that's now denominated in individual bags.
+        const dispatchedQty = individualBagsFromUnits(
+          item.bag_type as 'JB' | 'SB',
+          dispatchedUnits,
+        );
 
         const { data: balance } = await supabase
           .from('customer_balances')

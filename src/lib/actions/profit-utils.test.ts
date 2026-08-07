@@ -5,7 +5,41 @@ import {
   prorateOrderSales,
   prorateOrderSalesByValue,
   computeReturnProfitDelta,
+  individualBagsFromUnits,
+  unitsFromIndividualBags,
+  BAG_EQUIVALENT,
 } from './profit-utils';
+
+describe('individualBagsFromUnits (customer_balances unit-mismatch fix)', () => {
+  it('converts JB units to individual bags (1 JB = 25 bags)', () => {
+    expect(individualBagsFromUnits('JB', 1)).toBe(25);
+    expect(individualBagsFromUnits('JB', 4)).toBe(100);
+  });
+
+  it('converts SB units to individual bags (1 SB = 50 bags)', () => {
+    expect(individualBagsFromUnits('SB', 1)).toBe(50);
+    expect(individualBagsFromUnits('SB', 2)).toBe(100);
+  });
+
+  it('reproduces the reported scenario: 4 JB ordered, 2 approved -> balance owed', () => {
+    // Client ordered 4 JB, admin approved 2 -> owed 2 JB units = 50 individual bags,
+    // NOT the raw "2" that was previously written to customer_balances.remaining_qty.
+    const remainingUnits = 4 - 2;
+    expect(individualBagsFromUnits('JB', remainingUnits)).toBe(50);
+  });
+
+  it('BAG_EQUIVALENT matches the domain spec constants exactly', () => {
+    expect(BAG_EQUIVALENT.JB).toBe(25);
+    expect(BAG_EQUIVALENT.SB).toBe(50);
+  });
+});
+
+describe('unitsFromIndividualBags', () => {
+  it('round-trips individual bags back to whole units for unit-aligned amounts', () => {
+    expect(unitsFromIndividualBags('JB', 100)).toBe(4);
+    expect(unitsFromIndividualBags('SB', 500)).toBe(10);
+  });
+});
 
 describe('getSourcePrice', () => {
   it('returns price_port when source is port', () => {

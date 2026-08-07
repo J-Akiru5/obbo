@@ -143,7 +143,7 @@
 <!-- ═══════════════════ P0-B ═══════════════════ -->
 <section class="section">
   <h2>🟢 P0-B: Orders are priced using unit count instead of individual-bag count — 25–50x undercharge <span class="sev-done">fixed</span></h2>
-  <p class="section-sub">Found independently while tracing the crash. Code fix landed with regression tests — remaining work is auditing historical data.</p>
+  <p class="section-sub">Found independently while tracing the crash. Code fix landed with regression tests; production audit completed — no historical undercharges exist.</p>
 
   <p class="lead">
     The screenshot's own numbers prove it: <strong>1,200 SB × ₱185 = ₱222,000</strong>. Per the domain spec (and the project's
@@ -196,25 +196,29 @@ export function getIndividualBagCount(jbQty, sbQty) {
         units, and the split UI labels the field "individual bags". Regression tests cover the exact old failure.
       </div>
     </li>
-    <li class="p1">
-      <div class="task-header"><span class="task-title">Run the read-only audit against production data</span><span class="sev-p1">next</span></div>
+    <li class="done">
+      <div class="task-header"><span class="task-title">Run the read-only audit against production data</span><span class="sev-done">done</span></div>
       <div class="task-desc">
-        Tooling landed: <code>node scripts/audit-order-totals.mjs</code> (read-only, same pattern as the
-        transactional-data wipe script). It recomputes every order's expected total as
-        <code>Σ requested_qty × bag_equivalent × selling_price_per_bag</code>, lists each mismatch with its delta,
-        quantifies total undercharge/overcharge, and counts the <code>shipment_ledger</code> rows that derived from
-        wrong totals. Run it, review the rows manually (admin-entered cash/check amounts may legitimately differ),
-        then decide on corrections — no auto-fix.
+        Done 2026-08-07: <code>node scripts/audit-order-totals.mjs</code> scanned production (4 orders) — none had
+        <code>order_items</code> rows, so 0 auditable and 0 mismatches, ₱0 undercharge. The tool now falls back to the
+        product's current <code>price_per_bag</code> if the order-time snapshot column is missing. As part of this, the
+        missing migration <code>20260629_order_items_price_snapshot.sql</code> (adds
+        <code>order_items.selling_price_per_bag</code>) was applied to production — the app writes that column on order
+        create, so new orders would otherwise have failed. Re-run the audit after real orders exist to confirm totals.
       </div>
     </li>
-    <li class="p1">
-      <div class="task-header"><span class="task-title">Decide the denomination of customer_balances.remaining_qty</span><span class="sev-p1">follow-up</span></div>
+    <li class="done">
+      <div class="task-header"><span class="task-title">Decide and enforce the denomination of customer_balances.remaining_qty</span><span class="sev-done">done</span></div>
       <div class="task-desc">
-        Adjacent issue found during the split fix, deliberately not touched: <code>approveOrder</code> writes
-        <code>remaining_qty</code> as requested_qty − approved_qty (<strong>units</strong>), but the client ledger UI
-        labels it "individual bags" and the redelivery dialog divides it by 25/50 as if it were bags. One of the two
-        sides is wrong; fixing it changes balance math and dispatch deductions, so it needs its own pass with a
-        product decision — same discipline as the split fix, not a silent bundle.
+        Decision: <strong>individual bags</strong> — matching the balance page's existing "individual bags" labels and the
+        redelivery flow's ÷25/50 conversion. All writers now convert: <code>approveOrder</code> and
+        <code>dispatchOrder</code> store <code>remaining_qty</code>/<code>total_purchase</code> as units × bag-equivalent,
+        and <code>dispatchOrder</code>'s redelivery deduction converts approved units back to bags. The redelivery boundary
+        (<code>submitRedeliveryRequest</code>) converts the bag-denominated balance into units for
+        <code>order_items.requested_qty</code>, so dispatch stock/profit math (which stays in units) is unaffected. The
+        client balance summary and admin stock dashboard convert to consistent units. Existing rows are still in the old
+        unit: run <code>node scripts/wipe-customer-balances.mjs</code> (dry-run by default; reconcile any pending balances
+        with clients first) so every row going forward is created correctly.
       </div>
     </li>
   </ul>

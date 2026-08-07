@@ -19,6 +19,23 @@ function asNumber(value: Decimal): number {
   return Number(value.toFixed(2));
 }
 
+// 1 Jumbo Bag (JB) unit = 25 individual 40kg bags. 1 Sling Bag (SB) unit = 50
+// individual 40kg bags. order_items.requested_qty/approved_qty are stored in
+// JB/SB UNITS (raw client wizard quantities) — but customer_balances.remaining_qty
+// must be stored in INDIVIDUAL bags, because the balance/redelivery UI already
+// treats it that way (labels it "individual bags" and divides by 25/50 when
+// converting back to units). See sales-profit-tracking-module.md, formula #1.
+// (Twin copy lives in order-schema.ts for client-bundle reasons — keep in sync.)
+export const BAG_EQUIVALENT = { JB: 25, SB: 50 } as const;
+
+export function individualBagsFromUnits(bagType: 'JB' | 'SB', unitQty: number): number {
+  return unitQty * BAG_EQUIVALENT[bagType];
+}
+
+export function unitsFromIndividualBags(bagType: 'JB' | 'SB', bags: number): number {
+  return bags / BAG_EQUIVALENT[bagType];
+}
+
 export function getSourcePrice(
   product:
     | { price_per_bag: number; price_port?: number | null; price_warehouse?: number | null }

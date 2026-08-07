@@ -81,6 +81,7 @@ export function getPrice(product: Product | undefined, source: string): number {
 // 40kg bags. Prices (price_port/price_warehouse) are per INDIVIDUAL bag, not
 // per JB/SB unit — every quantity must be converted before multiplying by
 // price. See sales-profit-tracking-module.md, formula #1.
+// (Twin copy lives in profit-utils.ts for server actions — keep in sync.)
 const BAG_EQUIVALENT = { JB: 25, SB: 50 } as const;
 
 export function getTotalIndividualBags(jbQty: number, sbQty: number): number {

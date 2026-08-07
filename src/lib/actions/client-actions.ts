@@ -2,7 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
-import { getSourcePrice } from './profit-utils';
+import { getSourcePrice, individualBagsFromUnits, unitsFromIndividualBags } from './profit-utils';
 import { getSplitDeliveryUnits } from '@/components/orders/wizard/order-schema';
 import { submitOrderSchema } from './schemas';
 import { generateGlobalNextPoNumber } from './po-utils';
@@ -489,10 +489,11 @@ export async function fetchClientBalances() {
 export async function fetchBalanceSummary() {
   const { supabase, user } = await requireClient();
 
-  // Total purchased: sum of all requested_qty from all completed/dispatched orders
+  // Total purchased: sum of all requested_qty from all completed/dispatched
+  // orders, converted to INDIVIDUAL bags (the unit the ledger UI displays).
   const { data: orders } = await supabase
     .from('orders')
-    .select('items:order_items(requested_qty)')
+    .select('items:order_items(requested_qty, bag_type)')
     .eq('client_id', user.id)
     .neq('order_type', 'draft')
     .in('status', ['approved', 'partially_approved', 'dispatched', 'completed', 'awaiting_check']);
@@ -500,8 +501,11 @@ export async function fetchBalanceSummary() {
   let totalPurchased = 0;
   if (orders) {
     for (const order of orders) {
-      const items = order.items as { requested_qty: number }[];
-      totalPurchased += items.reduce((acc, item) => acc + item.requested_qty, 0);
+      const items = order.items as { requested_qty: number; bag_type: 'JB' | 'SB' }[];
+      totalPurchased += items.reduce(
+        (acc, item) => acc + individualBagsFromUnits(item.bag_type, item.requested_qty),
+        0,
+      );
     }
   }
 
@@ -510,7 +514,7 @@ export async function fetchBalanceSummary() {
   // to prevent premature counting of bags that haven't been received yet.
   const { data: dispatchedOrders } = await supabase
     .from('orders')
-    .select('items:order_items(dispatched_qty)')
+    .select('items:order_items(dispatched_qty, bag_type)')
     .eq('client_id', user.id)
     .neq('order_type', 'draft')
     .eq('status', 'completed');
@@ -518,8 +522,11 @@ export async function fetchBalanceSummary() {
   let totalDelivered = 0;
   if (dispatchedOrders) {
     for (const order of dispatchedOrders) {
-      const items = order.items as { dispatched_qty: number }[];
-      totalDelivered += items.reduce((acc, item) => acc + item.dispatched_qty, 0);
+      const items = order.items as { dispatched_qty: number; bag_type: 'JB' | 'SB' }[];
+      totalDelivered += items.reduce(
+        (acc, item) => acc + individualBagsFromUnits(item.bag_type, item.dispatched_qty),
+        0,
+      );
     }
   }
 
@@ -626,10 +633,15 @@ export async function submitRedeliveryRequest(
 
   if (error) throw new Error(error.message);
 
-  // Insert order item for the balance
-  const requestedQty = splitDetails?.wantsSplit
+  // Insert order item for the balance.
+  // balance.remaining_qty (and the split dialog's deliverNowQty) are INDIVIDUAL
+  // BAGS, but order_items.requested_qty must stay in JB/SB UNITS like every
+  // other order — dispatch stock/profit math and the balance deduction both
+  // assume units on order_items. Convert at the boundary.
+  const requestedBags = splitDetails?.wantsSplit
     ? splitDetails.deliverNowQty
     : balance.remaining_qty;
+  const requestedQty = unitsFromIndividualBags(balance.bag_type as 'JB' | 'SB', requestedBags);
 
   const { data: redeliveryProduct } = await supabase
     .from('products')
