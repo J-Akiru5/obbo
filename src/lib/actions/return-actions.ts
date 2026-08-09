@@ -1,6 +1,7 @@
 'use server';
 
 import { requireAdmin, logActivity } from './admin-helpers';
+import { safeAction } from './action-result';
 
 export async function fetchOrderReturns() {
   const { supabase } = await requireAdmin();
@@ -14,7 +15,8 @@ export async function fetchOrderReturns() {
   return data ?? [];
 }
 
-export async function processOrderReturn(returnId: string) {
+// Internal implementation unchanged — safeAction() wraps the export below.
+async function _processOrderReturn(returnId: string) {
   const { supabase, userId } = await requireAdmin();
   const { error } = await supabase
     .from('order_returns')
@@ -24,3 +26,5 @@ export async function processOrderReturn(returnId: string) {
   await logActivity(supabase, userId, 'return_processed', 'order_returns', returnId, {});
   return { success: true };
 }
+
+export const processOrderReturn = safeAction(_processOrderReturn);

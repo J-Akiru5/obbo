@@ -476,7 +476,12 @@ function NewOrderPage() {
             deliverNowSB: dNowSB,
           }
         : undefined;
-      await saveOrderDraft(orderData, splitDetails);
+      const result = await saveOrderDraft(orderData, splitDetails);
+      if (!result.success) {
+        toast.error(result.error);
+        setDraftLoading(false);
+        return;
+      }
 
       toast.success('Order saved as draft.');
       clearForm();

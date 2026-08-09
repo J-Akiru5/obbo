@@ -44,7 +44,11 @@ export function CostConfigurationTab() {
 
     setIsSubmitting(true);
     try {
-      await saveCostConfiguration(landedCost, localExpenses);
+      const result = await saveCostConfiguration(landedCost, localExpenses);
+      if (!result.success) {
+        toast.error(result.error);
+        return;
+      }
       toast.success('Cost configuration snapshots successfully stored in database.');
     } catch (error) {
       console.error('Failed to save cost configuration:', error);

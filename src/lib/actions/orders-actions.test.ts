@@ -468,7 +468,10 @@ describe('Orders Server Actions', () => {
 
     it('backfills approved_qty for never-approved orders', async () => {
       const result = await finalConfirmCheck('order-001');
-      expect(result).toEqual({ success: true });
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data).toEqual({ success: true });
+      }
     });
   });
 });

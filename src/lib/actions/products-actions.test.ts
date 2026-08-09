@@ -59,32 +59,36 @@ describe('Products Server Actions', () => {
       };
 
       const result = await createProduct(newProduct);
-      // The MSW Supabase mock returns an array; verify the first element
-      const product = Array.isArray(result) ? result[0] : result;
-      expect(product).toHaveProperty('id');
-      expect(product.name).toBe('Portland Cement Type 1');
-      expect(product.bag_type).toBe('SB');
+      expect(result.success).toBe(true);
+      if (result.success) {
+        // The MSW Supabase mock returns an array; verify the first element
+        const data = result.data as unknown;
+        const product = Array.isArray(data) ? data[0] : data;
+        expect(product).toHaveProperty('id');
+        expect(product.name).toBe('Portland Cement Type 1');
+        expect(product.bag_type).toBe('SB');
+      }
     });
 
-    it('throws when Supabase insert fails', async () => {
+    it('returns a failure result (not a throw) when Supabase insert fails', async () => {
       server.use(
         http.post('*/rest/v1/products', () =>
           HttpResponse.json({ message: 'Database constraint violation' }, { status: 409 }),
         ),
       );
 
-      await expect(
-        createProduct({
-          name: 'Portland Cement Type 1',
-          description: 'Should fail',
-          bag_type: 'JB',
-          price_per_bag: 250,
-          price_port: 0,
-          price_warehouse: 0,
-          is_active: true,
-          image_url: undefined,
-        }),
-      ).rejects.toThrow();
+      const result = await createProduct({
+        name: 'Portland Cement Type 1',
+        description: 'Should fail',
+        bag_type: 'JB',
+        price_per_bag: 250,
+        price_port: 0,
+        price_warehouse: 0,
+        is_active: true,
+        image_url: undefined,
+      });
+
+      expect(result.success).toBe(false);
     });
   });
 
@@ -94,7 +98,10 @@ describe('Products Server Actions', () => {
         price_per_bag: 300,
         is_active: false,
       });
-      expect(result).toEqual({ success: true });
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data).toEqual({ success: true });
+      }
     });
   });
 });

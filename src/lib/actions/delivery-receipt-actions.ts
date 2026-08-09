@@ -5,6 +5,7 @@ import { requireAdmin, logActivity, createOrderForClientPortal } from './admin-h
 import { addLedgerEntry } from './ledger-actions';
 import { createUserNotification } from './notification-actions';
 import { deliveryReceiptCreateSchema, deliveryReceiptUpdateSchema } from './schemas';
+import { safeAction } from './action-result';
 import type { OrderSource, ServiceType } from '@/lib/types/database';
 
 export async function fetchDeliveryReceipts() {
@@ -17,7 +18,8 @@ export async function fetchDeliveryReceipts() {
   return data ?? [];
 }
 
-export async function createDeliveryReceipt(rawDr: Record<string, unknown>) {
+// Internal implementation unchanged — safeAction() wraps the export below.
+async function _createDeliveryReceipt(rawDr: Record<string, unknown>) {
   const { supabase, userId } = await requireAdmin();
 
   const parsed = deliveryReceiptCreateSchema.safeParse(rawDr);
@@ -189,7 +191,10 @@ export async function createDeliveryReceipt(rawDr: Record<string, unknown>) {
   return data;
 }
 
-export async function updateDeliveryReceipt(id: string, rawUpdates: Record<string, unknown>) {
+export const createDeliveryReceipt = safeAction(_createDeliveryReceipt);
+
+// Internal implementation unchanged — safeAction() wraps the export below.
+async function _updateDeliveryReceipt(id: string, rawUpdates: Record<string, unknown>) {
   const { supabase, userId } = await requireAdmin();
 
   const parsed = deliveryReceiptUpdateSchema.safeParse(rawUpdates);
@@ -336,3 +341,5 @@ export async function updateDeliveryReceipt(id: string, rawUpdates: Record<strin
   await logActivity(supabase, userId, 'dr_updated', 'delivery_receipt', id, updates);
   return { success: true };
 }
+
+export const updateDeliveryReceipt = safeAction(_updateDeliveryReceipt);

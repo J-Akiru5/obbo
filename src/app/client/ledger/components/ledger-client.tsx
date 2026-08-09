@@ -207,7 +207,16 @@ export default function LedgerClient({
           }
         : undefined;
 
-      await submitRedeliveryRequest(selectedBalance.id, orderData, adjustedSplitDetails);
+      const result = await submitRedeliveryRequest(
+        selectedBalance.id,
+        orderData,
+        adjustedSplitDetails,
+      );
+      if (!result.success) {
+        toast.error(result.error);
+        setIsSubmitting(false);
+        return;
+      }
 
       toast.success('Re-delivery request submitted! It is now pending admin approval.');
 

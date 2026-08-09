@@ -131,7 +131,7 @@ export function DrListTab({
       }
 
       if (editingDr) {
-        await updateDeliveryReceipt(editingDr.id, {
+        const result = await updateDeliveryReceipt(editingDr.id, {
           dr_number: drNumber,
           shipment_id: shipmentId,
           client_name: clientName,
@@ -144,9 +144,14 @@ export function DrListTab({
           destination: destination || null,
           ...(drImageUrl ? { dr_image_url: drImageUrl } : {}),
         });
+        if (!result.success) {
+          toast.error(result.error);
+          setIsSubmitting(false);
+          return;
+        }
         toast.success('DR updated');
       } else {
-        await createDeliveryReceipt({
+        const result = await createDeliveryReceipt({
           dr_number: drNumber,
           shipment_id: shipmentId,
           client_name: clientName,
@@ -159,6 +164,11 @@ export function DrListTab({
           destination: destination || undefined,
           ...(drImageUrl ? { dr_image_url: drImageUrl } : {}),
         });
+        if (!result.success) {
+          toast.error(result.error);
+          setIsSubmitting(false);
+          return;
+        }
         toast.success('DR created and ledger updated');
       }
       setIsDialogOpen(false);

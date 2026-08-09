@@ -22,7 +22,7 @@ vi.mock('@/lib/supabase/server', () => ({
   },
 }));
 
-const { submitOrder } = await import('./client-actions');
+const { submitOrder, submitRedeliveryRequest } = await import('./client-actions');
 
 let orderDeleteCalled = false;
 
@@ -115,6 +115,114 @@ describe('client-actions', () => {
       if (result.success) {
         expect(result.data).toBeDefined();
       }
+    });
+  });
+
+  // Regression coverage for the requestedQty rounding fix: requestedBags
+  // (individual bags) isn't guaranteed to land on an exact 25/50-bag unit
+  // boundary for a partial split redelivery, so unitsFromIndividualBags can
+  // return a fraction (e.g. 30 bags / 25 per JB = 1.2). requested_qty is a
+  // non-nullable Postgres Int column, so the fraction must be rounded to a
+  // whole unit — never written as-is, never rounded down to 0.
+  describe('submitRedeliveryRequest (requestedQty rounding)', () => {
+    const balanceId = '550e8400-e29b-41d4-a716-446655440111';
+    let capturedOrderItemsPayload: Record<string, unknown> | null = null;
+
+    beforeEach(() => {
+      vi.clearAllMocks();
+      capturedOrderItemsPayload = null;
+
+      mockGetUser.mockResolvedValue({
+        data: { user: { id: 'client-001', email: 'juan@acme.com' } },
+        error: null,
+      });
+
+      server.use(
+        http.get('*/rest/v1/profiles', ({ request }) => {
+          const accept = request.headers.get('accept') || '';
+          const isSingle = accept.includes('application/vnd.pgrst.object+json');
+          const profile = {
+            id: 'client-001',
+            email: 'juan@acme.com',
+            full_name: 'Juan Dela Cruz',
+            role: 'client',
+            kyc_status: 'verified',
+          };
+          return isSingle ? HttpResponse.json(profile) : HttpResponse.json([profile]);
+        }),
+
+        // Balance: 50 individual bags remaining (2 JB units — 1 JB = 25
+        // individual bags), linked to an order with a PO number.
+        http.get('*/rest/v1/customer_balances', () =>
+          HttpResponse.json({
+            id: balanceId,
+            client_id: 'client-001',
+            bag_type: 'JB',
+            remaining_qty: 50,
+            product_id: 'prod-1',
+            order: { po_number: 'PO-TEST-001' },
+          }),
+        ),
+
+        http.post('*/rest/v1/orders', () =>
+          HttpResponse.json({ id: 'order-redelivery-1', po_number: 'PO-TEST-001' }),
+        ),
+
+        http.get('*/rest/v1/products', () =>
+          HttpResponse.json({ price_per_bag: 250, price_port: null, price_warehouse: null }),
+        ),
+
+        http.post('*/rest/v1/order_items', async ({ request }) => {
+          capturedOrderItemsPayload = (await request.json()) as Record<string, unknown>;
+          return HttpResponse.json([]);
+        }),
+      );
+    });
+
+    it('rounds a partial split request (30 of 50 bags, 30/25 = 1.2 JB units) to a valid positive integer requested_qty', async () => {
+      const result = await submitRedeliveryRequest(
+        balanceId,
+        {
+          source: 'warehouse',
+          service_type: 'pickup',
+          payment_method: 'cash',
+          po_number: 'PO-TEST-001',
+          po_image_url: 'https://example.com/po.jpg',
+          driver_name: 'Test Driver',
+          plate_number: 'ABC-123',
+        },
+        {
+          wantsSplit: true,
+          deliverNowQty: 30,
+          deliverNowJB: 1,
+          deliverNowSB: 0,
+          splitNote: 'Redelivery split: Client requested 30 indiv bags now.',
+        },
+      );
+
+      expect(result.success).toBe(true);
+      expect(capturedOrderItemsPayload).not.toBeNull();
+      const requestedQty = capturedOrderItemsPayload?.requested_qty;
+      expect(Number.isInteger(requestedQty)).toBe(true);
+      expect(requestedQty).toBeGreaterThan(0);
+      expect(requestedQty).toBe(1); // Math.max(1, Math.round(30 / 25)) = Math.max(1, 1) = 1
+    });
+
+    it('rounds a non-split full-balance request the same way (50 bags / 25 = exactly 2, no rounding needed)', async () => {
+      const result = await submitRedeliveryRequest(balanceId, {
+        source: 'warehouse',
+        service_type: 'pickup',
+        payment_method: 'cash',
+        po_number: 'PO-TEST-001',
+        po_image_url: 'https://example.com/po.jpg',
+        driver_name: 'Test Driver',
+        plate_number: 'ABC-123',
+      });
+
+      expect(result.success).toBe(true);
+      const requestedQty = capturedOrderItemsPayload?.requested_qty;
+      expect(Number.isInteger(requestedQty)).toBe(true);
+      expect(requestedQty).toBe(2);
     });
   });
 });

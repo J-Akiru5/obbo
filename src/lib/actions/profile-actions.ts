@@ -3,8 +3,10 @@
 import { requireAdminOnly, logActivity } from './admin-helpers';
 import { manualClientCreateSchema } from './schemas';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { safeAction } from './action-result';
 
-export async function updateProfileRole(
+// Internal implementation unchanged — safeAction() wraps the export below.
+async function _updateProfileRole(
   profileId: string,
   role: 'client' | 'warehouse_manager' | 'admin',
 ) {
@@ -30,7 +32,10 @@ export async function updateProfileRole(
   return { success: true };
 }
 
-export async function createManualClient(input: {
+export const updateProfileRole = safeAction(_updateProfileRole);
+
+// Internal implementation unchanged — safeAction() wraps the export below.
+async function _createManualClient(input: {
   email: string;
   fullName: string;
   password: string;
@@ -79,3 +84,5 @@ export async function createManualClient(input: {
 
   return { success: true, userId: data.user.id };
 }
+
+export const createManualClient = safeAction(_createManualClient);

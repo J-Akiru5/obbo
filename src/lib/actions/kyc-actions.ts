@@ -2,6 +2,7 @@
 
 import { requireAdmin, logActivity } from './admin-helpers';
 import { createUserNotification } from './notification-actions';
+import { safeAction } from './action-result';
 
 export async function fetchPendingKyc() {
   const { supabase } = await requireAdmin();
@@ -25,7 +26,8 @@ export async function fetchVerifiedClients() {
   return data ?? [];
 }
 
-export async function approveKyc(profileId: string) {
+// Internal implementation unchanged — safeAction() wraps the export below.
+async function _approveKyc(profileId: string) {
   const { supabase, userId } = await requireAdmin();
 
   const { error } = await supabase
@@ -51,7 +53,10 @@ export async function approveKyc(profileId: string) {
   return { success: true };
 }
 
-export async function rejectKyc(profileId: string, reason: string) {
+export const approveKyc = safeAction(_approveKyc);
+
+// Internal implementation unchanged — safeAction() wraps the export below.
+async function _rejectKyc(profileId: string, reason: string) {
   const { supabase, userId } = await requireAdmin();
 
   const { error } = await supabase
@@ -79,3 +84,5 @@ export async function rejectKyc(profileId: string, reason: string) {
 
   return { success: true };
 }
+
+export const rejectKyc = safeAction(_rejectKyc);

@@ -2,6 +2,7 @@
 
 import { requireAdmin, logActivity } from './admin-helpers';
 import { customerBalanceUpdateSchema } from './schemas';
+import { safeAction } from './action-result';
 
 export async function fetchCustomerBalances() {
   const { supabase } = await requireAdmin();
@@ -14,7 +15,8 @@ export async function fetchCustomerBalances() {
   return data ?? [];
 }
 
-export async function updateCustomerBalance(id: string, remaining_qty: number, status: string) {
+// Internal implementation unchanged — safeAction() wraps the export below.
+async function _updateCustomerBalance(id: string, remaining_qty: number, status: string) {
   const parsed = customerBalanceUpdateSchema.safeParse({ remaining_qty, status });
   if (!parsed.success) throw new Error(parsed.error.issues.map((i) => i.message).join('; '));
   const { supabase, userId } = await requireAdmin();
@@ -29,3 +31,5 @@ export async function updateCustomerBalance(id: string, remaining_qty: number, s
   });
   return { success: true };
 }
+
+export const updateCustomerBalance = safeAction(_updateCustomerBalance);

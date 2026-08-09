@@ -233,7 +233,7 @@ export function PoListTab({
       const currentCashAmt = paymentMethod === 'cash' ? cashAmount : null;
 
       if (editingPo) {
-        await updatePurchaseOrder(editingPo.id, {
+        const result = await updatePurchaseOrder(editingPo.id, {
           po_number: poNumber,
           client_name: clientName,
           client_id: clientId,
@@ -246,9 +246,14 @@ export function PoListTab({
           cash_amount: currentCashAmt,
           ...(photoUrl ? { photo_url: photoUrl } : {}),
         });
+        if (!result.success) {
+          toast.error(result.error);
+          setIsSubmitting(false);
+          return;
+        }
         toast.success('PO updated configurations saved.');
       } else {
-        await createPurchaseOrder({
+        const result = await createPurchaseOrder({
           po_number: poNumber,
           client_name: clientName,
           client_id: clientId,
@@ -261,6 +266,11 @@ export function PoListTab({
           cash_amount: currentCashAmt,
           ...(photoUrl ? { photo_url: photoUrl } : {}),
         });
+        if (!result.success) {
+          toast.error(result.error);
+          setIsSubmitting(false);
+          return;
+        }
         toast.success('Manual PO recorded successfully.');
       }
       setIsDialogOpen(false);

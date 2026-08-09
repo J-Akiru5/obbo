@@ -8,7 +8,10 @@ describe('PurchaseOrder Server Actions — Zod validation', () => {
     server.use(http.patch('*/rest/v1/purchase_orders', () => HttpResponse.json([])));
 
     const result = await updatePurchaseOrder('po-001', { status: 'dispatched' });
-    expect(result).toEqual({ success: true });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data).toEqual({ success: true });
+    }
   });
 
   it('rejects update with unknown fields (Zod strip)', async () => {
@@ -29,21 +32,29 @@ describe('PurchaseOrder Server Actions — Zod validation', () => {
       status: 'dispatched',
       hacked_field: 'malicious value',
     } as unknown as Record<string, unknown>);
-    expect(result).toEqual({ success: true });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data).toEqual({ success: true });
+    }
   });
 
-  it('rejects update with invalid field types', async () => {
-    await expect(
-      updatePurchaseOrder('po-001', { jb: -5 } as unknown as Record<string, unknown>),
-    ).rejects.toThrow('Invalid purchase order updates');
+  it('returns a failure result (not a throw) for invalid field types', async () => {
+    const result = await updatePurchaseOrder('po-001', {
+      jb: -5,
+    } as unknown as Record<string, unknown>);
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error).toMatch('Invalid purchase order updates');
+    }
   });
 
-  it('rejects update with invalid enum value', async () => {
-    await expect(
-      updatePurchaseOrder('po-001', { source: 'invalid_source' } as unknown as Record<
-        string,
-        unknown
-      >),
-    ).rejects.toThrow('Invalid purchase order updates');
+  it('returns a failure result (not a throw) for invalid enum value', async () => {
+    const result = await updatePurchaseOrder('po-001', {
+      source: 'invalid_source',
+    } as unknown as Record<string, unknown>);
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error).toMatch('Invalid purchase order updates');
+    }
   });
 });

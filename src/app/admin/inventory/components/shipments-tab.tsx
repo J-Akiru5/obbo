@@ -156,7 +156,7 @@ export function ShipmentsTab({
     if (totalBags <= 0) return toast.error('Total bags must be greater than 0.');
     setIsCreating(true);
     try {
-      await createShipment(
+      const result = await createShipment(
         newBatchName,
         newJbBags,
         newSbBags,
@@ -164,6 +164,11 @@ export function ShipmentsTab({
         newDamagedJb,
         newDamagedSb,
       );
+      if (!result.success) {
+        toast.error(result.error);
+        setIsCreating(false);
+        return;
+      }
       toast.success('Shipment batch created.');
       setNewBatchName('');
       setNewJbBags(0);
@@ -183,7 +188,12 @@ export function ShipmentsTab({
     if (!editingShipment) return;
     setIsUpdating(true);
     try {
-      await updateShipment(editingShipment.id, editForm);
+      const result = await updateShipment(editingShipment.id, editForm);
+      if (!result.success) {
+        toast.error(result.error);
+        setIsUpdating(false);
+        return;
+      }
       toast.success('Shipment batch updated.');
       setEditingShipment(null);
       onReload();
@@ -214,10 +224,15 @@ export function ShipmentsTab({
     if (!overrideShipment) return;
     setIsSavingOverride(true);
     try {
-      await updateShipment(overrideShipment.id, {
+      const result = await updateShipment(overrideShipment.id, {
         remaining_jb: overrideRemJb,
         remaining_sb: overrideRemSb,
       });
+      if (!result.success) {
+        toast.error(result.error);
+        setIsSavingOverride(false);
+        return;
+      }
       toast.success('Remaining stock updated. Dashboard totals will reflect this change.');
       setOverrideShipment(null);
       onReload();

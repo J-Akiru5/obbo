@@ -224,7 +224,12 @@ export default function OrdersClient({
     if (!selectedOrder) return;
     setIsSubmitting(true);
     try {
-      await submitPaymentDetails(selectedOrder.id, 'cash');
+      const result = await submitPaymentDetails(selectedOrder.id, 'cash');
+      if (!result.success) {
+        toast.error(result.error);
+        setIsSubmitting(false);
+        return;
+      }
       toast.success('Cash payment submitted! Awaiting admin confirmation.');
       setIsPaymentOpen(false);
       router.refresh();
@@ -261,7 +266,12 @@ export default function OrdersClient({
         data: { publicUrl },
       } = supabase.storage.from('order-attachments').getPublicUrl(fileName);
 
-      await submitPaymentDetails(selectedOrder.id, 'check', checkNumber, publicUrl);
+      const result = await submitPaymentDetails(selectedOrder.id, 'check', checkNumber, publicUrl);
+      if (!result.success) {
+        toast.error(result.error);
+        setIsSubmitting(false);
+        return;
+      }
 
       toast.success('Check payment submitted! Awaiting admin verification.');
       setIsPaymentOpen(false);
@@ -299,7 +309,12 @@ export default function OrdersClient({
     }
     setIsSubmitting(true);
     try {
-      await submitOrderReturn(selectedOrder.id, returnJb, returnSb, returnReason);
+      const result = await submitOrderReturn(selectedOrder.id, returnJb, returnSb, returnReason);
+      if (!result.success) {
+        toast.error(result.error);
+        setIsSubmitting(false);
+        return;
+      }
       toast.success('Return request submitted. The warehouse team will review it shortly.');
       setIsReturnOpen(false);
       router.refresh();
@@ -313,7 +328,11 @@ export default function OrdersClient({
 
   const handleDeleteDraft = async (orderId: string) => {
     try {
-      await deleteDraftOrder(orderId);
+      const result = await deleteDraftOrder(orderId);
+      if (!result.success) {
+        toast.error(result.error);
+        return;
+      }
       setDrafts((prev) => prev.filter((d) => d.id !== orderId));
       toast.success('Draft deleted.');
     } catch (e: unknown) {

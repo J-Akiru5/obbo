@@ -119,13 +119,13 @@ function OrdersContent() {
   };
 
   const handleConfirmCheck = async (orderId: string) => {
-    try {
-      await finalConfirmCheck(orderId);
-      toast.success('Check payment confirmed.');
-      loadData();
-    } catch (e: any) {
-      toast.error(e.message || 'Failed to confirm check.');
+    const result = await finalConfirmCheck(orderId);
+    if (!result.success) {
+      toast.error(result.error);
+      return;
     }
+    toast.success('Check payment confirmed.');
+    loadData();
   };
 
   const handleDispatch = async (

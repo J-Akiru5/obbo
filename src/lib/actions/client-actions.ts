@@ -258,7 +258,8 @@ async function _submitOrder(
 // except it now returns ActionResult<T> instead of throwing.
 export const submitOrder = safeAction(_submitOrder);
 
-export async function saveOrderDraft(
+// Internal implementation unchanged — safeAction() wraps the export below.
+async function _saveOrderDraft(
   orderData: {
     source: string;
     service_type: string;
@@ -357,6 +358,8 @@ export async function saveOrderDraft(
   return order;
 }
 
+export const saveOrderDraft = safeAction(_saveOrderDraft);
+
 export async function fetchDraftOrders() {
   const { supabase, user } = await requireClient();
   const { data } = await supabase
@@ -368,7 +371,8 @@ export async function fetchDraftOrders() {
   return data ?? [];
 }
 
-export async function deleteDraftOrder(orderId: string) {
+// Internal implementation unchanged — safeAction() wraps the export below.
+async function _deleteDraftOrder(orderId: string) {
   const { supabase, user } = await requireClient();
   // Delete items first, then order
   await supabase.from('order_items').delete().eq('order_id', orderId);
@@ -384,6 +388,8 @@ export async function deleteDraftOrder(orderId: string) {
   return { success: true };
 }
 
+export const deleteDraftOrder = safeAction(_deleteDraftOrder);
+
 export async function fetchOrderForResume(orderId: string) {
   const { supabase, user } = await requireClient();
   const { data, error } = await supabase
@@ -397,7 +403,8 @@ export async function fetchOrderForResume(orderId: string) {
   return data;
 }
 
-export async function submitPaymentDetails(
+// Internal implementation unchanged — safeAction() wraps the export below.
+async function _submitPaymentDetails(
   orderId: string,
   paymentMethod: string,
   checkNumber?: string,
@@ -434,12 +441,10 @@ export async function submitPaymentDetails(
   return { success: true };
 }
 
-export async function submitOrderReturn(
-  orderId: string,
-  jbQty: number,
-  sbQty: number,
-  reason: string,
-) {
+export const submitPaymentDetails = safeAction(_submitPaymentDetails);
+
+// Internal implementation unchanged — safeAction() wraps the export below.
+async function _submitOrderReturn(orderId: string, jbQty: number, sbQty: number, reason: string) {
   const { supabase, user } = await requireClient();
   if (jbQty <= 0 && sbQty <= 0)
     throw new Error('Please enter at least one bag quantity to return.');
@@ -477,6 +482,8 @@ export async function submitOrderReturn(
   revalidatePath('/client/orders');
   return { success: true };
 }
+
+export const submitOrderReturn = safeAction(_submitOrderReturn);
 
 // ═══════════════════════════════════════════════════════════════
 // LEDGER / BALANCES
@@ -565,7 +572,8 @@ export async function fetchPendingRedeliveryPoNumbers() {
   return poNumbers as string[];
 }
 
-export async function submitRedeliveryRequest(
+// Internal implementation unchanged — safeAction() wraps the export below.
+async function _submitRedeliveryRequest(
   balanceId: string,
   orderData: {
     source: string;
@@ -688,6 +696,8 @@ export async function submitRedeliveryRequest(
   return order;
 }
 
+export const submitRedeliveryRequest = safeAction(_submitRedeliveryRequest);
+
 // ═══════════════════════════════════════════════════════════════
 // NOTIFICATIONS
 // ═══════════════════════════════════════════════════════════════
@@ -713,7 +723,8 @@ export async function fetchUnreadNotificationCount() {
   return count ?? 0;
 }
 
-export async function markNotificationRead(notificationId: string) {
+// Internal implementation unchanged — safeAction() wraps the export below.
+async function _markNotificationRead(notificationId: string) {
   const { supabase, user } = await requireClient();
   const { error } = await supabase
     .from('notifications')
@@ -725,7 +736,10 @@ export async function markNotificationRead(notificationId: string) {
   return { success: true };
 }
 
-export async function markAllNotificationsRead() {
+export const markNotificationRead = safeAction(_markNotificationRead);
+
+// Internal implementation unchanged — safeAction() wraps the export below.
+async function _markAllNotificationsRead() {
   const { supabase, user } = await requireClient();
   const { error } = await supabase
     .from('notifications')
@@ -737,6 +751,8 @@ export async function markAllNotificationsRead() {
   return { success: true };
 }
 
+export const markAllNotificationsRead = safeAction(_markAllNotificationsRead);
+
 // ═══════════════════════════════════════════════════════════════
 // PROFILE & SETTINGS
 // ═══════════════════════════════════════════════════════════════
@@ -747,7 +763,8 @@ export async function fetchClientProfile() {
   return { profile: data, email: user.email };
 }
 
-export async function updateNotificationPreferences(prefs: {
+// Internal implementation unchanged — safeAction() wraps the export below.
+async function _updateNotificationPreferences(prefs: {
   order_approval: boolean;
   payment_required: boolean;
   dispatch: boolean;
@@ -763,7 +780,10 @@ export async function updateNotificationPreferences(prefs: {
   return { success: true };
 }
 
-export async function updateTinNo(tinNo: string) {
+export const updateNotificationPreferences = safeAction(_updateNotificationPreferences);
+
+// Internal implementation unchanged — safeAction() wraps the export below.
+async function _updateTinNo(tinNo: string) {
   const { supabase, user } = await requireClient();
   const { error } = await supabase
     .from('profiles')
@@ -773,6 +793,8 @@ export async function updateTinNo(tinNo: string) {
   revalidatePath('/client/profile');
   return { success: true };
 }
+
+export const updateTinNo = safeAction(_updateTinNo);
 
 // ═══════════════════════════════════════════════════════════════
 // SETTINGS / CONTACT

@@ -6,6 +6,7 @@ import { generateGlobalNextPoNumber } from './po-utils';
 import { createUserNotification } from './notification-actions';
 import { purchaseOrderUpdateSchema } from './schemas';
 import type { OrderSource, ServiceType } from '@/lib/types/database';
+import { safeAction } from './action-result';
 
 export async function fetchPurchaseOrders() {
   const { supabase } = await requireAdmin();
@@ -21,7 +22,8 @@ export async function generateAdminPoNumber() {
   return generateGlobalNextPoNumber();
 }
 
-export async function createPurchaseOrder(po: {
+// Internal implementation unchanged — safeAction() wraps the export below.
+async function _createPurchaseOrder(po: {
   po_number?: string;
   client_name?: string;
   client_id?: string | null;
@@ -102,7 +104,10 @@ export async function createPurchaseOrder(po: {
   return data;
 }
 
-export async function updatePurchaseOrder(id: string, rawUpdates: Record<string, unknown>) {
+export const createPurchaseOrder = safeAction(_createPurchaseOrder);
+
+// Internal implementation unchanged — safeAction() wraps the export below.
+async function _updatePurchaseOrder(id: string, rawUpdates: Record<string, unknown>) {
   const { supabase, userId } = await requireAdmin();
 
   const parsed = purchaseOrderUpdateSchema.safeParse(rawUpdates);
@@ -124,3 +129,5 @@ export async function updatePurchaseOrder(id: string, rawUpdates: Record<string,
   await logActivity(supabase, userId, 'po_updated', 'purchase_order', id, parsed.data);
   return { success: true };
 }
+
+export const updatePurchaseOrder = safeAction(_updatePurchaseOrder);

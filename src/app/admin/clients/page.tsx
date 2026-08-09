@@ -361,7 +361,7 @@ function ManualClientDialog({
 
     setSaving(true);
     try {
-      await createManualClient({
+      const result = await createManualClient({
         fullName: form.fullName.trim(),
         email: form.email.trim(),
         password: form.password.trim(),
@@ -378,6 +378,11 @@ function ManualClientDialog({
             : undefined,
         tinNo: form.tinNo.trim() || undefined,
       });
+      if (!result.success) {
+        toast.error(result.error);
+        setSaving(false);
+        return;
+      }
       toast.success('Client created.');
       onCreated();
       onClose();
@@ -833,14 +838,22 @@ function ClientsContent() {
   async function handleKycAction(id: string, status: 'verified' | 'rejected', reason?: string) {
     try {
       if (status === 'verified') {
-        await approveKyc(id);
+        const result = await approveKyc(id);
+        if (!result.success) {
+          toast.error(result.error);
+          return;
+        }
         toast.success('Client verified.');
       } else {
         if (!reason?.trim()) {
           toast.error('A rejection reason is required.');
           return;
         }
-        await rejectKyc(id, reason.trim());
+        const result = await rejectKyc(id, reason.trim());
+        if (!result.success) {
+          toast.error(result.error);
+          return;
+        }
         toast.error('Client rejected.');
       }
       setProfiles((previous) =>

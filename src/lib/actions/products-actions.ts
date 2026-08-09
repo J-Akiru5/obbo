@@ -2,6 +2,7 @@
 
 import { requireAdmin, logActivity } from './admin-helpers';
 import { productUpdateSchema, productCreateSchema } from './schemas';
+import { safeAction } from './action-result';
 
 export async function fetchProducts() {
   const { supabase } = await requireAdmin();
@@ -13,7 +14,8 @@ export async function fetchProducts() {
   );
 }
 
-export async function updateProduct(
+// Internal implementation unchanged — safeAction() wraps the export below.
+async function _updateProduct(
   id: string,
   updates: {
     name?: string;
@@ -35,7 +37,10 @@ export async function updateProduct(
   return { success: true };
 }
 
-export async function createProduct(product: {
+export const updateProduct = safeAction(_updateProduct);
+
+// Internal implementation unchanged — safeAction() wraps the export below.
+async function _createProduct(product: {
   name: string;
   description: string;
   bag_type: string;
@@ -53,3 +58,5 @@ export async function createProduct(product: {
   await logActivity(supabase, userId, 'product_created', 'product', data.id, product);
   return data;
 }
+
+export const createProduct = safeAction(_createProduct);

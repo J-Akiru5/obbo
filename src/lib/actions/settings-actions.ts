@@ -3,6 +3,7 @@
 import { requireAdmin, logActivity } from './admin-helpers';
 import type { CostConfig } from './admin-helpers';
 import { costConfigSchema } from './schemas';
+import { safeAction } from './action-result';
 
 export async function getAdminSetting(key: string) {
   const { supabase } = await requireAdmin();
@@ -10,7 +11,8 @@ export async function getAdminSetting(key: string) {
   return data?.value ?? null;
 }
 
-export async function saveAdminSetting(key: string, value: Record<string, unknown>) {
+// Internal implementation unchanged — safeAction() wraps the export below.
+async function _saveAdminSetting(key: string, value: Record<string, unknown>) {
   const { supabase, userId } = await requireAdmin();
   const { error } = await supabase
     .from('admin_settings')
@@ -20,7 +22,10 @@ export async function saveAdminSetting(key: string, value: Record<string, unknow
   return { success: true };
 }
 
-export async function saveCostConfig(config: CostConfig) {
+export const saveAdminSetting = safeAction(_saveAdminSetting);
+
+// Internal implementation unchanged — safeAction() wraps the export below.
+async function _saveCostConfig(config: CostConfig) {
   const parsed = costConfigSchema.safeParse(config);
   if (!parsed.success) throw new Error(parsed.error.issues.map((i) => i.message).join('; '));
   const { supabase, userId } = await requireAdmin();
@@ -42,13 +47,20 @@ export async function saveCostConfig(config: CostConfig) {
   return { success: true };
 }
 
-// Wrapper alias function for perfect frontend UI compatibility wizard sync matching
-export async function saveCostConfiguration(landedCost: number, localExpenses: number) {
-  return saveCostConfig({
+export const saveCostConfig = safeAction(_saveCostConfig);
+
+// Wrapper alias function for perfect frontend UI compatibility wizard sync matching.
+// Calls the internal _saveCostConfig (not the safeAction-wrapped export) so it still
+// throws exactly as before — safeAction() wraps THIS function's own export below,
+// rather than double-wrapping an already-ActionResult return value.
+async function _saveCostConfiguration(landedCost: number, localExpenses: number) {
+  return _saveCostConfig({
     landed_cost_per_bag: landedCost,
     local_expenses_per_bag: localExpenses,
   });
 }
+
+export const saveCostConfiguration = safeAction(_saveCostConfiguration);
 
 export async function fetchSalesProfitReport(dateFrom: string, dateTo: string) {
   const { supabase } = await requireAdmin();

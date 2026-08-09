@@ -4,6 +4,7 @@ import { requireAdmin, logActivity } from './admin-helpers';
 import { warehouseReportSaveSchema } from './schemas';
 import { createRoleNotification } from './notification-actions';
 import type { WarehouseReport } from '@/lib/types/database';
+import { safeAction } from './action-result';
 
 export async function generateDailyReportData(date: string) {
   const { supabase } = await requireAdmin();
@@ -163,7 +164,8 @@ export async function checkReportSubmission(date: string) {
   return data?.submitted ?? false;
 }
 
-export async function saveWarehouseReport(report: {
+// Internal implementation unchanged — safeAction() wraps the export below.
+async function _saveWarehouseReport(report: {
   report_date: string;
   yesterday_jb: number;
   yesterday_sb: number;
@@ -194,7 +196,10 @@ export async function saveWarehouseReport(report: {
   return data;
 }
 
-export async function submitWarehouseReport(date: string) {
+export const saveWarehouseReport = safeAction(_saveWarehouseReport);
+
+// Internal implementation unchanged — safeAction() wraps the export below.
+async function _submitWarehouseReport(date: string) {
   const { supabase, userId } = await requireAdmin();
 
   const { data: report, error: fetchError } = await supabase
@@ -225,7 +230,10 @@ export async function submitWarehouseReport(date: string) {
   return { success: true };
 }
 
-export async function autoSubmitEndOfDayReports() {
+export const submitWarehouseReport = safeAction(_submitWarehouseReport);
+
+// Internal implementation unchanged — safeAction() wraps the export below.
+async function _autoSubmitEndOfDayReports() {
   const { supabase, userId, role } = await requireAdmin();
   if (role !== 'warehouse_manager' && role !== 'admin') throw new Error('Forbidden');
 
@@ -321,3 +329,5 @@ export async function autoSubmitEndOfDayReports() {
 
   return { autoSubmitted };
 }
+
+export const autoSubmitEndOfDayReports = safeAction(_autoSubmitEndOfDayReports);

@@ -182,7 +182,8 @@ async function _rejectOrder(orderId: string, reason: string) {
 
 export const rejectOrder = safeAction(_rejectOrder);
 
-export async function finalConfirmCheck(orderId: string) {
+// Internal implementation unchanged — safeAction() wraps the export below.
+async function _finalConfirmCheck(orderId: string) {
   const { supabase, userId } = await requireAdmin();
 
   const { data: order } = await supabase
@@ -234,6 +235,8 @@ export async function finalConfirmCheck(orderId: string) {
   });
   return { success: true };
 }
+
+export const finalConfirmCheck = safeAction(_finalConfirmCheck);
 
 // Internal implementation unchanged — safeAction() wraps the export below.
 async function _dispatchOrder(

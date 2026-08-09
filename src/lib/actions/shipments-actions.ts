@@ -3,6 +3,7 @@
 import { requireAdmin, logActivity } from './admin-helpers';
 import { shipmentCreateSchema, shipmentUpdateSchema } from './schemas';
 import { createRoleNotification } from './notification-actions';
+import { safeAction } from './action-result';
 
 export async function fetchShipments() {
   const { supabase } = await requireAdmin();
@@ -14,7 +15,8 @@ export async function fetchShipments() {
   return data ?? [];
 }
 
-export async function createShipment(
+// Internal implementation unchanged — safeAction() wraps the export below.
+async function _createShipment(
   batchName: string,
   totalJb: number,
   totalSb: number,
@@ -73,7 +75,10 @@ export async function createShipment(
   return data;
 }
 
-export async function updateShipment(
+export const createShipment = safeAction(_createShipment);
+
+// Internal implementation unchanged — safeAction() wraps the export below.
+async function _updateShipment(
   id: string,
   updates: Partial<{
     batch_name: string;
@@ -103,6 +108,8 @@ export async function updateShipment(
   await logActivity(supabase, userId, 'shipment_updated', 'shipment', id, updates);
   return { success: true };
 }
+
+export const updateShipment = safeAction(_updateShipment);
 
 export async function fetchShipmentLedger(shipmentId: string) {
   const { supabase } = await requireAdmin();

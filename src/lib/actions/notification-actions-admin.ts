@@ -1,6 +1,7 @@
 'use server';
 
 import { requireAdmin } from './admin-helpers';
+import { safeAction } from './action-result';
 
 export async function fetchAdminNotifications() {
   const { supabase, userId } = await requireAdmin();
@@ -23,7 +24,8 @@ export async function fetchUnreadAdminNotificationCount() {
   return count ?? 0;
 }
 
-export async function markAdminNotificationRead(notificationId: string) {
+// Internal implementation unchanged — safeAction() wraps the export below.
+async function _markAdminNotificationRead(notificationId: string) {
   const { supabase, userId } = await requireAdmin();
   const { error } = await supabase
     .from('notifications')
@@ -34,7 +36,10 @@ export async function markAdminNotificationRead(notificationId: string) {
   return { success: true };
 }
 
-export async function markAllAdminNotificationsRead() {
+export const markAdminNotificationRead = safeAction(_markAdminNotificationRead);
+
+// Internal implementation unchanged — safeAction() wraps the export below.
+async function _markAllAdminNotificationsRead() {
   const { supabase, userId } = await requireAdmin();
   const { error } = await supabase
     .from('notifications')
@@ -44,3 +49,5 @@ export async function markAllAdminNotificationsRead() {
   if (error) throw new Error(error.message);
   return { success: true };
 }
+
+export const markAllAdminNotificationsRead = safeAction(_markAllAdminNotificationsRead);

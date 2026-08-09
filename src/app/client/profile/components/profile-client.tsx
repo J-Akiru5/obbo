@@ -65,7 +65,11 @@ export default function ProfileClient({ profile, email }: { profile: any; email:
   const handleSavePrefs = async () => {
     setIsSavingPrefs(true);
     try {
-      await updateNotificationPreferences(prefs);
+      const result = await updateNotificationPreferences(prefs);
+      if (!result.success) {
+        toast.error(result.error);
+        return;
+      }
       toast.success('Notification preferences updated.');
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : 'Failed to save preferences.';
@@ -78,7 +82,11 @@ export default function ProfileClient({ profile, email }: { profile: any; email:
   const handleSaveTin = async () => {
     setIsSavingTin(true);
     try {
-      await updateTinNo(tinNo);
+      const result = await updateTinNo(tinNo);
+      if (!result.success) {
+        toast.error(result.error);
+        return;
+      }
       toast.success('TIN No. updated successfully.');
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : 'Failed to update TIN No.';

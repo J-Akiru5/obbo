@@ -193,7 +193,11 @@ export default function AdminSettingsPage() {
   const handleSaveContact = async () => {
     setIsSavingContact(true);
     try {
-      await saveAdminSetting('contact_info', contactInfo);
+      const result = await saveAdminSetting('contact_info', contactInfo);
+      if (!result.success) {
+        toast.error(result.error);
+        return;
+      }
       toast.success('Contact information saved.');
     } catch {
       toast.error('Failed to save contact information.');
@@ -205,7 +209,11 @@ export default function AdminSettingsPage() {
   const handleSaveCostConfig = async () => {
     setIsSavingCost(true);
     try {
-      await saveCostConfig(costConfig);
+      const result = await saveCostConfig(costConfig);
+      if (!result.success) {
+        toast.error(result.error);
+        return;
+      }
       toast.success('Cost configuration saved.');
     } catch {
       toast.error('Failed to save cost configuration.');
