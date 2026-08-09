@@ -30,6 +30,7 @@ import {
   FileText,
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { BAG_EQUIVALENT } from '@/components/orders/wizard/order-schema';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -254,32 +255,32 @@ export function FulfillmentTab({
                       </h4>
                     </div>
                     <div className="mt-2 flex gap-4 text-sm">
-                      <div className="bg-muted rounded-md px-3 py-1.5">
-                        <span className="text-muted-foreground mb-0.5 block text-xs tracking-wider uppercase">
-                          Approved JB
-                        </span>
-                        <span className="font-bold">
-                          {jbQty}
-                          {isSplit && jbReq > 0 && (
+                      {jbQty > 0 && (
+                        <div className="bg-muted rounded-md px-3 py-1.5">
+                          <span className="text-muted-foreground mb-0.5 block text-xs tracking-wider uppercase">
+                            Approved JB
+                          </span>
+                          <span className="font-bold">
+                            {(jbQty * BAG_EQUIVALENT.JB).toLocaleString()} bags
                             <span className="text-muted-foreground ml-1 text-xs font-normal">
-                              / {jbReq}
+                              ({jbQty} JB{isSplit && jbReq > 0 ? ` / ${jbReq} JB` : ''})
                             </span>
-                          )}
-                        </span>
-                      </div>
-                      <div className="bg-muted rounded-md px-3 py-1.5">
-                        <span className="text-muted-foreground mb-0.5 block text-xs tracking-wider uppercase">
-                          Approved SB
-                        </span>
-                        <span className="font-bold">
-                          {sbQty}
-                          {isSplit && sbReq > 0 && (
+                          </span>
+                        </div>
+                      )}
+                      {sbQty > 0 && (
+                        <div className="bg-muted rounded-md px-3 py-1.5">
+                          <span className="text-muted-foreground mb-0.5 block text-xs tracking-wider uppercase">
+                            Approved SB
+                          </span>
+                          <span className="font-bold">
+                            {(sbQty * BAG_EQUIVALENT.SB).toLocaleString()} bags
                             <span className="text-muted-foreground ml-1 text-xs font-normal">
-                              / {sbReq}
+                              ({sbQty} SB{isSplit && sbReq > 0 ? ` / ${sbReq} SB` : ''})
                             </span>
-                          )}
-                        </span>
-                      </div>
+                          </span>
+                        </div>
+                      )}
                       <div className="bg-muted rounded-md px-3 py-1.5">
                         <span className="text-muted-foreground mb-0.5 block text-xs tracking-wider uppercase">
                           Service
@@ -396,15 +397,24 @@ export function FulfillmentTab({
                 <div>
                   <p className="text-muted-foreground mb-1 text-xs">Items to Deduct</p>
                   <p className="font-bold">
-                    {selectedOrder.items
-                      .filter((i) => i.bag_type === 'JB')
-                      .reduce((s, i) => s + i.approved_qty, 0)}{' '}
-                    JB
-                    {' · '}
-                    {selectedOrder.items
-                      .filter((i) => i.bag_type === 'SB')
-                      .reduce((s, i) => s + i.approved_qty, 0)}{' '}
-                    SB
+                    {(() => {
+                      const deductJb = selectedOrder.items
+                        .filter((i) => i.bag_type === 'JB')
+                        .reduce((s, i) => s + i.approved_qty, 0);
+                      const deductSb = selectedOrder.items
+                        .filter((i) => i.bag_type === 'SB')
+                        .reduce((s, i) => s + i.approved_qty, 0);
+                      const parts: string[] = [];
+                      if (deductJb > 0)
+                        parts.push(
+                          `${(deductJb * BAG_EQUIVALENT.JB).toLocaleString()} bags (${deductJb} JB)`,
+                        );
+                      if (deductSb > 0)
+                        parts.push(
+                          `${(deductSb * BAG_EQUIVALENT.SB).toLocaleString()} bags (${deductSb} SB)`,
+                        );
+                      return parts.length > 0 ? parts.join(' · ') : '—';
+                    })()}
                   </p>
                 </div>
                 <div>
@@ -426,7 +436,14 @@ export function FulfillmentTab({
                     .reduce((s, i) => s + i.approved_qty, 0);
                   const shipmentOptions = shipments.map((s) => {
                     const hasEnough = s.remaining_jb >= jbBags && s.remaining_sb >= sbBags;
-                    const label = `${s.batch_name} (Avail: ${s.remaining_jb} JB, ${s.remaining_sb} SB · Need: ${jbBags} JB, ${sbBags} SB)${!hasEnough ? ' - Insufficient' : ''}`;
+                    // s.remaining_jb/remaining_sb and jbBags/sbBags are all
+                    // JB/SB UNITS despite the "Bags" variable name — show
+                    // both the unit count and its individual-bag equivalent.
+                    const availJb = `${(s.remaining_jb * BAG_EQUIVALENT.JB).toLocaleString()} bags (${s.remaining_jb} JB)`;
+                    const availSb = `${(s.remaining_sb * BAG_EQUIVALENT.SB).toLocaleString()} bags (${s.remaining_sb} SB)`;
+                    const needJb = `${(jbBags * BAG_EQUIVALENT.JB).toLocaleString()} bags (${jbBags} JB)`;
+                    const needSb = `${(sbBags * BAG_EQUIVALENT.SB).toLocaleString()} bags (${sbBags} SB)`;
+                    const label = `${s.batch_name} (Avail: ${availJb}, ${availSb} · Need: ${needJb}, ${needSb})${!hasEnough ? ' - Insufficient' : ''}`;
                     return { value: s.id, label, disabled: !hasEnough };
                   });
 
@@ -556,19 +573,25 @@ export function FulfillmentTab({
               </strong>
               ? This will deduct{' '}
               <strong>
-                {selectedOrder?.items
-                  .filter((i) => i.bag_type === 'JB')
-                  .reduce((s, i) => s + i.approved_qty, 0)}{' '}
-                JB
+                {(() => {
+                  const jb =
+                    selectedOrder?.items
+                      .filter((i) => i.bag_type === 'JB')
+                      .reduce((s, i) => s + i.approved_qty, 0) ?? 0;
+                  return `${(jb * BAG_EQUIVALENT.JB).toLocaleString()} bags (${jb} JB)`;
+                })()}
               </strong>{' '}
               and{' '}
               <strong>
-                {selectedOrder?.items
-                  .filter((i) => i.bag_type === 'SB')
-                  .reduce((s, i) => s + i.approved_qty, 0)}{' '}
-                SB
+                {(() => {
+                  const sb =
+                    selectedOrder?.items
+                      .filter((i) => i.bag_type === 'SB')
+                      .reduce((s, i) => s + i.approved_qty, 0) ?? 0;
+                  return `${(sb * BAG_EQUIVALENT.SB).toLocaleString()} bags (${sb} SB)`;
+                })()}
               </strong>{' '}
-              bags from warehouse stock. This action cannot be undone.
+              from warehouse stock. This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

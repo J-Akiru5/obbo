@@ -140,11 +140,18 @@ export function ReturnsTab({
                         <p className="text-muted-foreground text-xs">DR: {order.dr_number}</p>
                       )}
                       <div className="flex gap-4 text-sm">
+                        {/* jb_qty/sb_qty are INDIVIDUAL BAG counts, matching
+                            the client's bag-first Request Return input — see
+                            client-actions.ts's _submitOrderReturn. */}
                         {ret.jb_qty > 0 && (
-                          <span className="text-foreground font-semibold">{ret.jb_qty} JB</span>
+                          <span className="text-foreground font-semibold">
+                            {ret.jb_qty} JB bags
+                          </span>
                         )}
                         {ret.sb_qty > 0 && (
-                          <span className="text-foreground font-semibold">{ret.sb_qty} SB</span>
+                          <span className="text-foreground font-semibold">
+                            {ret.sb_qty} SB bags
+                          </span>
                         )}
                       </div>
                       {ret.reason && (

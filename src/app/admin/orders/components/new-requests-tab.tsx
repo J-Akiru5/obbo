@@ -36,6 +36,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { BAG_EQUIVALENT } from '@/components/orders/wizard/order-schema';
 
 export function NewRequestsTab({
   orders,
@@ -348,16 +349,18 @@ export function NewRequestsTab({
                               <p className="text-foreground text-lg leading-none font-bold">
                                 {order.is_split_delivery ? (
                                   <span>
-                                    {order.deliver_now_jb}{' '}
+                                    {(order.deliver_now_jb * BAG_EQUIVALENT.JB).toLocaleString()}{' '}
                                     <span className="text-muted-foreground text-[10px] font-normal">
-                                      / {jbItem.requested_qty}
+                                      /{' '}
+                                      {(jbItem.requested_qty * BAG_EQUIVALENT.JB).toLocaleString()}{' '}
+                                      bags
                                     </span>
                                   </span>
                                 ) : (
-                                  jbItem.requested_qty
+                                  (jbItem.requested_qty * BAG_EQUIVALENT.JB).toLocaleString()
                                 )}
                                 <span className="text-muted-foreground ml-1 text-xs font-medium uppercase">
-                                  JB bags
+                                  bags ({jbItem.requested_qty} JB)
                                 </span>
                               </p>
                             </div>
@@ -367,16 +370,18 @@ export function NewRequestsTab({
                               <p className="text-foreground text-lg leading-none font-bold">
                                 {order.is_split_delivery ? (
                                   <span>
-                                    {order.deliver_now_sb}{' '}
+                                    {(order.deliver_now_sb * BAG_EQUIVALENT.SB).toLocaleString()}{' '}
                                     <span className="text-muted-foreground text-[10px] font-normal">
-                                      / {sbItem.requested_qty}
+                                      /{' '}
+                                      {(sbItem.requested_qty * BAG_EQUIVALENT.SB).toLocaleString()}{' '}
+                                      bags
                                     </span>
                                   </span>
                                 ) : (
-                                  sbItem.requested_qty
+                                  (sbItem.requested_qty * BAG_EQUIVALENT.SB).toLocaleString()
                                 )}
                                 <span className="text-muted-foreground ml-1 text-xs font-medium uppercase">
-                                  SB bags
+                                  bags ({sbItem.requested_qty} SB)
                                 </span>
                               </p>
                             </div>
@@ -571,8 +576,17 @@ export function NewRequestsTab({
                   )}
                   {selectedOrder.is_split_delivery && (
                     <li className="font-bold text-amber-700">
-                      CLIENT REQUESTED SPLIT: Deliver <b>{selectedOrder.deliver_now_jb}</b> JB bags
-                      and <b>{selectedOrder.deliver_now_sb}</b> SB bags now.
+                      CLIENT REQUESTED SPLIT: Deliver{' '}
+                      <b>
+                        {(selectedOrder.deliver_now_jb * BAG_EQUIVALENT.JB).toLocaleString()} bags (
+                        {selectedOrder.deliver_now_jb} JB)
+                      </b>{' '}
+                      and{' '}
+                      <b>
+                        {(selectedOrder.deliver_now_sb * BAG_EQUIVALENT.SB).toLocaleString()} bags (
+                        {selectedOrder.deliver_now_sb} SB)
+                      </b>{' '}
+                      now.
                     </li>
                   )}
                   <li>
@@ -593,7 +607,9 @@ export function NewRequestsTab({
                     </div>
                     <div className="flex-1">
                       <p className="text-muted-foreground text-xs">
-                        Requested: {item.requested_qty} bags
+                        Requested:{' '}
+                        {(item.requested_qty * BAG_EQUIVALENT[item.bag_type]).toLocaleString()} bags
+                        ({item.requested_qty} {item.bag_type})
                       </p>
                     </div>
                     <div className="w-32">

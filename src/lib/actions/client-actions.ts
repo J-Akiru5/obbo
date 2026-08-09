@@ -443,6 +443,11 @@ async function _submitPaymentDetails(
 
 export const submitPaymentDetails = safeAction(_submitPaymentDetails);
 
+// jbQty/sbQty here are INDIVIDUAL BAG counts (matching the client's
+// bag-first Request Return input), not JB/SB units — same denomination
+// applyBagReturnToLedger/computeReturnProfitDelta expect when an admin later
+// approves this request. See ledger-actions.ts's denomination-mismatch bug
+// writeup for why this matters.
 // Internal implementation unchanged — safeAction() wraps the export below.
 async function _submitOrderReturn(orderId: string, jbQty: number, sbQty: number, reason: string) {
   const { supabase, user } = await requireClient();
@@ -474,7 +479,7 @@ async function _submitOrderReturn(orderId: string, jbQty: number, sbQty: number,
   await createRoleNotification({
     targetRole: 'warehouse_manager',
     title: 'Customer Return Request',
-    message: `Return request for PO ${order.po_number || orderId.slice(0, 8).toUpperCase()}: ${jbQty} JB / ${sbQty} SB. Reason: ${reason.trim().slice(0, 80)}`,
+    message: `Return request for PO ${order.po_number || orderId.slice(0, 8).toUpperCase()}: ${jbQty} JB bags / ${sbQty} SB bags. Reason: ${reason.trim().slice(0, 80)}`,
     href: '/admin/inventory?tab=returns',
     severity: 'warning',
   });

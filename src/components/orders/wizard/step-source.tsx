@@ -92,20 +92,20 @@ export function StepSource({ value, onChange, products, jbQty, sbQty, error }: S
                     {jbQty > 0 && (
                       <div className="text-muted-foreground flex justify-between">
                         <span>
-                          {jbQty} JB × ₱{src.jbPrice.toLocaleString()}/bag × 25 bags
+                          {jbQty} JB ({jbQty * 25} bags) × ₱{src.jbPrice.toLocaleString()}/bag
                         </span>
                         <span className="text-foreground font-medium">
-                          ₱{(jbQty * 25 * src.jbPrice).toLocaleString()}
+                          = ₱{(jbQty * 25 * src.jbPrice).toLocaleString()}
                         </span>
                       </div>
                     )}
                     {sbQty > 0 && (
                       <div className="text-muted-foreground flex justify-between">
                         <span>
-                          {sbQty} SB × ₱{src.sbPrice.toLocaleString()}/bag × 50 bags
+                          {sbQty} SB ({sbQty * 50} bags) × ₱{src.sbPrice.toLocaleString()}/bag
                         </span>
                         <span className="text-foreground font-medium">
-                          ₱{(sbQty * 50 * src.sbPrice).toLocaleString()}
+                          = ₱{(sbQty * 50 * src.sbPrice).toLocaleString()}
                         </span>
                       </div>
                     )}

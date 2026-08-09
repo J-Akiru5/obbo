@@ -136,6 +136,95 @@ describe('Ledger Server Actions — profit calculations', () => {
     });
   });
 
+  describe('addLedgerEntry — restockable return credits stock in whole UNITS, not raw bags (denomination-mismatch fix)', () => {
+    // bags_returned is an INDIVIDUAL BAG count (same value computeReturnProfitDelta
+    // uses above), but shipments.remaining_jb/remaining_sb are JB/SB UNIT-denominated.
+    // The pre-fix code added bags_returned directly to a unit-denominated column —
+    // e.g. "5 individual bags returned" would have credited back 5 whole JB units
+    // (125 bags) instead of 0 (5 bags don't make a full 25-bag unit).
+
+    function captureShipmentPatch() {
+      const captured: Record<string, unknown>[] = [];
+      server.use(
+        http.patch('*/rest/v1/shipments', async ({ request }) => {
+          const body = (await request.json()) as Record<string, unknown>;
+          captured.push(body);
+          return HttpResponse.json([body]);
+        }),
+        // Override the default shipment_ledger POST handler, which pushes
+        // into the shared, cross-test mockShipmentLedger fixture array —
+        // without this, each test's return row would leak into later tests'
+        // "original dispatch" lookup for the same dr_number and break their
+        // .maybeSingle() assumption (same pattern the existing return tests
+        // above already follow).
+        http.post('*/rest/v1/shipment_ledger', async ({ request }) => {
+          const body = (await request.json()) as Record<string, unknown>;
+          return HttpResponse.json({ id: 'ledger-stock-test', ...body });
+        }),
+      );
+      return captured;
+    }
+
+    it('credits 0 whole JB units when the returned bag count is below one full unit', async () => {
+      noopHandlers();
+      const patches = captureShipmentPatch();
+      // fixture shipment starts at remaining_jb: 100 (see noopHandlers)
+      await addLedgerEntry('ship-001', {
+        dr_number: 'DR-2026-001',
+        jb: 0,
+        sb: 0,
+        bags_returned: 5, // 5 individual bags -> floor(5/25) = 0 JB units
+        bag_returned_type: 'JB',
+        return_reason: 'return',
+      });
+      expect(patches[0].remaining_jb).toBe(100); // unchanged, not 105
+    });
+
+    it('credits whole units and drops the sub-unit remainder for a non-exact bag count', async () => {
+      noopHandlers();
+      const patches = captureShipmentPatch();
+      // 30 individual JB bags -> floor(30/25) = 1 unit credited, 5 bags dropped
+      await addLedgerEntry('ship-001', {
+        dr_number: 'DR-2026-001',
+        jb: 0,
+        sb: 0,
+        bags_returned: 30,
+        bag_returned_type: 'JB',
+        return_reason: 'return',
+      });
+      expect(patches[0].remaining_jb).toBe(101); // 100 + 1, not 100 + 30
+    });
+
+    it('credits the exact unit count for an exact-multiple bag return', async () => {
+      noopHandlers();
+      const patches = captureShipmentPatch();
+      // 100 individual SB bags -> exactly 2 SB units, no rounding loss
+      await addLedgerEntry('ship-001', {
+        dr_number: 'DR-2026-001',
+        jb: 0,
+        sb: 0,
+        bags_returned: 100,
+        bag_returned_type: 'SB',
+        return_reason: 'return',
+      });
+      expect(patches[0].remaining_sb).toBe(102); // 100 + 2
+    });
+
+    it('does not credit stock at all for a non-restockable (waste/damage) return', async () => {
+      noopHandlers();
+      const patches = captureShipmentPatch();
+      await addLedgerEntry('ship-001', {
+        dr_number: 'DR-2026-001',
+        jb: 0,
+        sb: 0,
+        bags_returned: 50,
+        bag_returned_type: 'JB',
+        return_reason: 'waste',
+      });
+      expect(patches[0].remaining_jb).toBe(100); // unchanged — waste isn't restocked
+    });
+  });
+
   describe('applyBagReturnToLedger', () => {
     // Shared helper extracted from _updateTrackingStatus's inline loop, now
     // reused by both the tracking-tab flow and the order_returns approval

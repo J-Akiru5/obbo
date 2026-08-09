@@ -12,6 +12,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Search, MapPin, Truck, CheckCircle2, XCircle } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { BAG_EQUIVALENT } from '@/components/orders/wizard/order-schema';
 
 export function OrderHistoryTab({ orders, loading }: { orders: Order[]; loading: boolean }) {
   const [searchQuery, setSearchQuery] = useState('');
@@ -178,22 +179,30 @@ export function OrderHistoryTab({ orders, loading }: { orders: Order[]; loading:
                     </TableCell>
                     <TableCell>
                       <div className="mb-1 flex flex-col gap-0.5">
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-xs font-semibold">{jbQty} JB</span>
-                          {isSplit && jbReq > 0 && (
-                            <span className="text-muted-foreground text-[10px] font-normal">
-                              / {jbReq}
+                        {jbQty > 0 && (
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-xs font-semibold">
+                              {(jbQty * BAG_EQUIVALENT.JB).toLocaleString()} bags ({jbQty} JB)
                             </span>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-xs font-semibold">{sbQty} SB</span>
-                          {isSplit && sbReq > 0 && (
-                            <span className="text-muted-foreground text-[10px] font-normal">
-                              / {sbReq}
+                            {isSplit && jbReq > 0 && (
+                              <span className="text-muted-foreground text-[10px] font-normal">
+                                / {jbReq} JB
+                              </span>
+                            )}
+                          </div>
+                        )}
+                        {sbQty > 0 && (
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-xs font-semibold">
+                              {(sbQty * BAG_EQUIVALENT.SB).toLocaleString()} bags ({sbQty} SB)
                             </span>
-                          )}
-                        </div>
+                            {isSplit && sbReq > 0 && (
+                              <span className="text-muted-foreground text-[10px] font-normal">
+                                / {sbReq} SB
+                              </span>
+                            )}
+                          </div>
+                        )}
                       </div>
                       {order.status === 'completed' && order.dr_number && (
                         <p className="text-muted-foreground text-xs">DR: {order.dr_number}</p>
@@ -201,7 +210,11 @@ export function OrderHistoryTab({ orders, loading }: { orders: Order[]; loading:
                       {order.status === 'completed' &&
                         order.tracking_status === 'bags_returned' && (
                           <p className="text-xs font-medium text-purple-600">
-                            Returned: {order.bags_returned_jb} JB, {order.bags_returned_sb} SB
+                            {/* bags_returned_jb/sb are now INDIVIDUAL BAG counts
+                                (see ledger-actions.ts denomination-mismatch fix) —
+                                labeling them "JB"/"SB" would wrongly imply units. */}
+                            Returned: {order.bags_returned_jb} JB bags, {order.bags_returned_sb} SB
+                            bags
                           </p>
                         )}
                       {order.status === 'rejected' && (

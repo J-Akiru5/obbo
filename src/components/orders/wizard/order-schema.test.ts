@@ -4,6 +4,8 @@ import {
   getSubtotal,
   getSubtotalByBagType,
   getSplitDeliveryUnits,
+  bgsToUnits,
+  unitsToBags,
 } from './order-schema';
 
 describe('getTotalIndividualBags', () => {
@@ -46,6 +48,45 @@ describe('getSubtotalByBagType (regression: 25x/50x undercharge bug)', () => {
 
   it('returns 0 for an empty order', () => {
     expect(getSubtotalByBagType(0, 0, 210, 185)).toBe(0);
+  });
+});
+
+describe('bgsToUnits', () => {
+  it('rounds up to the nearest whole unit', () => {
+    expect(bgsToUnits(75, 'SB')).toBe(2); // 75/50 -> 1.5 -> 2
+    expect(bgsToUnits(26, 'JB')).toBe(2); // 26/25 -> 1.04 -> 2
+  });
+
+  it('handles exact multiples with no rounding', () => {
+    expect(bgsToUnits(100, 'SB')).toBe(2);
+    expect(bgsToUnits(50, 'JB')).toBe(2);
+  });
+
+  it('returns 0 for 0 bags', () => {
+    expect(bgsToUnits(0, 'JB')).toBe(0);
+    expect(bgsToUnits(0, 'SB')).toBe(0);
+  });
+
+  it('rounds a single bag up to a full unit', () => {
+    expect(bgsToUnits(1, 'JB')).toBe(1);
+    expect(bgsToUnits(1, 'SB')).toBe(1);
+  });
+});
+
+describe('unitsToBags', () => {
+  it('is the exact inverse of bgsToUnits for whole units', () => {
+    expect(unitsToBags(2, 'SB')).toBe(100);
+    expect(unitsToBags(2, 'JB')).toBe(50);
+  });
+
+  it('returns 0 for 0 units', () => {
+    expect(unitsToBags(0, 'JB')).toBe(0);
+  });
+
+  it('round-trips an exact-multiple bag count with no drift', () => {
+    // 100 bags -> 2 SB units -> 100 bags, exactly (no rounding artifact),
+    // which is what draft-resume relies on.
+    expect(unitsToBags(bgsToUnits(100, 'SB'), 'SB')).toBe(100);
   });
 });
 

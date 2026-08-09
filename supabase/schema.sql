@@ -147,11 +147,15 @@ create table if not exists public.shipment_ledger (
   plate_number      text,
   destination       text,
   service_type      text check (service_type in ('pickup', 'deliver')),
-  jb                integer not null default 0,
-  sb                integer not null default 0,
+  jb                integer not null default 0, -- JB UNITS dispatched (not bags)
+  sb                integer not null default 0, -- SB UNITS dispatched (not bags)
   payment_method    text check (payment_method in ('cash', 'check')),
   check_number      text,
   amount            numeric(14, 2),
+  -- INDIVIDUAL BAG count (not JB/SB units, unlike jb/sb above) — deliberately
+  -- different denomination from this same row's own jb/sb columns. Converted
+  -- to whole units (rounded down) only when crediting shipments.remaining_jb/
+  -- remaining_sb. See ledger-actions.ts's denomination-mismatch bug writeup.
   bags_returned     integer not null default 0,
   bag_returned_type text check (bag_returned_type in ('JB', 'SB')),
   return_reason     text not null default 'return' check (return_reason in ('return', 'waste', 'damage')),
@@ -251,6 +255,8 @@ create table if not exists public.orders (
   rejection_reason     text,
   tracking_status      text not null default 'pending_dispatch'
                          check (tracking_status in ('pending_dispatch','in_transit','delivered','bags_returned','returned_good','returned_waste')),
+  -- INDIVIDUAL BAG counts (not JB/SB units) — see order_returns.jb_qty/sb_qty
+  -- and ledger-actions.ts's denomination-mismatch bug writeup.
   bags_returned_jb     integer not null default 0,
   bags_returned_sb     integer not null default 0,
   shipment_id          uuid references public.shipments(id) on delete set null,
@@ -401,6 +407,10 @@ create table if not exists public.activity_log (
 );
 
 -- ── ORDER RETURNS ─────────────────────────────────────────────
+-- jb_qty/sb_qty are INDIVIDUAL BAG counts (the client's bag-first Request
+-- Return input), NOT JB/SB units — matches the denomination
+-- computeReturnProfitDelta/applyBagReturnToLedger expect on approval. See
+-- ledger-actions.ts's denomination-mismatch bug writeup.
 create table if not exists public.order_returns (
   id          uuid primary key default gen_random_uuid(),
   order_id    uuid not null references public.orders(id) on delete cascade,

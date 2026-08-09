@@ -26,6 +26,7 @@ import { Badge } from '@/components/ui/badge';
 import { createClient } from '@/lib/supabase/client';
 import { fetchDashboardKPIs, fetchActivityFeed, fetchOrders } from '@/lib/actions/admin-actions';
 import type { ActivityLog, Order } from '@/lib/types/database';
+import { BAG_EQUIVALENT } from '@/components/orders/wizard/order-schema';
 import Link from 'next/link';
 import {
   BarChart,
@@ -67,6 +68,16 @@ function getActivityLabel(action: string) {
     setting_updated: 'Setting Updated',
   };
   return labels[action] ?? action.replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase());
+}
+
+// order_items.requested_qty is stored in JB/SB UNITS, not individual bags,
+// and 1 JB unit != 1 SB unit — summing the raw unit counts across items of
+// different bag types and calling it "Total Bags" both understates the true
+// bag count and mixes two denominations as if they were one. Same bug class
+// as orders-client.tsx's formatOrderItems (see its §3.3 regression writeup).
+function getOrderTotalBags(items: { requested_qty: number; bag_type: 'JB' | 'SB' }[] | undefined) {
+  if (!items) return 0;
+  return items.reduce((sum, i) => sum + i.requested_qty * BAG_EQUIVALENT[i.bag_type], 0);
 }
 
 export default function DashboardClient({
@@ -624,8 +635,7 @@ export default function DashboardClient({
                     </TableRow>
                   ) : (
                     recentOrders.map((order) => {
-                      const total =
-                        order.items?.reduce((sum: number, i: any) => sum + i.requested_qty, 0) ?? 0;
+                      const total = getOrderTotalBags(order.items);
                       return (
                         <TableRow key={order.id} className="hover:bg-muted/30 transition-colors">
                           <TableCell className="text-foreground px-6 py-4 font-mono font-medium">
@@ -635,7 +645,7 @@ export default function DashboardClient({
                             {(order as any).client?.full_name ?? 'Unknown'}
                           </TableCell>
                           <TableCell className="text-foreground px-6 py-4 text-right font-bold">
-                            {total}
+                            {total.toLocaleString()}
                           </TableCell>
                           <TableCell className="px-6 py-4">
                             <Badge
@@ -671,8 +681,7 @@ export default function DashboardClient({
                 </div>
               ) : (
                 recentOrders.map((order) => {
-                  const total =
-                    order.items?.reduce((sum: number, i: any) => sum + i.requested_qty, 0) ?? 0;
+                  const total = getOrderTotalBags(order.items);
                   return (
                     <Link
                       key={order.id}
@@ -697,7 +706,7 @@ export default function DashboardClient({
                         >
                           {order.payment_method.toUpperCase()}
                         </Badge>
-                        <span className="text-sm font-bold">{total}</span>
+                        <span className="text-sm font-bold">{total.toLocaleString()}</span>
                       </div>
                     </Link>
                   );

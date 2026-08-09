@@ -25,6 +25,8 @@ import {
   getSubtotalByBagType,
   getSplitDeliveryUnits,
   getTotalIndividualBags,
+  bgsToUnits,
+  unitsToBags,
 } from '@/components/orders/wizard/order-schema';
 import {
   submitOrder,
@@ -36,9 +38,12 @@ import type { Product, OrderItem } from '@/lib/types/database';
 
 const ORDERING_STEPS = ['Products', 'Source', 'Service', 'PO & Payment', 'Review'];
 
+// jb_bags/sb_bags are individual bags as typed by the client — the wizard
+// converts these to whole JB/SB units (via bgsToUnits, rounding up) at every
+// point that needs a unit count for pricing/submission. See order-schema.ts.
 const INITIAL_FORM = {
-  jb_qty: 0,
-  sb_qty: 0,
+  jb_bags: 0,
+  sb_bags: 0,
   source: 'warehouse' as 'port' | 'warehouse',
   service_type: 'pickup' as 'pickup' | 'deliver',
   driver_name: '',
@@ -69,11 +74,17 @@ function NewOrderPage() {
   const { kycStatus } = useClientKyc();
   const isVerified = kycStatus === 'verified';
 
-  const [form, updateForm, clearForm] = usePersistedForm('obbo-order-form', INITIAL_FORM);
+  // Bumped from 'obbo-order-form': the persisted shape changed (jb_qty/sb_qty
+  // -> jb_bags/sb_bags), so an in-progress draft sitting in a client's
+  // sessionStorage from before this deploy misses under the new key and
+  // falls back to INITIAL_FORM cleanly, instead of resuming mid-wizard with
+  // zeroed-out quantities under stale field names.
+  const FORM_STORAGE_KEY = 'obbo-order-form-v2';
+  const [form, updateForm, clearForm] = usePersistedForm(FORM_STORAGE_KEY, INITIAL_FORM);
   const [currentStep, setCurrentStep] = useState(() => {
     if (typeof window === 'undefined') return 0;
     try {
-      const stored = sessionStorage.getItem('obbo-order-form');
+      const stored = sessionStorage.getItem(FORM_STORAGE_KEY);
       if (stored) {
         const parsed = JSON.parse(stored);
         return parsed._orderingStep ?? 0;
@@ -86,7 +97,7 @@ function NewOrderPage() {
   const [completedSteps, setCompletedSteps] = useState<Set<number>>(() => {
     if (typeof window === 'undefined') return new Set();
     try {
-      const stored = sessionStorage.getItem('obbo-order-form');
+      const stored = sessionStorage.getItem(FORM_STORAGE_KEY);
       if (stored) {
         const parsed = JSON.parse(stored);
         return new Set(parsed._orderingCompleted ?? []);
@@ -103,6 +114,13 @@ function NewOrderPage() {
   const [draftLoading, setDraftLoading] = useState(false);
 
   const [poFile, setPoFile] = useState<File | null>(null);
+
+  // Derived, not persisted: the rounded-up unit counts that pricing,
+  // submission, and every downstream step actually operate on. A client
+  // entering 75 individual SB bags needs 2 SB units billed (100 actual
+  // bags) — see bgsToUnits in order-schema.ts.
+  const jbUnits = bgsToUnits(form.jb_bags, 'JB');
+  const sbUnits = bgsToUnits(form.sb_bags, 'SB');
 
   useEffect(() => {
     createClient()
@@ -141,8 +159,12 @@ function NewOrderPage() {
         const sbItem = draft.items?.find((i: OrderItem) => i.bag_type === 'SB');
 
         updateForm({
-          jb_qty: jbItem?.requested_qty || 0,
-          sb_qty: sbItem?.requested_qty || 0,
+          // Stored quantities are JB/SB UNITS; convert back to the individual
+          // bags the wizard now collects. This round-trips exactly for whole
+          // unit counts (units -> bags -> bgsToUnits never rounds up an exact
+          // multiple), so resuming a draft loses no precision.
+          jb_bags: unitsToBags(jbItem?.requested_qty || 0, 'JB'),
+          sb_bags: unitsToBags(sbItem?.requested_qty || 0, 'SB'),
           source: draft.source || 'warehouse',
           service_type: draft.service_type || 'pickup',
           driver_name: draft.driver_name || '',
@@ -195,7 +217,10 @@ function NewOrderPage() {
     const newErrors: Record<string, string> = {};
 
     if (step === 0) {
-      const result = productsSchema.safeParse({ jb_qty: form.jb_qty, sb_qty: form.sb_qty });
+      // productsSchema's "at least 1 bag" check is denomination-agnostic —
+      // bags > 0 iff the derived units are > 0 — so validating on the raw
+      // bag input the client actually typed gives a more direct error.
+      const result = productsSchema.safeParse({ jb_qty: form.jb_bags, sb_qty: form.sb_bags });
       if (!result.success) {
         for (const issue of result.error.issues) {
           newErrors[issue.path[0] as string] = issue.message;
@@ -242,7 +267,7 @@ function NewOrderPage() {
         }
       }
       if (form.wants_split) {
-        const totalBags = getTotalIndividualBags(form.jb_qty, form.sb_qty);
+        const totalBags = getTotalIndividualBags(jbUnits, sbUnits);
         const splitResult = getSplitSchema(totalBags).safeParse({
           wants_split: form.wants_split,
           deliver_now_total: form.deliver_now_total,
@@ -336,8 +361,8 @@ function NewOrderPage() {
       const jbPrice = getPrice(jbProduct, form.source);
       const sbPrice = getPrice(sbProduct, form.source);
 
-      const jbQty = form.jb_qty;
-      const sbQty = form.sb_qty;
+      const jbQty = jbUnits;
+      const sbQty = sbUnits;
 
       const items: { product_id: string; bag_type: string; requested_qty: number }[] = [];
       if (jbQty > 0 && jbProduct) {
@@ -422,8 +447,8 @@ function NewOrderPage() {
       const jbPrice = getPrice(jbProduct, form.source);
       const sbPrice = getPrice(sbProduct, form.source);
 
-      const jbQty = form.jb_qty;
-      const sbQty = form.sb_qty;
+      const jbQty = jbUnits;
+      const sbQty = sbUnits;
 
       const items: { product_id: string; bag_type: string; requested_qty: number }[] = [];
       if (jbQty > 0 && jbProduct) {
@@ -528,10 +553,10 @@ function NewOrderPage() {
         <div key={currentStep} className="animate-slide-in-right">
           {currentStep === 0 && (
             <StepProducts
-              jbQty={form.jb_qty}
-              sbQty={form.sb_qty}
-              onJbChange={(value) => updateField('jb_qty', value)}
-              onSbChange={(value) => updateField('sb_qty', value)}
+              jbBags={form.jb_bags}
+              sbBags={form.sb_bags}
+              onJbChange={(value) => updateField('jb_bags', value)}
+              onSbChange={(value) => updateField('sb_bags', value)}
               bagType={bagType}
               error={errors.jb_qty}
             />
@@ -541,8 +566,8 @@ function NewOrderPage() {
               value={form.source}
               onChange={(v) => updateField('source', v)}
               products={products}
-              jbQty={form.jb_qty}
-              sbQty={form.sb_qty}
+              jbQty={jbUnits}
+              sbQty={sbUnits}
               error={errors.source}
             />
           )}
@@ -564,12 +589,12 @@ function NewOrderPage() {
               onFieldChange={updateField}
               onFileChange={(_field, file) => setPoFile(file)}
               errors={errors}
-              totalBags={getTotalIndividualBags(form.jb_qty, form.sb_qty)}
+              totalBags={getTotalIndividualBags(jbUnits, sbUnits)}
             />
           )}
           {currentStep === 4 && (
             <StepOrderReview
-              form={form}
+              form={{ ...form, jb_qty: jbUnits, sb_qty: sbUnits }}
               files={{ po_file: poFile }}
               products={products}
               onEditStep={goToStep}

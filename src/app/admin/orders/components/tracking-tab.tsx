@@ -29,6 +29,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { MapPin, Truck, Check, CornerDownLeft, Edit2 } from 'lucide-react';
+import { BAG_EQUIVALENT } from '@/components/orders/wizard/order-schema';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
   AlertDialog,
@@ -40,6 +41,26 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+
+// Restocking a return credits shipment stock in whole JB/SB UNITS, rounded
+// DOWN from the individual bag count entered here — a return that isn't an
+// exact multiple of 25 (JB) or 50 (SB) leaves a small remainder that isn't
+// restocked. Disclosed here so the admin isn't surprised stock didn't move
+// by the full amount typed. See ledger-actions.ts's denomination-mismatch
+// bug writeup for why this conversion exists.
+function ReturnStockHint({ bags, type }: { bags: number; type: 'JB' | 'SB' }) {
+  if (bags <= 0) return null;
+  const units = Math.floor(bags / BAG_EQUIVALENT[type]);
+  const creditedBags = units * BAG_EQUIVALENT[type];
+  const remainder = bags - creditedBags;
+  if (remainder === 0) return null;
+  return (
+    <p className="text-muted-foreground mt-1 text-[11px] leading-snug">
+      Credits {units} {type} unit{units === 1 ? '' : 's'} ({creditedBags} bags) back to stock —{' '}
+      {remainder} bag{remainder === 1 ? '' : 's'} short of a full unit won&apos;t be restocked.
+    </p>
+  );
+}
 
 export function TrackingTab({
   orders,
@@ -266,22 +287,29 @@ export function TrackingTab({
                 </TableCell>
                 <TableCell>
                   <div className="flex flex-col gap-1">
-                    <div className="flex items-center gap-2">
-                      <Badge variant="outline" className="text-xs font-bold">
-                        {jbQty} JB
-                      </Badge>
-                      {isSplit && jbReq > 0 && (
-                        <span className="text-muted-foreground text-[10px]">/ {jbReq}</span>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Badge variant="outline" className="text-xs font-bold">
-                        {sbQty} SB
-                      </Badge>
-                      {isSplit && sbReq > 0 && (
-                        <span className="text-muted-foreground text-[10px]">/ {sbReq}</span>
-                      )}
-                    </div>
+                    {jbQty > 0 && (
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline" className="text-xs font-bold">
+                          {(jbQty * BAG_EQUIVALENT.JB).toLocaleString()} bags ({jbQty} JB)
+                        </Badge>
+                        {isSplit && jbReq > 0 && (
+                          <span className="text-muted-foreground text-[10px]">/ {jbReq} JB</span>
+                        )}
+                      </div>
+                    )}
+                    {sbQty > 0 && (
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline" className="text-xs font-bold">
+                          {(sbQty * BAG_EQUIVALENT.SB).toLocaleString()} bags ({sbQty} SB)
+                        </Badge>
+                        {isSplit && sbReq > 0 && (
+                          <span className="text-muted-foreground text-[10px]">/ {sbReq} SB</span>
+                        )}
+                      </div>
+                    )}
+                    {jbQty === 0 && sbQty === 0 && (
+                      <span className="text-muted-foreground text-xs">—</span>
+                    )}
                   </div>
                 </TableCell>
                 <TableCell>
@@ -386,7 +414,7 @@ export function TrackingTab({
                 )}
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="jb-returned">JB Returned</Label>
+                    <Label htmlFor="jb-returned">Individual bags returned (JB)</Label>
                     <Input
                       id="jb-returned"
                       type="number"
@@ -395,9 +423,10 @@ export function TrackingTab({
                       placeholder="0"
                       onChange={(e) => setJbReturned(parseInt(e.target.value) || 0)}
                     />
+                    {status === 'returned_good' && <ReturnStockHint bags={jbReturned} type="JB" />}
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="sb-returned">SB Returned</Label>
+                    <Label htmlFor="sb-returned">Individual bags returned (SB)</Label>
                     <Input
                       id="sb-returned"
                       type="number"
@@ -406,6 +435,7 @@ export function TrackingTab({
                       placeholder="0"
                       onChange={(e) => setSbReturned(parseInt(e.target.value) || 0)}
                     />
+                    {status === 'returned_good' && <ReturnStockHint bags={sbReturned} type="SB" />}
                   </div>
                 </div>
                 <div className="space-y-2">
@@ -437,7 +467,7 @@ export function TrackingTab({
                 </p>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="jb-returned">JB Returned</Label>
+                    <Label htmlFor="jb-returned">Individual bags returned (JB)</Label>
                     <Input
                       id="jb-returned"
                       type="number"
@@ -446,9 +476,10 @@ export function TrackingTab({
                       placeholder="0"
                       onChange={(e) => setJbReturned(parseInt(e.target.value) || 0)}
                     />
+                    <ReturnStockHint bags={jbReturned} type="JB" />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="sb-returned">SB Returned</Label>
+                    <Label htmlFor="sb-returned">Individual bags returned (SB)</Label>
                     <Input
                       id="sb-returned"
                       type="number"
@@ -457,6 +488,7 @@ export function TrackingTab({
                       placeholder="0"
                       onChange={(e) => setSbReturned(parseInt(e.target.value) || 0)}
                     />
+                    <ReturnStockHint bags={sbReturned} type="SB" />
                   </div>
                 </div>
                 <p className="text-primary/70 text-xs">
@@ -499,8 +531,8 @@ export function TrackingTab({
               <strong>{selectedOrder?.id.slice(0, 8)}</strong>?
               {(status === 'returned_good' || status === 'returned_waste') && (
                 <span className="mt-2 block">
-                  This will record {jbReturned} JB and {sbReturned} SB returned bags
-                  {status === 'returned_waste' ? ` as ${wasteCategory}` : ''}.
+                  This will record {jbReturned} individual JB bags and {sbReturned} individual SB
+                  bags returned{status === 'returned_waste' ? ` as ${wasteCategory}` : ''}.
                 </span>
               )}
               {status === 'delivered' && (
