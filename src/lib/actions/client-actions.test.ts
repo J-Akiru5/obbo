@@ -87,6 +87,20 @@ describe('client-actions', () => {
 
         // Stub notifications insert (called by createRoleNotification)
         http.post('*/rest/v1/notifications', () => HttpResponse.json([])),
+
+        // Product price lookup for the server-side total_amount verification
+        // (Phase 4 hardening) — 100 JB units = 2500 individual bags, priced
+        // at 10/bag = 25000, matching validOrderData.total_amount below.
+        http.get('*/rest/v1/products', () =>
+          HttpResponse.json([
+            {
+              id: '550e8400-e29b-41d4-a716-446655440000',
+              price_per_bag: 10,
+              price_port: 10,
+              price_warehouse: 10,
+            },
+          ]),
+        ),
       );
     });
 
@@ -115,6 +129,35 @@ describe('client-actions', () => {
       if (result.success) {
         expect(result.data).toBeDefined();
       }
+    });
+
+    // Phase 4 of the sales/profit hardening plan: server is the source of
+    // truth for money, always. total_amount is recomputed server-side from
+    // the product catalog (never trusted from the client) and any mismatch
+    // beyond floating-point tolerance is a hard reject — no legitimate
+    // discount workflow exists that would make submitted and computed
+    // totals differ (confirmed with the user before implementing this).
+    it('rejects (not a throw — safeAction catches it) an order whose total_amount does not match the server-computed price', async () => {
+      const result = await submitOrder({
+        ...validOrderData,
+        total_amount: 30000, // real price is 10/bag * 2500 bags = 25000
+      });
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error).toMatch(/does not match the current catalog price/);
+        expect(result.error).toMatch(/₱30000\.00/);
+        expect(result.error).toMatch(/₱25000\.00/);
+      }
+      // No orders row should have been created — the check runs before any
+      // write, so there's nothing to roll back and orderDeleteCalled must
+      // stay false (a rollback firing here would mean a row was written
+      // first, which is exactly the orphaned-row bug this ordering avoids).
+      expect(orderDeleteCalled).toBe(false);
+    });
+
+    it('accepts an order whose total_amount matches within the 1-centavo floating-point tolerance', async () => {
+      const result = await submitOrder({ ...validOrderData, total_amount: 25000.005 });
+      expect(result.success).toBe(true);
     });
   });
 

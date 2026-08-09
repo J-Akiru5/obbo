@@ -187,6 +187,37 @@ async function _submitOrder(
   const deliverNowJB = splitDetails?.deliverNowJB ?? fallbackSplit.deliverNowJB;
   const deliverNowSB = splitDetails?.deliverNowSB ?? fallbackSplit.deliverNowSB;
 
+  // Look up prices and verify the client-submitted total_amount BEFORE
+  // writing anything — a mismatch must reject cleanly with no partial
+  // writes, not leave an item-less "pending" order row behind (which is
+  // what would happen if this check ran after the orders insert, since the
+  // items are only known once we're building itemsToInsert).
+  const productIds = orderData.items.map((i) => i.product_id);
+  const { data: products } = await supabase
+    .from('products')
+    .select('id, price_per_bag, price_port, price_warehouse')
+    .in('id', productIds);
+  const priceMap = new Map(products?.map((p) => [p.id, getSourcePrice(p, orderData.source)]) ?? []);
+
+  // Server is the source of truth for money: recompute the total from the
+  // server's own product-price lookup (never trust the client's arithmetic),
+  // using individual bags — never raw JB/SB units — per formula #1 in
+  // sales-profit-tracking-module.md. No legitimate discount workflow exists
+  // today (total_amount is always goods-only qty × price), so any mismatch
+  // is either a stale price cache or a tampered payload — reject either way.
+  const computedTotal = orderData.items.reduce((sum, item) => {
+    const price = priceMap.get(item.product_id) ?? 0;
+    const bags = individualBagsFromUnits(item.bag_type as 'JB' | 'SB', item.requested_qty);
+    return sum + price * bags;
+  }, 0);
+  const TOLERANCE = 0.01; // 1 centavo, floating-point slack only
+  if (Math.abs(computedTotal - orderData.total_amount) > TOLERANCE) {
+    throw new Error(
+      `Order total does not match the current catalog price (submitted ₱${orderData.total_amount.toFixed(2)}, expected ₱${computedTotal.toFixed(2)}). ` +
+        `This can happen if prices changed while you were ordering — please refresh and resubmit.`,
+    );
+  }
+
   const { data: order, error } = await supabase
     .from('orders')
     .insert({
@@ -216,14 +247,6 @@ async function _submitOrder(
 
   // Insert order items
   if (orderData.items && orderData.items.length > 0) {
-    const productIds = orderData.items.map((i) => i.product_id);
-    const { data: products } = await supabase
-      .from('products')
-      .select('id, price_per_bag, price_port, price_warehouse')
-      .in('id', productIds);
-    const priceMap = new Map(
-      products?.map((p) => [p.id, getSourcePrice(p, orderData.source)]) ?? [],
-    );
     const itemsToInsert = orderData.items.map((item) => ({
       order_id: order.id,
       product_id: item.product_id,
