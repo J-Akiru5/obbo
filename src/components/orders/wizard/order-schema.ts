@@ -78,10 +78,25 @@ export function getPrice(product: Product | undefined, source: string): number {
 // per JB/SB unit — every quantity must be converted before multiplying by
 // price. See sales-profit-tracking-module.md, formula #1.
 // (Twin copy lives in profit-utils.ts for server actions — keep in sync.)
-const BAG_EQUIVALENT = { JB: 25, SB: 50 } as const;
+export const BAG_EQUIVALENT = { JB: 25, SB: 50 } as const;
 
 export function getTotalIndividualBags(jbQty: number, sbQty: number): number {
   return jbQty * BAG_EQUIVALENT.JB + sbQty * BAG_EQUIVALENT.SB;
+}
+
+// Convert individual bags -> whole SB/JB units, always rounding UP: a client
+// entering 75 individual bags of SB needs 2 SB units (100 actual bags), not
+// 1.5. This is purely a client-side input concern — the server always
+// receives already-rounded units, so there's no server-twin need here (unlike
+// BAG_EQUIVALENT itself, which already has one in profit-utils.ts).
+export function bgsToUnits(bags: number, type: 'JB' | 'SB'): number {
+  return Math.ceil(bags / BAG_EQUIVALENT[type]);
+}
+
+// Convert SB/JB units -> individual bags (exact, no rounding — the inverse
+// of bgsToUnits for whole unit counts).
+export function unitsToBags(units: number, type: 'JB' | 'SB'): number {
+  return units * BAG_EQUIVALENT[type];
 }
 
 export function getSubtotal(totalBags: number, pricePerBag: number): number {

@@ -4,7 +4,13 @@ import { Pencil, CheckCircle2, Loader2, Save } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import type { Product } from '@/lib/types/database';
-import { getPrice, getTotalIndividualBags, getSubtotalByBagType } from './order-schema';
+import {
+  getPrice,
+  getTotalIndividualBags,
+  getSubtotalByBagType,
+  getSubtotal,
+  BAG_EQUIVALENT,
+} from './order-schema';
 
 interface StepOrderReviewProps {
   form: {
@@ -86,6 +92,13 @@ export function StepOrderReview({
   const sbPrice = getPrice(sbProduct, form.source);
   const totalBags = getTotalIndividualBags(form.jb_qty, form.sb_qty);
   const subtotal = getSubtotalByBagType(form.jb_qty, form.sb_qty, jbPrice, sbPrice);
+  // jb_qty/sb_qty are JB/SB UNITS, not individual bags — every price line
+  // below must convert through BAG_EQUIVALENT before multiplying, same as
+  // getSubtotalByBagType does for the grand total. See §3.1 bug writeup.
+  const jbBags = form.jb_qty * BAG_EQUIVALENT.JB;
+  const sbBags = form.sb_qty * BAG_EQUIVALENT.SB;
+  const jbLineTotal = getSubtotal(jbBags, jbPrice);
+  const sbLineTotal = getSubtotal(sbBags, sbPrice);
 
   return (
     <div className="space-y-5">
@@ -99,8 +112,21 @@ export function StepOrderReview({
       <div className="space-y-3">
         {/* Products */}
         <ReviewSection title="Products" stepIndex={0} onEdit={onEditStep}>
-          {form.jb_qty > 0 && <ReviewField label="JB bags" value={form.jb_qty.toLocaleString()} />}
-          {form.sb_qty > 0 && <ReviewField label="SB bags" value={form.sb_qty.toLocaleString()} />}
+          {/* form.jb_qty/sb_qty are JB/SB UNITS — lead with the individual
+              bag count (what the client actually typed and is billed for),
+              units in parens for reference. */}
+          {form.jb_qty > 0 && (
+            <ReviewField
+              label="JB"
+              value={`${jbBags.toLocaleString()} bags (${form.jb_qty.toLocaleString()} JB)`}
+            />
+          )}
+          {form.sb_qty > 0 && (
+            <ReviewField
+              label="SB"
+              value={`${sbBags.toLocaleString()} bags (${form.sb_qty.toLocaleString()} SB)`}
+            />
+          )}
           <ReviewField label="Total bags" value={totalBags.toLocaleString()} />
         </ReviewSection>
 
@@ -110,13 +136,13 @@ export function StepOrderReview({
           {form.jb_qty > 0 && (
             <ReviewField
               label="JB price"
-              value={`₱${jbPrice.toLocaleString()}/bag × ${form.jb_qty.toLocaleString()} bags = ₱${(form.jb_qty * jbPrice).toLocaleString()}`}
+              value={`₱${jbPrice.toLocaleString()}/bag × ${jbBags.toLocaleString()} bags = ₱${jbLineTotal.toLocaleString()}`}
             />
           )}
           {form.sb_qty > 0 && (
             <ReviewField
               label="SB price"
-              value={`₱${sbPrice.toLocaleString()}/bag × ${form.sb_qty.toLocaleString()} bags = ₱${(form.sb_qty * sbPrice).toLocaleString()}`}
+              value={`₱${sbPrice.toLocaleString()}/bag × ${sbBags.toLocaleString()} bags = ₱${sbLineTotal.toLocaleString()}`}
             />
           )}
         </ReviewSection>
@@ -176,17 +202,17 @@ export function StepOrderReview({
           {form.jb_qty > 0 && (
             <div className="flex justify-between">
               <span>
-                {form.jb_qty.toLocaleString()} JB bags × ₱{jbPrice.toLocaleString()}
+                {jbBags.toLocaleString()} JB bags × ₱{jbPrice.toLocaleString()}
               </span>
-              <span>₱{(form.jb_qty * jbPrice).toLocaleString()}</span>
+              <span>₱{jbLineTotal.toLocaleString()}</span>
             </div>
           )}
           {form.sb_qty > 0 && (
             <div className="flex justify-between">
               <span>
-                {form.sb_qty.toLocaleString()} SB bags × ₱{sbPrice.toLocaleString()}
+                {sbBags.toLocaleString()} SB bags × ₱{sbPrice.toLocaleString()}
               </span>
-              <span>₱{(form.sb_qty * sbPrice).toLocaleString()}</span>
+              <span>₱{sbLineTotal.toLocaleString()}</span>
             </div>
           )}
         </div>

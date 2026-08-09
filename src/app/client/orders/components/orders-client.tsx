@@ -56,8 +56,9 @@ import {
 } from 'lucide-react';
 
 import { Order, OrderItem } from '@/lib/types/database';
+import { BAG_EQUIVALENT } from '@/components/orders/wizard/order-schema';
 
-function formatOrderItems(items: OrderItem[]) {
+export function formatOrderItems(items: OrderItem[]) {
   if (!items || items.length === 0) return '0 bags';
 
   let jbQty = 0;
@@ -96,16 +97,24 @@ function formatOrderItems(items: OrderItem[]) {
     }
   }
 
-  const totalQty = jbQty + sbQty + otherQty;
-  const totalBalance = jbBalance + sbBalance;
+  // jbQty/sbQty are JB/SB UNITS, not individual bags, and 1 JB unit !=
+  // 1 SB unit — summing the raw unit counts together and calling it "bags"
+  // both understates the true bag count and mixes two denominations as if
+  // they were one. Convert each to individual bags before combining. (otherQty
+  // has no recognized bag_type, so there's no known conversion factor for
+  // it — left as-is, same as before.) See §3.3 bug writeup.
+  const jbBags = jbQty * BAG_EQUIVALENT.JB;
+  const sbBags = sbQty * BAG_EQUIVALENT.SB;
+  const totalQty = jbBags + sbBags + otherQty;
+  const totalBalance = jbBalance * BAG_EQUIVALENT.JB + sbBalance * BAG_EQUIVALENT.SB;
 
   let label: string;
   if (jbQty > 0 && sbQty > 0) {
     label = `${totalQty.toLocaleString()} bags (${jbQty.toLocaleString()} JB / ${sbQty.toLocaleString()} SB)`;
   } else if (jbQty > 0) {
-    label = `${jbQty.toLocaleString()} JB bags`;
+    label = `${jbBags.toLocaleString()} bags (${jbQty.toLocaleString()} JB)`;
   } else if (sbQty > 0) {
-    label = `${sbQty.toLocaleString()} SB bags`;
+    label = `${sbBags.toLocaleString()} bags (${sbQty.toLocaleString()} SB)`;
   } else if (otherQty > 0) {
     label = `${otherQty.toLocaleString()} bags`;
   } else {
@@ -968,7 +977,7 @@ export default function OrdersClient({
           <div className="space-y-4 py-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>JB Bags Returned</Label>
+                <Label>Individual bags returned (JB)</Label>
                 <Input
                   type="number"
                   min={0}
@@ -978,7 +987,7 @@ export default function OrdersClient({
                 />
               </div>
               <div className="space-y-2">
-                <Label>SB Bags Returned</Label>
+                <Label>Individual bags returned (SB)</Label>
                 <Input
                   type="number"
                   min={0}
