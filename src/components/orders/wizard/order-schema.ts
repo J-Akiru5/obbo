@@ -93,6 +93,17 @@ export function bgsToUnits(bags: number, type: 'JB' | 'SB'): number {
   return Math.ceil(bags / BAG_EQUIVALENT[type]);
 }
 
+// Convert individual bags -> whole SB/JB units, always rounding DOWN — the
+// opposite direction from bgsToUnits. Used wherever a bag count is being
+// converted into a unit count that can't exceed what's physically
+// available/being fulfilled (approving a request, crediting returned stock):
+// rounding up there would approve/credit a unit that isn't actually there.
+// Any bag-count remainder below a full unit falls through to whatever
+// bag-denominated total tracks "the rest" (e.g. a customer balance).
+export function bagsToUnitsFloor(bags: number, type: 'JB' | 'SB'): number {
+  return Math.floor(bags / BAG_EQUIVALENT[type]);
+}
+
 // Convert SB/JB units -> individual bags (exact, no rounding — the inverse
 // of bgsToUnits for whole unit counts).
 export function unitsToBags(units: number, type: 'JB' | 'SB'): number {

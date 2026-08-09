@@ -36,7 +36,34 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { BAG_EQUIVALENT } from '@/components/orders/wizard/order-schema';
+import { BAG_EQUIVALENT, bagsToUnitsFloor } from '@/components/orders/wizard/order-schema';
+import type { BagType } from '@/lib/types/database';
+
+// Approving happens in whole JB/SB units (dispatch can't move a fraction of
+// a unit), rounded DOWN from the individual bags typed here — same
+// direction as the return-stock-crediting fix. Whatever's short of the
+// requested amount (rounding loss included) falls through to the existing
+// Customer Balance flow, which is already bag-denominated.
+function ApprovalUnitHint({
+  bags,
+  type,
+  requestedBags,
+}: {
+  bags: number;
+  type: BagType;
+  requestedBags: number;
+}) {
+  if (bags <= 0) return null;
+  const units = bagsToUnitsFloor(bags, type);
+  const approvedBagsActual = units * BAG_EQUIVALENT[type];
+  const shortfall = Math.max(0, requestedBags - approvedBagsActual);
+  return (
+    <p className="text-muted-foreground mt-1 text-[11px] leading-snug">
+      = {units} {type} unit{units === 1 ? '' : 's'} ({approvedBagsActual.toLocaleString()} bags)
+      {shortfall > 0 && ` · ${shortfall.toLocaleString()} bags to Customer Balance`}
+    </p>
+  );
+}
 
 export function NewRequestsTab({
   orders,
@@ -57,7 +84,13 @@ export function NewRequestsTab({
 }) {
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [actionType, setActionType] = useState<'approve' | 'reject' | 'check' | null>(null);
-  const [approvedQtys, setApprovedQtys] = useState<Record<string, number>>({});
+  // Individual bags the admin types per item — converted to whole JB/SB
+  // units (rounding DOWN, never approving a unit that isn't actually there)
+  // at submit time. Any bag-count remainder, plus anything short of the
+  // requested amount, falls through to the existing customer-balance flow
+  // (already bag-denominated — see _approveOrder's individualBagsFromUnits
+  // conversion in orders-actions.ts).
+  const [approvedBags, setApprovedBags] = useState<Record<string, number>>({});
   const [shippingFee, setShippingFee] = useState<number>(0);
   const [rejectionReason, setRejectionReason] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -84,20 +117,25 @@ export function NewRequestsTab({
     setSelectedOrder(order);
     setActionType(type);
     if (type === 'approve') {
-      const initialQtys: Record<string, number> = {};
+      // Pre-fill in individual bags, converted from whatever unit quantity
+      // was the previous default (deliver-now split, or the full requested
+      // amount).
+      const initialBags: Record<string, number> = {};
       if (order.is_split_delivery) {
         // Default approved quantities to the 'deliver now' request
         order.items.forEach((item) => {
-          if (item.bag_type === 'JB') initialQtys[item.id] = order.deliver_now_jb || 0;
-          else if (item.bag_type === 'SB') initialQtys[item.id] = order.deliver_now_sb || 0;
-          else initialQtys[item.id] = item.requested_qty;
+          if (item.bag_type === 'JB')
+            initialBags[item.id] = (order.deliver_now_jb || 0) * BAG_EQUIVALENT.JB;
+          else if (item.bag_type === 'SB')
+            initialBags[item.id] = (order.deliver_now_sb || 0) * BAG_EQUIVALENT.SB;
+          else initialBags[item.id] = item.requested_qty * BAG_EQUIVALENT[item.bag_type];
         });
       } else {
         order.items.forEach((item) => {
-          initialQtys[item.id] = item.requested_qty;
+          initialBags[item.id] = item.requested_qty * BAG_EQUIVALENT[item.bag_type];
         });
       }
-      setApprovedQtys(initialQtys);
+      setApprovedBags(initialBags);
       setShippingFee(order.service_type === 'deliver' ? order.shipping_fee || 0 : 0);
     } else {
       setRejectionReason('');
@@ -109,10 +147,10 @@ export function NewRequestsTab({
     setIsSubmitting(true);
     try {
       if (actionType === 'approve') {
-        const itemsToApprove = selectedOrder.items.map((item) => ({
-          itemId: item.id,
-          qty: approvedQtys[item.id] ?? item.requested_qty,
-        }));
+        const itemsToApprove = selectedOrder.items.map((item) => {
+          const bags = approvedBags[item.id] ?? item.requested_qty * BAG_EQUIVALENT[item.bag_type];
+          return { itemId: item.id, qty: bagsToUnitsFloor(bags, item.bag_type) };
+        });
         await onApprove(
           selectedOrder.id,
           itemsToApprove,
@@ -612,23 +650,28 @@ export function NewRequestsTab({
                         ({item.requested_qty} {item.bag_type})
                       </p>
                     </div>
-                    <div className="w-32">
+                    <div className="w-40">
                       <Label className="mb-1 block text-xs" htmlFor={`approve-qty-${item.id}`}>
-                        Approve Qty
+                        Approve individual bags
                       </Label>
                       <Input
                         id={`approve-qty-${item.id}`}
                         type="number"
                         min="0"
-                        max={item.requested_qty}
-                        value={approvedQtys[item.id] || ''}
+                        max={item.requested_qty * BAG_EQUIVALENT[item.bag_type]}
+                        value={approvedBags[item.id] ?? ''}
                         placeholder="0"
                         onChange={(e) =>
-                          setApprovedQtys((prev) => ({
+                          setApprovedBags((prev) => ({
                             ...prev,
-                            [item.id]: parseInt(e.target.value) || 0,
+                            [item.id]: Math.max(0, parseInt(e.target.value) || 0),
                           }))
                         }
+                      />
+                      <ApprovalUnitHint
+                        bags={approvedBags[item.id] ?? 0}
+                        type={item.bag_type}
+                        requestedBags={item.requested_qty * BAG_EQUIVALENT[item.bag_type]}
                       />
                     </div>
                   </div>

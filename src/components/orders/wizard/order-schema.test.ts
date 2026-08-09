@@ -6,6 +6,7 @@ import {
   getSplitDeliveryUnits,
   bgsToUnits,
   unitsToBags,
+  bagsToUnitsFloor,
 } from './order-schema';
 
 describe('getTotalIndividualBags', () => {
@@ -87,6 +88,28 @@ describe('unitsToBags', () => {
     // 100 bags -> 2 SB units -> 100 bags, exactly (no rounding artifact),
     // which is what draft-resume relies on.
     expect(unitsToBags(bgsToUnits(100, 'SB'), 'SB')).toBe(100);
+  });
+});
+
+describe('bagsToUnitsFloor', () => {
+  it('rounds down to the nearest whole unit', () => {
+    expect(bagsToUnitsFloor(30, 'JB')).toBe(1); // 30/25 -> 1.2 -> 1
+    expect(bagsToUnitsFloor(99, 'SB')).toBe(1); // 99/50 -> 1.98 -> 1
+  });
+
+  it('handles exact multiples with no rounding', () => {
+    expect(bagsToUnitsFloor(100, 'SB')).toBe(2);
+    expect(bagsToUnitsFloor(50, 'JB')).toBe(2);
+  });
+
+  it('returns 0 when the bag count is below one full unit', () => {
+    expect(bagsToUnitsFloor(5, 'JB')).toBe(0);
+    expect(bagsToUnitsFloor(0, 'SB')).toBe(0);
+  });
+
+  it('never rounds up, unlike bgsToUnits', () => {
+    expect(bagsToUnitsFloor(26, 'JB')).toBe(1);
+    expect(bgsToUnits(26, 'JB')).toBe(2);
   });
 });
 
