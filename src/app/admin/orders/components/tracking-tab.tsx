@@ -53,6 +53,7 @@ export function TrackingTab({
     jb?: number,
     sb?: number,
     reason?: string,
+    wasteCategory?: 'waste' | 'damage',
   ) => Promise<void>;
   loading: boolean;
 }) {
@@ -61,6 +62,7 @@ export function TrackingTab({
   const [jbReturned, setJbReturned] = useState(0);
   const [sbReturned, setSbReturned] = useState(0);
   const [returnReason, setReturnReason] = useState('');
+  const [wasteCategory, setWasteCategory] = useState<'waste' | 'damage'>('waste');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
 
@@ -70,6 +72,7 @@ export function TrackingTab({
     setJbReturned(0);
     setSbReturned(0);
     setReturnReason('');
+    setWasteCategory('waste');
   };
 
   const handleSubmit = () => {
@@ -93,6 +96,7 @@ export function TrackingTab({
         isReturnStatus ? jbReturned : undefined,
         isReturnStatus ? sbReturned : undefined,
         isReturnStatus ? returnReason : undefined,
+        status === 'returned_waste' ? wasteCategory : undefined,
       );
       setSelectedOrder(null);
     } finally {
@@ -349,6 +353,37 @@ export function TrackingTab({
                   <CornerDownLeft className="h-4 w-4" /> Record Returned Bags —{' '}
                   {status === 'returned_good' ? 'Good Stock (restock)' : 'Waste/Damage (write-off)'}
                 </p>
+                {status === 'returned_waste' && (
+                  <div className="space-y-2">
+                    <Label>Category</Label>
+                    {(() => {
+                      const wasteOptions = [
+                        { value: 'waste', label: 'Waste (e.g. spoiled, expired)' },
+                        { value: 'damage', label: 'Damage (e.g. torn, wet, crushed in transit)' },
+                      ];
+                      return (
+                        <Select
+                          items={wasteOptions}
+                          value={wasteCategory}
+                          onValueChange={(v) =>
+                            setWasteCategory((v as 'waste' | 'damage') || 'waste')
+                          }
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select category" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {wasteOptions.map((opt) => (
+                              <SelectItem key={opt.value} value={opt.value}>
+                                {opt.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      );
+                    })()}
+                  </div>
+                )}
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="jb-returned">JB Returned</Label>
@@ -464,7 +499,8 @@ export function TrackingTab({
               <strong>{selectedOrder?.id.slice(0, 8)}</strong>?
               {(status === 'returned_good' || status === 'returned_waste') && (
                 <span className="mt-2 block">
-                  This will record {jbReturned} JB and {sbReturned} SB returned bags.
+                  This will record {jbReturned} JB and {sbReturned} SB returned bags
+                  {status === 'returned_waste' ? ` as ${wasteCategory}` : ''}.
                 </span>
               )}
               {status === 'delivered' && (

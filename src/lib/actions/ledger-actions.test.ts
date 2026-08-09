@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { http, HttpResponse } from 'msw';
 import { server } from '../../../mocks/server';
-import { addLedgerEntry, updateLedgerEntry } from './ledger-actions';
+import { addLedgerEntry, updateLedgerEntry, applyBagReturnToLedger } from './ledger-actions';
 
 // requireAdmin is globally stubbed in vitest.setup.ts, but getCostConfig()
 // calls requireAdmin() as an internal same-module reference, which bypasses
@@ -133,6 +133,139 @@ describe('Ledger Server Actions — profit calculations', () => {
       // the landed/local cost already spent on these bags isn't recovered.
       expect(entry.gross_profit).toBe(-1250);
       expect(entry.net_profit).toBe(-1250);
+    });
+  });
+
+  describe('applyBagReturnToLedger', () => {
+    // Shared helper extracted from _updateTrackingStatus's inline loop, now
+    // reused by both the tracking-tab flow and the order_returns approval
+    // flow. Reuses the same 'DR-2026-001' / 'ship-001' original-dispatch
+    // fixture row as the addLedgerEntry return tests above.
+    const getTestSupabase = async () => {
+      const { createBrowserClient } = await import('@supabase/ssr');
+      return createBrowserClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://test-project.supabase.co',
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'test-anon-key',
+      );
+    };
+
+    const mockProfileAndDr = () =>
+      server.use(
+        http.get('*/rest/v1/profiles', () =>
+          HttpResponse.json({ id: 'client-001', full_name: 'Juan Dela Cruz', company_name: null }),
+        ),
+        http.get('*/rest/v1/delivery_receipts', () =>
+          HttpResponse.json({ id: '550e8400-e29b-41d4-a716-446655440099' }),
+        ),
+      );
+
+    it('creates a ledger row per bag type with count > 0, and none for count 0', async () => {
+      noopHandlers();
+      mockProfileAndDr();
+      const captured: Record<string, unknown>[] = [];
+      server.use(
+        http.post('*/rest/v1/shipment_ledger', async ({ request }) => {
+          const body = (await request.json()) as Record<string, unknown>;
+          captured.push(body);
+          return HttpResponse.json({ id: `ledger-${captured.length}`, ...body });
+        }),
+      );
+
+      const supabase = await getTestSupabase();
+      const result = await applyBagReturnToLedger(supabase, {
+        shipmentId: 'ship-001',
+        drNumber: 'DR-2026-001',
+        clientId: 'client-001',
+        jbReturned: 5,
+        sbReturned: 0,
+        returnReason: 'return',
+      });
+
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.entriesCreated).toBe(1);
+      }
+      expect(captured).toHaveLength(1);
+      expect(captured[0].bag_returned_type).toBe('JB');
+      expect(captured[0].return_reason).toBe('return');
+    });
+
+    it('creates two ledger rows when both JB and SB counts are > 0', async () => {
+      noopHandlers();
+      mockProfileAndDr();
+      const captured: Record<string, unknown>[] = [];
+      server.use(
+        http.post('*/rest/v1/shipment_ledger', async ({ request }) => {
+          const body = (await request.json()) as Record<string, unknown>;
+          captured.push(body);
+          return HttpResponse.json({ id: `ledger-${captured.length}`, ...body });
+        }),
+      );
+
+      const supabase = await getTestSupabase();
+      const result = await applyBagReturnToLedger(supabase, {
+        shipmentId: 'ship-001',
+        drNumber: 'DR-2026-001',
+        clientId: 'client-001',
+        jbReturned: 5,
+        sbReturned: 5,
+        returnReason: 'waste',
+      });
+
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.entriesCreated).toBe(2);
+      }
+      expect(captured).toHaveLength(2);
+      expect(captured.every((c) => c.return_reason === 'waste')).toBe(true);
+    });
+
+    it('creates no ledger rows and returns entriesCreated: 0 when neither count is positive', async () => {
+      noopHandlers();
+      mockProfileAndDr();
+      let postCalled = false;
+      server.use(
+        http.post('*/rest/v1/shipment_ledger', () => {
+          postCalled = true;
+          return HttpResponse.json({});
+        }),
+      );
+
+      const supabase = await getTestSupabase();
+      const result = await applyBagReturnToLedger(supabase, {
+        shipmentId: 'ship-001',
+        drNumber: 'DR-2026-001',
+        returnReason: 'return',
+      });
+
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.entriesCreated).toBe(0);
+      }
+      expect(postCalled).toBe(false);
+    });
+
+    it('returns a failure result (not a throw) when the underlying ledger write fails', async () => {
+      noopHandlers();
+      mockProfileAndDr();
+      server.use(
+        http.post('*/rest/v1/shipment_ledger', () =>
+          HttpResponse.json({ message: 'insert violates check constraint' }, { status: 400 }),
+        ),
+      );
+
+      const supabase = await getTestSupabase();
+      const result = await applyBagReturnToLedger(supabase, {
+        shipmentId: 'ship-001',
+        drNumber: 'DR-2026-001',
+        jbReturned: 5,
+        returnReason: 'damage',
+      });
+
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error).toMatch(/Failed to record return ledger entry/);
+      }
     });
   });
 

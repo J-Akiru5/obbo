@@ -158,8 +158,16 @@ function OrdersContent() {
     jbReturned?: number,
     sbReturned?: number,
     reason?: string,
+    wasteCategory?: 'waste' | 'damage',
   ) => {
-    const result = await updateTrackingStatus(orderId, status, jbReturned, sbReturned, reason);
+    const result = await updateTrackingStatus(
+      orderId,
+      status,
+      jbReturned,
+      sbReturned,
+      reason,
+      wasteCategory,
+    );
     if (!result.success) {
       toast.error(result.error);
       return;

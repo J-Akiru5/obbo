@@ -8,6 +8,7 @@ import {
 } from './profit-utils';
 import { ledgerEntryCreateSchema, ledgerEntryUpdateSchema } from './schemas';
 import { safeAction } from './action-result';
+import { createClient } from '@/lib/supabase/server';
 
 // Internal implementation unchanged — safeAction() wraps the export below.
 async function _addLedgerEntry(
@@ -290,3 +291,80 @@ async function _updateLedgerEntry(
 }
 
 export const updateLedgerEntry = safeAction(_updateLedgerEntry);
+
+// ─────────────────────────────────────────────────────────────────────────
+// Shared "apply a bag return to the ledger" helper — extracted from
+// _updateTrackingStatus's inline loop (orders-actions.ts) so both the
+// tracking-tab flow AND the order_returns approval flow (return-actions.ts)
+// write ledger entries the exact same way instead of duplicating this logic.
+// ─────────────────────────────────────────────────────────────────────────
+
+export interface ApplyBagReturnParams {
+  shipmentId: string;
+  poNumber?: string | null;
+  drNumber?: string | null;
+  clientId?: string | null;
+  jbReturned?: number;
+  sbReturned?: number;
+  returnReason: 'return' | 'waste' | 'damage';
+  clientReason?: string | null;
+}
+
+// Internal implementation unchanged — safeAction() wraps the export below.
+async function _applyBagReturnToLedger(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  params: ApplyBagReturnParams,
+) {
+  const { shipmentId, poNumber, drNumber, clientId, returnReason, clientReason } = params;
+  const jbReturned = params.jbReturned ?? 0;
+  const sbReturned = params.sbReturned ?? 0;
+  if (jbReturned <= 0 && sbReturned <= 0) return { entriesCreated: 0 };
+
+  let clientLabel = 'Unknown';
+  if (clientId) {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('full_name, company_name')
+      .eq('id', clientId)
+      .single();
+    clientLabel = profile?.company_name || profile?.full_name || 'Unknown';
+  }
+
+  const { data: drRecord } = await supabase
+    .from('delivery_receipts')
+    .select('id')
+    .eq('dr_number', drNumber ?? '')
+    .maybeSingle();
+
+  let entriesCreated = 0;
+  for (const [returnedBags, bagReturnedType] of [
+    [jbReturned, 'JB'],
+    [sbReturned, 'SB'],
+  ] as const) {
+    if (returnedBags <= 0) continue;
+    const ledgerResult = await addLedgerEntry(shipmentId, {
+      date: new Date().toISOString().split('T')[0],
+      po_number: poNumber ?? undefined,
+      dr_number: drNumber ?? undefined,
+      client_name: clientLabel,
+      jb: 0,
+      sb: 0,
+      bags_returned: returnedBags,
+      bag_returned_type: bagReturnedType,
+      return_reason: returnReason,
+      client_reason: clientReason || undefined,
+      delivery_receipt_id: drRecord?.id || null,
+    });
+    // addLedgerEntry no longer throws (it's wrapped in safeAction) — re-throw
+    // here so a failed return-profit ledger entry still fails the WHOLE
+    // caller's operation, matching the pre-existing _updateTrackingStatus
+    // re-throw convention this helper was extracted from.
+    if (!ledgerResult.success) {
+      throw new Error(`Failed to record return ledger entry: ${ledgerResult.error}`);
+    }
+    entriesCreated += 1;
+  }
+  return { entriesCreated };
+}
+
+export const applyBagReturnToLedger = safeAction(_applyBagReturnToLedger);

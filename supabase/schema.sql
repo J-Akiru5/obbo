@@ -156,6 +156,7 @@ create table if not exists public.shipment_ledger (
   bag_returned_type text check (bag_returned_type in ('JB', 'SB')),
   return_reason     text not null default 'return' check (return_reason in ('return', 'waste', 'damage')),
   client_reason     text,
+  delivery_receipt_id uuid references public.delivery_receipts(id) on delete set null,
   notes             text,
   total_sales            numeric(14, 2) default 0,
   gross_profit           numeric(14, 2) default 0,
@@ -179,6 +180,12 @@ alter table public.shipment_ledger add column if not exists return_reason     te
 alter table public.shipment_ledger drop constraint if exists shipment_ledger_return_reason_check;
 alter table public.shipment_ledger add constraint shipment_ledger_return_reason_check check (return_reason in ('return', 'waste', 'damage'));
 alter table public.shipment_ledger add column if not exists client_reason     text;
+alter table public.shipment_ledger add column if not exists delivery_receipt_id uuid;
+alter table public.shipment_ledger drop constraint if exists fk_shipment_ledger_delivery_receipt;
+alter table public.shipment_ledger add constraint fk_shipment_ledger_delivery_receipt
+  foreign key (delivery_receipt_id) references public.delivery_receipts(id) on delete set null;
+create index if not exists idx_shipment_ledger_delivery_receipt_id
+  on public.shipment_ledger(delivery_receipt_id);
 alter table public.shipment_ledger add column if not exists total_sales            numeric(14, 2) default 0;
 alter table public.shipment_ledger add column if not exists gross_profit           numeric(14, 2) default 0;
 alter table public.shipment_ledger add column if not exists net_profit             numeric(14, 2) default 0;
@@ -397,10 +404,16 @@ create table if not exists public.order_returns (
   jb_qty      integer not null default 0,
   sb_qty      integer not null default 0,
   reason      text not null default '',
-  status      text not null default 'pending' check (status in ('pending', 'processed')),
+  status      text not null default 'pending' check (status in ('pending', 'approved', 'rejected')),
+  admin_note  text,
   created_at  timestamptz not null default now(),
   updated_at  timestamptz not null default now()
 );
+-- For existing DBs
+alter table public.order_returns add column if not exists admin_note text;
+alter table public.order_returns drop constraint if exists order_returns_status_check;
+alter table public.order_returns add constraint order_returns_status_check
+  check (status in ('pending', 'approved', 'rejected'));
 
 -- ── NOTIFICATIONS ───────────────────────────────────────────
 create table if not exists public.notifications (
@@ -522,6 +535,7 @@ create policy "warehouse_reports: admin all" on public.warehouse_reports for all
 
 -- order_returns
 drop policy if exists "order_returns: client own" on public.order_returns;
+drop policy if exists "order_returns: client insert own" on public.order_returns;
 drop policy if exists "order_returns: admin all" on public.order_returns;
 create policy "order_returns: client own"
   on public.order_returns for select using (client_id = auth.uid());

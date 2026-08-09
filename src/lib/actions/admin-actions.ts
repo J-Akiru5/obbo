@@ -46,7 +46,7 @@ export {
 } from './settings-actions';
 export { fetchAuditLog, fetchActivityFeed } from './audit-actions';
 export { fetchPendingKyc, fetchVerifiedClients, approveKyc, rejectKyc } from './kyc-actions';
-export { fetchOrderReturns, processOrderReturn } from './return-actions';
+export { fetchOrderReturns, approveOrderReturn, rejectOrderReturn } from './return-actions';
 export {
   fetchAdminNotifications,
   fetchUnreadAdminNotificationCount,

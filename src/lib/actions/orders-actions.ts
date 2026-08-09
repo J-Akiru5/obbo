@@ -8,7 +8,7 @@ import {
   individualBagsFromUnits,
 } from './profit-utils';
 import { orderApproveSchema, orderRejectSchema, orderTrackingUpdateSchema } from './schemas';
-import { addLedgerEntry } from './ledger-actions';
+import { applyBagReturnToLedger } from './ledger-actions';
 import { createRoleNotification } from './notification-actions';
 import { safeAction } from './action-result';
 
@@ -516,6 +516,12 @@ async function _updateTrackingStatus(
   bagsReturnedJb?: number,
   bagsReturnedSb?: number,
   returnReason?: string,
+  // Only meaningful when trackingStatus === 'returned_waste' — lets the admin
+  // distinguish waste vs damage for reporting. orders.tracking_status itself
+  // stays a 2-value enum ('returned_waste' covers both); this only affects
+  // what gets written to shipment_ledger.return_reason. Defaults to 'waste'
+  // when omitted, reproducing the exact pre-existing behavior.
+  wasteCategory?: 'waste' | 'damage',
 ) {
   const parsed = orderTrackingUpdateSchema.safeParse({
     orderId,
@@ -523,6 +529,7 @@ async function _updateTrackingStatus(
     bagsReturnedJb,
     bagsReturnedSb,
     returnReason,
+    wasteCategory,
   });
   if (!parsed.success) throw new Error(parsed.error.issues.map((i) => i.message).join('; '));
   const { supabase, userId } = await requireAdmin();
@@ -556,49 +563,26 @@ async function _updateTrackingStatus(
       .eq('id', orderId)
       .single();
     if (order?.shipment_id) {
-      let clientLabel = 'Unknown';
-      if (order.client_id) {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('full_name, company_name')
-          .eq('id', order.client_id)
-          .single();
-        clientLabel = profile?.company_name || profile?.full_name || 'Unknown';
-      }
-      const reason = trackingStatus === 'returned_waste' ? 'waste' : 'return';
-      const { data: drRecord } = await supabase
-        .from('delivery_receipts')
-        .select('id')
-        .eq('dr_number', order.dr_number)
-        .maybeSingle();
-      for (const [returnedBags, bagReturnedType] of [
-        [bagsReturnedJb || 0, 'JB'],
-        [bagsReturnedSb || 0, 'SB'],
-      ] as const) {
-        if (returnedBags <= 0) continue;
-        const ledgerResult = await addLedgerEntry(order.shipment_id, {
-          date: new Date().toISOString().split('T')[0],
-          po_number: order.po_number,
-          dr_number: order.dr_number,
-          client_name: clientLabel,
-          jb: 0,
-          sb: 0,
-          bags_returned: returnedBags,
-          bag_returned_type: bagReturnedType,
-          return_reason: reason,
-          client_reason: returnReason || undefined,
-          delivery_receipt_id: drRecord?.id || null,
-        });
-        // addLedgerEntry no longer throws (it's wrapped in safeAction) — it
-        // returns { success: false, error } instead. Re-throw here so a
-        // failed return-profit ledger entry still fails the WHOLE tracking
-        // update, exactly like the old throw-based behavior did. Without
-        // this, a failure here would go completely silent: the order's
-        // tracking status would update fine while its profit adjustment
-        // quietly never got created.
-        if (!ledgerResult.success) {
-          throw new Error(`Failed to record return ledger entry: ${ledgerResult.error}`);
-        }
+      const reason = trackingStatus === 'returned_waste' ? (wasteCategory ?? 'waste') : 'return';
+      const ledgerResult = await applyBagReturnToLedger(supabase, {
+        shipmentId: order.shipment_id,
+        poNumber: order.po_number,
+        drNumber: order.dr_number,
+        clientId: order.client_id,
+        jbReturned: bagsReturnedJb,
+        sbReturned: bagsReturnedSb,
+        returnReason: reason,
+        clientReason: returnReason,
+      });
+      // applyBagReturnToLedger no longer throws (it's wrapped in
+      // safeAction) — it returns { success: false, error } instead.
+      // Re-throw here so a failed return-profit ledger entry still fails the
+      // WHOLE tracking update, exactly like the old throw-based behavior
+      // did. Without this, a failure here would go completely silent: the
+      // order's tracking status would update fine while its profit
+      // adjustment quietly never got created.
+      if (!ledgerResult.success) {
+        throw new Error(ledgerResult.error);
       }
     }
   }

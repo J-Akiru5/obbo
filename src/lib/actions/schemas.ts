@@ -90,6 +90,7 @@ export const orderTrackingUpdateSchema = z.object({
   bagsReturnedJb: z.number().int().min(0).optional(),
   bagsReturnedSb: z.number().int().min(0).optional(),
   returnReason: z.string().nullable().optional(),
+  wasteCategory: z.enum(['waste', 'damage']).optional(),
 });
 
 // ─── Shipment ───────────────────────────────────────────────────

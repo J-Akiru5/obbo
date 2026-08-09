@@ -7,6 +7,7 @@ import {
   rejectOrder,
   dispatchOrder,
   finalConfirmCheck,
+  updateTrackingStatus,
 } from './orders-actions';
 
 // ── Shared mock infra — bug3 and MSW tests need different supabase clients
@@ -471,6 +472,143 @@ describe('Orders Server Actions', () => {
       expect(result.success).toBe(true);
       if (result.success) {
         expect(result.data).toEqual({ success: true });
+      }
+    });
+  });
+
+  describe('updateTrackingStatus', () => {
+    const trackingOrderId = '550e8400-e29b-41d4-a716-446655440010';
+
+    const trackingOrderFixture = {
+      id: trackingOrderId,
+      shipment_id: 'ship-track-001',
+      po_number: 'PO-TRACK-001',
+      dr_number: 'DR-TRACK-001',
+      client_id: 'client-001',
+    };
+
+    // Original dispatch row applyBagReturnToLedger's addLedgerEntry call
+    // looks up to reuse historical rates — matches trackingOrderFixture's
+    // shipment_id/dr_number.
+    const originalDispatchLedgerRow = {
+      id: 'ledger-track-original',
+      shipment_id: 'ship-track-001',
+      dr_number: 'DR-TRACK-001',
+      jb: 10,
+      sb: 0,
+      selling_price_per_bag: 250,
+      landed_cost_per_bag: 147.64,
+      local_expenses_per_bag: 20,
+      created_at: '2026-06-01T00:00:00.000Z',
+    };
+
+    let patchedOrders: Record<string, unknown>[];
+    let postedLedgerEntries: Record<string, unknown>[];
+
+    const setupTrackingMocks = () => {
+      patchedOrders = [];
+      postedLedgerEntries = [];
+      server.use(
+        http.get('*/rest/v1/orders', ({ request }) => {
+          const url = new URL(request.url);
+          const id = url.searchParams.get('id')?.replace('eq.', '');
+          if (id === trackingOrderId) return HttpResponse.json(trackingOrderFixture);
+          return HttpResponse.json([]);
+        }),
+        http.patch('*/rest/v1/orders', async ({ request }) => {
+          const body = (await request.json()) as Record<string, unknown>;
+          patchedOrders.push(body);
+          return HttpResponse.json([]);
+        }),
+        http.get('*/rest/v1/profiles', () =>
+          HttpResponse.json({ id: 'client-001', full_name: 'Juan Dela Cruz', company_name: null }),
+        ),
+        http.get('*/rest/v1/delivery_receipts', () =>
+          HttpResponse.json({ id: '550e8400-e29b-41d4-a716-446655440099' }),
+        ),
+        http.get('*/rest/v1/shipment_ledger', () => HttpResponse.json(originalDispatchLedgerRow)),
+        http.post('*/rest/v1/shipment_ledger', async ({ request }) => {
+          const body = (await request.json()) as Record<string, unknown>;
+          postedLedgerEntries.push(body);
+          return HttpResponse.json({ id: `ledger-new-${postedLedgerEntries.length}`, ...body });
+        }),
+        http.get('*/rest/v1/shipments', () =>
+          HttpResponse.json({ id: 'ship-track-001', remaining_jb: 100, remaining_sb: 100 }),
+        ),
+        http.patch('*/rest/v1/shipments', () => HttpResponse.json([])),
+        http.post('*/rest/v1/activity_log', () => HttpResponse.json([])),
+      );
+    };
+
+    it('"delivered" with no returns marks the order completed and writes no ledger entry', async () => {
+      setupTrackingMocks();
+
+      const result = await updateTrackingStatus(trackingOrderId, 'delivered');
+
+      expect(result.success).toBe(true);
+      expect(patchedOrders).toHaveLength(1);
+      expect(patchedOrders[0].status).toBe('completed');
+      expect(postedLedgerEntries).toHaveLength(0);
+    });
+
+    it('"returned_good" writes a ledger entry with return_reason "return" (restockable)', async () => {
+      setupTrackingMocks();
+
+      const result = await updateTrackingStatus(
+        trackingOrderId,
+        'returned_good',
+        5,
+        0,
+        'Customer changed mind',
+      );
+
+      expect(result.success).toBe(true);
+      expect(postedLedgerEntries).toHaveLength(1);
+      expect(postedLedgerEntries[0].return_reason).toBe('return');
+      expect(postedLedgerEntries[0].bag_returned_type).toBe('JB');
+      expect(postedLedgerEntries[0].client_reason).toBe('Customer changed mind');
+    });
+
+    it('"returned_waste" with no wasteCategory defaults to return_reason "waste" (pre-existing behavior preserved)', async () => {
+      setupTrackingMocks();
+
+      const result = await updateTrackingStatus(trackingOrderId, 'returned_waste', 5, 0);
+
+      expect(result.success).toBe(true);
+      expect(postedLedgerEntries).toHaveLength(1);
+      expect(postedLedgerEntries[0].return_reason).toBe('waste');
+    });
+
+    it('"returned_waste" with wasteCategory "damage" writes return_reason "damage" (previously unreachable)', async () => {
+      setupTrackingMocks();
+
+      const result = await updateTrackingStatus(
+        trackingOrderId,
+        'returned_waste',
+        5,
+        0,
+        'Damaged in transit',
+        'damage',
+      );
+
+      expect(result.success).toBe(true);
+      expect(postedLedgerEntries).toHaveLength(1);
+      expect(postedLedgerEntries[0].return_reason).toBe('damage');
+    });
+
+    it('returns a failure result (not a throw) when the ledger write fails', async () => {
+      setupTrackingMocks();
+      server.use(
+        http.post('*/rest/v1/shipment_ledger', () =>
+          HttpResponse.json({ message: 'insert violates check constraint' }, { status: 400 }),
+        ),
+      );
+
+      const result = await updateTrackingStatus(trackingOrderId, 'returned_good', 5, 0);
+
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error).toMatch(/Failed to record return ledger entry/);
       }
     });
   });
