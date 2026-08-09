@@ -115,12 +115,20 @@ export interface OrderItemPrice {
   requested_qty: number;
   approved_qty: number;
   selling_price_per_bag: number;
+  // JB/SB — required so this function can weight by INDIVIDUAL BAGS
+  // (via individualBagsFromUnits), not raw JB/SB unit counts. 1 SB unit
+  // (50 bags) is worth 2x as much volume as 1 JB unit (25 bags), so
+  // weighting by raw units mis-prorates any order that mixes both bag
+  // types with different per-item approval fractions — see
+  // sales-profit-tracking-module.md formula #1.
+  bag_type: 'JB' | 'SB';
 }
 
 /**
  * Prorate an order's total sales to a partial dispatch by the VALUE
- * (price × quantity) of the bags actually going out, not by weight.
- * Handles mixed-product orders where JB and SB have different per-bag prices.
+ * (price × individual-bag quantity) of the bags actually going out, not by
+ * weight. Handles mixed-product orders where JB and SB have different
+ * per-bag prices AND different bag-per-unit counts.
  */
 export function prorateOrderSalesByValue(
   totalOrderSales: Decimal.Value,
@@ -143,9 +151,14 @@ export function prorateOrderSalesByValue(
         'Each item must have valid non-negative quantities with approved ≤ requested.',
       );
     }
+    if (item.bag_type !== 'JB' && item.bag_type !== 'SB') {
+      throw new Error(`Each item must have a bag_type of 'JB' or 'SB', got: ${item.bag_type}`);
+    }
     const price = money(item.selling_price_per_bag);
-    approvedValue = approvedValue.plus(price.mul(item.approved_qty));
-    totalOrderValue = totalOrderValue.plus(price.mul(item.requested_qty));
+    const approvedBags = individualBagsFromUnits(item.bag_type, item.approved_qty);
+    const requestedBags = individualBagsFromUnits(item.bag_type, item.requested_qty);
+    approvedValue = approvedValue.plus(price.mul(approvedBags));
+    totalOrderValue = totalOrderValue.plus(price.mul(requestedBags));
   }
   if (totalOrderValue.isZero()) {
     throw new Error('Total order value must be greater than zero.');

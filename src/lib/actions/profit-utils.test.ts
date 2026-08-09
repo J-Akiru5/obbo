@@ -8,6 +8,7 @@ import {
   individualBagsFromUnits,
   unitsFromIndividualBags,
   BAG_EQUIVALENT,
+  type OrderItemPrice,
 } from './profit-utils';
 
 describe('individualBagsFromUnits (customer_balances unit-mismatch fix)', () => {
@@ -133,22 +134,29 @@ describe('prorateOrderSales (weight-based)', () => {
 
 describe('prorateOrderSalesByValue (value-based — the Issue 1 fix)', () => {
   it('prorates by DOLLAR VALUE, not weight, for mixed-price items', () => {
-    // Order: 1 JB (25 bags) at 228/bag = 5700, + 100 SB (5000 bags) at 4.80/bag = 24000
-    // Total order value = 29700, matching total_amount.
+    // Order: 1 JB unit (25 bags) at 228/bag = 5700, + 100 SB units (5000 bags)
+    // at 4.80/bag = 24000. Total order value = 29700, matching total_amount.
     // Dispatch ONLY the JB (fully approved), 0 of the SB approved.
-    const items = [
-      { requested_qty: 1, approved_qty: 1, selling_price_per_bag: 5700 }, // 1 JB "unit" priced as a line
-      { requested_qty: 100, approved_qty: 0, selling_price_per_bag: 240 }, // 100 SB "units", none dispatched
+    // selling_price_per_bag is genuinely PER INDIVIDUAL BAG here (the real
+    // domain meaning), not per unit — individualBagsFromUnits does the
+    // ×25/×50 conversion inside the function now.
+    const items: OrderItemPrice[] = [
+      { requested_qty: 1, approved_qty: 1, selling_price_per_bag: 228, bag_type: 'JB' },
+      { requested_qty: 100, approved_qty: 0, selling_price_per_bag: 4.8, bag_type: 'SB' },
     ];
     const result = prorateOrderSalesByValue(29700, items);
-    // Value-based: only the JB's value (5700) of the total value (5700 + 24000 = 29700) ships.
+    // Value-based: only the JB's value (25 bags × 228 = 5700) of the total
+    // value (5700 + 24000 = 29700) ships.
     expect(result).toBe(5700);
   });
 
   it('matches weight-based proration when all items share the same per-bag price', () => {
     // Sanity check: if prices are uniform, value-based and weight-based agree.
-    const items = [
-      { requested_qty: 4, approved_qty: 2, selling_price_per_bag: 4500 }, // half approved
+    // Single item, single bag type — the ×25/×50 conversion cancels out of
+    // the ratio (applies equally to numerator and denominator), so this case
+    // is unaffected by the fix.
+    const items: OrderItemPrice[] = [
+      { requested_qty: 4, approved_qty: 2, selling_price_per_bag: 4500, bag_type: 'JB' }, // half approved
     ];
     const result = prorateOrderSalesByValue(18000, items);
     expect(result).toBe(9000);
@@ -159,13 +167,63 @@ describe('prorateOrderSalesByValue (value-based — the Issue 1 fix)', () => {
   });
 
   it('throws when approved_qty exceeds requested_qty on any item', () => {
-    const items = [{ requested_qty: 5, approved_qty: 10, selling_price_per_bag: 100 }];
+    const items: OrderItemPrice[] = [
+      { requested_qty: 5, approved_qty: 10, selling_price_per_bag: 100, bag_type: 'JB' },
+    ];
     expect(() => prorateOrderSalesByValue(1000, items)).toThrow();
   });
 
   it('throws when total order value is zero (all prices zero)', () => {
-    const items = [{ requested_qty: 5, approved_qty: 5, selling_price_per_bag: 0 }];
+    const items: OrderItemPrice[] = [
+      { requested_qty: 5, approved_qty: 5, selling_price_per_bag: 0, bag_type: 'JB' },
+    ];
     expect(() => prorateOrderSalesByValue(1000, items)).toThrow();
+  });
+
+  // Regression coverage for the live bug found while hardening this module:
+  // weighting by raw JB/SB UNIT counts instead of INDIVIDUAL BAGS
+  // overstated total_sales (and therefore gross/net profit) by 12.5% on any
+  // order that mixes both bag types AND gets a different approval fraction
+  // per item — exactly what the split-delivery approval flow produces.
+  describe('mixed bag-type weighting (regression)', () => {
+    it('weights a mixed JB/SB partial approval by individual bags, not raw units', () => {
+      // 10 JB units fully approved (10/10 = 250 bags) + 10 SB units half
+      // approved (5/10 = 250 of 500 bags), both priced 185/bag.
+      // True bag totals: 750 requested, 500 approved → ratio 500/750 = 0.6667
+      const items: OrderItemPrice[] = [
+        { requested_qty: 10, approved_qty: 10, selling_price_per_bag: 185, bag_type: 'JB' },
+        { requested_qty: 10, approved_qty: 5, selling_price_per_bag: 185, bag_type: 'SB' },
+      ];
+      const totalOrderSales = 138750; // 185 * 750 bags
+      const result = prorateOrderSalesByValue(totalOrderSales, items);
+      // Correct: 138750 * (500/750) = 92500.00
+      expect(result).toBe(92500);
+      // The pre-fix formula (weighting by raw units: 15 approved / 20
+      // requested units = 0.75) would have returned 104062.50 — a 12.5%
+      // overstatement. Assert we're nowhere near that wrong value.
+      expect(result).not.toBe(104062.5);
+    });
+
+    it('same-bag-type partial approval is unaffected by the fix (control case)', () => {
+      // Single bag type (SB only) — individualBagsFromUnits scales
+      // numerator and denominator by the same factor, so the ratio (and
+      // result) must be identical to what raw-unit weighting already gave.
+      const items: OrderItemPrice[] = [
+        { requested_qty: 20, approved_qty: 12, selling_price_per_bag: 185, bag_type: 'SB' },
+      ];
+      const result = prorateOrderSalesByValue(185000, items);
+      // ratio = 12/20 = 0.6 either way
+      expect(result).toBe(111000);
+    });
+
+    it('full approval on mixed bag types still returns the full total (ratio = 1)', () => {
+      const items: OrderItemPrice[] = [
+        { requested_qty: 10, approved_qty: 10, selling_price_per_bag: 185, bag_type: 'JB' },
+        { requested_qty: 10, approved_qty: 10, selling_price_per_bag: 185, bag_type: 'SB' },
+      ];
+      const result = prorateOrderSalesByValue(138750, items);
+      expect(result).toBe(138750);
+    });
   });
 });
 

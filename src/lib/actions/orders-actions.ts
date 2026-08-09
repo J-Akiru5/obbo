@@ -309,10 +309,16 @@ async function _dispatchOrder(
   const totalSales = prorateOrderSalesByValue(
     order.total_amount,
     order.items.map(
-      (i: { requested_qty: number; approved_qty: number; selling_price_per_bag: number }) => ({
+      (i: {
+        requested_qty: number;
+        approved_qty: number;
+        selling_price_per_bag: number;
+        bag_type: 'JB' | 'SB';
+      }) => ({
         requested_qty: i.requested_qty || 0,
         approved_qty: i.approved_qty || 0,
         selling_price_per_bag: i.selling_price_per_bag || 0,
+        bag_type: i.bag_type,
       }),
     ),
   );
