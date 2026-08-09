@@ -249,18 +249,22 @@ export function ReportsTab() {
   const handleSavePhysical = async () => {
     setIsSaving(true);
     try {
-      const closing_jb =
+      const closing_jb = Math.max(
+        0,
         physical.yesterday_jb +
-        physical.received_jb -
-        physical.dispatched_jb +
-        physical.returned_jb -
-        physical.waste_jb;
-      const closing_sb =
+          physical.received_jb -
+          physical.dispatched_jb +
+          physical.returned_jb -
+          physical.waste_jb,
+      );
+      const closing_sb = Math.max(
+        0,
         physical.yesterday_sb +
-        physical.received_sb -
-        physical.dispatched_sb +
-        physical.returned_sb -
-        physical.waste_sb;
+          physical.received_sb -
+          physical.dispatched_sb +
+          physical.returned_sb -
+          physical.waste_sb,
+      );
       const result = await saveWarehouseReport({
         report_date: reportDate,
         ...physical,
@@ -321,18 +325,22 @@ export function ReportsTab() {
   };
 
   // Computed closing
-  const closingJb =
+  const closingJb = Math.max(
+    0,
     physical.yesterday_jb +
-    physical.received_jb -
-    physical.dispatched_jb +
-    physical.returned_jb -
-    physical.waste_jb;
-  const closingSb =
+      physical.received_jb -
+      physical.dispatched_jb +
+      physical.returned_jb -
+      physical.waste_jb,
+  );
+  const closingSb = Math.max(
+    0,
     physical.yesterday_sb +
-    physical.received_sb -
-    physical.dispatched_sb +
-    physical.returned_sb -
-    physical.waste_sb;
+      physical.received_sb -
+      physical.dispatched_sb +
+      physical.returned_sb -
+      physical.waste_sb,
+  );
 
   return (
     <div className="space-y-6">

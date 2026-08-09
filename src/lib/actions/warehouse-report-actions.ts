@@ -181,12 +181,17 @@ async function _saveWarehouseReport(report: {
   closing_sb: number;
   notes?: string;
 }) {
-  const parsed = warehouseReportSaveSchema.safeParse(report);
+  const clamped = {
+    ...report,
+    closing_jb: Math.max(0, report.closing_jb),
+    closing_sb: Math.max(0, report.closing_sb),
+  };
+  const parsed = warehouseReportSaveSchema.safeParse(clamped);
   if (!parsed.success) throw new Error(parsed.error.issues.map((i) => i.message).join('; '));
   const { supabase, userId } = await requireAdmin();
   const { data, error } = await supabase
     .from('warehouse_reports')
-    .upsert({ ...report, updated_at: new Date().toISOString() }, { onConflict: 'report_date' })
+    .upsert({ ...clamped, updated_at: new Date().toISOString() }, { onConflict: 'report_date' })
     .select()
     .single();
   if (error) throw new Error(error.message);
@@ -277,18 +282,22 @@ async function _autoSubmitEndOfDayReports() {
   if (!yesterdayReport) {
     try {
       const generated = await generateDailyReportData(yesterday);
-      const closing_jb =
+      const closing_jb = Math.max(
+        0,
         generated.yesterday_jb +
-        generated.received_jb -
-        generated.dispatched_jb +
-        generated.returned_jb -
-        generated.waste_jb;
-      const closing_sb =
+          generated.received_jb -
+          generated.dispatched_jb +
+          generated.returned_jb -
+          generated.waste_jb,
+      );
+      const closing_sb = Math.max(
+        0,
         generated.yesterday_sb +
-        generated.received_sb -
-        generated.dispatched_sb +
-        generated.returned_sb -
-        generated.waste_sb;
+          generated.received_sb -
+          generated.dispatched_sb +
+          generated.returned_sb -
+          generated.waste_sb,
+      );
       const { data: newReport, error: upsertError } = await supabase
         .from('warehouse_reports')
         .upsert({
