@@ -1,0 +1,623 @@
+diff --git a/src/app/admin/inventory/components/shipments-tab.tsx b/src/app/admin/inventory/components/shipments-tab.tsx
+index 492b620..4a721e0 100644
+--- a/src/app/admin/inventory/components/shipments-tab.tsx
++++ b/src/app/admin/inventory/components/shipments-tab.tsx
+@@ -244,7 +244,7 @@ export function ShipmentsTab({
+ 
+   const handleLedgerSubmit = async (data: Record<string, unknown>) => {
+     if (editingEntry) {
+-      await updateLedgerEntry(
++      const result = await updateLedgerEntry(
+         editingEntry.id,
+         activeShipmentId,
+         {
+@@ -256,9 +256,17 @@ export function ShipmentsTab({
+         },
+         data as any,
+       );
++      if (!result.success) {
++        toast.error(result.error);
++        return;
++      }
+       toast.success('Ledger entry updated.');
+     } else {
+-      await addLedgerEntry(activeShipmentId, data as any);
++      const result = await addLedgerEntry(activeShipmentId, data as any);
++      if (!result.success) {
++        toast.error(result.error);
++        return;
++      }
+       toast.success('Ledger entry added.');
+     }
+     await refreshLedger(activeShipmentId);
+diff --git a/src/app/admin/orders/page.tsx b/src/app/admin/orders/page.tsx
+index c10bac0..be9d77d 100644
+--- a/src/app/admin/orders/page.tsx
++++ b/src/app/admin/orders/page.tsx
+@@ -99,23 +99,23 @@ function OrdersContent() {
+     approvedItems: { itemId: string; qty: number }[],
+     shippingFee?: number,
+   ) => {
+-    try {
+-      await approveOrder(orderId, approvedItems, shippingFee);
+-      toast.success('Order approved successfully.');
+-      loadData();
+-    } catch (e: any) {
+-      toast.error(e.message || 'Failed to approve order.');
++    const result = await approveOrder(orderId, approvedItems, shippingFee);
++    if (!result.success) {
++      toast.error(result.error);
++      return;
+     }
++    toast.success('Order approved successfully.');
++    loadData();
+   };
+ 
+   const handleRejectOrder = async (orderId: string, reason: string) => {
+-    try {
+-      await rejectOrder(orderId, reason);
+-      toast.success('Order rejected.');
+-      loadData();
+-    } catch (e: any) {
+-      toast.error(e.message || 'Failed to reject order.');
++    const result = await rejectOrder(orderId, reason);
++    if (!result.success) {
++      toast.error(result.error);
++      return;
+     }
++    toast.success('Order rejected.');
++    loadData();
+   };
+ 
+   const handleConfirmCheck = async (orderId: string) => {
+@@ -136,13 +136,20 @@ function OrdersContent() {
+     driverName: string | null,
+     plateNumber: string | null,
+   ) => {
+-    try {
+-      await dispatchOrder(orderId, shipmentId, drNumber, drImageUrl, driverName, plateNumber);
+-      toast.success('Order dispatched successfully.');
+-      loadData();
+-    } catch (e: any) {
+-      toast.error(e.message || 'Failed to dispatch order.');
++    const result = await dispatchOrder(
++      orderId,
++      shipmentId,
++      drNumber,
++      drImageUrl,
++      driverName,
++      plateNumber,
++    );
++    if (!result.success) {
++      toast.error(result.error);
++      return;
+     }
++    toast.success('Order dispatched successfully.');
++    loadData();
+   };
+ 
+   const handleTrackingUpdate = async (
+@@ -152,13 +159,13 @@ function OrdersContent() {
+     sbReturned?: number,
+     reason?: string,
+   ) => {
+-    try {
+-      await updateTrackingStatus(orderId, status, jbReturned, sbReturned, reason);
+-      toast.success('Tracking status updated.');
+-      loadData();
+-    } catch (e: any) {
+-      toast.error(e.message || 'Failed to update tracking.');
++    const result = await updateTrackingStatus(orderId, status, jbReturned, sbReturned, reason);
++    if (!result.success) {
++      toast.error(result.error);
++      return;
+     }
++    toast.success('Tracking status updated.');
++    loadData();
+   };
+ 
+   if (role !== 'warehouse_manager') {
+diff --git a/src/app/client/orders/new/page.tsx b/src/app/client/orders/new/page.tsx
+index 8471c98..a0aff78 100644
+--- a/src/app/client/orders/new/page.tsx
++++ b/src/app/client/orders/new/page.tsx
+@@ -395,12 +395,19 @@ function NewOrderPage() {
+           }
+         : undefined;
+ 
+-      await submitOrder(orderData, splitDetails);
++      const result = await submitOrder(orderData, splitDetails);
++      if (!result.success) {
++        toast.error(result.error);
++        setLoading(false);
++        return;
++      }
+ 
+       toast.success('Order submitted successfully! Pending approval.');
+       clearForm();
+       router.push('/client/orders');
+     } catch (err) {
++      // Genuinely unexpected errors (network failure, etc.) still land here —
++      // submitOrder's own validation/business-rule errors no longer do.
+       const msg = err instanceof Error ? err.message : 'An error occurred. Please try again.';
+       toast.error(msg);
+     } finally {
+diff --git a/src/lib/actions/action-result.test.ts b/src/lib/actions/action-result.test.ts
+new file mode 100644
+index 0000000..94b7640
+--- /dev/null
++++ b/src/lib/actions/action-result.test.ts
+@@ -0,0 +1,49 @@
++import { describe, it, expect } from 'vitest';
++import { safeAction } from './action-result';
++
++describe('safeAction', () => {
++  it('returns { success: true, data } when the wrapped function resolves', async () => {
++    const wrapped = safeAction(async (x: number) => x * 2);
++    const result = await wrapped(21);
++    expect(result).toEqual({ success: true, data: 42 });
++  });
++
++  it('converts a thrown Error into { success: false, error: message } instead of rejecting', async () => {
++    const wrapped = safeAction(async () => {
++      throw new Error('Driver name is required for pick-up orders.');
++    });
++    const result = await wrapped();
++    expect(result.success).toBe(false);
++    if (!result.success) {
++      expect(result.error).toBe('Driver name is required for pick-up orders.');
++    }
++  });
++
++  it('never rejects, even when the wrapped function throws — this is the entire point', async () => {
++    const wrapped = safeAction(async () => {
++      throw new Error('boom');
++    });
++    // If this ever rejects, it would cross the Server Action boundary as an
++    // uncaught exception and get redacted by Next.js in production.
++    await expect(wrapped()).resolves.not.toThrow();
++    const result = await wrapped();
++    expect(result.success).toBe(false);
++  });
++
++  it('falls back to a generic message for a non-Error throw', async () => {
++    const wrapped = safeAction(async () => {
++      throw 'a raw string, not an Error instance';
++    });
++    const result = await wrapped();
++    expect(result.success).toBe(false);
++    if (!result.success) {
++      expect(result.error).toBe('An unexpected error occurred.');
++    }
++  });
++
++  it('passes through multiple arguments correctly', async () => {
++    const wrapped = safeAction(async (a: string, b: number, c: boolean) => ({ a, b, c }));
++    const result = await wrapped('x', 1, true);
++    expect(result).toEqual({ success: true, data: { a: 'x', b: 1, c: true } });
++  });
++});
+diff --git a/src/lib/actions/action-result.ts b/src/lib/actions/action-result.ts
+new file mode 100644
+index 0000000..6514b45
+--- /dev/null
++++ b/src/lib/actions/action-result.ts
+@@ -0,0 +1,39 @@
++// Next.js redacts every uncaught `throw` inside a Server Action in production
++// builds — the client never receives the real error.message, only a generic
++// digest. This is documented, intentional Next.js behavior (see
++// node_modules/next/dist/docs/01-app/01-getting-started/10-error-handling.md):
++// "For [expected] errors, avoid using try/catch blocks and throw errors.
++// Instead, model expected errors as return values."
++//
++// safeAction wraps an existing action WITHOUT touching its internals — every
++// `throw new Error('message')` inside stays exactly as-is. The wrapper
++// catches it and returns a normal object instead. A normal return value is
++// never redacted, because nothing crossed the action boundary as an
++// exception.
++//
++// Usage (only the export line changes, function body is untouched):
++//   async function _submitOrder(...) { ...unchanged, still throws... }
++//   export const submitOrder = safeAction(_submitOrder);
++//
++// Call sites change from try/catch to a result check:
++//   const result = await submitOrder(orderData);
++//   if (!result.success) { toast.error(result.error); return; }
++//   // use result.data
++
++export type ActionResult<T> = { success: true; data: T } | { success: false; error: string };
++
++export function safeAction<Args extends unknown[], T>(
++  fn: (...args: Args) => Promise<T>,
++): (...args: Args) => Promise<ActionResult<T>> {
++  return async (...args: Args): Promise<ActionResult<T>> => {
++    try {
++      const data = await fn(...args);
++      return { success: true, data };
++    } catch (err) {
++      return {
++        success: false,
++        error: err instanceof Error ? err.message : 'An unexpected error occurred.',
++      };
++    }
++  };
++}
+diff --git a/src/lib/actions/client-actions.test.ts b/src/lib/actions/client-actions.test.ts
+index 5ecfc69..d740e79 100644
+--- a/src/lib/actions/client-actions.test.ts
++++ b/src/lib/actions/client-actions.test.ts
+@@ -90,20 +90,31 @@ describe('client-actions', () => {
+       );
+     });
+ 
+-    it('throws when order_items insert fails and rolls back the order', async () => {
++    it('returns a failure result (not a throw) when order_items insert fails, and still rolls back the order', async () => {
+       server.use(
+         http.post('*/rest/v1/order_items', () =>
+           HttpResponse.json({ message: 'violates foreign key constraint' }, { status: 409 }),
+         ),
+       );
+ 
+-      await expect(submitOrder(validOrderData)).rejects.toThrow(/Failed to save order items/);
++      const result = await submitOrder(validOrderData);
+ 
++      // This is the actual point of the fix: in production, a throw here would
++      // have been redacted to a generic Next.js digest message. A returned
++      // { success: false, error } is a normal value and is never redacted.
++      expect(result.success).toBe(false);
++      if (!result.success) {
++        expect(result.error).toMatch(/Failed to save order items/);
++      }
+       expect(orderDeleteCalled).toBe(true);
+     });
+ 
+-    it('succeeds when order_items insert succeeds', async () => {
+-      await expect(submitOrder(validOrderData)).resolves.toBeDefined();
++    it('returns a success result with the created order when order_items insert succeeds', async () => {
++      const result = await submitOrder(validOrderData);
++      expect(result.success).toBe(true);
++      if (result.success) {
++        expect(result.data).toBeDefined();
++      }
+     });
+   });
+ });
+diff --git a/src/lib/actions/client-actions.ts b/src/lib/actions/client-actions.ts
+index 0a36c7c..3cbf388 100644
+--- a/src/lib/actions/client-actions.ts
++++ b/src/lib/actions/client-actions.ts
+@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server';
+ import { revalidatePath } from 'next/cache';
+ import { getSourcePrice, individualBagsFromUnits, unitsFromIndividualBags } from './profit-utils';
+ import { getSplitDeliveryUnits } from '@/components/orders/wizard/order-schema';
++import { safeAction } from './action-result';
+ import { submitOrderSchema } from './schemas';
+ import { generateGlobalNextPoNumber } from './po-utils';
+ import { createRoleNotification } from './notification-actions';
+@@ -123,7 +124,10 @@ export async function generateNextPoNumber() {
+   return generateGlobalNextPoNumber();
+ }
+ 
+-export async function submitOrder(
++// Internal implementation — completely unchanged, still throws for every
++// validation/business-rule failure. safeAction() below converts those throws
++// into a normal return value so the real message survives production.
++async function _submitOrder(
+   orderData: {
+     source: string;
+     service_type: string;
+@@ -250,6 +254,10 @@ export async function submitOrder(
+   return order;
+ }
+ 
++// The public export — same name and call shape client code already expects,
++// except it now returns ActionResult<T> instead of throwing.
++export const submitOrder = safeAction(_submitOrder);
++
+ export async function saveOrderDraft(
+   orderData: {
+     source: string;
+@@ -638,10 +646,18 @@ export async function submitRedeliveryRequest(
+   // BAGS, but order_items.requested_qty must stay in JB/SB UNITS like every
+   // other order — dispatch stock/profit math and the balance deduction both
+   // assume units on order_items. Convert at the boundary.
++  //
++  // requestedBags isn't guaranteed to be an exact multiple of 25/50 — a
++  // client can request a partial split redelivery of any bag count up to
++  // their balance. Round to the nearest whole unit (never 0, since
++  // requested_qty is a non-nullable Postgres Int column and a 0-quantity
++  // order item is meaningless) rather than writing a fractional value that
++  // would either be rejected by the DB or silently truncated.
+   const requestedBags = splitDetails?.wantsSplit
+     ? splitDetails.deliverNowQty
+     : balance.remaining_qty;
+-  const requestedQty = unitsFromIndividualBags(balance.bag_type as 'JB' | 'SB', requestedBags);
++  const rawRequestedQty = unitsFromIndividualBags(balance.bag_type as 'JB' | 'SB', requestedBags);
++  const requestedQty = Math.max(1, Math.round(rawRequestedQty));
+ 
+   const { data: redeliveryProduct } = await supabase
+     .from('products')
+diff --git a/src/lib/actions/delivery-receipt-actions.ts b/src/lib/actions/delivery-receipt-actions.ts
+index c57a7fc..d134948 100644
+--- a/src/lib/actions/delivery-receipt-actions.ts
++++ b/src/lib/actions/delivery-receipt-actions.ts
+@@ -59,7 +59,7 @@ export async function createDeliveryReceipt(rawDr: Record<string, unknown>) {
+     .single();
+   if (error) throw new Error(error.message);
+ 
+-  await addLedgerEntry(dr.shipment_id, {
++  const ledgerResult = await addLedgerEntry(dr.shipment_id, {
+     dr_number: dr.dr_number,
+     po_number: dr.po_number,
+     date: dr.received_date,
+@@ -77,6 +77,12 @@ export async function createDeliveryReceipt(rawDr: Record<string, unknown>) {
+       : undefined,
+     delivery_receipt_id: data.id,
+   });
++  // addLedgerEntry no longer throws — matches this function's own
++  // throw-on-error convention (see `if (error) throw` above) rather than
++  // silently dropping a financial ledger entry.
++  if (!ledgerResult.success) {
++    throw new Error(`Failed to create ledger entry: ${ledgerResult.error}`);
++  }
+ 
+   if (effectiveClientId) {
+     try {
+@@ -308,7 +314,7 @@ export async function updateDeliveryReceipt(id: string, rawUpdates: Record<strin
+         .eq('id', ledgerEntry.id);
+       if (ledgerUpdateError) console.error('Failed to update ledger entry:', ledgerUpdateError);
+     } else if (updates.jb !== undefined || updates.sb !== undefined) {
+-      await addLedgerEntry(newShipmentId, {
++      const ledgerResult = await addLedgerEntry(newShipmentId, {
+         dr_number: newDrNumber,
+         client_name: updates.client_name ?? oldDr.client_name ?? 'Unknown',
+         jb: newJb,
+@@ -318,6 +324,12 @@ export async function updateDeliveryReceipt(id: string, rawUpdates: Record<strin
+         date: updates.received_date ?? oldDr.received_date,
+         delivery_receipt_id: id,
+       });
++      // Matches the sibling ledger-update branch just above, which also
++      // logs and continues rather than failing the whole DR update over a
++      // ledger side-effect issue.
++      if (!ledgerResult.success) {
++        console.error('Failed to create ledger entry:', ledgerResult.error);
++      }
+     }
+   }
+ 
+diff --git a/src/lib/actions/ledger-actions.ts b/src/lib/actions/ledger-actions.ts
+index 151523c..918fd6c 100644
+--- a/src/lib/actions/ledger-actions.ts
++++ b/src/lib/actions/ledger-actions.ts
+@@ -7,8 +7,10 @@ import {
+   type DispatchProfitFields,
+ } from './profit-utils';
+ import { ledgerEntryCreateSchema, ledgerEntryUpdateSchema } from './schemas';
++import { safeAction } from './action-result';
+ 
+-export async function addLedgerEntry(
++// Internal implementation unchanged — safeAction() wraps the export below.
++async function _addLedgerEntry(
+   shipmentId: string,
+   entry: {
+     date?: string;
+@@ -121,7 +123,10 @@ export async function addLedgerEntry(
+   return data;
+ }
+ 
+-export async function updateLedgerEntry(
++export const addLedgerEntry = safeAction(_addLedgerEntry);
++
++// Internal implementation unchanged — safeAction() wraps the export below.
++async function _updateLedgerEntry(
+   id: string,
+   shipmentId: string,
+   oldEntry: {
+@@ -283,3 +288,5 @@ export async function updateLedgerEntry(
+   await logActivity(supabase, userId, 'ledger_entry_updated', 'shipment_ledger', id, updates);
+   return { success: true };
+ }
++
++export const updateLedgerEntry = safeAction(_updateLedgerEntry);
+diff --git a/src/lib/actions/orders-actions.test.ts b/src/lib/actions/orders-actions.test.ts
+index c3537c8..8ba3aa9 100644
+--- a/src/lib/actions/orders-actions.test.ts
++++ b/src/lib/actions/orders-actions.test.ts
+@@ -1,7 +1,7 @@
+ import { describe, it, expect, vi, beforeEach } from 'vitest';
+ import { http, HttpResponse } from 'msw';
+ import { server } from '../../../mocks/server';
+-import { fetchOrders, rejectOrder, dispatchOrder, finalConfirmCheck } from './orders-actions';
++import { fetchOrders, approveOrder, rejectOrder, dispatchOrder, finalConfirmCheck } from './orders-actions';
+ 
+ // ── Shared mock infra — bug3 and MSW tests need different supabase clients
+ // injected into requireAdmin, but there can be only one vi.mock per module.
+@@ -213,12 +213,28 @@ describe('Orders Server Actions', () => {
+     });
+   });
+ 
++  describe('approveOrder', () => {
++    it('returns a failure result (not a throw) for invalid input, via the safeAction wrapper', async () => {
++      // orderId must be a UUID per orderApproveSchema — this exercises the
++      // Zod-validation throw path through safeAction end-to-end.
++      const result = await approveOrder('not-a-uuid', [{ itemId: 'item-1', qty: 5 }]);
++      expect(result.success).toBe(false);
++      if (!result.success) {
++        expect(typeof result.error).toBe('string');
++        expect(result.error.length).toBeGreaterThan(0);
++      }
++    });
++  });
++
+   describe('rejectOrder', () => {
+     it('rejects an order with a reason', async () => {
+       server.use(http.patch('*/rest/v1/orders', () => HttpResponse.json([])));
+ 
+       const result = await rejectOrder('550e8400-e29b-41d4-a716-446655440000', 'Out of stock');
+-      expect(result).toEqual({ success: true });
++      expect(result.success).toBe(true);
++      if (result.success) {
++        expect(result.data).toEqual({ success: true });
++      }
+     });
+   });
+ 
+@@ -344,8 +360,8 @@ describe('Orders Server Actions', () => {
+         }),
+       );
+ 
+-      await dispatchOrder('order-profit-0', 'ship-profit-test', 'DR-PROFIT-0', null, null, null);
+-      await dispatchOrder(
++      const r1 = await dispatchOrder('order-profit-0', 'ship-profit-test', 'DR-PROFIT-0', null, null, null);
++      const r2 = await dispatchOrder(
+         'order-profit-500',
+         'ship-profit-test',
+         'DR-PROFIT-500',
+@@ -353,6 +369,8 @@ describe('Orders Server Actions', () => {
+         null,
+         null,
+       );
++      expect(r1.success).toBe(true);
++      expect(r2.success).toBe(true);
+ 
+       expect(capturedLedgers).toHaveLength(2);
+       expect(capturedLedgers[0].p_total_sales).toBe(5000);
+@@ -377,18 +395,22 @@ describe('Orders Server Actions', () => {
+       });
+     });
+ 
+-    it('throws when no approved quantity exists', async () => {
+-      await expect(
+-        dispatchOrder('order-001', 'ship-001', 'DR-TEST-ZERO', null, 'Driver', 'PLATE'),
+-      ).rejects.toThrow(/no approved quantity/i);
++    it('returns a failure result when no approved quantity exists', async () => {
++      const result = await dispatchOrder('order-001', 'ship-001', 'DR-TEST-ZERO', null, 'Driver', 'PLATE');
++      expect(result.success).toBe(false);
++      if (!result.success) {
++        expect(result.error).toMatch(/no approved quantity/i);
++      }
+     });
+ 
+-    it('throws when order is already dispatched', async () => {
++    it('returns a failure result when order is already dispatched', async () => {
+       setTableData('orders', { ...bug3Order, status: 'dispatched' });
+ 
+-      await expect(
+-        dispatchOrder('order-001', 'ship-001', 'DR-TEST-DISP', null, 'Driver', 'PLATE'),
+-      ).rejects.toThrow(/already been dispatched/i);
++      const result = await dispatchOrder('order-001', 'ship-001', 'DR-TEST-DISP', null, 'Driver', 'PLATE');
++      expect(result.success).toBe(false);
++      if (!result.success) {
++        expect(result.error).toMatch(/already been dispatched/i);
++      }
+     });
+ 
+     it('succeeds on happy path with approved quantities', async () => {
+@@ -403,7 +425,10 @@ describe('Orders Server Actions', () => {
+         'Happy Driver',
+         'HAPPY1',
+       );
+-      expect(result).toEqual({ success: true });
++      expect(result.success).toBe(true);
++      if (result.success) {
++        expect(result.data).toEqual({ success: true });
++      }
+     });
+   });
+ 
+diff --git a/src/lib/actions/orders-actions.ts b/src/lib/actions/orders-actions.ts
+index 1624bc2..f586a22 100644
+--- a/src/lib/actions/orders-actions.ts
++++ b/src/lib/actions/orders-actions.ts
+@@ -10,6 +10,7 @@ import {
+ import { orderApproveSchema, orderRejectSchema, orderTrackingUpdateSchema } from './schemas';
+ import { addLedgerEntry } from './ledger-actions';
+ import { createRoleNotification } from './notification-actions';
++import { safeAction } from './action-result';
+ 
+ export async function fetchOrders(status?: string) {
+   const { supabase } = await requireAdmin();
+@@ -24,7 +25,8 @@ export async function fetchOrders(status?: string) {
+   return data ?? [];
+ }
+ 
+-export async function approveOrder(
++// Internal implementation unchanged — safeAction() wraps the export below.
++async function _approveOrder(
+   orderId: string,
+   approvedItems: { itemId: string; qty: number }[],
+   shippingFee?: number,
+@@ -162,7 +164,10 @@ export async function approveOrder(
+   return { success: true, newStatus };
+ }
+ 
+-export async function rejectOrder(orderId: string, reason: string) {
++export const approveOrder = safeAction(_approveOrder);
++
++// Internal implementation unchanged — safeAction() wraps the export below.
++async function _rejectOrder(orderId: string, reason: string) {
+   const parsed = orderRejectSchema.safeParse({ orderId, reason });
+   if (!parsed.success) throw new Error(parsed.error.issues.map((i) => i.message).join('; '));
+   const { supabase, userId } = await requireAdmin();
+@@ -175,6 +180,8 @@ export async function rejectOrder(orderId: string, reason: string) {
+   return { success: true };
+ }
+ 
++export const rejectOrder = safeAction(_rejectOrder);
++
+ export async function finalConfirmCheck(orderId: string) {
+   const { supabase, userId } = await requireAdmin();
+ 
+@@ -228,7 +235,8 @@ export async function finalConfirmCheck(orderId: string) {
+   return { success: true };
+ }
+ 
+-export async function dispatchOrder(
++// Internal implementation unchanged — safeAction() wraps the export below.
++async function _dispatchOrder(
+   orderId: string,
+   shipmentId: string,
+   drNumber: string,
+@@ -496,7 +504,10 @@ export async function dispatchOrder(
+   return { success: true };
+ }
+ 
+-export async function updateTrackingStatus(
++export const dispatchOrder = safeAction(_dispatchOrder);
++
++// Internal implementation unchanged — safeAction() wraps the export below.
++async function _updateTrackingStatus(
+   orderId: string,
+   trackingStatus: string,
+   bagsReturnedJb?: number,
+@@ -562,7 +573,7 @@ export async function updateTrackingStatus(
+         [bagsReturnedSb || 0, 'SB'],
+       ] as const) {
+         if (returnedBags <= 0) continue;
+-        await addLedgerEntry(order.shipment_id, {
++        const ledgerResult = await addLedgerEntry(order.shipment_id, {
+           date: new Date().toISOString().split('T')[0],
+           po_number: order.po_number,
+           dr_number: order.dr_number,
+@@ -575,9 +586,21 @@ export async function updateTrackingStatus(
+           client_reason: returnReason || undefined,
+           delivery_receipt_id: drRecord?.id || null,
+         });
++        // addLedgerEntry no longer throws (it's wrapped in safeAction) — it
++        // returns { success: false, error } instead. Re-throw here so a
++        // failed return-profit ledger entry still fails the WHOLE tracking
++        // update, exactly like the old throw-based behavior did. Without
++        // this, a failure here would go completely silent: the order's
++        // tracking status would update fine while its profit adjustment
++        // quietly never got created.
++        if (!ledgerResult.success) {
++          throw new Error(`Failed to record return ledger entry: ${ledgerResult.error}`);
++        }
+       }
+     }
+   }
+ 
+   return { success: true };
+ }
++
++export const updateTrackingStatus = safeAction(_updateTrackingStatus);

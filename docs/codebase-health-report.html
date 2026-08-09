@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>OBBO iManage — Codebase Health Report</title>
+<style>
+  :root {
+    --bg: #0b0f14;
+    --panel: #121820;
+    --panel-2: #0f141b;
+    --border: #1e2935;
+    --border-strong: #2c3a4c;
+    --text: #d7e1ea;
+    --muted: #8ba1b3;
+    --accent: #38bdf8;
+    --accent-dim: #0ea5e9;
+    --ok: #34d399;
+    --warn: #fbbf24;
+    --err: #f87171;
+    --info: #a78bfa;
+    --mono: "Cascadia Code", "JetBrains Mono", Consolas, monospace;
+    --sans: "Inter", "Segoe UI", system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    line-height: 1.55;
+    padding: 2rem 1.25rem 4rem;
+  }
+  .wrap { max-width: 1180px; margin: 0 auto; }
+  header.hero {
+    border: 1px solid var(--border);
+    background: linear-gradient(180deg, #101722 0%, #0c1118 100%);
+    border-radius: 14px;
+    padding: 2rem 2rem 1.6rem;
+    margin-bottom: 1.6rem;
+    position: relative;
+    overflow: hidden;
+  }
+  header.hero::after {
+    content: "";
+    position: absolute; inset: 0;
+    background:
+      radial-gradient(600px 200px at 85% -20%, rgba(56,189,248,.14), transparent 70%);
+    pointer-events: none;
+  }
+  .kicker {
+    font-family: var(--mono);
+    font-size: 12px;
+    letter-spacing: .18em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: .6rem;
+  }
+  h1 { font-size: 1.9rem; font-weight: 700; letter-spacing: -.02em; }
+  h1 .sub { color: var(--muted); font-weight: 500; }
+  .meta {
+    margin-top: 1rem; display: flex; flex-wrap: wrap; gap: .5rem 1.4rem;
+    font-family: var(--mono); font-size: 12.5px; color: var(--muted);
+  }
+  .meta b { color: var(--text); font-weight: 600; }
+  .badge-row { margin-top: 1.2rem; display: flex; flex-wrap: wrap; gap: .6rem; }
+  .badge {
+    font-family: var(--mono); font-size: 12px; padding: .32rem .7rem;
+    border-radius: 999px; border: 1px solid var(--border-strong);
+    background: var(--panel); color: var(--muted);
+  }
+  .badge.good { border-color: rgba(52,211,153,.4); color: var(--ok); background: rgba(52,211,153,.07); }
+  .badge.mid  { border-color: rgba(251,191,36,.4);  color: var(--warn); background: rgba(251,191,36,.07); }
+  .badge.bad  { border-color: rgba(248,113,113,.4); color: var(--err); background: rgba(248,113,113,.07); }
+  .badge.inf  { border-color: rgba(167,139,250,.4); color: var(--info); background: rgba(167,139,250,.07); }
+
+  section {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.5rem 1.6rem;
+    margin-bottom: 1.4rem;
+  }
+  h2 {
+    font-size: 1.1rem; font-weight: 700; margin-bottom: .3rem;
+    display: flex; align-items: center; gap: .6rem;
+  }
+  h2 .n {
+    font-family: var(--mono); font-size: 12px; color: var(--accent);
+    background: rgba(56,189,248,.1); border: 1px solid rgba(56,189,248,.3);
+    border-radius: 6px; padding: .15rem .45rem;
+  }
+  .section-sub { color: var(--muted); font-size: 13.5px; margin-bottom: 1.1rem; }
+  h3 { font-size: .95rem; font-weight: 600; margin: 1.4rem 0 .6rem; color: var(--text); }
+  h3:first-child { margin-top: 0; }
+  p { color: var(--text); font-size: 14px; margin-bottom: .7rem; }
+  .muted { color: var(--muted); }
+  code {
+    font-family: var(--mono); font-size: 12.5px; background: #0a0e13;
+    border: 1px solid var(--border); border-radius: 4px; padding: .1rem .35rem;
+    color: #7dd3fc;
+  }
+  code.block { display: block; padding: .8rem 1rem; margin: .5rem 0; white-space: pre-wrap; line-height: 1.5; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 13.5px; margin: .6rem 0 1rem; }
+  th, td { text-align: left; padding: .5rem .7rem; border-bottom: 1px solid var(--border); vertical-align: top; }
+  th {
+    font-family: var(--mono); font-size: 11.5px; letter-spacing: .08em; text-transform: uppercase;
+    color: var(--muted); background: var(--panel-2);
+  }
+  tr:last-child td { border-bottom: none; }
+  td.mono { font-family: var(--mono); font-size: 12.5px; }
+  .num { font-family: var(--mono); text-align: right; }
+
+  .pill { display: inline-block; font-family: var(--mono); font-size: 11px; padding: .12rem .5rem; border-radius: 999px; border: 1px solid; white-space: nowrap; }
+  .pill.crit { color: var(--err); border-color: rgba(248,113,113,.45); background: rgba(248,113,113,.08); }
+  .pill.high { color: #fb923c; border-color: rgba(251,146,60,.45); background: rgba(251,146,60,.08); }
+  .pill.mid  { color: var(--warn); border-color: rgba(251,191,36,.45);  background: rgba(251,191,36,.08); }
+  .pill.low  { color: var(--muted); border-color: var(--border-strong); }
+  .pill.ok   { color: var(--ok); border-color: rgba(52,211,153,.45); background: rgba(52,211,153,.08); }
+  .pill.inf  { color: var(--info); border-color: rgba(167,139,250,.45); background: rgba(167,139,250,.08); }
+
+  .issue { border: 1px solid var(--border); border-left: 3px solid var(--border-strong); border-radius: 8px; padding: .9rem 1rem; margin-bottom: .8rem; background: var(--panel-2); }
+  .issue.crit { border-left-color: var(--err); }
+  .issue.high { border-left-color: #fb923c; }
+  .issue.mid  { border-left-color: var(--warn); }
+  .issue.low  { border-left-color: var(--muted); }
+  .issue .top { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; margin-bottom: .35rem; }
+  .issue .id { font-family: var(--mono); font-size: 12px; color: var(--accent); }
+  .issue .title { font-weight: 600; font-size: 14px; }
+  .issue .loc { font-family: var(--mono); font-size: 11.5px; color: var(--muted); }
+  .issue p { font-size: 13.5px; margin: .25rem 0; }
+  .issue .fix { border-top: 1px dashed var(--border); margin-top: .5rem; padding-top: .5rem; font-size: 13px; }
+  .issue .fix b { color: var(--ok); }
+
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+  @media (max-width: 900px) { .grid2 { grid-template-columns: 1fr; } }
+
+  .kpi { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: .8rem; margin: .8rem 0 1.2rem; }
+  .kpi .cell { background: var(--panel-2); border: 1px solid var(--border); border-radius: 10px; padding: .9rem 1rem; }
+  .kpi .v { font-family: var(--mono); font-size: 1.5rem; font-weight: 700; line-height: 1.1; }
+  .kpi .k { font-size: 11.5px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin-top: .25rem; }
+  .kpi .v.good { color: var(--ok); } .kpi .v.warn { color: var(--warn); } .kpi .v.bad { color: var(--err); } .kpi .v.info { color: var(--info); }
+
+  .prog { height: 7px; background: var(--panel-2); border: 1px solid var(--border); border-radius: 999px; overflow: hidden; margin-top: .35rem; }
+  .prog > span { display: block; height: 100%; border-radius: 999px; }
+  .coverage-table td { font-family: var(--mono); font-size: 12.5px; }
+
+  footer { margin-top: 1.6rem; color: var(--muted); font-size: 12.5px; font-family: var(--mono); border-top: 1px solid var(--border); padding-top: 1rem; }
+  .toc { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: .5rem; margin: .6rem 0 0; }
+  .toc a { color: var(--accent); text-decoration: none; font-size: 13.5px; background: var(--panel-2); border: 1px solid var(--border); border-radius: 8px; padding: .5rem .7rem; display: block; }
+  .toc a:hover { border-color: var(--border-strong); background: #151d27; }
+  details { margin: .5rem 0; }
+  summary { cursor: pointer; font-weight: 600; font-size: 13.5px; color: var(--accent); }
+  .note { background: rgba(56,189,248,.06); border: 1px solid rgba(56,189,248,.25); border-radius: 8px; padding: .7rem .9rem; font-size: 13px; margin: .7rem 0; }
+  .note.warn { background: rgba(251,191,36,.06); border-color: rgba(251,191,36,.3); }
+  .note.err { background: rgba(248,113,113,.06); border-color: rgba(248,113,113,.3); }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="hero">
+  <div class="kicker">Automated Health Scan</div>
+  <h1>OBBO iManage <span class="sub">— Codebase Health Report</span></h1>
+  <div class="meta">
+    <span>Scan: <b>2026-08-07</b></span>
+    <span>Branch: <b>main</b></span>
+    <span>Commit: <b>e7e3b61</b></span>
+    <span>Stack: <b>Next.js App Router · React 19 · TS · Supabase</b></span>
+  </div>
+  <div class="badge-row">
+    <span class="badge good">✓ 70/70 unit tests</span>
+    <span class="badge mid">◇ 46.4% line coverage</span>
+    <span class="badge good">✓ tsc --noEmit clean</span>
+    <span class="badge mid">✗ eslint: 2 errors / 246 warnings</span>
+    <span class="badge good">✓ next build passes</span>
+    <span class="badge bad">✗ 3 critical schema gaps</span>
+  </div>
+</header>
+
+<section>
+  <h2><span class="n">§0</span> TL;DR</h2>
+  <p>The application <strong>compiles, builds, and its test suite is green</strong>, and the P0-B pricing/balance work from this sprint is well-covered (<code>profit-utils.ts</code> at 98% statements / 100% functions). The risk is <strong>not in the app code — it is in schema reproducibility</strong>: production's schema is not reproducible from <code>supabase/schema.sql</code> + the dated migrations alone. It also depends on two <code>.agents</code> migrations, and <code>schema.sql</code> itself has a fresh-install ordering bug. Three critical gaps are documented in <a href="#sec4" style="color:var(--accent)">§4</a>.</p>
+  <div class="note err"><b>Schema claim.</b> All profit/total/balance math in this repo is <em>code-verified</em> but <em>data-unverified</em>: the production database currently has 4 orders and <b>zero <code>order_items</code> rows</b>, so no real order has ever exercised the pricing/profit path. Re-run <code>node scripts/audit-order-totals.mjs</code> after the first real orders.</div>
+</section>
+
+<section>
+  <h2><span class="n">§1</span> Automated Checks — This Run</h2>
+  <p class="section-sub">All executed locally on 2026-08-07 against commit <code>e7e3b61</code>.</p>
+  <div class="kpi">
+    <div class="cell"><div class="v good">70/70</div><div class="k">Vitest cases (9 files)</div></div>
+    <div class="cell"><div class="v warn">46.4%</div><div class="k">Line coverage</div></div>
+    <div class="cell"><div class="v good">0</div><div class="k">TypeScript errors</div></div>
+    <div class="cell"><div class="v bad">2</div><div class="k">ESLint errors</div></div>
+    <div class="cell"><div class="v warn">246</div><div class="k">ESLint warnings</div></div>
+    <div class="cell"><div class="v good">OK</div><div class="k">next build</div></div>
+  </div>
+
+  <table>
+    <thead><tr><th>Check</th><th>Command</th><th class="num">Result</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td class="mono">Unit tests</td><td class="mono">npx vitest run</td><td class="num"><span class="pill ok">70/70 pass</span></td><td>9 files · 3.7s</td></tr>
+      <tr><td class="mono">Coverage</td><td class="mono">npx vitest run --coverage</td><td class="num"><span class="pill mid">46.4% lines</span></td><td>via <code>@vitest/coverage-v8</code> (installed this run)</td></tr>
+      <tr><td class="mono">Typecheck</td><td class="mono">npx tsc --noEmit</td><td class="num"><span class="pill ok">0 errors</span></td><td>no <code>typecheck</code> script exists; CI runs tsc directly</td></tr>
+      <tr><td class="mono">Lint</td><td class="mono">npx eslint .</td><td class="num"><span class="pill bad">2E / 246W</span></td><td>see §5</td></tr>
+      <tr><td class="mono">Build</td><td class="mono">npm run build</td><td class="num"><span class="pill ok">pass</span></td><td>all routes compiled</td></tr>
+      <tr><td class="mono">E2E</td><td class="mono">npm run test:e2e</td><td class="num"><span class="pill low">not run</span></td><td>4 Playwright smoke tests exist; run in CI</td></tr>
+      <tr><td class="mono">Schema drift</td><td class="mono">node scripts/verify-schema-drift.mjs</td><td class="num"><span class="pill mid">drift found</span></td><td>new tool, see §3</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Coverage highlights (by file)</h3>
+  <table class="coverage-table">
+    <thead><tr><th>File</th><th class="num">% Stmts</th><th class="num">% Branch</th><th class="num">% Funcs</th><th class="num">% Lines</th></tr></thead>
+    <tbody>
+      <tr><td>profit-utils.ts <span class="pill ok">critical path</span></td><td class="num">98.0</td><td class="num">93.5</td><td class="num">100</td><td class="num">98.0</td></tr>
+      <tr><td>schemas.ts</td><td class="num">100</td><td class="num">50</td><td class="num">100</td><td class="num">100</td></tr>
+      <tr><td>po-utils.ts</td><td class="num">93.3</td><td class="num">60</td><td class="num">100</td><td class="num">93.3</td></tr>
+      <tr><td>ledger-actions.ts</td><td class="num">83.1</td><td class="num">60</td><td class="num">50</td><td class="num">89.6</td></tr>
+      <tr><td>products-actions.ts</td><td class="num">80</td><td class="num">69.2</td><td class="num">66.7</td><td class="num">100</td></tr>
+      <tr><td>order-schema.ts <span class="pill inf">wizard</span></td><td class="num">60.7</td><td class="num">14.3</td><td class="num">30.8</td><td class="num">61.5</td></tr>
+      <tr><td>admin-helpers.ts</td><td class="num">52.8</td><td class="num">60.6</td><td class="num">57.1</td><td class="num">54.2</td></tr>
+      <tr><td>orders-actions.ts <span class="pill inf">big</span></td><td class="num">39.6</td><td class="num">21.9</td><td class="num">45.8</td><td class="num">44.4</td></tr>
+      <tr><td>delivery-receipt-actions.ts</td><td class="num">27.5</td><td class="num">10.9</td><td class="num">25</td><td class="num">29.7</td></tr>
+      <tr><td>dashboard-actions.ts</td><td class="num">27.5</td><td class="num">29.2</td><td class="num">40</td><td class="num">26.3</td></tr>
+      <tr><td>client-actions.ts <span class="pill inf">big</span></td><td class="num">17.9</td><td class="num">19.2</td><td class="num">16.7</td><td class="num">19.1</td></tr>
+      <tr><td>src/lib/supabase/admin.ts</td><td class="num">0</td><td class="num">0</td><td class="num">0</td><td class="num">0</td></tr>
+    </tbody>
+  </table>
+  <div class="prog"><span style="width:46.4%;background:var(--warn)"></span></div>
+  <p class="muted" style="margin-top:.3rem;font-size:12.5px">Line coverage 46.4% overall (498/1074 lines). No coverage threshold is configured in <code>vitest.config.ts</code> — CI runs tests without <code>--coverage</code>, so regressions in coverage are not gated.</p>
+
+  <h3>ESLint warning breakdown</h3>
+  <table>
+    <thead><tr><th>Rule</th><th class="num">Count</th><th>Example / note</th></tr></thead>
+    <tbody>
+      <tr><td class="mono">@typescript-eslint/no-explicit-any</td><td class="num">90</td><td>largest debt bucket</td></tr>
+      <tr><td class="mono">no-console</td><td class="num">~130</td><td>mostly seed/dev scripts — <code>/* eslint-disable no-console */</code> would clean these</td></tr>
+      <tr><td class="mono">react-hooks/set-state-in-effect</td><td class="num">16</td><td>e.g. <code>client-kyc-context.tsx:48</code> — sync state load in effect</td></tr>
+      <tr><td class="mono">react-hooks/exhaustive-deps</td><td class="num">5</td><td></td></tr>
+      <tr><td class="mono">@next/next/no-img-element</td><td class="num">2</td><td>prefer <code>OptimizedImage</code></td></tr>
+      <tr><td class="mono">@typescript-eslint/no-unused-vars <span class="pill bad">error</span></td><td class="num">2</td><td>dead vars in seed scripts only</td></tr>
+      <tr><td class="mono">react-hooks/immutability</td><td class="num">1</td><td></td></tr>
+    </tbody>
+  </table>
+  <div class="note">The <b>2 ESLint errors</b> are unused variables in scripts, not app code: <code>seed-mock-data.mjs:81</code> (<code>fetchErr</code>) and <code>seed-shipments.mjs:56</code> (<code>tsNow</code>). A normal <code>eslint .</code> run is failing CI's lint job on these.</div>
+</section>
+
+<section>
+  <h2><span class="n">§2</span> Testing Infrastructure</h2>
+  <div class="grid2">
+    <div>
+      <h3>What's covered</h3>
+      <ul style="font-size:13.5px;padding-left:1.1rem;color:var(--text)">
+        <li><b>9 Vitest files / 70 cases</b> — server-action logic, pure math, 1 component (<code>LedgerClient</code>).</li>
+        <li><b>MSW</b> implements real PostgREST semantics for auth + 9 resource endpoints; <code>vitest.setup.ts</code> stubs the server client + <code>requireAdmin</code>.</li>
+        <li><b>Playwright</b> — 4 smoke tests in <code>e2e/smoke.spec.ts</code> (CI runs them).</li>
+        <li>No <code>@testing-library/user-event</code> usage yet; <code>@vitest/coverage-v8</code> was the only missing test dependency.</li>
+      </ul>
+    </div>
+    <div>
+      <h3>Coverage gaps that matter</h3>
+      <ul style="font-size:13.5px;padding-left:1.1rem;color:var(--text)">
+        <li><b>client-actions.ts 19%</b> — the order submission / split-delivery / redelivery path is the highest-risk, lowest-coverage file.</li>
+        <li><b>orders-actions.ts 44%</b> — approval/dispatch/balance writes only partially tested.</li>
+        <li><b>delivery-receipt-actions.ts 30%</b> — DR + ledger linking.</li>
+        <li><b>0%</b> on supabase server helpers; no RLS integration tests.</li>
+      </ul>
+    </div>
+  </div>
+  <div class="note">CI (<code>.github/workflows/ci.yml</code>) runs 5 parallel jobs: lint, typecheck, unit, build, e2e. Adding <code>--coverage</code> with a threshold would make coverage a gate instead of a metric.</div>
+</section>
+
+<section id="sec3">
+  <h2><span class="n">§3</span> Schema Health</h2>
+  <p class="section-sub">Three sources of truth disagree: <code>supabase/schema.sql</code> (canonical baseline), <code>src/lib/types/database.ts</code> (hand-written TS), and <code>src/generated/prisma/</code> + <code>prisma/schema.prisma</code> (never-connected model). New tool: <code>node scripts/verify-schema-drift.mjs</code>.</p>
+
+  <h3>3.1 Declared vs live</h3>
+  <table>
+    <thead><tr><th>Artifact</th><th class="num">Tables</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td class="mono">supabase/schema.sql</td><td class="num">14</td><td>canonical, idempotent baseline</td></tr>
+      <tr><td class="mono">database.ts interfaces</td><td class="num">14</td><td>hand-written; not generated from DB</td></tr>
+      <tr><td class="mono">.agents/migrations (002–017)</td><td class="num">17</td><td>older agent-managed lineage</td></tr>
+      <tr><td class="mono">supabase/migrations (dated)</td><td class="num">8</td><td>newer lineage</td></tr>
+      <tr><td class="mono">prisma/schema.prisma</td><td class="num">14</td><td>decorative — <b>no url</b>, never connected</td></tr>
+      <tr><td class="mono">src/generated/prisma/</td><td class="num">—</td><td><b>stale</b> — reflects an older real DB (see 3.4)</td></tr>
+      <tr><td class="mono"><b>Live production DB</b></td><td class="num">17+</td><td>partial, hand-applied subset — see 3.3</td></tr>
+    </tbody>
+  </table>
+
+  <h3>3.2 Static drift (checker output)</h3>
+  <table>
+    <thead><tr><th>Category</th><th class="num">Count</th><th>Details</th></tr></thead>
+    <tbody>
+      <tr><td>In schema.sql, missing from <code>database.ts</code></td><td class="num">1</td><td class="mono">order_items.selling_price_per_bag</td></tr>
+      <tr><td>In <code>database.ts</code>, missing from schema.sql</td><td class="num">1 real + 10 relations</td><td class="mono">shipment_ledger.delivery_receipt_id (real); client/product/order/items/actor are embedded-relation aliases</td></tr>
+      <tr><td>Added by migrations, absent from schema.sql</td><td class="num">5</td><td class="mono">shipment_ledger.delivery_receipt_id · shipments.source · shipments.warehouse_manager_id · activity_log.warehouse_manager_id · activity_log.target_client_id</td></tr>
+      <tr><td>Tables with no TS interface</td><td class="num">3</td><td class="mono">email_verifications (live + used by OTP API) · warehouse_settings · daily_reports</td></tr>
+    </tbody>
+  </table>
+
+  <h3>3.3 Live production schema (probed read-only via service key)</h3>
+  <table>
+    <thead><tr><th>Column / table</th><th>Status</th><th>Meaning</th></tr></thead>
+    <tbody>
+      <tr><td class="mono">order_items.selling_price_per_bag</td><td><span class="pill ok">present</span></td><td>migration <code>20260629</code> applied</td></tr>
+      <tr><td class="mono">shipment_ledger.delivery_receipt_id</td><td><span class="pill ok">present</span></td><td><code>.agents/017</code> applied (0 populated rows)</td></tr>
+      <tr><td class="mono">email_verifications</td><td><span class="pill ok">present</span></td><td><code>.agents/002</code> applied — OTP flow works</td></tr>
+      <tr><td class="mono">notifications.target_role · customer_balances.total_purchase · orders.deliver_now_jb · orders.order_type · shipment_ledger.return_reason</td><td><span class="pill ok">present</span></td><td>core workflow columns live</td></tr>
+      <tr><td class="mono">shipments.source / warehouse_manager_id</td><td><span class="pill bad">absent</span></td><td><code>.agents/005</code> NOT applied — no warehouse-manager schema</td></tr>
+      <tr><td class="mono">warehouse_settings · daily_reports</td><td><span class="pill bad">absent</span></td><td>consistent with 005 not applied</td></tr>
+      <tr><td class="mono">cost_configurations (table)</td><td><span class="pill inf">present, 0 rows</span></td><td>orphaned historical table — evidence of an earlier schema (see 3.4)</td></tr>
+      <tr><td class="mono">profiles.id_front_url / id_back_url · shipments.gross_revenue / total_sales</td><td><span class="pill low">absent</span></td><td>phantom fields exist only in stale generated Prisma — never in this live DB</td></tr>
+    </tbody>
+  </table>
+  <div class="note err"><b>Key takeaway.</b> Production's schema is <b>not reproducible</b> from <code>schema.sql</code> + <code>supabase/migrations</code>. A fresh DB from those alone would (a) fail at <code>schema.sql:221</code> (FK to a not-yet-created table) and (b) lack <code>shipment_ledger.delivery_receipt_id</code> — so the <code>dispatch_order_v2</code> RPC would crash on its step 6. Production only works today because a hand-picked subset of <code>.agents</code> migrations was applied manually.</div>
+
+  <h3>3.4 Prisma drift</h3>
+  <ul style="font-size:13.5px;padding-left:1.1rem">
+    <li><b><code>prisma/schema.prisma</code></b> (never connected) is missing 4 live columns: <code>Order.deliver_now_jb</code>, <code>Order.deliver_now_sb</code>, <code>CustomerBalance.total_purchase</code>, <code>ShipmentLedger.delivery_receipt_id</code>.</li>
+    <li><b><code>src/generated/prisma/schema.prisma</code></b> is stale and contains phantom fields/models — <code>Profile.id_front_url/id_back_url</code>, <code>Shipment.total_sales/gross_revenue/net_profit</code>, and a <code>CostConfiguration</code> model. The live DB still holds an empty <code>cost_configurations</code> table, so these came from a real, earlier database state. Recommend deleting the generated copy — the app never imports <code>@prisma/client</code>.</li>
+  </ul>
+</section>
+
+<section id="sec4">
+  <h2><span class="n">§4</span> Discrepancy Register</h2>
+  <p class="section-sub">Verified this session against HEAD <code>e7e3b61</code> and the live DB. Severity is impact-weighted for a fresh DB / new-order flow.</p>
+
+  <div class="issue crit">
+    <div class="top"><span class="id">S-1</span><span class="title">schema.sql has a fresh-install ordering bug</span><span class="pill crit">critical</span><span class="loc">supabase/schema.sql:221</span></div>
+    <p><code>delivery_receipts.order_id</code> gets a FK to <code>public.orders(id)</code> at line 221, but the <code>orders</code> table is only created at line 224. On a truly empty database, <code>schema.sql</code> fails with <code>relation "public.orders" does not exist</code>.</p>
+    <div class="fix"><b>Fix:</b> move the ALTER (or use <code>ALTER TABLE ... ADD CONSTRAINT ... FOREIGN KEY</code> after both tables exist).</div>
+  </div>
+
+  <div class="issue crit">
+    <div class="top"><span class="id">S-2</span><span class="title">shipment_ledger.delivery_receipt_id not in canonical schema</span><span class="pill crit">critical</span><span class="loc">.agents/migrations/017 · supabase/migrations/20260720_dispatch_order_rpc.sql</span></div>
+    <p>Written by <code>dispatch_order_v2()</code> (step 6), typed in <code>database.ts</code>, and read by ledger/DR code — but absent from <code>schema.sql</code>. A DB built from schema.sql + dated migrations fails to dispatch. It's live in prod (so 017 was applied there), but any fresh/staging DB breaks.</p>
+    <div class="fix"><b>Fix:</b> absorb 017's column + FK + index into <code>schema.sql</code>.</div>
+  </div>
+
+  <div class="issue crit">
+    <div class="top"><span class="id">S-3</span><span class="title">No reproducible/ordered migration path — 3 parallel lineages</span><span class="pill crit">critical</span><span class="loc">.agents/migrations · supabase/migrations · supabase/*.sql</span></div>
+    <p>~32 SQL files across 4 locations with no applied-tracking. Production is a hand-applied subset (e.g. 002+017 applied, 005 not). <code>prisma/migrations/</code> is empty and <code>prisma migrate deploy</code> would deploy nothing. This is the root cause of S-1/S-2 and makes any environment rebuild a manual, error-prone procedure.</p>
+    <div class="fix"><b>Fix:</b> consolidate into one dated <code>supabase/migrations</code> sequence that replays on <code>schema.sql</code>, and delete the dead Prisma model + generated client.</div>
+  </div>
+
+  <div class="issue high">
+    <div class="top"><span class="id">S-4</span><span class="title">order_items.selling_price_per_bag missing from OrderItem type</span><span class="pill high">high</span><span class="loc">src/lib/types/database.ts:185</span></div>
+    <p>The column is written by <code>client-actions.ts:230</code> / <code>admin-helpers.ts:181,192</code>, exists in schema.sql + migration 20260629 (now applied to prod), but the <code>OrderItem</code> interface omits it — so readers are forced to re-read <code>products</code> or use <code>any</code>.</p>
+    <div class="fix"><b>Fix:</b> add <code>selling_price_per_bag: number | null</code> to <code>OrderItem</code>.</div>
+  </div>
+
+  <div class="issue high">
+    <div class="top"><span class="id">S-5</span><span class="title">email_verifications is live but undeclared</span><span class="pill high">high</span><span class="loc">src/app/api/auth/{send-otp,verify-otp}/route.ts</span></div>
+    <p>Used by the OTP auth API and present in prod (via <code>.agents/002</code>), but absent from <code>schema.sql</code>, <code>database.ts</code>, and prisma. Not reproducible from the canonical schema.</p>
+    <div class="fix"><b>Fix:</b> add the table to <code>schema.sql</code> and a type to <code>database.ts</code>.</div>
+  </div>
+
+  <div class="issue high">
+    <div class="top"><span class="id">S-6</span><span class="title">TrackingStatus type omits returned_good / returned_waste</span><span class="pill high">high</span><span class="loc">src/lib/types/database.ts:19</span></div>
+    <p>Schema.sql (L246), <code>.agents/016</code>, and code (<code>orders-actions.ts:522</code>, <code>tracking-tab.tsx</code>) use <code>returned_good</code>/<code>returned_waste</code>; the TS union only has 4 values — silent type drift.</p>
+    <div class="fix"><b>Fix:</b> extend the union.</div>
+  </div>
+
+  <div class="issue high">
+    <div class="top"><span class="id">S-7</span><span class="title">customer_balances client INSERT/UPDATE policies only in .agents/011</span><span class="pill high">high</span><span class="loc">.agents/migrations/011</span></div>
+    <p>The client ledger flow requires a client to insert/update their balance rows; the RLS policies live only in the <code>.agents</code> lineage, not in <code>schema.sql</code>. A fresh canonical DB has admin-only access → client balance actions fail.</p>
+    <div class="fix"><b>Fix:</b> fold the policies into <code>schema.sql</code>.</div>
+  </div>
+
+  <div class="issue mid">
+    <div class="top"><span class="id">S-8</span><span class="title">Storage policy name collisions across files</span><span class="pill mid">medium</span><span class="loc">20260515 · migration_avatars_bucket.sql · .agents/002-004</span></div>
+    <p>The same buckets (<code>product-images</code>, <code>order-attachments</code>, <code>avatars</code>) are created + policy'd in multiple files with different policy names. Idempotent, but hard to reason about and error-prone when a policy name collides on rerun.</p>
+    <div class="fix"><b>Fix:</b> single ownership per bucket; drop-and-recreate or guard by policy name.</div>
+  </div>
+
+  <div class="issue mid">
+    <div class="top"><span class="id">S-9</span><span class="title">return_reason typed nullable; DB says NOT NULL</span><span class="pill mid">medium</span><span class="loc">src/lib/types/database.ts:106</span></div>
+    <p>Minor type/DB mismatch (<code>string | null</code> vs <code>NOT NULL DEFAULT 'return'</code>).</p>
+    <div class="fix"><b>Fix:</b> tighten the type to <code>'return' | 'waste' | 'damage'</code>.</div>
+  </div>
+
+  <div class="issue mid">
+    <div class="top"><span class="id">S-10</span><span class="title">approval input shows blank for legitimate 0 qty</span><span class="pill mid">medium</span><span class="loc">src/app/admin/orders/components/new-requests-tab.tsx:608</span></div>
+    <p><code>value={approvedQtys[item.id] || ''}</code> renders blank for an approved qty of 0; sibling at L113 correctly uses <code>??</code>. Minor UX/validation nit.</p>
+    <div class="fix"><b>Fix:</b> <code>?? ''</code>.</div>
+  </div>
+
+  <div class="issue low">
+    <div class="top"><span class="id">S-11</span><span class="title">Missing special routes</span><span class="pill low">low</span><span class="loc">src/app/error.tsx · src/app/loading.tsx · src/app/client/loading.tsx</span></div>
+    <p>Root <code>error.tsx</code> / <code>loading.tsx</code> and <code>client/loading.tsx</code> are absent (admin counterparts exist). Related to open P0-A.</p>
+    <div class="fix"><b>Fix:</b> add boundaries + migrate actions to <code>{ success, error }</code> returns.</div>
+  </div>
+</section>
+
+<section id="sec5">
+  <h2><span class="n">§5</span> Open Items from Prior Docs (deduped)</h2>
+  <p class="section-sub">Cross-referenced from <code>docs/critical-remediation-plan.html</code>, <code>sales-profit-tracking-tracker.html</code>, <code>PRE_DEPLOYMENT_REPORT.html</code>, <code>qa-manual-review.html</code>. Status re-verified against HEAD this session.</p>
+  <table>
+    <thead><tr><th>Status</th><th>Item</th><th>Source</th></tr></thead>
+    <tbody>
+      <tr><td><span class="pill crit">open</span></td><td><b>P0-A</b> — server-action errors are invisible to users (Next.js redacts <code>throw new Error()</code>); no root error boundary</td><td class="mono">critical-remediation-plan</td></tr>
+      <tr><td><span class="pill high">open</span></td><td><b>P1</b> — approval qty field missing in prod: data-level; verify <code>order_items</code> rows exist for the affected order</td><td class="mono">critical-remediation-plan</td></tr>
+      <tr><td><span class="pill mid">pending</span></td><td><code>customer_balances</code> cleanup — old unit-denominated rows; run <code>node scripts/wipe-customer-balances.mjs</code> after client reconciliation (dry-run by default)</td><td class="mono">critical-remediation-plan</td></tr>
+      <tr><td><span class="pill mid">pending</span></td><td>Re-run <code>node scripts/audit-order-totals.mjs</code> once real <code>order_items</code> rows exist (currently 0 auditable)</td><td class="mono">critical-remediation-plan</td></tr>
+      <tr><td><span class="pill mid">open</span></td><td>QA manual review (<code>docs/qa-manual-review.html</code>) — ~30 E2E cases, no results recorded yet</td><td class="mono">qa-manual-review</td></tr>
+      <tr><td><span class="pill low">open</span></td><td>Commitlint absent (<code>commitlint.config.mjs</code>) though claimed fixed</td><td class="mono">system-assessment</td></tr>
+      <tr><td><span class="pill ok">resolved</span></td><td>P0-B pricing + split-delivery + balances denomination (this sprint) — done, tested, prod-audited</td><td class="mono">critical-remediation-plan</td></tr>
+      <tr><td><span class="pill ok">resolved</span></td><td>T-1…T-8 sales/profit tracker items (ledger recompute, source-aware price, zod schemas, decimal.js, cost seed)</td><td class="mono">sales-profit-tracking-tracker</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section>
+  <h2><span class="n">§6</span> Recommendations</h2>
+  <ol style="font-size:14px;padding-left:1.3rem">
+    <li><b>Make the schema reproducible (S-1/S-2/S-3, S-5/S-7).</b> Fold <code>.agents/002, 011, 016, 017</code> into <code>schema.sql</code> + the dated migrations, fix the L221 ordering bug, and add a <code>verify-schema-drift.mjs</code> step to CI. This is the single highest-value fix on the board.</li>
+    <li><b>Close the type gaps (S-4/S-5/S-6/S-9).</b> Small, mechanical, removes silent drift.</li>
+    <li><b>Delete the dead Prisma layer (3.4).</b> The app never imports <code>@prisma/client</code>; the generated schema misleads. Removes ~2,200 lines of noise and the phantom-field confusion.</li>
+    <li><b>Raise coverage on the money path.</b> <code>client-actions.ts</code> (19%) and <code>orders-actions.ts</code> (44%) drive order totals, splits, and balance writes. Add tests for the split/redelivery branches; then gate CI on a coverage floor (e.g. 50%).</li>
+    <li><b>Fix the 2 eslint errors</b> in the seed scripts so the lint CI job goes green, then burn down <code>no-explicit-any</code> (90).</li>
+    <li><b>Re-audit after first real orders</b> (audit-order-totals) and reconcile balances before wiping old-denomination rows.</li>
+  </ol>
+</section>
+
+<footer>
+  Generated 2026-08-07 by automated scan (vitest + v8 coverage + tsc + eslint + next build + scripts/verify-schema-drift.mjs + read-only live-DB probes). All schema/live data is read-only; nothing was written to the database during this scan. Full findings are reproducible by re-running the commands listed in §1.
+</footer>
+
+</div>
+</body>
+</html>
