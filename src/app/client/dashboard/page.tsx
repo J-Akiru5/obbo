@@ -246,10 +246,20 @@ export default async function ClientDashboardPage() {
             ) : (
               <div className="space-y-4">
                 {recentOrders.map((order: Order) => {
-                  const totalBags = order.items.reduce(
-                    (acc: number, item: OrderItem) => acc + (item.requested_qty || 0),
-                    0,
-                  );
+                  // Same priority as the Orders page: once dispatched,
+                  // dispatched_qty is the true amount that went out (can be
+                  // less than requested on a split delivery); before that,
+                  // approved_qty; before that, the original request.
+                  const totalBags = order.items.reduce((acc: number, item: OrderItem) => {
+                    const requested = item.requested_qty || 0;
+                    const effective =
+                      item.dispatched_qty > 0
+                        ? item.dispatched_qty
+                        : item.approved_qty > 0
+                          ? item.approved_qty
+                          : requested;
+                    return acc + effective;
+                  }, 0);
 
                   let statusVariant: 'default' | 'secondary' | 'destructive' | 'outline' =
                     'outline';

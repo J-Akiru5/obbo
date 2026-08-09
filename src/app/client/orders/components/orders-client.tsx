@@ -63,32 +63,63 @@ function formatOrderItems(items: OrderItem[]) {
   let jbQty = 0;
   let sbQty = 0;
   let otherQty = 0;
+  let jbBalance = 0;
+  let sbBalance = 0;
 
   for (const item of items) {
-    const qty = item.requested_qty || 0;
+    const requested = item.requested_qty || 0;
+    // Show the best-known TRUE quantity, not always what was originally
+    // requested: once dispatched, dispatched_qty is the ground truth of
+    // what physically went out (can be less than requested on a split
+    // delivery — the remainder lands in the client's balance for later
+    // redelivery, it isn't lost). Before dispatch, prefer approved_qty
+    // (may differ from requested after a partial approval). Before that,
+    // fall back to the original request.
+    const effective =
+      item.dispatched_qty > 0
+        ? item.dispatched_qty
+        : item.approved_qty > 0
+          ? item.approved_qty
+          : requested;
+    // Only meaningful once actually dispatched — before that there's no
+    // "held back" amount yet, just an order still working through approval.
+    const held = item.dispatched_qty > 0 ? Math.max(0, requested - item.dispatched_qty) : 0;
     const bagType = (item.bag_type || item.product?.bag_type || '').toUpperCase();
     if (bagType === 'JB') {
-      jbQty += qty;
+      jbQty += effective;
+      jbBalance += held;
     } else if (bagType === 'SB') {
-      sbQty += qty;
+      sbQty += effective;
+      sbBalance += held;
     } else {
-      otherQty += qty;
+      otherQty += effective;
     }
   }
 
   const totalQty = jbQty + sbQty + otherQty;
+  const totalBalance = jbBalance + sbBalance;
 
+  let label: string;
   if (jbQty > 0 && sbQty > 0) {
-    return `${totalQty.toLocaleString()} bags (${jbQty.toLocaleString()} JB / ${sbQty.toLocaleString()} SB)`;
+    label = `${totalQty.toLocaleString()} bags (${jbQty.toLocaleString()} JB / ${sbQty.toLocaleString()} SB)`;
   } else if (jbQty > 0) {
-    return `${jbQty.toLocaleString()} JB bags`;
+    label = `${jbQty.toLocaleString()} JB bags`;
   } else if (sbQty > 0) {
-    return `${sbQty.toLocaleString()} SB bags`;
+    label = `${sbQty.toLocaleString()} SB bags`;
   } else if (otherQty > 0) {
-    return `${otherQty.toLocaleString()} bags`;
+    label = `${otherQty.toLocaleString()} bags`;
   } else {
-    return '0 bags';
+    label = '0 bags';
   }
+
+  // Split delivery held some bags back — say so, so the number here still
+  // reconciles with what the client was actually charged/ordered instead
+  // of just silently looking smaller than before.
+  if (totalBalance > 0) {
+    label += ` (+${totalBalance.toLocaleString()} in balance)`;
+  }
+
+  return label;
 }
 
 // ─── Tracking progress steps ─────────────────────────────────
