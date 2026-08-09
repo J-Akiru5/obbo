@@ -22,7 +22,6 @@ interface StepOrderReviewProps {
   };
   files: {
     po_file: File | null;
-    check_file: File | null;
   };
   products: Product[];
   onEditStep: (step: number) => void;
@@ -148,9 +147,6 @@ export function StepOrderReview({
             label="Payment method"
             value={form.payment_method === 'cash' ? 'Cash' : 'Check'}
           />
-          {form.payment_method === 'check' && (
-            <ReviewField label="Check image" value={files.check_file?.name ?? 'No file'} />
-          )}
           {form.wants_split && (
             <>
               <Separator className="my-2" />

@@ -103,7 +103,6 @@ function NewOrderPage() {
   const [draftLoading, setDraftLoading] = useState(false);
 
   const [poFile, setPoFile] = useState<File | null>(null);
-  const [checkFile, setCheckFile] = useState<File | null>(null);
 
   useEffect(() => {
     createClient()
@@ -233,8 +232,6 @@ function NewOrderPage() {
         po_number: form.po_number,
         po_file: poFile,
         payment_method: form.payment_method,
-        check_file: checkFile,
-        service_type: form.service_type,
         wants_split: form.wants_split,
         deliver_now_total: form.deliver_now_total,
       });
@@ -334,11 +331,6 @@ function NewOrderPage() {
 
       const poImageUrl = await uploadFile(poFile, 'po');
 
-      let checkImageUrl: string | null = null;
-      if (form.payment_method === 'check' && checkFile) {
-        checkImageUrl = await uploadFile(checkFile, 'check');
-      }
-
       const jbProduct = products.find((p) => p.bag_type === 'JB');
       const sbProduct = products.find((p) => p.bag_type === 'SB');
       const jbPrice = getPrice(jbProduct, form.source);
@@ -360,9 +352,6 @@ function NewOrderPage() {
       let notes = '';
       if (form.service_type === 'pickup' && form.preferred_pickup_date) {
         notes = `Preferred Pick-up Date: ${form.preferred_pickup_date}`;
-      }
-      if (checkImageUrl) {
-        notes += `${notes ? '\n' : ''}Check image uploaded.`;
       }
 
       const orderData = {
@@ -571,12 +560,9 @@ function NewOrderPage() {
           {currentStep === 3 && (
             <StepPoPayment
               form={form}
-              files={{ po_file: poFile, check_file: checkFile }}
+              files={{ po_file: poFile }}
               onFieldChange={updateField}
-              onFileChange={(field, file) => {
-                if (field === 'po_file') setPoFile(file);
-                else setCheckFile(file);
-              }}
+              onFileChange={(_field, file) => setPoFile(file)}
               errors={errors}
               totalBags={getTotalIndividualBags(form.jb_qty, form.sb_qty)}
             />
@@ -584,7 +570,7 @@ function NewOrderPage() {
           {currentStep === 4 && (
             <StepOrderReview
               form={form}
-              files={{ po_file: poFile, check_file: checkFile }}
+              files={{ po_file: poFile }}
               products={products}
               onEditStep={goToStep}
               onSubmit={handleSubmit}

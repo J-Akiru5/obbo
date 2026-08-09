@@ -31,25 +31,21 @@ export const serviceTypeSchema = z
     { message: 'Plate number is required for pick-up', path: ['plate_number'] },
   );
 
-export const poPaymentSchema = z
-  .object({
-    po_number: z.string().min(1, 'PO number is required'),
-    po_file: z
-      .custom<File>()
-      .refine((f) => f instanceof File && f.size > 0, 'PO image is required'),
-    payment_method: z.enum(['cash', 'check'], 'Please select a payment method'),
-    check_file: z.custom<File>().optional(),
-    service_type: z.enum(['pickup', 'deliver']).optional(),
-    wants_split: z.boolean(),
-    deliver_now_total: z.number().min(0),
-  })
-  .refine(
-    (d) =>
-      d.payment_method !== 'check' ||
-      d.service_type === 'deliver' ||
-      (d.check_file instanceof File && d.check_file.size > 0),
-    { message: 'Check image is required for check payment', path: ['check_file'] },
-  );
+// Check payment doesn't require an upfront check image for either service
+// type — the client uploads it after approval instead (see
+// submitPaymentDetails / the "awaiting_check" order status), once the final
+// total (and, for Deliver orders, the shipping fee) is confirmed. This keeps
+// Pickup and Deliver + Check consistent — see
+// docs/check-payment-flow-implementation-plan.md for why Deliver was fixed
+// first; Pickup no longer has the "upload now, discarded, re-upload later"
+// gap that plan explicitly left as a known limitation.
+export const poPaymentSchema = z.object({
+  po_number: z.string().min(1, 'PO number is required'),
+  po_file: z.custom<File>().refine((f) => f instanceof File && f.size > 0, 'PO image is required'),
+  payment_method: z.enum(['cash', 'check'], 'Please select a payment method'),
+  wants_split: z.boolean(),
+  deliver_now_total: z.number().min(0),
+});
 
 export function getSplitSchema(totalBags: number) {
   return z

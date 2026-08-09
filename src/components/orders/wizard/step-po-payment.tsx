@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react';
 import { toast } from 'sonner';
-import { Upload, X, FileCheck, Split, Camera } from 'lucide-react';
+import { Upload, X, FileCheck, Split } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
@@ -18,16 +18,14 @@ interface StepPoPaymentProps {
   form: {
     po_number: string;
     payment_method: 'cash' | 'check';
-    service_type: 'pickup' | 'deliver';
     wants_split: boolean;
     deliver_now_total: number;
   };
   files: {
     po_file: File | null;
-    check_file: File | null;
   };
   onFieldChange: (field: string, value: string | boolean | number) => void;
-  onFileChange: (field: 'po_file' | 'check_file', file: File | null) => void;
+  onFileChange: (field: 'po_file', file: File | null) => void;
   errors: Record<string, string>;
   totalBags: number;
 }
@@ -193,26 +191,12 @@ export function StepPoPayment({
         )}
       </div>
 
-      {/* Check image (conditional) */}
-      {form.payment_method === 'check' && form.service_type !== 'deliver' && (
-        <div className="space-y-3 rounded-lg border border-blue-500/20 bg-blue-500/5 p-4">
-          <div className="flex items-center gap-2 text-sm font-bold tracking-tight text-blue-600 uppercase">
-            <Camera className="h-4 w-4" />
-            Check details
-          </div>
-          <FileDropZone
-            label="Check image"
-            file={files.check_file}
-            onFileChange={(f) => onFileChange('check_file', f)}
-            error={errors.check_file}
-            inputId="check-upload"
-          />
-        </div>
-      )}
-      {form.payment_method === 'check' && form.service_type === 'deliver' && (
+      {/* Check payment: no upfront image — uploaded after approval, once the
+          final total (and, for Deliver orders, the shipping fee) is set. */}
+      {form.payment_method === 'check' && (
         <div className="rounded-lg border border-blue-500/20 bg-blue-500/5 p-4">
           <p className="text-muted-foreground text-sm">
-            You&apos;ll be asked to upload your check after the shipping fee is confirmed.
+            You&apos;ll be asked to upload your check after your order is approved.
           </p>
         </div>
       )}
