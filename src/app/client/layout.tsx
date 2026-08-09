@@ -28,6 +28,16 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from '@/components/ui/popover';
 import { createClient } from '@/lib/supabase/client';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { toast } from 'sonner';
 import { ClientKycProvider, useClientKyc, type KycStatus } from '@/lib/context/client-kyc-context';
 
@@ -183,6 +193,7 @@ function ClientLayoutInner({ children }: { children: React.ReactNode }) {
   const [unreadCount, setUnreadCount] = useState(0);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [notifOpen, setNotifOpen] = useState(false);
+  const [showSignOutConfirm, setShowSignOutConfirm] = useState(false);
 
   const loadNotifications = useCallback(async () => {
     try {
@@ -314,7 +325,7 @@ function ClientLayoutInner({ children }: { children: React.ReactNode }) {
   return (
     <div className="bg-muted/30 min-h-screen lg:flex">
       <aside className="border-sidebar-border bg-sidebar fixed inset-y-0 left-0 z-40 hidden w-72 flex-col border-r lg:flex">
-        <SidebarContent pathname={pathname} onSignOut={handleSignOut} />
+        <SidebarContent pathname={pathname} onSignOut={() => setShowSignOutConfirm(true)} />
       </aside>
 
       <div className="flex min-h-screen flex-1 flex-col lg:ml-72">
@@ -331,7 +342,7 @@ function ClientLayoutInner({ children }: { children: React.ReactNode }) {
                 <SidebarContent
                   pathname={pathname}
                   onNavigate={() => setMobileOpen(false)}
-                  onSignOut={handleSignOut}
+                  onSignOut={() => setShowSignOutConfirm(true)}
                 />
               </SheetContent>
             </Sheet>
@@ -355,6 +366,24 @@ function ClientLayoutInner({ children }: { children: React.ReactNode }) {
                 {navItems.find((item) => pathname.startsWith(item.href))?.label ?? 'Dashboard'}
               </h1>
             </div>
+
+            {/* Sign Out Confirmation */}
+            <AlertDialog open={showSignOutConfirm} onOpenChange={setShowSignOutConfirm}>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Sign Out</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Are you sure you want to sign out? Any unsaved changes will be lost.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction variant="destructive" onClick={handleSignOut}>
+                    Sign Out
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           </div>
 
           <div className="flex flex-1 justify-end lg:justify-center">
@@ -461,7 +490,7 @@ function ClientLayoutInner({ children }: { children: React.ReactNode }) {
 
             <Button
               variant="ghost"
-              onClick={handleSignOut}
+              onClick={() => setShowSignOutConfirm(true)}
               className="hidden gap-1.5 sm:inline-flex"
             >
               <LogOut className="h-4 w-4" /> Sign Out

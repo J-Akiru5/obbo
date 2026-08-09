@@ -8,12 +8,23 @@ import { Label } from '@/components/ui/label';
 import { Save, Info } from 'lucide-react';
 import { toast } from 'sonner';
 import { getCostConfig, saveCostConfiguration } from '@/lib/actions/admin-actions';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 export function CostConfigurationTab() {
   const [landedCost, setLandedCost] = useState<number>(147.64);
   const [localExpenses, setLocalExpenses] = useState<number>(20.0);
   const [isSaving, setIsSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [showConfirm, setShowConfirm] = useState(false);
 
   useEffect(() => {
     const loadConfig = async () => {
@@ -36,13 +47,17 @@ export function CostConfigurationTab() {
   const grossProfitBag = standardWarehousePrice - landedCost;
   const netProfitBag = standardWarehousePrice - totalCost;
 
-  const handleSaveConfig = async () => {
+  const handleSaveConfig = () => {
     if (landedCost <= 0 || localExpenses <= 0) {
       toast.error('Please enter valid cost parameters greater than 0.');
       return;
     }
+    setShowConfirm(true);
+  };
 
+  const performSave = async () => {
     setIsSubmitting(true);
+    setShowConfirm(false);
     try {
       const result = await saveCostConfiguration(landedCost, localExpenses);
       if (!result.success) {
@@ -188,6 +203,24 @@ export function CostConfigurationTab() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Cost Configuration Confirmation */}
+      <AlertDialog open={showConfirm} onOpenChange={setShowConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Update Cost Configuration</AlertDialogTitle>
+            <AlertDialogDescription>
+              Update cost to <strong>₱{totalCost.toFixed(2)}</strong> per bag (Landed: ₱
+              {landedCost.toFixed(2)} + Local: ₱{localExpenses.toFixed(2)})? This affects all future
+              dispatches and profit calculations.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={performSave}>Save Configuration</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

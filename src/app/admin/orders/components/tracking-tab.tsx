@@ -30,6 +30,16 @@ import {
 } from '@/components/ui/select';
 import { MapPin, Truck, Check, CornerDownLeft, Edit2 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 export function TrackingTab({
   orders,
@@ -52,6 +62,7 @@ export function TrackingTab({
   const [sbReturned, setSbReturned] = useState(0);
   const [returnReason, setReturnReason] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
 
   const openUpdate = (order: Order) => {
     setSelectedOrder(order);
@@ -61,13 +72,20 @@ export function TrackingTab({
     setReturnReason('');
   };
 
-  const handleSubmit = async () => {
+  const handleSubmit = () => {
     if (!selectedOrder) return;
     const isReturnStatus = status === 'returned_good' || status === 'returned_waste';
     if (isReturnStatus && !jbReturned && !sbReturned) {
-      return; // require at least some quantity
+      return;
     }
+    setShowConfirm(true);
+  };
+
+  const performUpdate = async () => {
+    if (!selectedOrder) return;
+    const isReturnStatus = status === 'returned_good' || status === 'returned_waste';
     setIsSubmitting(true);
+    setShowConfirm(false);
     try {
       await onUpdateTracking(
         selectedOrder.id,
@@ -79,6 +97,21 @@ export function TrackingTab({
       setSelectedOrder(null);
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const getStatusLabel = (s: string) => {
+    switch (s) {
+      case 'delivered':
+        return 'Delivered';
+      case 'bags_returned':
+        return 'Delivered (With returned bags)';
+      case 'returned_good':
+        return 'Returned (Good Stock)';
+      case 'returned_waste':
+        return 'Returned (Waste/Damage)';
+      default:
+        return s;
     }
   };
 
@@ -420,6 +453,31 @@ export function TrackingTab({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Tracking Update Confirmation */}
+      <AlertDialog open={showConfirm} onOpenChange={setShowConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirm Status Update</AlertDialogTitle>
+            <AlertDialogDescription>
+              Update tracking status to <strong>{getStatusLabel(status)}</strong> for order{' '}
+              <strong>{selectedOrder?.id.slice(0, 8)}</strong>?
+              {(status === 'returned_good' || status === 'returned_waste') && (
+                <span className="mt-2 block">
+                  This will record {jbReturned} JB and {sbReturned} SB returned bags.
+                </span>
+              )}
+              {status === 'delivered' && (
+                <span className="mt-2 block">This will mark the order as Completed.</span>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={performUpdate}>Confirm</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

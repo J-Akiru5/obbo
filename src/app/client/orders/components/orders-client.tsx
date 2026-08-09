@@ -25,6 +25,16 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import {
   CornerDownLeft,
   PackageSearch,
   CreditCard,
@@ -165,6 +175,9 @@ export default function OrdersClient({
   const [checkNumber, setCheckNumber] = useState('');
   const [checkFile, setCheckFile] = useState<File | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Delete Draft Confirmation
+  const [deleteDraftId, setDeleteDraftId] = useState<string | null>(null);
 
   // Return Report
   const [isReturnOpen, setIsReturnOpen] = useState(false);
@@ -326,18 +339,21 @@ export default function OrdersClient({
     }
   };
 
-  const handleDeleteDraft = async (orderId: string) => {
+  const handleDeleteDraft = async () => {
+    if (!deleteDraftId) return;
     try {
-      const result = await deleteDraftOrder(orderId);
+      const result = await deleteDraftOrder(deleteDraftId);
       if (!result.success) {
         toast.error(result.error);
         return;
       }
-      setDrafts((prev) => prev.filter((d) => d.id !== orderId));
+      setDrafts((prev) => prev.filter((d) => d.id !== deleteDraftId));
       toast.success('Draft deleted.');
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : 'Failed to delete draft.';
       toast.error(msg);
+    } finally {
+      setDeleteDraftId(null);
     }
   };
 
@@ -803,7 +819,7 @@ export default function OrdersClient({
                             size="sm"
                             variant="ghost"
                             className="text-destructive hover:text-destructive hover:bg-destructive/10 gap-1.5"
-                            onClick={() => handleDeleteDraft(draft.id)}
+                            onClick={() => setDeleteDraftId(draft.id)}
                           >
                             <Trash2 className="h-3.5 w-3.5" />
                           </Button>
@@ -972,6 +988,24 @@ export default function OrdersClient({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Delete Draft Confirmation */}
+      <AlertDialog open={!!deleteDraftId} onOpenChange={(open) => !open && setDeleteDraftId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Draft</AlertDialogTitle>
+            <AlertDialogDescription>
+              This draft order will be permanently deleted. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction variant="destructive" onClick={handleDeleteDraft}>
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

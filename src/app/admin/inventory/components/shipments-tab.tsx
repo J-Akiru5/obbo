@@ -51,6 +51,16 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { LedgerEntryDialog } from './ledger-entry-dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 export function ShipmentsTab({
   shipments,
@@ -88,6 +98,7 @@ export function ShipmentsTab({
   const [overrideRemJb, setOverrideRemJb] = useState(0);
   const [overrideRemSb, setOverrideRemSb] = useState(0);
   const [isSavingOverride, setIsSavingOverride] = useState(false);
+  const [showOverrideConfirm, setShowOverrideConfirm] = useState(false);
 
   // Ledger entry dialog
   const [ledgerDialogOpen, setLedgerDialogOpen] = useState(false);
@@ -220,9 +231,15 @@ export function ShipmentsTab({
     setOverrideRemSb(s.remaining_sb);
   };
 
-  const handleSaveOverride = async () => {
+  const handleSaveOverride = () => {
+    if (!overrideShipment) return;
+    setShowOverrideConfirm(true);
+  };
+
+  const performOverride = async () => {
     if (!overrideShipment) return;
     setIsSavingOverride(true);
+    setShowOverrideConfirm(false);
     try {
       const result = await updateShipment(overrideShipment.id, {
         remaining_jb: overrideRemJb,
@@ -979,6 +996,24 @@ export function ShipmentsTab({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Override Confirmation */}
+      <AlertDialog open={showOverrideConfirm} onOpenChange={setShowOverrideConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirm Stock Override</AlertDialogTitle>
+            <AlertDialogDescription>
+              Override stock for <strong>{overrideShipment?.batch_name}</strong> to{' '}
+              <strong>{overrideRemJb} JB</strong> and <strong>{overrideRemSb} SB</strong>? Dashboard
+              totals will update immediately.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={performOverride}>Confirm Override</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Ledger Entry Add/Edit Dialog */}
       <LedgerEntryDialog

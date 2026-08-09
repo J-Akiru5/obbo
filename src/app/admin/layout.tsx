@@ -37,6 +37,16 @@ import type { Notification } from '@/lib/types/database';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { GlobalSearch } from '@/components/global-search';
 import { BottomNavbar } from '@/components/bottom-navbar';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 const ADMIN_NAV_ITEMS = [
   {
@@ -277,6 +287,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const [unreadCount, setUnreadCount] = useState(0);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [notifOpen, setNotifOpen] = useState(false);
+  const [showSignOutConfirm, setShowSignOutConfirm] = useState(false);
   const [pendingOrderCount, setPendingOrderCount] = useState(0);
   const [pendingKycCount, setPendingKycCount] = useState(0);
   const [userId, setUserId] = useState<string | null>(null);
@@ -639,7 +650,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                   Settings
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem className="text-destructive" onClick={handleSignOut}>
+                <DropdownMenuItem
+                  className="text-destructive"
+                  onClick={() => setShowSignOutConfirm(true)}
+                >
                   <LogOut className="mr-2 h-4 w-4" /> Sign Out
                 </DropdownMenuItem>
               </DropdownMenuContent>
@@ -661,6 +675,24 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
       {/* Mobile Bottom Nav */}
       <BottomNavbar />
+
+      {/* Sign Out Confirmation */}
+      <AlertDialog open={showSignOutConfirm} onOpenChange={setShowSignOutConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Sign Out</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to sign out? Any unsaved changes will be lost.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction variant="destructive" onClick={handleSignOut}>
+              Sign Out
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

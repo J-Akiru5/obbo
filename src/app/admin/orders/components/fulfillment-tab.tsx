@@ -30,6 +30,16 @@ import {
   FileText,
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 export function FulfillmentTab({
   orders,
@@ -59,6 +69,7 @@ export function FulfillmentTab({
   const [plateNumber, setPlateNumber] = useState('');
   const [drImageFile, setDrImageFile] = useState<File | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showDispatchConfirm, setShowDispatchConfirm] = useState(false);
 
   const openAction = (order: Order, type: 'dispatch') => {
     setSelectedOrder(order);
@@ -70,27 +81,32 @@ export function FulfillmentTab({
     setDrImageFile(null);
   };
 
-  const handleSubmit = async () => {
+  const handleSubmit = () => {
+    if (!selectedOrder || !actionType) return;
+    // Validate form before showing confirmation
+    if (actionType === 'dispatch') {
+      if (!shipmentId || !drNumber) {
+        alert('Please select a shipment batch and provide a DR number.');
+        return;
+      }
+      if (selectedOrder.service_type === 'deliver' && (!driverName || !plateNumber)) {
+        alert('Please provide driver name and plate number for delivery orders.');
+        return;
+      }
+      if (!drImageFile) {
+        alert('Please upload a DR image before dispatch.');
+        return;
+      }
+    }
+    setShowDispatchConfirm(true);
+  };
+
+  const performDispatch = async () => {
     if (!selectedOrder || !actionType) return;
     setIsSubmitting(true);
+    setShowDispatchConfirm(false);
     try {
       if (actionType === 'dispatch') {
-        if (!shipmentId || !drNumber) {
-          alert('Please select a shipment batch and provide a DR number.');
-          setIsSubmitting(false);
-          return;
-        }
-        if (selectedOrder.service_type === 'deliver' && (!driverName || !plateNumber)) {
-          alert('Please provide driver name and plate number for delivery orders.');
-          setIsSubmitting(false);
-          return;
-        }
-        if (!drImageFile) {
-          alert('Please upload a DR image before dispatch.');
-          setIsSubmitting(false);
-          return;
-        }
-
         // Upload DR image to Supabase Storage if a file was provided
         let drImageUrl: string | null = null;
         if (drImageFile) {
@@ -527,6 +543,40 @@ export function FulfillmentTab({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Dispatch Confirmation */}
+      <AlertDialog open={showDispatchConfirm} onOpenChange={setShowDispatchConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirm Dispatch</AlertDialogTitle>
+            <AlertDialogDescription>
+              Dispatch order for{' '}
+              <strong>
+                {selectedOrder?.client?.company_name || selectedOrder?.client?.full_name}
+              </strong>
+              ? This will deduct{' '}
+              <strong>
+                {selectedOrder?.items
+                  .filter((i) => i.bag_type === 'JB')
+                  .reduce((s, i) => s + i.approved_qty, 0)}{' '}
+                JB
+              </strong>{' '}
+              and{' '}
+              <strong>
+                {selectedOrder?.items
+                  .filter((i) => i.bag_type === 'SB')
+                  .reduce((s, i) => s + i.approved_qty, 0)}{' '}
+                SB
+              </strong>{' '}
+              bags from warehouse stock. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={performDispatch}>Confirm Dispatch</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

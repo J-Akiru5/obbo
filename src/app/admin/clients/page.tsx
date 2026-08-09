@@ -47,6 +47,16 @@ import { toast } from 'sonner';
 import { createClient } from '@/lib/supabase/client';
 import { createManualClient, approveKyc, rejectKyc } from '@/lib/actions/admin-actions';
 import type { Profile } from '@/lib/types/database';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 function getInitials(name: string) {
   return name
@@ -782,6 +792,7 @@ function ClientsContent() {
   const [detailTarget, setDetailTarget] = useState<Profile | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
   const [manualOpen, setManualOpen] = useState(false);
+  const [kycApproveTarget, setKycApproveTarget] = useState<Profile | null>(null);
 
   const fetchProfiles = async () => {
     const supabase = createClient();
@@ -989,7 +1000,7 @@ function ClientsContent() {
                                 <Button
                                   size="sm"
                                   className="bg-primary hover:bg-primary/90 h-8 gap-1 text-xs"
-                                  onClick={() => handleKycAction(profile.id, 'verified')}
+                                  onClick={() => setKycApproveTarget(profile)}
                                 >
                                   <CheckCircle2 className="h-3.5 w-3.5" /> Approve
                                 </Button>
@@ -1099,6 +1110,35 @@ function ClientsContent() {
         onClose={() => setManualOpen(false)}
         onCreated={fetchProfiles}
       />
+
+      {/* KYC Quick Approve Confirmation */}
+      <AlertDialog
+        open={!!kycApproveTarget}
+        onOpenChange={(open) => !open && setKycApproveTarget(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Approve KYC</AlertDialogTitle>
+            <AlertDialogDescription>
+              Approve KYC verification for <strong>{kycApproveTarget?.full_name}</strong>? They will
+              gain full portal access.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={async () => {
+                if (kycApproveTarget) {
+                  await handleKycAction(kycApproveTarget.id, 'verified');
+                  setKycApproveTarget(null);
+                }
+              }}
+            >
+              Approve
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

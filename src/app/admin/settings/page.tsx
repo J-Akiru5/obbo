@@ -50,6 +50,16 @@ import {
 import { createClient } from '@/lib/supabase/client';
 
 import { useTheme } from 'next-themes';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 function SettingRow({
   icon,
@@ -104,6 +114,7 @@ export default function AdminSettingsPage() {
   const [auditSearchQuery, setAuditSearchQuery] = useState('');
   const [savingAccount, setSavingAccount] = useState(false);
   const [changingPassword, setChangingPassword] = useState(false);
+  const [showPasswordConfirm, setShowPasswordConfirm] = useState(false);
 
   // Cost configuration
   const [costConfig, setCostConfig] = useState({
@@ -111,6 +122,7 @@ export default function AdminSettingsPage() {
     local_expenses_per_bag: 20.0,
   });
   const [isSavingCost, setIsSavingCost] = useState(false);
+  const [showCostConfirm, setShowCostConfirm] = useState(false);
 
   const GIT_SHA = 'f399c95';
 
@@ -206,8 +218,13 @@ export default function AdminSettingsPage() {
     }
   };
 
-  const handleSaveCostConfig = async () => {
+  const handleSaveCostConfig = () => {
+    setShowCostConfirm(true);
+  };
+
+  const performSaveCostConfig = async () => {
     setIsSavingCost(true);
+    setShowCostConfirm(false);
     try {
       const result = await saveCostConfig(costConfig);
       if (!result.success) {
@@ -247,13 +264,17 @@ export default function AdminSettingsPage() {
     }
   };
 
-  const handleChangePassword = async () => {
+  const handleChangePassword = () => {
     if (newPassword.trim().length < 8) {
       toast.error('New password must be at least 8 characters.');
       return;
     }
+    setShowPasswordConfirm(true);
+  };
 
+  const performPasswordChange = async () => {
     setChangingPassword(true);
+    setShowPasswordConfirm(false);
     try {
       const supabase = createClient();
       const { error } = await supabase.auth.updateUser({ password: newPassword.trim() });
@@ -891,6 +912,39 @@ export default function AdminSettingsPage() {
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Password Change Confirmation */}
+      <AlertDialog open={showPasswordConfirm} onOpenChange={setShowPasswordConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Change Password</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to change your password? You&apos;ll need to use the new
+              password for future logins.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={performPasswordChange}>Change Password</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Cost Config Confirmation */}
+      <AlertDialog open={showCostConfirm} onOpenChange={setShowCostConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Save Cost Configuration</AlertDialogTitle>
+            <AlertDialogDescription>
+              Update cost configuration? This affects all future dispatches and profit calculations.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={performSaveCostConfig}>Save</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

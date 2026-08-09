@@ -26,6 +26,16 @@ import {
 import { Edit, Package, UploadCloud, Loader2, Eye, LayoutGrid, List, X } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { toast } from 'sonner';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 interface ProductCatalogTabProps {
   products: Product[];
@@ -60,6 +70,7 @@ export function ProductCatalogTab({
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [toggleTarget, setToggleTarget] = useState<Product | null>(null);
 
   const filteredProducts = products.filter(
     (p) =>
@@ -151,7 +162,19 @@ export function ProductCatalogTab({
   };
 
   const toggleActive = async (product: Product) => {
-    await onUpdate(product.id, { is_active: !product.is_active });
+    if (product.is_active) {
+      // Show confirmation when deactivating
+      setToggleTarget(product);
+    } else {
+      // Activate directly
+      await onUpdate(product.id, { is_active: true });
+    }
+  };
+
+  const performToggle = async () => {
+    if (!toggleTarget) return;
+    await onUpdate(toggleTarget.id, { is_active: false });
+    setToggleTarget(null);
   };
 
   if (loading)
@@ -716,6 +739,25 @@ export function ProductCatalogTab({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Deactivate Product Confirmation */}
+      <AlertDialog open={!!toggleTarget} onOpenChange={(open) => !open && setToggleTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Deactivate Product</AlertDialogTitle>
+            <AlertDialogDescription>
+              Deactivate <strong>{toggleTarget?.name}</strong> ({toggleTarget?.bag_type})? Clients
+              won&apos;t be able to order this product until it&apos;s reactivated.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction variant="destructive" onClick={performToggle}>
+              Deactivate
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   );
 }
