@@ -59,7 +59,7 @@ export async function createDeliveryReceipt(rawDr: Record<string, unknown>) {
     .single();
   if (error) throw new Error(error.message);
 
-  await addLedgerEntry(dr.shipment_id, {
+  const ledgerResult = await addLedgerEntry(dr.shipment_id, {
     dr_number: dr.dr_number,
     po_number: dr.po_number,
     date: dr.received_date,
@@ -77,6 +77,12 @@ export async function createDeliveryReceipt(rawDr: Record<string, unknown>) {
       : undefined,
     delivery_receipt_id: data.id,
   });
+  // addLedgerEntry no longer throws — matches this function's own
+  // throw-on-error convention (see `if (error) throw` above) rather than
+  // silently dropping a financial ledger entry.
+  if (!ledgerResult.success) {
+    throw new Error(`Failed to create ledger entry: ${ledgerResult.error}`);
+  }
 
   if (effectiveClientId) {
     try {
@@ -308,7 +314,7 @@ export async function updateDeliveryReceipt(id: string, rawUpdates: Record<strin
         .eq('id', ledgerEntry.id);
       if (ledgerUpdateError) console.error('Failed to update ledger entry:', ledgerUpdateError);
     } else if (updates.jb !== undefined || updates.sb !== undefined) {
-      await addLedgerEntry(newShipmentId, {
+      const ledgerResult = await addLedgerEntry(newShipmentId, {
         dr_number: newDrNumber,
         client_name: updates.client_name ?? oldDr.client_name ?? 'Unknown',
         jb: newJb,
@@ -318,6 +324,12 @@ export async function updateDeliveryReceipt(id: string, rawUpdates: Record<strin
         date: updates.received_date ?? oldDr.received_date,
         delivery_receipt_id: id,
       });
+      // Matches the sibling ledger-update branch just above, which also
+      // logs and continues rather than failing the whole DR update over a
+      // ledger side-effect issue.
+      if (!ledgerResult.success) {
+        console.error('Failed to create ledger entry:', ledgerResult.error);
+      }
     }
   }
 

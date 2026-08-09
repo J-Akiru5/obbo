@@ -90,20 +90,31 @@ describe('client-actions', () => {
       );
     });
 
-    it('throws when order_items insert fails and rolls back the order', async () => {
+    it('returns a failure result (not a throw) when order_items insert fails, and still rolls back the order', async () => {
       server.use(
         http.post('*/rest/v1/order_items', () =>
           HttpResponse.json({ message: 'violates foreign key constraint' }, { status: 409 }),
         ),
       );
 
-      await expect(submitOrder(validOrderData)).rejects.toThrow(/Failed to save order items/);
+      const result = await submitOrder(validOrderData);
 
+      // This is the actual point of the fix: in production, a throw here would
+      // have been redacted to a generic Next.js digest message. A returned
+      // { success: false, error } is a normal value and is never redacted.
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error).toMatch(/Failed to save order items/);
+      }
       expect(orderDeleteCalled).toBe(true);
     });
 
-    it('succeeds when order_items insert succeeds', async () => {
-      await expect(submitOrder(validOrderData)).resolves.toBeDefined();
+    it('returns a success result with the created order when order_items insert succeeds', async () => {
+      const result = await submitOrder(validOrderData);
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data).toBeDefined();
+      }
     });
   });
 });

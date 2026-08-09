@@ -244,7 +244,7 @@ export function ShipmentsTab({
 
   const handleLedgerSubmit = async (data: Record<string, unknown>) => {
     if (editingEntry) {
-      await updateLedgerEntry(
+      const result = await updateLedgerEntry(
         editingEntry.id,
         activeShipmentId,
         {
@@ -256,9 +256,17 @@ export function ShipmentsTab({
         },
         data as any,
       );
+      if (!result.success) {
+        toast.error(result.error);
+        return;
+      }
       toast.success('Ledger entry updated.');
     } else {
-      await addLedgerEntry(activeShipmentId, data as any);
+      const result = await addLedgerEntry(activeShipmentId, data as any);
+      if (!result.success) {
+        toast.error(result.error);
+        return;
+      }
       toast.success('Ledger entry added.');
     }
     await refreshLedger(activeShipmentId);

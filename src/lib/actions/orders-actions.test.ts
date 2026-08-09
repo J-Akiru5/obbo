@@ -1,7 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { http, HttpResponse } from 'msw';
 import { server } from '../../../mocks/server';
-import { fetchOrders, rejectOrder, dispatchOrder, finalConfirmCheck } from './orders-actions';
+import {
+  fetchOrders,
+  approveOrder,
+  rejectOrder,
+  dispatchOrder,
+  finalConfirmCheck,
+} from './orders-actions';
 
 // ── Shared mock infra — bug3 and MSW tests need different supabase clients
 // injected into requireAdmin, but there can be only one vi.mock per module.
@@ -213,12 +219,28 @@ describe('Orders Server Actions', () => {
     });
   });
 
+  describe('approveOrder', () => {
+    it('returns a failure result (not a throw) for invalid input, via the safeAction wrapper', async () => {
+      // orderId must be a UUID per orderApproveSchema — this exercises the
+      // Zod-validation throw path through safeAction end-to-end.
+      const result = await approveOrder('not-a-uuid', [{ itemId: 'item-1', qty: 5 }]);
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(typeof result.error).toBe('string');
+        expect(result.error.length).toBeGreaterThan(0);
+      }
+    });
+  });
+
   describe('rejectOrder', () => {
     it('rejects an order with a reason', async () => {
       server.use(http.patch('*/rest/v1/orders', () => HttpResponse.json([])));
 
       const result = await rejectOrder('550e8400-e29b-41d4-a716-446655440000', 'Out of stock');
-      expect(result).toEqual({ success: true });
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data).toEqual({ success: true });
+      }
     });
   });
 
@@ -344,8 +366,15 @@ describe('Orders Server Actions', () => {
         }),
       );
 
-      await dispatchOrder('order-profit-0', 'ship-profit-test', 'DR-PROFIT-0', null, null, null);
-      await dispatchOrder(
+      const r1 = await dispatchOrder(
+        'order-profit-0',
+        'ship-profit-test',
+        'DR-PROFIT-0',
+        null,
+        null,
+        null,
+      );
+      const r2 = await dispatchOrder(
         'order-profit-500',
         'ship-profit-test',
         'DR-PROFIT-500',
@@ -353,6 +382,8 @@ describe('Orders Server Actions', () => {
         null,
         null,
       );
+      expect(r1.success).toBe(true);
+      expect(r2.success).toBe(true);
 
       expect(capturedLedgers).toHaveLength(2);
       expect(capturedLedgers[0].p_total_sales).toBe(5000);
@@ -377,18 +408,36 @@ describe('Orders Server Actions', () => {
       });
     });
 
-    it('throws when no approved quantity exists', async () => {
-      await expect(
-        dispatchOrder('order-001', 'ship-001', 'DR-TEST-ZERO', null, 'Driver', 'PLATE'),
-      ).rejects.toThrow(/no approved quantity/i);
+    it('returns a failure result when no approved quantity exists', async () => {
+      const result = await dispatchOrder(
+        'order-001',
+        'ship-001',
+        'DR-TEST-ZERO',
+        null,
+        'Driver',
+        'PLATE',
+      );
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error).toMatch(/no approved quantity/i);
+      }
     });
 
-    it('throws when order is already dispatched', async () => {
+    it('returns a failure result when order is already dispatched', async () => {
       setTableData('orders', { ...bug3Order, status: 'dispatched' });
 
-      await expect(
-        dispatchOrder('order-001', 'ship-001', 'DR-TEST-DISP', null, 'Driver', 'PLATE'),
-      ).rejects.toThrow(/already been dispatched/i);
+      const result = await dispatchOrder(
+        'order-001',
+        'ship-001',
+        'DR-TEST-DISP',
+        null,
+        'Driver',
+        'PLATE',
+      );
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error).toMatch(/already been dispatched/i);
+      }
     });
 
     it('succeeds on happy path with approved quantities', async () => {
@@ -403,7 +452,10 @@ describe('Orders Server Actions', () => {
         'Happy Driver',
         'HAPPY1',
       );
-      expect(result).toEqual({ success: true });
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data).toEqual({ success: true });
+      }
     });
   });
 

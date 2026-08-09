@@ -7,8 +7,10 @@ import {
   type DispatchProfitFields,
 } from './profit-utils';
 import { ledgerEntryCreateSchema, ledgerEntryUpdateSchema } from './schemas';
+import { safeAction } from './action-result';
 
-export async function addLedgerEntry(
+// Internal implementation unchanged — safeAction() wraps the export below.
+async function _addLedgerEntry(
   shipmentId: string,
   entry: {
     date?: string;
@@ -121,7 +123,10 @@ export async function addLedgerEntry(
   return data;
 }
 
-export async function updateLedgerEntry(
+export const addLedgerEntry = safeAction(_addLedgerEntry);
+
+// Internal implementation unchanged — safeAction() wraps the export below.
+async function _updateLedgerEntry(
   id: string,
   shipmentId: string,
   oldEntry: {
@@ -283,3 +288,5 @@ export async function updateLedgerEntry(
   await logActivity(supabase, userId, 'ledger_entry_updated', 'shipment_ledger', id, updates);
   return { success: true };
 }
+
+export const updateLedgerEntry = safeAction(_updateLedgerEntry);

@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { getSourcePrice, individualBagsFromUnits, unitsFromIndividualBags } from './profit-utils';
 import { getSplitDeliveryUnits } from '@/components/orders/wizard/order-schema';
+import { safeAction } from './action-result';
 import { submitOrderSchema } from './schemas';
 import { generateGlobalNextPoNumber } from './po-utils';
 import { createRoleNotification } from './notification-actions';
@@ -123,7 +124,10 @@ export async function generateNextPoNumber() {
   return generateGlobalNextPoNumber();
 }
 
-export async function submitOrder(
+// Internal implementation — completely unchanged, still throws for every
+// validation/business-rule failure. safeAction() below converts those throws
+// into a normal return value so the real message survives production.
+async function _submitOrder(
   orderData: {
     source: string;
     service_type: string;
@@ -249,6 +253,10 @@ export async function submitOrder(
   revalidatePath('/client/dashboard');
   return order;
 }
+
+// The public export — same name and call shape client code already expects,
+// except it now returns ActionResult<T> instead of throwing.
+export const submitOrder = safeAction(_submitOrder);
 
 export async function saveOrderDraft(
   orderData: {
@@ -638,10 +646,18 @@ export async function submitRedeliveryRequest(
   // BAGS, but order_items.requested_qty must stay in JB/SB UNITS like every
   // other order — dispatch stock/profit math and the balance deduction both
   // assume units on order_items. Convert at the boundary.
+  //
+  // requestedBags isn't guaranteed to be an exact multiple of 25/50 — a
+  // client can request a partial split redelivery of any bag count up to
+  // their balance. Round to the nearest whole unit (never 0, since
+  // requested_qty is a non-nullable Postgres Int column and a 0-quantity
+  // order item is meaningless) rather than writing a fractional value that
+  // would either be rejected by the DB or silently truncated.
   const requestedBags = splitDetails?.wantsSplit
     ? splitDetails.deliverNowQty
     : balance.remaining_qty;
-  const requestedQty = unitsFromIndividualBags(balance.bag_type as 'JB' | 'SB', requestedBags);
+  const rawRequestedQty = unitsFromIndividualBags(balance.bag_type as 'JB' | 'SB', requestedBags);
+  const requestedQty = Math.max(1, Math.round(rawRequestedQty));
 
   const { data: redeliveryProduct } = await supabase
     .from('products')

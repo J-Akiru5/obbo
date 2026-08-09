@@ -395,12 +395,19 @@ function NewOrderPage() {
           }
         : undefined;
 
-      await submitOrder(orderData, splitDetails);
+      const result = await submitOrder(orderData, splitDetails);
+      if (!result.success) {
+        toast.error(result.error);
+        setLoading(false);
+        return;
+      }
 
       toast.success('Order submitted successfully! Pending approval.');
       clearForm();
       router.push('/client/orders');
     } catch (err) {
+      // Genuinely unexpected errors (network failure, etc.) still land here —
+      // submitOrder's own validation/business-rule errors no longer do.
       const msg = err instanceof Error ? err.message : 'An error occurred. Please try again.';
       toast.error(msg);
     } finally {

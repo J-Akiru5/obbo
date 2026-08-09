@@ -10,6 +10,7 @@ import {
 import { orderApproveSchema, orderRejectSchema, orderTrackingUpdateSchema } from './schemas';
 import { addLedgerEntry } from './ledger-actions';
 import { createRoleNotification } from './notification-actions';
+import { safeAction } from './action-result';
 
 export async function fetchOrders(status?: string) {
   const { supabase } = await requireAdmin();
@@ -24,7 +25,8 @@ export async function fetchOrders(status?: string) {
   return data ?? [];
 }
 
-export async function approveOrder(
+// Internal implementation unchanged — safeAction() wraps the export below.
+async function _approveOrder(
   orderId: string,
   approvedItems: { itemId: string; qty: number }[],
   shippingFee?: number,
@@ -162,7 +164,10 @@ export async function approveOrder(
   return { success: true, newStatus };
 }
 
-export async function rejectOrder(orderId: string, reason: string) {
+export const approveOrder = safeAction(_approveOrder);
+
+// Internal implementation unchanged — safeAction() wraps the export below.
+async function _rejectOrder(orderId: string, reason: string) {
   const parsed = orderRejectSchema.safeParse({ orderId, reason });
   if (!parsed.success) throw new Error(parsed.error.issues.map((i) => i.message).join('; '));
   const { supabase, userId } = await requireAdmin();
@@ -174,6 +179,8 @@ export async function rejectOrder(orderId: string, reason: string) {
   await logActivity(supabase, userId, 'order_rejected', 'order', orderId, { reason });
   return { success: true };
 }
+
+export const rejectOrder = safeAction(_rejectOrder);
 
 export async function finalConfirmCheck(orderId: string) {
   const { supabase, userId } = await requireAdmin();
@@ -228,7 +235,8 @@ export async function finalConfirmCheck(orderId: string) {
   return { success: true };
 }
 
-export async function dispatchOrder(
+// Internal implementation unchanged — safeAction() wraps the export below.
+async function _dispatchOrder(
   orderId: string,
   shipmentId: string,
   drNumber: string,
@@ -496,7 +504,10 @@ export async function dispatchOrder(
   return { success: true };
 }
 
-export async function updateTrackingStatus(
+export const dispatchOrder = safeAction(_dispatchOrder);
+
+// Internal implementation unchanged — safeAction() wraps the export below.
+async function _updateTrackingStatus(
   orderId: string,
   trackingStatus: string,
   bagsReturnedJb?: number,
@@ -562,7 +573,7 @@ export async function updateTrackingStatus(
         [bagsReturnedSb || 0, 'SB'],
       ] as const) {
         if (returnedBags <= 0) continue;
-        await addLedgerEntry(order.shipment_id, {
+        const ledgerResult = await addLedgerEntry(order.shipment_id, {
           date: new Date().toISOString().split('T')[0],
           po_number: order.po_number,
           dr_number: order.dr_number,
@@ -575,9 +586,21 @@ export async function updateTrackingStatus(
           client_reason: returnReason || undefined,
           delivery_receipt_id: drRecord?.id || null,
         });
+        // addLedgerEntry no longer throws (it's wrapped in safeAction) — it
+        // returns { success: false, error } instead. Re-throw here so a
+        // failed return-profit ledger entry still fails the WHOLE tracking
+        // update, exactly like the old throw-based behavior did. Without
+        // this, a failure here would go completely silent: the order's
+        // tracking status would update fine while its profit adjustment
+        // quietly never got created.
+        if (!ledgerResult.success) {
+          throw new Error(`Failed to record return ledger entry: ${ledgerResult.error}`);
+        }
       }
     }
   }
 
   return { success: true };
 }
+
+export const updateTrackingStatus = safeAction(_updateTrackingStatus);

@@ -99,23 +99,23 @@ function OrdersContent() {
     approvedItems: { itemId: string; qty: number }[],
     shippingFee?: number,
   ) => {
-    try {
-      await approveOrder(orderId, approvedItems, shippingFee);
-      toast.success('Order approved successfully.');
-      loadData();
-    } catch (e: any) {
-      toast.error(e.message || 'Failed to approve order.');
+    const result = await approveOrder(orderId, approvedItems, shippingFee);
+    if (!result.success) {
+      toast.error(result.error);
+      return;
     }
+    toast.success('Order approved successfully.');
+    loadData();
   };
 
   const handleRejectOrder = async (orderId: string, reason: string) => {
-    try {
-      await rejectOrder(orderId, reason);
-      toast.success('Order rejected.');
-      loadData();
-    } catch (e: any) {
-      toast.error(e.message || 'Failed to reject order.');
+    const result = await rejectOrder(orderId, reason);
+    if (!result.success) {
+      toast.error(result.error);
+      return;
     }
+    toast.success('Order rejected.');
+    loadData();
   };
 
   const handleConfirmCheck = async (orderId: string) => {
@@ -136,13 +136,20 @@ function OrdersContent() {
     driverName: string | null,
     plateNumber: string | null,
   ) => {
-    try {
-      await dispatchOrder(orderId, shipmentId, drNumber, drImageUrl, driverName, plateNumber);
-      toast.success('Order dispatched successfully.');
-      loadData();
-    } catch (e: any) {
-      toast.error(e.message || 'Failed to dispatch order.');
+    const result = await dispatchOrder(
+      orderId,
+      shipmentId,
+      drNumber,
+      drImageUrl,
+      driverName,
+      plateNumber,
+    );
+    if (!result.success) {
+      toast.error(result.error);
+      return;
     }
+    toast.success('Order dispatched successfully.');
+    loadData();
   };
 
   const handleTrackingUpdate = async (
@@ -152,13 +159,13 @@ function OrdersContent() {
     sbReturned?: number,
     reason?: string,
   ) => {
-    try {
-      await updateTrackingStatus(orderId, status, jbReturned, sbReturned, reason);
-      toast.success('Tracking status updated.');
-      loadData();
-    } catch (e: any) {
-      toast.error(e.message || 'Failed to update tracking.');
+    const result = await updateTrackingStatus(orderId, status, jbReturned, sbReturned, reason);
+    if (!result.success) {
+      toast.error(result.error);
+      return;
     }
+    toast.success('Tracking status updated.');
+    loadData();
   };
 
   if (role !== 'warehouse_manager') {
