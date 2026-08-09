@@ -385,6 +385,10 @@ INSERT INTO public.admin_settings (key, value)
 VALUES ('cost_config', '{"landed_cost_per_bag": 147.64, "local_expenses_per_bag": 20.00}'::jsonb)
 ON CONFLICT (key) DO NOTHING;
 
+INSERT INTO public.admin_settings (key, value)
+VALUES ('contact_info', '{"email": "support@obbo.com", "phone": "+63 912 345 6789", "address": "Pototan, Iloilo", "businessHours": "Mon - Fri, 8:00 AM - 5:00 PM"}'::jsonb)
+ON CONFLICT (key) DO NOTHING;
+
 -- ── ACTIVITY LOG ─────────────────────────────────────────────
 create table if not exists public.activity_log (
   id          uuid primary key default gen_random_uuid(),
@@ -545,8 +549,22 @@ create policy "order_returns: admin all"
   on public.order_returns for all using (public.is_admin());
 
 -- admin_settings
-drop policy if exists "admin_settings: admin all" on public.admin_settings;
-create policy "admin_settings: admin all" on public.admin_settings for all using (public.is_admin());
+-- NOTE: `for all using (...)` without `with check` defaults WITH CHECK to false,
+-- silently blocking all INSERT/UPSERT writes. Explicit read + write policies are required.
+drop policy if exists "admin_settings: admin all"                  on public.admin_settings;
+drop policy if exists "admin_settings: admin write"                on public.admin_settings;
+drop policy if exists "admin_settings: admin read"                 on public.admin_settings;
+drop policy if exists "admin_settings: client read contact_info"   on public.admin_settings;
+-- Admins can read all rows
+create policy "admin_settings: admin read"
+  on public.admin_settings for select using (public.is_admin());
+-- Admins can write (insert/update/delete) — WITH CHECK required to unlock INSERT/UPSERT
+create policy "admin_settings: admin write"
+  on public.admin_settings for all using (public.is_admin()) with check (public.is_admin());
+-- Verified clients can read the contact_info row only (used by client portal getContactInfo())
+create policy "admin_settings: client read contact_info"
+  on public.admin_settings for select
+  using (key = 'contact_info' and public.is_verified_client());
 
 -- activity_log
 drop policy if exists "activity_log: admin all" on public.activity_log;

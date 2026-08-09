@@ -14,10 +14,20 @@ export async function getAdminSetting(key: string) {
 // Internal implementation unchanged — safeAction() wraps the export below.
 async function _saveAdminSetting(key: string, value: Record<string, unknown>) {
   const { supabase, userId } = await requireAdmin();
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from('admin_settings')
-    .upsert({ key, value, updated_at: new Date().toISOString() }, { onConflict: 'key' });
+    .upsert({ key, value, updated_at: new Date().toISOString() }, { onConflict: 'key' })
+    .select();
   if (error) throw new Error(error.message);
+  // Detect silent RLS write failures: a successful upsert must affect at least 1 row.
+  // Without this guard, a misconfigured RLS policy (missing WITH CHECK) returns
+  // error=null but writes nothing, causing a false-positive success toast.
+  if (!data || data.length === 0) {
+    throw new Error(
+      `Setting "${key}" was not saved — the database rejected the write (0 rows affected). ` +
+        `This is usually an RLS policy misconfiguration. Check that the admin_settings policy has WITH CHECK.`,
+    );
+  }
   await logActivity(supabase, userId, 'setting_updated', 'admin_settings', key, { key });
   return { success: true };
 }
@@ -29,13 +39,20 @@ async function _saveCostConfig(config: CostConfig) {
   const parsed = costConfigSchema.safeParse(config);
   if (!parsed.success) throw new Error(parsed.error.issues.map((i) => i.message).join('; '));
   const { supabase, userId } = await requireAdmin();
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from('admin_settings')
     .upsert(
       { key: 'cost_config', value: config, updated_at: new Date().toISOString() },
       { onConflict: 'key' },
-    );
+    )
+    .select();
   if (error) throw new Error(error.message);
+  if (!data || data.length === 0) {
+    throw new Error(
+      `Cost config was not saved — the database rejected the write (0 rows affected). ` +
+        `This is usually an RLS policy misconfiguration. Check that the admin_settings policy has WITH CHECK.`,
+    );
+  }
   await logActivity(
     supabase,
     userId,
