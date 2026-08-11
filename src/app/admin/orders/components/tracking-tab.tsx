@@ -28,7 +28,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { MapPin, Truck, Check, CornerDownLeft, Edit2 } from 'lucide-react';
+import { MapPin, Truck, Check, CornerDownLeft, Edit2, ExternalLink } from 'lucide-react';
 import { BAG_EQUIVALENT } from '@/components/orders/wizard/order-schema';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
@@ -198,6 +198,7 @@ export function TrackingTab({
             <TableHead>Order ID</TableHead>
             <TableHead>Client & Service</TableHead>
             <TableHead>DR & Driver</TableHead>
+            <TableHead>Check</TableHead>
             <TableHead>Quantities</TableHead>
             <TableHead>Tracking Status</TableHead>
             <TableHead className="text-right">Action</TableHead>
@@ -301,6 +302,21 @@ export function TrackingTab({
                     </>
                   ) : (
                     <span className="text-muted-foreground text-xs italic">No DR attached</span>
+                  )}
+                </TableCell>
+                <TableCell>
+                  {order.check_image_url ? (
+                    <a
+                      href={order.check_image_url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="flex items-center gap-1 text-xs font-medium text-emerald-600 hover:text-emerald-700"
+                    >
+                      <ExternalLink className="h-3 w-3" />
+                      View Check
+                    </a>
+                  ) : (
+                    <span className="text-muted-foreground text-xs">—</span>
                   )}
                 </TableCell>
                 <TableCell>
