@@ -31,6 +31,7 @@ import {
 import { MapPin, Truck, Check, CornerDownLeft, Edit2, ExternalLink } from 'lucide-react';
 import { BAG_EQUIVALENT } from '@/components/orders/wizard/order-schema';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import type { OrderDeliveryReceipt } from '@/lib/types/database';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -41,6 +42,15 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+
+// DRs render in dispatch order (oldest first) — never the overwritten
+// orders.dr_number single value.
+function sortedReceipts(receipts: OrderDeliveryReceipt[] | undefined) {
+  return [...(receipts ?? [])].sort(
+    (a, b) =>
+      a.received_date.localeCompare(b.received_date) || a.created_at.localeCompare(b.created_at),
+  );
+}
 
 // Restocking a return credits shipment stock in whole JB/SB UNITS, rounded
 // DOWN from the individual bag count entered here — a return that isn't an
@@ -221,6 +231,8 @@ export function TrackingTab({
             const isSplit =
               order.is_split_delivery ||
               order.items.some((i) => i.dispatched_qty < i.requested_qty);
+            const drs = sortedReceipts(order.delivery_receipts);
+            const latestDr = drs.length > 0 ? drs[drs.length - 1] : null;
 
             return (
               <TableRow key={order.id}>
@@ -273,23 +285,37 @@ export function TrackingTab({
                   </div>
                 </TableCell>
                 <TableCell>
-                  {order.delivery_receipts && order.delivery_receipts.length > 0 ? (
-                    <div className="space-y-1">
-                      {order.delivery_receipts.length > 1 && (
+                  {drs.length > 0 ? (
+                    <div className="flex flex-col gap-1">
+                      {drs.length > 1 && (
                         <p className="text-[10px] font-bold text-amber-600 uppercase">
-                          {order.delivery_receipts.length} DRs
+                          {drs.length} DRs
                         </p>
                       )}
-                      {order.delivery_receipts.map((dr) => (
-                        <div key={dr.dr_number}>
-                          <p className="text-sm font-semibold">{dr.dr_number}</p>
-                          {order.service_type === 'deliver' && (dr.driver || dr.plate_number) && (
-                            <p className="text-muted-foreground mt-0.5 text-xs">
-                              {dr.driver} · {dr.plate_number}
-                            </p>
-                          )}
-                        </div>
-                      ))}
+                      {drs.map((dr) =>
+                        dr.dr_image_url ? (
+                          <a
+                            key={dr.id}
+                            href={dr.dr_image_url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="text-primary hover:text-primary/80 text-sm font-semibold"
+                          >
+                            {dr.dr_number}
+                          </a>
+                        ) : (
+                          <p key={dr.id} className="text-sm font-semibold">
+                            {dr.dr_number}
+                          </p>
+                        ),
+                      )}
+                      {order.service_type === 'deliver' &&
+                        latestDr &&
+                        (latestDr.driver || latestDr.plate_number) && (
+                          <p className="text-muted-foreground mt-0.5 text-xs">
+                            {latestDr.driver} · {latestDr.plate_number}
+                          </p>
+                        )}
                     </div>
                   ) : order.dr_number ? (
                     <>

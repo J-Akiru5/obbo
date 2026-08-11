@@ -17,7 +17,7 @@ export async function fetchOrders(status?: string) {
   let query = supabase
     .from('orders')
     .select(
-      '*, client:profiles!orders_client_id_fkey(id, full_name, company_name, email, phone, avatar_url), items:order_items(*, product:products(name, bag_type, price_per_bag)), delivery_receipts:delivery_receipts(dr_number, dr_image_url, driver, plate_number, received_date, jb, sb)',
+      '*, client:profiles!orders_client_id_fkey(id, full_name, company_name, email, phone, avatar_url), items:order_items(*, product:products(name, bag_type, price_per_bag)), delivery_receipts(id, dr_number, dr_image_url, driver, plate_number, received_date, created_at)',
     )
     .order('created_at', { ascending: false });
   if (status) query = query.eq('status', status);

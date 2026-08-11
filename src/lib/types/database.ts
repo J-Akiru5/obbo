@@ -144,6 +144,19 @@ export interface DeliveryReceipt {
   } | null;
 }
 
+// Subset of DeliveryReceipt embedded on Order via fetchOrders'
+// `delivery_receipts(...)` join — one row per DR, unlike the overwritten
+// orders.dr_number/dr_image_url single-DR columns.
+export interface OrderDeliveryReceipt {
+  id: string;
+  dr_number: string;
+  dr_image_url: string | null;
+  driver: string | null;
+  plate_number: string | null;
+  received_date: string;
+  created_at: string;
+}
+
 export interface Order {
   id: string;
   client_id: string;
@@ -178,22 +191,14 @@ export interface Order {
   preferred_pickup_date: string | null;
   order_type: OrderType;
   linked_po_number: string | null;
-  created_at: string;
-  updated_at: string;
   // All delivery receipts linked to this order via delivery_receipts.order_id.
   // orders.dr_number/dr_image_url/driver_name/plate_number only ever hold the
   // MOST RECENT dispatch (each new DR overwrites them — see
   // delivery-receipt-actions.ts's _createDeliveryReceipt) so this array is the
   // only complete record for orders with more than one DR (split deliveries).
-  delivery_receipts?: {
-    dr_number: string;
-    dr_image_url: string | null;
-    driver: string | null;
-    plate_number: string | null;
-    received_date: string;
-    jb: number;
-    sb: number;
-  }[];
+  delivery_receipts?: OrderDeliveryReceipt[];
+  created_at: string;
+  updated_at: string;
 }
 
 export interface OrderItem {

@@ -28,9 +28,11 @@ import {
   X,
   Banknote,
   FileText,
+  FileImage,
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { BAG_EQUIVALENT } from '@/components/orders/wizard/order-schema';
+import type { OrderDeliveryReceipt } from '@/lib/types/database';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -41,6 +43,15 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+
+// DRs render in dispatch order (oldest first) — never the overwritten
+// orders.dr_number single value.
+function sortedReceipts(receipts: OrderDeliveryReceipt[] | undefined) {
+  return [...(receipts ?? [])].sort(
+    (a, b) =>
+      a.received_date.localeCompare(b.received_date) || a.created_at.localeCompare(b.created_at),
+  );
+}
 
 export function FulfillmentTab({
   orders,
@@ -207,6 +218,7 @@ export function FulfillmentTab({
               .reduce((s, i) => s + i.requested_qty, 0);
             const isSplit =
               order.is_split_delivery || order.items.some((i) => i.approved_qty < i.requested_qty);
+            const drs = sortedReceipts(order.delivery_receipts);
 
             return (
               <Card key={order.id} className="border-l-primary border-l-4">
@@ -315,6 +327,28 @@ export function FulfillmentTab({
                       >
                         <ExternalLink className="h-3 w-3" /> View PO
                       </a>
+                    )}
+                    {drs.length > 0 && (
+                      <div className="text-muted-foreground mt-1 flex flex-wrap items-center gap-2 text-xs">
+                        <span className="tracking-wider uppercase">Dispatched:</span>
+                        {drs.map((dr) =>
+                          dr.dr_image_url ? (
+                            <a
+                              key={dr.id}
+                              href={dr.dr_image_url}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="text-primary flex items-center gap-1 font-medium hover:underline"
+                            >
+                              <FileImage className="h-3 w-3" /> {dr.dr_number}
+                            </a>
+                          ) : (
+                            <span key={dr.id} className="text-foreground font-medium">
+                              {dr.dr_number}
+                            </span>
+                          ),
+                        )}
+                      </div>
                     )}
                     {/* Payment info */}
                     <div className="mt-2 flex flex-wrap items-center gap-2">

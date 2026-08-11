@@ -1,192 +1,183 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { http, HttpResponse } from 'msw';
 import { server } from '../../../mocks/server';
-import { fetchDispatchesForDate } from './warehouse-report-actions';
+import { fetchDispatchesForDate, generateDailyReportData } from './warehouse-report-actions';
 
-// fetchDispatchesForDate replaces the old orders-derived dispatch list (see
-// generateDailyReportData / app/admin/reports/page.tsx / reports-tab.tsx
-// before this fix), which read orders.dr_number and filtered orders by
-// updated_at. Both of those columns are overwritten on every new DR against
-// the same order (see delivery-receipt-actions.ts's _createDeliveryReceipt),
-// so any order dispatched more than once — split deliveries, or the same
-// order touched again on a later day — silently lost all but its most
-// recent DR. This suite exercises that regression directly against
-// delivery_receipts, the actual source of truth (one row per DR, never
-// overwritten).
+// warehouse-report-actions.ts transitively imports next/cache via
+// notification-actions — mock it like orders-actions.test.ts does.
+vi.mock('next/cache', () => ({ revalidatePath: vi.fn() }));
 
-interface MockDr {
-  dr_number: string;
-  client_name: string | null;
-  po_number: string | null;
-  order_id: string | null;
-  jb: number;
-  sb: number;
-  received_date: string;
+// ── Fixtures ─────────────────────────────────────────────────────
+// Shape mirrors a delivery_receipts row PLUS the PostgREST-embedded
+// `order:orders(service_type)` join row that fetchDispatchesForDate selects.
+function drRow(overrides: Record<string, unknown> = {}) {
+  return {
+    id: 'dr-0001',
+    shipment_id: 'ship-001',
+    dr_number: 'DR-2026-001',
+    quantity: 50,
+    bag_type: 'JB',
+    received_date: '2026-08-01',
+    notes: null,
+    po_number: 'PO-2026-100',
+    client_name: 'ACME Construction',
+    client_id: 'client-001',
+    jb: 2,
+    sb: 0,
+    driver: 'Danny Driver',
+    plate_number: 'ABC1234',
+    shipping_fee: 0,
+    dr_image_url: null,
+    destination: null,
+    order_id: 'order-001',
+    created_at: '2026-08-01T08:00:00.000Z',
+    order: { service_type: 'deliver' },
+    ...overrides,
+  };
 }
 
-function parseIn(value: string | null): string[] | null {
-  if (!value || !value.startsWith('in.(') || !value.endsWith(')')) return null;
-  const inner = value.slice(4, -1);
-  return inner === '' ? [] : inner.split(',').map(decodeURIComponent);
-}
-
-function mockDeliveryReceiptsEndpoint(drs: MockDr[]) {
+// MSW handler that emulates PostgREST's received_date=eq.<date> filter,
+// since the default mock handler ignores that query param.
+function useDeliveryReceipts(rows: ReturnType<typeof drRow>[]) {
   server.use(
     http.get('*/rest/v1/delivery_receipts', ({ request }) => {
       const url = new URL(request.url);
-      const receivedDate = url.searchParams.get('received_date')?.replace('eq.', '');
-      const result = receivedDate ? drs.filter((dr) => dr.received_date === receivedDate) : drs;
-      return HttpResponse.json(result);
+      const date = url.searchParams.get('received_date')?.replace('eq.', '');
+      return HttpResponse.json(date ? rows.filter((r) => r.received_date === date) : rows);
     }),
   );
 }
 
-function mockOrdersEndpoint(orders: { id: string; service_type: string }[]) {
-  server.use(
-    http.get('*/rest/v1/orders', ({ request }) => {
-      const url = new URL(request.url);
-      const ids = parseIn(url.searchParams.get('id'));
-      const result = ids ? orders.filter((o) => ids.includes(o.id)) : orders;
-      return HttpResponse.json(result);
-    }),
-  );
-}
-
-function mockPurchaseOrdersEndpoint(pos: { po_number: string; service_type: string }[]) {
+function usePurchaseOrders(rows: { po_number: string; service_type: string }[]) {
   server.use(
     http.get('*/rest/v1/purchase_orders', ({ request }) => {
       const url = new URL(request.url);
-      const poNumbers = parseIn(url.searchParams.get('po_number'));
-      const result = poNumbers ? pos.filter((p) => poNumbers.includes(p.po_number)) : pos;
-      return HttpResponse.json(result);
+      const poParam = url.searchParams.get('po_number') ?? '';
+      // supabase-js .in('po_number', [...]) serializes as po_number=in.(A,B)
+      if (poParam.startsWith('in.(')) {
+        const wanted = poParam.slice(4, -1).split(',');
+        return HttpResponse.json(rows.filter((r) => wanted.includes(r.po_number)));
+      }
+      return HttpResponse.json(rows);
     }),
   );
 }
 
+// ── Tests ────────────────────────────────────────────────────────
+
 describe('fetchDispatchesForDate', () => {
-  it('returns an empty array when there are no DRs for the date', async () => {
-    mockDeliveryReceiptsEndpoint([]);
+  it('returns one dispatch row for a single order with a single DR (baseline)', async () => {
+    useDeliveryReceipts([drRow()]);
 
-    const rows = await fetchDispatchesForDate('2026-08-10');
-    expect(rows).toEqual([]);
+    const rows = await fetchDispatchesForDate('2026-08-01');
+
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toEqual({
+      client: 'ACME Construction',
+      dr: 'DR-2026-001',
+      service: 'deliver',
+      jb: 2,
+      sb: 0,
+    });
   });
 
-  it('returns one row for a single-DR order (regression baseline)', async () => {
-    mockDeliveryReceiptsEndpoint([
-      {
-        dr_number: 'DR-001',
-        client_name: 'ACME Construction',
-        po_number: 'PO-001',
-        order_id: 'order-1',
-        jb: 20,
-        sb: 0,
-        received_date: '2026-08-10',
-      },
+  it('returns 3 dispatch rows for a single order with 3 DRs on the same day', async () => {
+    useDeliveryReceipts([
+      drRow({ id: 'dr-1', dr_number: 'DR-001' }),
+      drRow({ id: 'dr-2', dr_number: 'DR-002' }),
+      drRow({ id: 'dr-3', dr_number: 'DR-003' }),
     ]);
-    mockOrdersEndpoint([{ id: 'order-1', service_type: 'deliver' }]);
 
-    const rows = await fetchDispatchesForDate('2026-08-10');
-    expect(rows).toEqual([
-      { client: 'ACME Construction', dr: 'DR-001', service: 'deliver', jb: 20, sb: 0 },
-    ]);
+    const rows = await fetchDispatchesForDate('2026-08-01');
+
+    expect(rows).toHaveLength(3);
+    expect(rows.map((r) => r.dr)).toEqual(['DR-001', 'DR-002', 'DR-003']);
   });
 
-  it('lists every DR separately for a multi-DR-same-day split delivery (previously collapsed to the latest DR only)', async () => {
-    mockDeliveryReceiptsEndpoint([
-      {
-        dr_number: 'DR-A',
-        client_name: 'ACME Construction',
-        po_number: 'PO-001',
-        order_id: 'order-1',
-        jb: 10,
-        sb: 0,
-        received_date: '2026-08-10',
-      },
-      {
-        dr_number: 'DR-B',
-        client_name: 'ACME Construction',
-        po_number: 'PO-001',
-        order_id: 'order-1',
-        jb: 10,
-        sb: 0,
-        received_date: '2026-08-10',
-      },
+  it('returns exactly the queried day\u2019s DR when an order has DRs on different days', async () => {
+    useDeliveryReceipts([
+      drRow({ id: 'dr-1', dr_number: 'DR-DAY1', received_date: '2026-08-01' }),
+      drRow({ id: 'dr-2', dr_number: 'DR-DAY2', received_date: '2026-08-02' }),
     ]);
-    mockOrdersEndpoint([{ id: 'order-1', service_type: 'deliver' }]);
 
-    const rows = await fetchDispatchesForDate('2026-08-10');
-    expect(rows.map((r) => r.dr)).toEqual(['DR-A', 'DR-B']);
-    expect(rows.every((r) => r.client === 'ACME Construction')).toBe(true);
-  });
+    const day1 = await fetchDispatchesForDate('2026-08-01');
+    const day2 = await fetchDispatchesForDate('2026-08-02');
 
-  it("keeps each day's report isolated — a DR on a later day does not erase an earlier day's dispatch for the same order (regression: orders.updated_at overwrite)", async () => {
-    // Same order, dispatched on two different days. The old implementation
-    // filtered `orders` by updated_at, which is overwritten by every new DR
-    // — so re-viewing day 1's report after day 2's DR landed showed zero
-    // dispatches for day 1. Reading delivery_receipts.received_date directly
-    // keeps each day's DR where it belongs regardless of order state.
-    mockDeliveryReceiptsEndpoint([
-      {
-        dr_number: 'DR-DAY1',
-        client_name: 'ACME Construction',
-        po_number: 'PO-001',
-        order_id: 'order-1',
-        jb: 10,
-        sb: 0,
-        received_date: '2026-08-09',
-      },
-      {
-        dr_number: 'DR-DAY2',
-        client_name: 'ACME Construction',
-        po_number: 'PO-001',
-        order_id: 'order-1',
-        jb: 5,
-        sb: 0,
-        received_date: '2026-08-10',
-      },
-    ]);
-    mockOrdersEndpoint([{ id: 'order-1', service_type: 'deliver' }]);
-
-    const day1 = await fetchDispatchesForDate('2026-08-09');
-    const day2 = await fetchDispatchesForDate('2026-08-10');
     expect(day1.map((r) => r.dr)).toEqual(['DR-DAY1']);
     expect(day2.map((r) => r.dr)).toEqual(['DR-DAY2']);
+    // Never 0 or 1 across the two days — the old orders.updated_at dependency
+    // would hide DR-DAY1 once DR-DAY2 overwrote the order row.
+    expect(day1.length + day2.length).toBe(2);
   });
 
-  it('resolves service_type from purchase_orders for a walk-in DR with no linked order', async () => {
-    mockDeliveryReceiptsEndpoint([
-      {
+  it('keeps a walk-in DR with no linked order, using the DR row itself', async () => {
+    useDeliveryReceipts([
+      drRow({
+        id: 'dr-walkin',
         dr_number: 'DR-WALKIN',
-        client_name: null,
-        po_number: 'PO-WALKIN',
         order_id: null,
+        order: null,
+        po_number: 'PO-WALKIN',
+        client_name: 'Walk-in Buyer',
+        client_id: null,
         jb: 0,
-        sb: 40,
-        received_date: '2026-08-10',
-      },
+        sb: 1,
+      }),
     ]);
-    mockPurchaseOrdersEndpoint([{ po_number: 'PO-WALKIN', service_type: 'pickup' }]);
+    usePurchaseOrders([{ po_number: 'PO-WALKIN', service_type: 'deliver' }]);
 
-    const rows = await fetchDispatchesForDate('2026-08-10');
-    expect(rows).toEqual([
-      { client: 'Walk-in', dr: 'DR-WALKIN', service: 'pickup', jb: 0, sb: 40 },
-    ]);
+    const rows = await fetchDispatchesForDate('2026-08-01');
+
+    expect(rows).toHaveLength(1);
+    expect(rows[0].client).toBe('Walk-in Buyer');
+    // service_type resolved via the po_number fallback lookup
+    expect(rows[0].service).toBe('deliver');
+    expect(rows[0].sb).toBe(1);
   });
 
-  it('falls back to "Walk-in"/"pickup" when a DR has no order and no matching PO', async () => {
-    mockDeliveryReceiptsEndpoint([
-      {
-        dr_number: 'DR-ORPHAN',
-        client_name: null,
-        po_number: null,
+  it('falls back to pickup / Walk-in when a DR has no order, PO, or client name', async () => {
+    useDeliveryReceipts([
+      drRow({
+        id: 'dr-bare',
+        dr_number: 'DR-BARE',
         order_id: null,
-        jb: 5,
-        sb: 0,
-        received_date: '2026-08-10',
-      },
+        order: null,
+        po_number: null,
+        client_name: null,
+        client_id: null,
+      }),
     ]);
 
-    const rows = await fetchDispatchesForDate('2026-08-10');
-    expect(rows).toEqual([{ client: 'Walk-in', dr: 'DR-ORPHAN', service: 'pickup', jb: 5, sb: 0 }]);
+    const rows = await fetchDispatchesForDate('2026-08-01');
+
+    expect(rows).toHaveLength(1);
+    expect(rows[0].client).toBe('Walk-in');
+    expect(rows[0].service).toBe('pickup');
+  });
+
+  it('rejects a malformed date parameter', async () => {
+    await expect(fetchDispatchesForDate('08/01/2026')).rejects.toThrow();
+  });
+});
+
+describe('generateDailyReportData dispatches', () => {
+  it('includes every same-day DR (not just the order\u2019s latest)', async () => {
+    useDeliveryReceipts([
+      drRow({ id: 'dr-1', dr_number: 'DR-001' }),
+      drRow({ id: 'dr-2', dr_number: 'DR-002' }),
+      drRow({ id: 'dr-3', dr_number: 'DR-003' }),
+    ]);
+    server.use(
+      // No prior report → yesterday's closing defaults to 0 (maybeSingle → null)
+      http.get('*/rest/v1/warehouse_reports', () => HttpResponse.json(null)),
+      http.get('*/rest/v1/shipments', () => HttpResponse.json([])),
+      http.get('*/rest/v1/shipment_ledger', () => HttpResponse.json([])),
+      http.get('*/rest/v1/customer_balances', () => HttpResponse.json([])),
+    );
+
+    const data = await generateDailyReportData('2026-08-01');
+
+    expect(data.dispatches).toHaveLength(3);
+    expect(data.dispatches.map((d) => d.dr)).toEqual(['DR-001', 'DR-002', 'DR-003']);
   });
 });

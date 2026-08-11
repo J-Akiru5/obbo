@@ -1,74 +1,50 @@
 'use server';
 
 import { requireAdmin, logActivity } from './admin-helpers';
-import { warehouseReportSaveSchema } from './schemas';
+import { warehouseReportSaveSchema, dispatchReportDateSchema } from './schemas';
 import { createRoleNotification } from './notification-actions';
 import type { WarehouseReport } from '@/lib/types/database';
 import { safeAction } from './action-result';
 import type { DispatchRow } from '@/lib/report-generators/types';
 
-// Every DR dispatched against an order overwrites orders.dr_number (see
-// delivery-receipt-actions.ts's _createDeliveryReceipt) — so building a
-// dispatch list from `orders` only ever shows the most recent DR per order,
-// and silently drops any order dispatched more than once (split deliveries,
-// or the same order touched again on a later day). delivery_receipts is
-// the source of truth instead: one row per DR, never overwritten, and it's
-// what both the Admin Reports page and the Inventory Reports tab should
-// read from for a given day's dispatch listing.
+// One row per delivery_receipts row for the given date — the source of truth
+// for "what was dispatched that day". Never reads orders.dr_number (overwritten
+// on every dispatch) or orders.updated_at, so historical dates stay correct
+// even after later DRs are created against the same order.
 export async function fetchDispatchesForDate(date: string): Promise<DispatchRow[]> {
+  const parsed = dispatchReportDateSchema.safeParse({ date });
+  if (!parsed.success) throw new Error(parsed.error.issues.map((i) => i.message).join('; '));
   const { supabase } = await requireAdmin();
 
   const { data: drs } = await supabase
     .from('delivery_receipts')
-    .select('dr_number, client_name, po_number, order_id, jb, sb')
-    .eq('received_date', date)
+    .select('*, order:orders(service_type)')
+    .eq('received_date', parsed.data.date)
     .order('created_at', { ascending: true });
 
-  if (!drs || drs.length === 0) return [];
-
-  // Resolve service_type (not stored on the DR row itself) via whichever
-  // parent record the DR is linked to — the order it dispatched, or (for
-  // walk-in DRs with no linked order) the purchase order it was raised
-  // against. Two batched lookups instead of a relational embed, since the
-  // embed's one-to-one vs one-to-many shape can't be inferred without
-  // generated DB types.
-  const orderIds = Array.from(
-    new Set(drs.map((dr) => dr.order_id).filter((id): id is string => !!id)),
-  );
-  let serviceByOrderId: Record<string, string> = {};
-  if (orderIds.length > 0) {
-    const { data: linkedOrders } = await supabase
-      .from('orders')
-      .select('id, service_type')
-      .in('id', orderIds);
-    serviceByOrderId = Object.fromEntries((linkedOrders || []).map((o) => [o.id, o.service_type]));
-  }
-
-  const unresolvedPoNumbers = Array.from(
-    new Set(
-      drs
-        .filter((dr) => !(dr.order_id && serviceByOrderId[dr.order_id]) && dr.po_number)
-        .map((dr) => dr.po_number as string),
+  // DRs not linked to an order (manual walk-in POs) have no
+  // delivery_receipts→purchase_orders FK to join on — resolve their
+  // service_type with a batched po_number lookup instead.
+  const orphanPoNumbers = [
+    ...new Set(
+      (drs || []).filter((dr) => !dr.order && dr.po_number).map((dr) => dr.po_number as string),
     ),
-  );
-  let serviceByPoNumber: Record<string, string> = {};
-  if (unresolvedPoNumbers.length > 0) {
+  ];
+  const poServiceTypes = new Map<string, string>();
+  if (orphanPoNumbers.length > 0) {
     const { data: pos } = await supabase
       .from('purchase_orders')
       .select('po_number, service_type')
-      .in('po_number', unresolvedPoNumbers);
-    serviceByPoNumber = Object.fromEntries(
-      (pos || []).map((p) => [p.po_number, p.service_type || 'pickup']),
-    );
+      .in('po_number', orphanPoNumbers);
+    for (const po of pos || []) {
+      if (po.service_type) poServiceTypes.set(po.po_number, po.service_type);
+    }
   }
 
-  return drs.map((dr) => ({
+  return (drs || []).map((dr) => ({
     client: dr.client_name || 'Walk-in',
     dr: dr.dr_number,
-    service:
-      (dr.order_id && serviceByOrderId[dr.order_id]) ||
-      (dr.po_number && serviceByPoNumber[dr.po_number]) ||
-      'pickup',
+    service: dr.order?.service_type || poServiceTypes.get(dr.po_number) || 'pickup',
     jb: dr.jb || 0,
     sb: dr.sb || 0,
   }));

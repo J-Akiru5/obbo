@@ -157,6 +157,12 @@ export const ledgerEntryUpdateSchema = z.object({
 });
 
 // ─── Warehouse Report ───────────────────────────────────────────
+export const dispatchReportDateSchema = z
+  .object({
+    date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Expected YYYY-MM-DD'),
+  })
+  .strict();
+
 export const warehouseReportSaveSchema = z.object({
   report_date: z.string().min(1),
   yesterday_jb: z.number().int().min(0),

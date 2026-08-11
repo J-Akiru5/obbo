@@ -13,6 +13,16 @@ import { Input } from '@/components/ui/input';
 import { Search, MapPin, Truck, CheckCircle2, XCircle, ExternalLink } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { BAG_EQUIVALENT } from '@/components/orders/wizard/order-schema';
+import type { OrderDeliveryReceipt } from '@/lib/types/database';
+
+// DRs render in dispatch order (oldest first) — never the overwritten
+// orders.dr_number single value.
+function sortedReceipts(receipts: OrderDeliveryReceipt[] | undefined) {
+  return [...(receipts ?? [])].sort(
+    (a, b) =>
+      a.received_date.localeCompare(b.received_date) || a.created_at.localeCompare(b.created_at),
+  );
+}
 
 export function OrderHistoryTab({ orders, loading }: { orders: Order[]; loading: boolean }) {
   const [searchQuery, setSearchQuery] = useState('');
@@ -124,6 +134,7 @@ export function OrderHistoryTab({ orders, loading }: { orders: Order[]; loading:
                   order.is_split_delivery ||
                   (order.status !== 'rejected' &&
                     order.items.some((i) => i.dispatched_qty < i.requested_qty));
+                const drs = sortedReceipts(order.delivery_receipts);
 
                 return (
                   <TableRow key={order.id}>
@@ -205,23 +216,35 @@ export function OrderHistoryTab({ orders, loading }: { orders: Order[]; loading:
                           </div>
                         )}
                       </div>
-                      {order.status === 'completed' &&
-                        (order.delivery_receipts && order.delivery_receipts.length > 0 ? (
-                          <div className="text-muted-foreground mt-0.5 space-y-0.5 text-xs">
-                            {order.delivery_receipts.length > 1 && (
-                              <p className="text-foreground font-semibold">
-                                {order.delivery_receipts.length} DRs (split delivery):
-                              </p>
-                            )}
-                            {order.delivery_receipts.map((dr) => (
-                              <p key={dr.dr_number}>DR: {dr.dr_number}</p>
-                            ))}
-                          </div>
-                        ) : (
-                          order.dr_number && (
-                            <p className="text-muted-foreground text-xs">DR: {order.dr_number}</p>
-                          )
-                        ))}
+                      {order.status === 'completed' && drs.length > 0 && (
+                        <div className="flex flex-col gap-0.5">
+                          {drs.length > 1 && (
+                            <p className="text-foreground text-xs font-semibold">
+                              {drs.length} DRs (split delivery):
+                            </p>
+                          )}
+                          {drs.map((dr) => (
+                            <p key={dr.id} className="text-muted-foreground text-xs">
+                              DR:{' '}
+                              {dr.dr_image_url ? (
+                                <a
+                                  href={dr.dr_image_url}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="text-primary hover:text-primary/80 font-medium"
+                                >
+                                  {dr.dr_number}
+                                </a>
+                              ) : (
+                                <span className="text-foreground font-medium">{dr.dr_number}</span>
+                              )}
+                            </p>
+                          ))}
+                        </div>
+                      )}
+                      {order.status === 'completed' && drs.length === 0 && order.dr_number && (
+                        <p className="text-muted-foreground text-xs">DR: {order.dr_number}</p>
+                      )}
                       {order.status === 'completed' &&
                         order.tracking_status === 'bags_returned' && (
                           <p className="text-xs font-medium text-purple-600">

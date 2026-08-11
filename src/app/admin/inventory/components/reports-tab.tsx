@@ -139,9 +139,9 @@ export function ReportsTab() {
       }
 
       if (!submitted) {
-        // Load today's dispatches for Module 2 — read from delivery_receipts
-        // directly (one row per DR) rather than from orders.dr_number, which
-        // only ever holds the most recent DR per order.
+        // Load today's dispatches for Module 2 — one row per DR from
+        // delivery_receipts via the shared action (never orders.dr_number,
+        // which only retains the latest DR per order).
         const dispatches = await fetchDispatchesForDate(reportDate);
         setTodayDispatches(dispatches);
 
