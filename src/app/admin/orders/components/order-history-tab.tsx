@@ -10,7 +10,7 @@ import {
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { Search, MapPin, Truck, CheckCircle2, XCircle } from 'lucide-react';
+import { Search, MapPin, Truck, CheckCircle2, XCircle, ExternalLink } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { BAG_EQUIVALENT } from '@/components/orders/wizard/order-schema';
 
@@ -87,13 +87,14 @@ export function OrderHistoryTab({ orders, loading }: { orders: Order[]; loading:
               <TableHead>Client</TableHead>
               <TableHead>Fulfillment</TableHead>
               <TableHead>Financials</TableHead>
+              <TableHead>Documents</TableHead>
               <TableHead className="text-right">Status</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {filteredOrders.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={5} className="text-muted-foreground py-8 text-center">
+                <TableCell colSpan={6} className="text-muted-foreground py-8 text-center">
                   No matching history records found.
                 </TableCell>
               </TableRow>
@@ -204,9 +205,23 @@ export function OrderHistoryTab({ orders, loading }: { orders: Order[]; loading:
                           </div>
                         )}
                       </div>
-                      {order.status === 'completed' && order.dr_number && (
-                        <p className="text-muted-foreground text-xs">DR: {order.dr_number}</p>
-                      )}
+                      {order.status === 'completed' &&
+                        (order.delivery_receipts && order.delivery_receipts.length > 0 ? (
+                          <div className="text-muted-foreground mt-0.5 space-y-0.5 text-xs">
+                            {order.delivery_receipts.length > 1 && (
+                              <p className="text-foreground font-semibold">
+                                {order.delivery_receipts.length} DRs (split delivery):
+                              </p>
+                            )}
+                            {order.delivery_receipts.map((dr) => (
+                              <p key={dr.dr_number}>DR: {dr.dr_number}</p>
+                            ))}
+                          </div>
+                        ) : (
+                          order.dr_number && (
+                            <p className="text-muted-foreground text-xs">DR: {order.dr_number}</p>
+                          )
+                        ))}
                       {order.status === 'completed' &&
                         order.tracking_status === 'bags_returned' && (
                           <p className="text-xs font-medium text-purple-600">
@@ -234,6 +249,35 @@ export function OrderHistoryTab({ orders, loading }: { orders: Order[]; loading:
                       <Badge variant="outline" className="mt-1 text-[10px] uppercase">
                         {order.payment_method}
                       </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex flex-col gap-1">
+                        {order.check_image_url && (
+                          <a
+                            href={order.check_image_url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="flex items-center gap-1 text-xs font-medium text-emerald-600 hover:text-emerald-700"
+                          >
+                            <ExternalLink className="h-3 w-3" />
+                            View Check
+                          </a>
+                        )}
+                        {order.po_image_url && (
+                          <a
+                            href={order.po_image_url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="text-primary hover:text-primary/80 flex items-center gap-1 text-xs font-medium"
+                          >
+                            <ExternalLink className="h-3 w-3" />
+                            View PO
+                          </a>
+                        )}
+                        {!order.check_image_url && !order.po_image_url && (
+                          <span className="text-muted-foreground text-xs">—</span>
+                        )}
+                      </div>
                     </TableCell>
                     <TableCell className="text-right">
                       {order.status === 'completed' ? (

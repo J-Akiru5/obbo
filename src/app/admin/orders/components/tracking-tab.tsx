@@ -272,7 +272,25 @@ export function TrackingTab({
                   </div>
                 </TableCell>
                 <TableCell>
-                  {order.dr_number ? (
+                  {order.delivery_receipts && order.delivery_receipts.length > 0 ? (
+                    <div className="space-y-1">
+                      {order.delivery_receipts.length > 1 && (
+                        <p className="text-[10px] font-bold text-amber-600 uppercase">
+                          {order.delivery_receipts.length} DRs
+                        </p>
+                      )}
+                      {order.delivery_receipts.map((dr) => (
+                        <div key={dr.dr_number}>
+                          <p className="text-sm font-semibold">{dr.dr_number}</p>
+                          {order.service_type === 'deliver' && (dr.driver || dr.plate_number) && (
+                            <p className="text-muted-foreground mt-0.5 text-xs">
+                              {dr.driver} · {dr.plate_number}
+                            </p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  ) : order.dr_number ? (
                     <>
                       <p className="text-sm font-semibold">{order.dr_number}</p>
                       {order.service_type === 'deliver' && (

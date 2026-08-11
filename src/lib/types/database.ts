@@ -180,6 +180,20 @@ export interface Order {
   linked_po_number: string | null;
   created_at: string;
   updated_at: string;
+  // All delivery receipts linked to this order via delivery_receipts.order_id.
+  // orders.dr_number/dr_image_url/driver_name/plate_number only ever hold the
+  // MOST RECENT dispatch (each new DR overwrites them — see
+  // delivery-receipt-actions.ts's _createDeliveryReceipt) so this array is the
+  // only complete record for orders with more than one DR (split deliveries).
+  delivery_receipts?: {
+    dr_number: string;
+    dr_image_url: string | null;
+    driver: string | null;
+    plate_number: string | null;
+    received_date: string;
+    jb: number;
+    sb: number;
+  }[];
 }
 
 export interface OrderItem {
