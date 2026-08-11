@@ -15,7 +15,7 @@ import {
 } from '@/components/ui/table';
 import {
   fetchCustomerBalances,
-  fetchOrders,
+  fetchDispatchesForDate,
   fetchWarehouseReport,
   fetchDashboardKPIs,
   autoSubmitEndOfDayReports,
@@ -63,14 +63,12 @@ export default function AdminReportsPage() {
     setNotAvailable(false);
     try {
       const today = new Date().toISOString().split('T')[0];
-      const [reportRow, dispatchedOrders, completedOrders, balanceRows, dashboardKpis] =
-        await Promise.all([
-          fetchWarehouseReport(reportDate),
-          fetchOrders('dispatched'),
-          fetchOrders('completed'),
-          fetchCustomerBalances(),
-          fetchDashboardKPIs(),
-        ]);
+      const [reportRow, dispatchRows, balanceRows, dashboardKpis] = await Promise.all([
+        fetchWarehouseReport(reportDate),
+        fetchDispatchesForDate(reportDate),
+        fetchCustomerBalances(),
+        fetchDashboardKPIs(),
+      ]);
 
       const fetchedReport = (reportRow ?? null) as WarehouseReport | null;
       setReport(fetchedReport);
@@ -82,32 +80,7 @@ export default function AdminReportsPage() {
 
       setCurrentInventory({ jb: dashboardKpis.jbGood, sb: dashboardKpis.sbGood });
 
-      const dayOrders = [...(dispatchedOrders as any[]), ...(completedOrders as any[])].filter(
-        (order) =>
-          typeof order.updated_at === 'string' &&
-          order.updated_at.startsWith(reportDate) &&
-          (order.status === 'dispatched' || order.status === 'completed'),
-      );
-
-      setTodayDispatches(
-        dayOrders.map((order) => ({
-          client: order.client?.company_name || order.client?.full_name || 'Unknown',
-          dr: order.dr_number,
-          service: order.service_type,
-          jb: order.items
-            .filter((item: { bag_type: string }) => item.bag_type === 'JB')
-            .reduce(
-              (sum: number, item: { dispatched_qty: number }) => sum + item.dispatched_qty,
-              0,
-            ),
-          sb: order.items
-            .filter((item: { bag_type: string }) => item.bag_type === 'SB')
-            .reduce(
-              (sum: number, item: { dispatched_qty: number }) => sum + item.dispatched_qty,
-              0,
-            ),
-        })),
-      );
+      setTodayDispatches(dispatchRows);
 
       setBalances(balanceRows as typeof balances);
     } catch (error) {

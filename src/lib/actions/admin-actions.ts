@@ -28,6 +28,7 @@ export {
 } from './delivery-receipt-actions';
 export {
   generateDailyReportData,
+  fetchDispatchesForDate,
   fetchWarehouseReport,
   fetchWarehouseReports,
   checkReportSubmission,

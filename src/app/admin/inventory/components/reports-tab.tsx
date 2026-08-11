@@ -5,7 +5,7 @@ import {
   fetchWarehouseReport,
   saveWarehouseReport,
   fetchCustomerBalances,
-  fetchOrders,
+  fetchDispatchesForDate,
   generateDailyReportData,
   submitWarehouseReport,
   checkReportSubmission,
@@ -14,7 +14,7 @@ import {
 import { generateReportXLSX } from '@/lib/report-generators/report-xlsx';
 import { generateReportPDF } from '@/lib/report-generators/report-pdf';
 import type { ReportExportData } from '@/lib/report-generators/types';
-import type { Product, Profile, CustomerBalance, Order, OrderItem } from '@/lib/types/database';
+import type { Product, Profile, CustomerBalance } from '@/lib/types/database';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -139,29 +139,10 @@ export function ReportsTab() {
       }
 
       if (!submitted) {
-        // Load today's dispatches for Module 2
-        const orders = (await fetchOrders('dispatched')) as Order[];
-        const completed = (await fetchOrders('completed')) as Order[];
-        const todayOrders = [...orders, ...completed].filter(
-          (o) =>
-            o.updated_at.startsWith(reportDate) &&
-            (o.status === 'dispatched' || o.status === 'completed'),
-        );
-        const dispatches = todayOrders.map((o) => {
-          const jb = o.items
-            .filter((i: OrderItem) => i.bag_type === 'JB')
-            .reduce((s: number, i: OrderItem) => s + i.dispatched_qty, 0);
-          const sb = o.items
-            .filter((i: OrderItem) => i.bag_type === 'SB')
-            .reduce((s: number, i: OrderItem) => s + i.dispatched_qty, 0);
-          return {
-            client: o.client?.company_name || o.client?.full_name || 'Unknown',
-            dr: o.dr_number,
-            service: o.service_type,
-            jb,
-            sb,
-          };
-        });
+        // Load today's dispatches for Module 2 — read from delivery_receipts
+        // directly (one row per DR) rather than from orders.dr_number, which
+        // only ever holds the most recent DR per order.
+        const dispatches = await fetchDispatchesForDate(reportDate);
         setTodayDispatches(dispatches);
 
         // Load balances for Module 3

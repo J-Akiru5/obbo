@@ -5,6 +5,74 @@ import { warehouseReportSaveSchema } from './schemas';
 import { createRoleNotification } from './notification-actions';
 import type { WarehouseReport } from '@/lib/types/database';
 import { safeAction } from './action-result';
+import type { DispatchRow } from '@/lib/report-generators/types';
+
+// Every DR dispatched against an order overwrites orders.dr_number (see
+// delivery-receipt-actions.ts's _createDeliveryReceipt) — so building a
+// dispatch list from `orders` only ever shows the most recent DR per order,
+// and silently drops any order dispatched more than once (split deliveries,
+// or the same order touched again on a later day). delivery_receipts is
+// the source of truth instead: one row per DR, never overwritten, and it's
+// what both the Admin Reports page and the Inventory Reports tab should
+// read from for a given day's dispatch listing.
+export async function fetchDispatchesForDate(date: string): Promise<DispatchRow[]> {
+  const { supabase } = await requireAdmin();
+
+  const { data: drs } = await supabase
+    .from('delivery_receipts')
+    .select('dr_number, client_name, po_number, order_id, jb, sb')
+    .eq('received_date', date)
+    .order('created_at', { ascending: true });
+
+  if (!drs || drs.length === 0) return [];
+
+  // Resolve service_type (not stored on the DR row itself) via whichever
+  // parent record the DR is linked to — the order it dispatched, or (for
+  // walk-in DRs with no linked order) the purchase order it was raised
+  // against. Two batched lookups instead of a relational embed, since the
+  // embed's one-to-one vs one-to-many shape can't be inferred without
+  // generated DB types.
+  const orderIds = Array.from(
+    new Set(drs.map((dr) => dr.order_id).filter((id): id is string => !!id)),
+  );
+  let serviceByOrderId: Record<string, string> = {};
+  if (orderIds.length > 0) {
+    const { data: linkedOrders } = await supabase
+      .from('orders')
+      .select('id, service_type')
+      .in('id', orderIds);
+    serviceByOrderId = Object.fromEntries((linkedOrders || []).map((o) => [o.id, o.service_type]));
+  }
+
+  const unresolvedPoNumbers = Array.from(
+    new Set(
+      drs
+        .filter((dr) => !(dr.order_id && serviceByOrderId[dr.order_id]) && dr.po_number)
+        .map((dr) => dr.po_number as string),
+    ),
+  );
+  let serviceByPoNumber: Record<string, string> = {};
+  if (unresolvedPoNumbers.length > 0) {
+    const { data: pos } = await supabase
+      .from('purchase_orders')
+      .select('po_number, service_type')
+      .in('po_number', unresolvedPoNumbers);
+    serviceByPoNumber = Object.fromEntries(
+      (pos || []).map((p) => [p.po_number, p.service_type || 'pickup']),
+    );
+  }
+
+  return drs.map((dr) => ({
+    client: dr.client_name || 'Walk-in',
+    dr: dr.dr_number,
+    service:
+      (dr.order_id && serviceByOrderId[dr.order_id]) ||
+      (dr.po_number && serviceByPoNumber[dr.po_number]) ||
+      'pickup',
+    jb: dr.jb || 0,
+    sb: dr.sb || 0,
+  }));
+}
 
 export async function generateDailyReportData(date: string) {
   const { supabase } = await requireAdmin();
@@ -53,45 +121,7 @@ export async function generateDailyReportData(date: string) {
   waste_jb += shipmentDamagedJb;
   waste_sb += shipmentDamagedSb;
 
-  const { data: orders } = await supabase
-    .from('orders')
-    .select(
-      '*, client:profiles!orders_client_id_fkey(full_name, company_name), items:order_items(*)',
-    )
-    .in('status', ['dispatched', 'completed'])
-    .gte('updated_at', `${date}T00:00:00.000Z`)
-    .lt('updated_at', `${date}T23:59:59.999Z`);
-
-  const dispatches = (orders || []).map((o) => {
-    const items = o.items as Array<{ bag_type: string; dispatched_qty: number }> | undefined;
-    const jb =
-      items?.filter((i) => i.bag_type === 'JB').reduce((s, i) => s + i.dispatched_qty, 0) || 0;
-    const sb =
-      items?.filter((i) => i.bag_type === 'SB').reduce((s, i) => s + i.dispatched_qty, 0) || 0;
-    return {
-      client: o.client?.company_name || o.client?.full_name,
-      dr: o.dr_number,
-      service: o.service_type,
-      jb,
-      sb,
-    };
-  });
-
-  const drNumbersInOrders = new Set(orders?.map((o) => o.dr_number).filter(Boolean) || []);
-  const { data: drs } = await supabase
-    .from('delivery_receipts')
-    .select('*')
-    .eq('received_date', date);
-  for (const dr of drs || []) {
-    if (!dr.dr_number || drNumbersInOrders.has(dr.dr_number)) continue;
-    dispatches.push({
-      client: dr.client_name || 'Walk-in',
-      dr: dr.dr_number,
-      service: dr.jb > 0 ? 'JB' : 'SB',
-      jb: dr.jb || 0,
-      sb: dr.sb || 0,
-    });
-  }
+  const dispatches = await fetchDispatchesForDate(date);
 
   const { data: customerBalances } = await supabase
     .from('customer_balances')
