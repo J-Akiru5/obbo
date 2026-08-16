@@ -694,40 +694,65 @@ function ClientDetailDialog({
                 <ShieldAlert className="h-4 w-4 text-amber-500" /> Outstanding balances
               </p>
               <div className="border-border overflow-hidden rounded-lg border">
-                <Table>
-                  <TableHeader className="bg-muted/30">
-                    <TableRow className="hover:bg-transparent">
-                      <TableHead className="text-muted-foreground h-9 py-0 text-[11px] font-bold tracking-wider uppercase">
-                        PO #
-                      </TableHead>
-                      <TableHead className="text-muted-foreground h-9 py-0 text-[11px] font-bold tracking-wider uppercase">
-                        Type
-                      </TableHead>
-                      <TableHead className="text-muted-foreground h-9 py-0 text-right text-[11px] font-bold tracking-wider uppercase">
-                        Purchase
-                      </TableHead>
-                      <TableHead className="h-9 py-0 text-right text-[11px] font-bold tracking-wider text-amber-600 uppercase">
-                        Balance
-                      </TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {balances.map((balance) => (
-                      <TableRow key={balance.id} className="hover:bg-muted/30 border-border/50">
-                        <TableCell className="py-2.5 font-mono text-[11px] font-bold">
-                          {(balance as any).order?.po_number || '—'}
-                        </TableCell>
-                        <TableCell className="py-2.5 text-xs">{balance.bag_type}</TableCell>
-                        <TableCell className="py-2.5 text-right text-xs">
-                          {(balance as any).total_purchase || 0}
-                        </TableCell>
-                        <TableCell className="py-2.5 text-right text-xs font-bold text-amber-600">
-                          {balance.remaining_qty}
-                        </TableCell>
+                {/* Desktop / tablet — hidden below sm */}
+                <div className="hidden overflow-x-auto sm:block">
+                  <Table>
+                    <TableHeader className="bg-muted/30">
+                      <TableRow className="hover:bg-transparent">
+                        <TableHead className="text-muted-foreground h-9 py-0 text-[11px] font-bold tracking-wider uppercase">
+                          PO #
+                        </TableHead>
+                        <TableHead className="text-muted-foreground h-9 py-0 text-[11px] font-bold tracking-wider uppercase">
+                          Type
+                        </TableHead>
+                        <TableHead className="text-muted-foreground h-9 py-0 text-right text-[11px] font-bold tracking-wider uppercase">
+                          Purchase
+                        </TableHead>
+                        <TableHead className="h-9 py-0 text-right text-[11px] font-bold tracking-wider text-amber-600 uppercase">
+                          Balance
+                        </TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                    </TableHeader>
+                    <TableBody>
+                      {balances.map((balance) => (
+                        <TableRow key={balance.id} className="hover:bg-muted/30 border-border/50">
+                          <TableCell className="py-2.5 font-mono text-[11px] font-bold">
+                            {(balance as any).order?.po_number || '—'}
+                          </TableCell>
+                          <TableCell className="py-2.5 text-xs">{balance.bag_type}</TableCell>
+                          <TableCell className="py-2.5 text-right text-xs">
+                            {(balance as any).total_purchase || 0}
+                          </TableCell>
+                          <TableCell className="py-2.5 text-right text-xs font-bold text-amber-600">
+                            {balance.remaining_qty}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+                {/* Mobile — stacked cards, shown only below sm */}
+                <div className="divide-border divide-y sm:hidden">
+                  {balances.map((balance) => (
+                    <div
+                      key={balance.id}
+                      className="flex items-center justify-between gap-2 px-3 py-2.5"
+                    >
+                      <div className="min-w-0">
+                        <p className="font-mono text-[11px] font-bold">
+                          {(balance as any).order?.po_number || '—'}
+                        </p>
+                        <p className="text-muted-foreground text-xs">{balance.bag_type}</p>
+                      </div>
+                      <div className="shrink-0 text-right">
+                        <p className="text-xs font-bold text-amber-600">{balance.remaining_qty}</p>
+                        <p className="text-muted-foreground text-[10px]">
+                          of {(balance as any).total_purchase || 0}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
           )}

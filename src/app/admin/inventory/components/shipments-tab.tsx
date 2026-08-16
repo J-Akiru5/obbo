@@ -62,6 +62,24 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 
+// Shared per-entry derived display values — computed once, rendered in both
+// the desktop table row and the mobile card so the two layouts can't drift.
+function computeLedgerEntryDisplay(e: ShipmentLedgerEntry) {
+  const rowSales = Number(e.amount) || 0;
+  const rowGross = Number(e.gross_profit) || 0;
+  const rowNet = Number(e.net_profit) || 0;
+  const serviceLabel =
+    e.service_type === 'deliver' ? 'Delivery' : e.service_type === 'pickup' ? 'Pick-up' : '—';
+  const totalDeducted = e.jb + e.sb;
+  const returnLabel =
+    e.return_reason === 'waste' ? 'Waste' : e.return_reason === 'damage' ? 'Damage' : 'Return';
+  const returnClass =
+    e.return_reason === 'return' || !e.return_reason
+      ? 'font-medium text-emerald-600'
+      : 'font-medium text-red-500';
+  return { rowSales, rowGross, rowNet, serviceLabel, totalDeducted, returnLabel, returnClass };
+}
+
 export function ShipmentsTab({
   shipments,
   loading,
@@ -684,8 +702,8 @@ export function ShipmentsTab({
                     </Button>
                   </div>
 
-                  {/* Ledger Table */}
-                  <div className="bg-card border-border overflow-x-auto rounded-lg border">
+                  {/* Ledger Table — desktop / tablet, hidden below sm */}
+                  <div className="bg-card border-border hidden overflow-x-auto rounded-lg border sm:block">
                     <Table>
                       <TableHeader className="bg-muted/50">
                         <TableRow>
@@ -741,7 +759,14 @@ export function ShipmentsTab({
                           </TableRow>
                         ) : (
                           ledgerData[shipment.id].map((e) => {
-                            const rowSales = Number(e.amount) || 0;
+                            const {
+                              rowSales,
+                              rowGross,
+                              rowNet,
+                              serviceLabel,
+                              returnLabel,
+                              returnClass,
+                            } = computeLedgerEntryDisplay(e);
                             return (
                               <TableRow key={e.id}>
                                 <TableCell className="text-[11px] whitespace-nowrap">
@@ -769,11 +794,7 @@ export function ShipmentsTab({
                                   {e.destination || '—'}
                                 </TableCell>
                                 <TableCell className="text-[10px] uppercase">
-                                  {e.service_type === 'deliver'
-                                    ? 'Delivery'
-                                    : e.service_type === 'pickup'
-                                      ? 'Pick-up'
-                                      : '—'}
+                                  {serviceLabel}
                                 </TableCell>
                                 <TableCell className="text-right text-[11px] font-medium text-red-500">
                                   {e.jb > 0 ? `-${e.jb}` : '—'}
@@ -799,14 +820,10 @@ export function ShipmentsTab({
                                   {rowSales ? `₱${rowSales.toLocaleString()}` : '—'}
                                 </TableCell>
                                 <TableCell className="text-right text-[11px] font-medium text-blue-600">
-                                  {Number(e.gross_profit)
-                                    ? `₱${Number(e.gross_profit).toLocaleString()}`
-                                    : '—'}
+                                  {rowGross ? `₱${rowGross.toLocaleString()}` : '—'}
                                 </TableCell>
                                 <TableCell className="text-right text-[11px] font-bold text-emerald-600">
-                                  {Number(e.net_profit)
-                                    ? `₱${Number(e.net_profit).toLocaleString()}`
-                                    : '—'}
+                                  {rowNet ? `₱${rowNet.toLocaleString()}` : '—'}
                                 </TableCell>
 
                                 <TableCell className="text-right text-[11px] font-bold text-emerald-600">
@@ -817,19 +834,7 @@ export function ShipmentsTab({
                                 </TableCell>
                                 <TableCell className="text-[10px]">
                                   {e.bags_returned > 0 ? (
-                                    <span
-                                      className={
-                                        e.return_reason === 'return' || !e.return_reason
-                                          ? 'font-medium text-emerald-600'
-                                          : 'font-medium text-red-500'
-                                      }
-                                    >
-                                      {e.return_reason === 'waste'
-                                        ? 'Waste'
-                                        : e.return_reason === 'damage'
-                                          ? 'Damage'
-                                          : 'Return'}
-                                    </span>
+                                    <span className={returnClass}>{returnLabel}</span>
                                   ) : (
                                     '—'
                                   )}
@@ -850,6 +855,121 @@ export function ShipmentsTab({
                         )}
                       </TableBody>
                     </Table>
+                  </div>
+
+                  {/* Ledger — mobile cards, shown only below sm */}
+                  <div className="bg-card border-border divide-border divide-y rounded-lg border sm:hidden">
+                    {!ledgerData[shipment.id] ? (
+                      <div className="text-muted-foreground py-4 text-center text-xs">
+                        Loading...
+                      </div>
+                    ) : ledgerData[shipment.id].length === 0 ? (
+                      <div className="text-muted-foreground py-4 text-center text-xs">
+                        No ledger entries yet.
+                      </div>
+                    ) : (
+                      ledgerData[shipment.id].map((e) => {
+                        const {
+                          rowSales,
+                          rowGross,
+                          rowNet,
+                          serviceLabel,
+                          totalDeducted,
+                          returnLabel,
+                          returnClass,
+                        } = computeLedgerEntryDisplay(e);
+                        return (
+                          <div key={e.id} className="space-y-2 p-3">
+                            <div className="flex items-start justify-between gap-2">
+                              <div>
+                                <p className="text-[11px] font-semibold">
+                                  {new Date(e.date).toLocaleDateString()}
+                                </p>
+                                <p className="text-muted-foreground text-[10px] uppercase">
+                                  {serviceLabel}
+                                </p>
+                              </div>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="text-primary h-6 w-6 shrink-0"
+                                onClick={() => openEditEntry(e, shipment.id)}
+                              >
+                                <Edit2 className="h-3 w-3" />
+                              </Button>
+                            </div>
+
+                            <div className="text-[11px]">
+                              <span className="font-medium">{e.po_number || '—'}</span>
+                              {e.dr_number && (
+                                <span className="text-muted-foreground"> · DR {e.dr_number}</span>
+                              )}
+                            </div>
+                            {(e.client_name || e.driver_name || e.destination) && (
+                              <div className="text-muted-foreground text-[11px]">
+                                {e.client_name || '—'}
+                                {e.driver_name && ` · ${e.driver_name}`}
+                                {e.plate_number && ` (${e.plate_number})`}
+                                {e.destination && ` · ${e.destination}`}
+                              </div>
+                            )}
+
+                            <div className="border-border/50 flex items-center justify-between border-y py-1.5 text-[11px]">
+                              <span className="text-red-500">
+                                {e.jb > 0 && `-${e.jb} JB `}
+                                {e.sb > 0 && `-${e.sb} SB`}
+                                {totalDeducted === 0 && '—'}
+                              </span>
+                              <span className="font-bold">
+                                {totalDeducted > 0 ? `${totalDeducted} bags` : '—'}
+                              </span>
+                            </div>
+
+                            <div className="flex items-center justify-between text-[11px]">
+                              <span className="text-muted-foreground uppercase">
+                                {e.payment_method || '—'}
+                                {e.check_number && ` · ${e.check_number}`}
+                              </span>
+                              <span className="font-semibold">
+                                {e.amount ? `₱${Number(e.amount).toLocaleString()}` : '—'}
+                              </span>
+                            </div>
+
+                            <div className="grid grid-cols-3 gap-1 text-center text-[10px]">
+                              <div>
+                                <p className="text-muted-foreground">Sales</p>
+                                <p className="font-medium text-emerald-600">
+                                  {rowSales ? `₱${rowSales.toLocaleString()}` : '—'}
+                                </p>
+                              </div>
+                              <div>
+                                <p className="text-muted-foreground">Gross</p>
+                                <p className="font-medium text-blue-600">
+                                  {rowGross ? `₱${rowGross.toLocaleString()}` : '—'}
+                                </p>
+                              </div>
+                              <div>
+                                <p className="text-muted-foreground">Net</p>
+                                <p className="font-bold text-emerald-600">
+                                  {rowNet ? `₱${rowNet.toLocaleString()}` : '—'}
+                                </p>
+                              </div>
+                            </div>
+
+                            {e.bags_returned > 0 && (
+                              <div className="flex items-center justify-between text-[11px]">
+                                <span className={returnClass}>
+                                  {returnLabel} ({e.bag_returned_type || '—'})
+                                </span>
+                                <span className="font-bold text-emerald-600">
+                                  +{e.bags_returned}
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })
+                    )}
                   </div>
                 </div>
               )}

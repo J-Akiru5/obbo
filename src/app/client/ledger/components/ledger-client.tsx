@@ -55,6 +55,14 @@ interface BalanceSummary {
   remainingBalance: number;
 }
 
+// Shared per-balance derived display value — computed once, rendered in both
+// the desktop table row and the mobile card so the two layouts can't drift.
+function formatBalanceDate(b: CustomerBalance) {
+  return b.order?.created_at
+    ? new Date(b.order.created_at).toLocaleDateString()
+    : new Date(b.created_at).toLocaleDateString();
+}
+
 export default function LedgerClient({
   balances,
   summary,
@@ -316,87 +324,165 @@ export default function LedgerClient({
                 <p>You have no outstanding balances.</p>
               </div>
             ) : (
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="bg-muted/50 hover:bg-muted/50">
-                      <TableHead className="font-bold whitespace-nowrap">
-                        Date of Original Order
-                      </TableHead>
-                      <TableHead className="font-bold whitespace-nowrap">PO #</TableHead>
-                      <TableHead className="font-bold whitespace-nowrap">Product</TableHead>
-                      <TableHead className="text-center font-bold whitespace-nowrap">
-                        Original Qty
-                      </TableHead>
-                      <TableHead className="text-center font-bold whitespace-nowrap">
-                        Delivered Qty
-                      </TableHead>
-                      <TableHead className="text-primary text-center font-bold whitespace-nowrap">
-                        Remaining Balance
-                      </TableHead>
-                      <TableHead className="text-right font-bold">Action</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {pendingBalances.map((b) => (
-                      <TableRow key={b.id} className="hover:bg-muted/30 transition-colors">
-                        <TableCell className="whitespace-nowrap">
-                          {b.order?.created_at
-                            ? new Date(b.order.created_at).toLocaleDateString()
-                            : new Date(b.created_at).toLocaleDateString()}
-                        </TableCell>
-                        <TableCell className="font-mono text-xs">
-                          {b.order?.po_number || 'N/A'}
-                        </TableCell>
-                        <TableCell>
-                          <div className="font-medium">{b.product?.name}</div>
-                          <div className="text-muted-foreground text-[10px] uppercase">
+              <>
+                {/* Desktop / tablet — hidden below sm */}
+                <div className="hidden overflow-x-auto sm:block">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="bg-muted/50 hover:bg-muted/50">
+                        <TableHead className="font-bold whitespace-nowrap">
+                          Date of Original Order
+                        </TableHead>
+                        <TableHead className="font-bold whitespace-nowrap">PO #</TableHead>
+                        <TableHead className="font-bold whitespace-nowrap">Product</TableHead>
+                        <TableHead className="text-center font-bold whitespace-nowrap">
+                          Original Qty
+                        </TableHead>
+                        <TableHead className="text-center font-bold whitespace-nowrap">
+                          Delivered Qty
+                        </TableHead>
+                        <TableHead className="text-primary text-center font-bold whitespace-nowrap">
+                          Remaining Balance
+                        </TableHead>
+                        <TableHead className="text-right font-bold">Action</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {pendingBalances.map((b) => (
+                        <TableRow key={b.id} className="hover:bg-muted/30 transition-colors">
+                          <TableCell className="whitespace-nowrap">
+                            {formatBalanceDate(b)}
+                          </TableCell>
+                          <TableCell className="font-mono text-xs">
+                            {b.order?.po_number || 'N/A'}
+                          </TableCell>
+                          <TableCell>
+                            <div className="font-medium">{b.product?.name}</div>
+                            <div className="text-muted-foreground text-[10px] uppercase">
+                              {b.bag_type === 'JB' ? 'Jumbo Bag' : 'Sling Bag'}
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-center font-semibold">
+                            {b.total_purchase.toLocaleString()}
+                          </TableCell>
+                          <TableCell className="text-muted-foreground text-center">
+                            {(b.total_purchase - b.remaining_qty).toLocaleString()}
+                          </TableCell>
+                          <TableCell className="text-center">
+                            <span className="bg-primary/10 text-primary inline-flex min-w-[3rem] items-center justify-center rounded-full px-3 py-1 text-sm font-bold">
+                              {b.remaining_qty.toLocaleString()}
+                            </span>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            {b.remaining_qty > 0 ? (
+                              pendingRedeliveryPos.includes(b.order?.po_number || '') ? (
+                                <Button
+                                  size="sm"
+                                  disabled
+                                  className="cursor-not-allowed opacity-60"
+                                >
+                                  <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                                  Re-delivery Pending
+                                </Button>
+                              ) : (
+                                <Button
+                                  size="sm"
+                                  className="bg-accent text-accent-foreground hover:bg-accent/90 shadow-sm"
+                                  onClick={() => handleOpenRedelivery(b)}
+                                >
+                                  <Truck className="mr-1.5 h-3.5 w-3.5" />
+                                  Request Balance Delivery
+                                </Button>
+                              )
+                            ) : (
+                              <Badge
+                                variant="outline"
+                                className="border-status-success-bg bg-status-success-bg text-status-success-text"
+                              >
+                                <CheckCircle2 className="mr-1 h-3 w-3" />
+                                Completed
+                              </Badge>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+
+                {/* Mobile — stacked cards, shown only below sm */}
+                <div className="divide-border divide-y sm:hidden">
+                  {pendingBalances.map((b) => (
+                    <div key={b.id} className="space-y-3 p-4">
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <p className="font-medium">{b.product?.name}</p>
+                          <p className="text-muted-foreground text-[10px] uppercase">
                             {b.bag_type === 'JB' ? 'Jumbo Bag' : 'Sling Bag'}
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-center font-semibold">
-                          {b.total_purchase.toLocaleString()}
-                        </TableCell>
-                        <TableCell className="text-muted-foreground text-center">
-                          {(b.total_purchase - b.remaining_qty).toLocaleString()}
-                        </TableCell>
-                        <TableCell className="text-center">
-                          <span className="bg-primary/10 text-primary inline-flex min-w-[3rem] items-center justify-center rounded-full px-3 py-1 text-sm font-bold">
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <p className="font-mono text-xs">{b.order?.po_number || 'N/A'}</p>
+                          <p className="text-muted-foreground text-[10px]">
+                            {formatBalanceDate(b)}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="border-border/50 flex items-center justify-between border-y py-2 text-sm">
+                        <div className="text-center">
+                          <p className="text-muted-foreground text-[10px] uppercase">Original</p>
+                          <p className="font-semibold">{b.total_purchase.toLocaleString()}</p>
+                        </div>
+                        <div className="text-center">
+                          <p className="text-muted-foreground text-[10px] uppercase">Delivered</p>
+                          <p className="text-muted-foreground font-semibold">
+                            {(b.total_purchase - b.remaining_qty).toLocaleString()}
+                          </p>
+                        </div>
+                        <div className="text-center">
+                          <p className="text-muted-foreground text-[10px] uppercase">Remaining</p>
+                          <span className="bg-primary/10 text-primary inline-flex min-w-[3rem] items-center justify-center rounded-full px-2.5 py-0.5 text-sm font-bold">
                             {b.remaining_qty.toLocaleString()}
                           </span>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          {b.remaining_qty > 0 ? (
-                            pendingRedeliveryPos.includes(b.order?.po_number || '') ? (
-                              <Button size="sm" disabled className="cursor-not-allowed opacity-60">
-                                <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
-                                Re-delivery Pending
-                              </Button>
-                            ) : (
-                              <Button
-                                size="sm"
-                                className="bg-accent text-accent-foreground hover:bg-accent/90 shadow-sm"
-                                onClick={() => handleOpenRedelivery(b)}
-                              >
-                                <Truck className="mr-1.5 h-3.5 w-3.5" />
-                                Request Balance Delivery
-                              </Button>
-                            )
-                          ) : (
-                            <Badge
-                              variant="outline"
-                              className="border-status-success-bg bg-status-success-bg text-status-success-text"
+                        </div>
+                      </div>
+
+                      <div className="flex justify-end">
+                        {b.remaining_qty > 0 ? (
+                          pendingRedeliveryPos.includes(b.order?.po_number || '') ? (
+                            <Button
+                              size="sm"
+                              disabled
+                              className="w-full cursor-not-allowed opacity-60"
                             >
-                              <CheckCircle2 className="mr-1 h-3 w-3" />
-                              Completed
-                            </Badge>
-                          )}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
+                              <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                              Re-delivery Pending
+                            </Button>
+                          ) : (
+                            <Button
+                              size="sm"
+                              className="bg-accent text-accent-foreground hover:bg-accent/90 w-full shadow-sm"
+                              onClick={() => handleOpenRedelivery(b)}
+                            >
+                              <Truck className="mr-1.5 h-3.5 w-3.5" />
+                              Request Balance Delivery
+                            </Button>
+                          )
+                        ) : (
+                          <Badge
+                            variant="outline"
+                            className="border-status-success-bg bg-status-success-bg text-status-success-text"
+                          >
+                            <CheckCircle2 className="mr-1 h-3 w-3" />
+                            Completed
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </>
             )}
           </CardContent>
         </Card>
@@ -416,43 +502,64 @@ export default function LedgerClient({
                 <p>No completed balances yet.</p>
               </div>
             ) : (
-              <div className="overflow-x-auto opacity-80 grayscale-[30%] transition-all duration-300 hover:opacity-100 hover:grayscale-0">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Date</TableHead>
-                      <TableHead>PO #</TableHead>
-                      <TableHead>Product</TableHead>
-                      <TableHead className="text-center">Original Qty</TableHead>
-                      <TableHead className="text-center">Total Delivered</TableHead>
-                      <TableHead className="text-right">Status</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {fulfilledBalances.map((b) => (
-                      <TableRow key={b.id}>
-                        <TableCell className="text-muted-foreground text-xs">
-                          {b.order?.created_at
-                            ? new Date(b.order.created_at).toLocaleDateString()
-                            : new Date(b.created_at).toLocaleDateString()}
-                        </TableCell>
-                        <TableCell className="font-mono text-[10px]">
-                          {b.order?.po_number || 'N/A'}
-                        </TableCell>
-                        <TableCell className="text-sm font-medium">{b.product?.name}</TableCell>
-                        <TableCell className="text-center text-sm">{b.total_purchase}</TableCell>
-                        <TableCell className="text-center text-sm font-bold text-emerald-600">
-                          {b.total_purchase}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <span className="border-status-success-bg bg-status-success-bg text-status-success-text rounded border px-2 py-0.5 text-[10px] font-bold tracking-wider uppercase">
-                            Fulfilled
-                          </span>
-                        </TableCell>
+              <div className="opacity-80 grayscale-[30%] transition-all duration-300 hover:opacity-100 hover:grayscale-0">
+                {/* Desktop / tablet — hidden below sm */}
+                <div className="hidden overflow-x-auto sm:block">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Date</TableHead>
+                        <TableHead>PO #</TableHead>
+                        <TableHead>Product</TableHead>
+                        <TableHead className="text-center">Original Qty</TableHead>
+                        <TableHead className="text-center">Total Delivered</TableHead>
+                        <TableHead className="text-right">Status</TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                    </TableHeader>
+                    <TableBody>
+                      {fulfilledBalances.map((b) => (
+                        <TableRow key={b.id}>
+                          <TableCell className="text-muted-foreground text-xs">
+                            {formatBalanceDate(b)}
+                          </TableCell>
+                          <TableCell className="font-mono text-[10px]">
+                            {b.order?.po_number || 'N/A'}
+                          </TableCell>
+                          <TableCell className="text-sm font-medium">{b.product?.name}</TableCell>
+                          <TableCell className="text-center text-sm">{b.total_purchase}</TableCell>
+                          <TableCell className="text-center text-sm font-bold text-emerald-600">
+                            {b.total_purchase}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <span className="border-status-success-bg bg-status-success-bg text-status-success-text rounded border px-2 py-0.5 text-[10px] font-bold tracking-wider uppercase">
+                              Fulfilled
+                            </span>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+
+                {/* Mobile — stacked cards, shown only below sm */}
+                <div className="divide-border divide-y sm:hidden">
+                  {fulfilledBalances.map((b) => (
+                    <div key={b.id} className="flex items-center justify-between gap-2 p-4">
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-medium">{b.product?.name}</p>
+                        <p className="text-muted-foreground font-mono text-[10px]">
+                          {b.order?.po_number || 'N/A'} · {formatBalanceDate(b)}
+                        </p>
+                      </div>
+                      <div className="shrink-0 text-right">
+                        <p className="text-sm font-bold text-emerald-600">{b.total_purchase}</p>
+                        <span className="border-status-success-bg bg-status-success-bg text-status-success-text mt-1 inline-block rounded border px-2 py-0.5 text-[10px] font-bold tracking-wider uppercase">
+                          Fulfilled
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
           </CardContent>

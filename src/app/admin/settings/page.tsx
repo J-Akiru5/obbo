@@ -288,6 +288,13 @@ export default function AdminSettingsPage() {
     }
   };
 
+  const filteredAuditLogs = auditLogs.filter(
+    (log) =>
+      log.action.toLowerCase().includes(auditSearchQuery.toLowerCase()) ||
+      (log.actor?.full_name || '').toLowerCase().includes(auditSearchQuery.toLowerCase()) ||
+      (log.entity_type || '').toLowerCase().includes(auditSearchQuery.toLowerCase()),
+  );
+
   return (
     <div className="mx-auto flex w-full max-w-7xl flex-col gap-6">
       <header className="space-y-2">
@@ -545,48 +552,33 @@ export default function AdminSettingsPage() {
                   Loading audit logs...
                 </div>
               ) : (
-                <div className="border-border overflow-x-auto rounded-xl border">
-                  <Table>
-                    <TableHeader className="bg-muted/40">
-                      <TableRow>
-                        <TableHead className="w-[180px]">Timestamp</TableHead>
-                        <TableHead>Actor</TableHead>
-                        <TableHead>Action</TableHead>
-                        <TableHead>Entity</TableHead>
-                        <TableHead>Target ID</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {auditLogs.filter(
-                        (log) =>
-                          log.action.toLowerCase().includes(auditSearchQuery.toLowerCase()) ||
-                          (log.actor?.full_name || '')
-                            .toLowerCase()
-                            .includes(auditSearchQuery.toLowerCase()) ||
-                          (log.entity_type || '')
-                            .toLowerCase()
-                            .includes(auditSearchQuery.toLowerCase()),
-                      ).length === 0 ? (
+                <>
+                  {/* Desktop / tablet — hidden below sm */}
+                  <div className="border-border hidden overflow-x-auto rounded-xl border sm:block">
+                    <Table>
+                      <TableHeader className="bg-muted/40">
                         <TableRow>
-                          <TableCell colSpan={5} className="text-muted-foreground py-8 text-center">
-                            {auditSearchQuery
-                              ? 'No matching audit logs found.'
-                              : 'No audit logs found.'}
-                          </TableCell>
+                          <TableHead className="w-[180px]">Timestamp</TableHead>
+                          <TableHead>Actor</TableHead>
+                          <TableHead>Action</TableHead>
+                          <TableHead>Entity</TableHead>
+                          <TableHead>Target ID</TableHead>
                         </TableRow>
-                      ) : (
-                        auditLogs
-                          .filter(
-                            (log) =>
-                              log.action.toLowerCase().includes(auditSearchQuery.toLowerCase()) ||
-                              (log.actor?.full_name || '')
-                                .toLowerCase()
-                                .includes(auditSearchQuery.toLowerCase()) ||
-                              (log.entity_type || '')
-                                .toLowerCase()
-                                .includes(auditSearchQuery.toLowerCase()),
-                          )
-                          .map((log) => (
+                      </TableHeader>
+                      <TableBody>
+                        {filteredAuditLogs.length === 0 ? (
+                          <TableRow>
+                            <TableCell
+                              colSpan={5}
+                              className="text-muted-foreground py-8 text-center"
+                            >
+                              {auditSearchQuery
+                                ? 'No matching audit logs found.'
+                                : 'No audit logs found.'}
+                            </TableCell>
+                          </TableRow>
+                        ) : (
+                          filteredAuditLogs.map((log) => (
                             <TableRow key={log.id}>
                               <TableCell className="text-muted-foreground font-mono text-xs">
                                 {new Date(log.created_at).toLocaleString()}
@@ -610,10 +602,47 @@ export default function AdminSettingsPage() {
                               </TableCell>
                             </TableRow>
                           ))
-                      )}
-                    </TableBody>
-                  </Table>
-                </div>
+                        )}
+                      </TableBody>
+                    </Table>
+                  </div>
+
+                  {/* Mobile — stacked cards, shown only below sm */}
+                  <div className="border-border divide-border divide-y rounded-xl border sm:hidden">
+                    {filteredAuditLogs.length === 0 ? (
+                      <div className="text-muted-foreground px-4 py-8 text-center text-sm">
+                        {auditSearchQuery
+                          ? 'No matching audit logs found.'
+                          : 'No audit logs found.'}
+                      </div>
+                    ) : (
+                      filteredAuditLogs.map((log) => (
+                        <div key={log.id} className="space-y-1 px-4 py-3">
+                          <div className="flex items-center justify-between gap-2">
+                            <code className="bg-muted rounded px-1.5 py-0.5 text-xs">
+                              {log.action}
+                            </code>
+                            <span className="text-muted-foreground font-mono text-[10px]">
+                              {new Date(log.created_at).toLocaleString()}
+                            </span>
+                          </div>
+                          <div className="text-muted-foreground flex items-center justify-between text-xs">
+                            <span>{log.actor?.full_name || 'System'}</span>
+                            <span className="capitalize">
+                              {String(log.entity_type).replace(/_/g, ' ')}
+                            </span>
+                          </div>
+                          <p
+                            className="text-muted-foreground truncate font-mono text-[10px]"
+                            title={log.entity_id}
+                          >
+                            Target: {String(log.entity_id).slice(0, 8)}...
+                          </p>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </>
               )}
             </CardContent>
           </Card>

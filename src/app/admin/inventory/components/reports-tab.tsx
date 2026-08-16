@@ -448,167 +448,276 @@ export function ReportsTab() {
               </div>
             </CardHeader>
             <CardContent className="p-0">
-              <Table>
-                <TableHeader className="bg-muted/30">
-                  <TableRow>
-                    <TableHead className="w-[200px]">Metric</TableHead>
-                    <TableHead>JB Bags</TableHead>
-                    <TableHead>SB Bags</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  <TableRow className="bg-muted/30">
-                    <TableCell className="font-semibold">Yesterday&apos;s Closing</TableCell>
-                    <TableCell>
-                      <Input
-                        type="number"
-                        value={physical.yesterday_jb || ''}
-                        placeholder="0"
-                        onFocus={(e) => e.target.select()}
-                        onChange={(e) =>
-                          setPhysical({ ...physical, yesterday_jb: parseInt(e.target.value) || 0 })
-                        }
-                        className="bg-card h-8 w-32"
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <Input
-                        type="number"
-                        value={physical.yesterday_sb || ''}
-                        placeholder="0"
-                        onFocus={(e) => e.target.select()}
-                        onChange={(e) =>
-                          setPhysical({ ...physical, yesterday_sb: parseInt(e.target.value) || 0 })
-                        }
-                        className="bg-card h-8 w-32"
-                      />
-                    </TableCell>
-                  </TableRow>
-                  <TableRow>
-                    <TableCell className="flex items-center gap-2 font-medium text-emerald-600">
-                      <ArrowDownRight className="h-4 w-4" /> Stock Received (+)
-                    </TableCell>
-                    <TableCell>
-                      <Input
-                        type="number"
-                        value={physical.received_jb || ''}
-                        placeholder="0"
-                        onFocus={(e) => e.target.select()}
-                        onChange={(e) =>
-                          setPhysical({ ...physical, received_jb: parseInt(e.target.value) || 0 })
-                        }
-                        className="h-8 w-32"
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <Input
-                        type="number"
-                        value={physical.received_sb || ''}
-                        placeholder="0"
-                        onFocus={(e) => e.target.select()}
-                        onChange={(e) =>
-                          setPhysical({ ...physical, received_sb: parseInt(e.target.value) || 0 })
-                        }
-                        className="h-8 w-32"
-                      />
-                    </TableCell>
-                  </TableRow>
-                  <TableRow>
-                    <TableCell className="flex items-center gap-2 font-medium text-blue-600">
-                      <ArrowUpRight className="h-4 w-4" /> Total Dispatched (-)
-                    </TableCell>
-                    <TableCell>
-                      <Input
-                        type="number"
-                        value={physical.dispatched_jb || ''}
-                        placeholder="0"
-                        onFocus={(e) => e.target.select()}
-                        onChange={(e) =>
-                          setPhysical({ ...physical, dispatched_jb: parseInt(e.target.value) || 0 })
-                        }
-                        className="h-8 w-32"
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <Input
-                        type="number"
-                        value={physical.dispatched_sb || ''}
-                        placeholder="0"
-                        onFocus={(e) => e.target.select()}
-                        onChange={(e) =>
-                          setPhysical({ ...physical, dispatched_sb: parseInt(e.target.value) || 0 })
-                        }
-                        className="h-8 w-32"
-                      />
-                    </TableCell>
-                  </TableRow>
-                  <TableRow>
-                    <TableCell className="flex items-center gap-2 font-medium text-purple-600">
-                      <ArrowDownRight className="h-4 w-4" /> Customer Returns (+)
-                    </TableCell>
-                    <TableCell>
-                      <Input
-                        type="number"
-                        value={physical.returned_jb || ''}
-                        placeholder="0"
-                        onFocus={(e) => e.target.select()}
-                        onChange={(e) =>
-                          setPhysical({ ...physical, returned_jb: parseInt(e.target.value) || 0 })
-                        }
-                        className="h-8 w-32"
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <Input
-                        type="number"
-                        value={physical.returned_sb || ''}
-                        placeholder="0"
-                        onFocus={(e) => e.target.select()}
-                        onChange={(e) =>
-                          setPhysical({ ...physical, returned_sb: parseInt(e.target.value) || 0 })
-                        }
-                        className="h-8 w-32"
-                      />
-                    </TableCell>
-                  </TableRow>
-                  <TableRow>
-                    <TableCell className="flex items-center gap-2 font-medium text-red-600">
-                      <ArrowUpRight className="h-4 w-4" /> Waste/Damaged (-)
-                    </TableCell>
-                    <TableCell>
-                      <Input
-                        type="number"
-                        value={physical.waste_jb || ''}
-                        placeholder="0"
-                        onFocus={(e) => e.target.select()}
-                        onChange={(e) =>
-                          setPhysical({ ...physical, waste_jb: parseInt(e.target.value) || 0 })
-                        }
-                        className="h-8 w-32"
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <Input
-                        type="number"
-                        value={physical.waste_sb || ''}
-                        placeholder="0"
-                        onFocus={(e) => e.target.select()}
-                        onChange={(e) =>
-                          setPhysical({ ...physical, waste_sb: parseInt(e.target.value) || 0 })
-                        }
-                        className="h-8 w-32"
-                      />
-                    </TableCell>
-                  </TableRow>
-                  <TableRow className="bg-primary/5 hover:bg-primary/10">
-                    <TableCell className="text-primary text-base font-bold">
-                      Today&apos;s Closing
-                    </TableCell>
-                    <TableCell className="text-lg font-bold">{closingJb}</TableCell>
-                    <TableCell className="text-lg font-bold">{closingSb}</TableCell>
-                  </TableRow>
-                </TableBody>
-              </Table>
+              {/* Desktop / tablet — hidden below sm */}
+              <div className="hidden overflow-x-auto sm:block">
+                <Table>
+                  <TableHeader className="bg-muted/30">
+                    <TableRow>
+                      <TableHead className="w-[200px]">Metric</TableHead>
+                      <TableHead>JB Bags</TableHead>
+                      <TableHead>SB Bags</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    <TableRow className="bg-muted/30">
+                      <TableCell className="font-semibold">Yesterday&apos;s Closing</TableCell>
+                      <TableCell>
+                        <Input
+                          type="number"
+                          value={physical.yesterday_jb || ''}
+                          placeholder="0"
+                          onFocus={(e) => e.target.select()}
+                          onChange={(e) =>
+                            setPhysical({
+                              ...physical,
+                              yesterday_jb: parseInt(e.target.value) || 0,
+                            })
+                          }
+                          className="bg-card h-8 w-32"
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <Input
+                          type="number"
+                          value={physical.yesterday_sb || ''}
+                          placeholder="0"
+                          onFocus={(e) => e.target.select()}
+                          onChange={(e) =>
+                            setPhysical({
+                              ...physical,
+                              yesterday_sb: parseInt(e.target.value) || 0,
+                            })
+                          }
+                          className="bg-card h-8 w-32"
+                        />
+                      </TableCell>
+                    </TableRow>
+                    <TableRow>
+                      <TableCell className="flex items-center gap-2 font-medium text-emerald-600">
+                        <ArrowDownRight className="h-4 w-4" /> Stock Received (+)
+                      </TableCell>
+                      <TableCell>
+                        <Input
+                          type="number"
+                          value={physical.received_jb || ''}
+                          placeholder="0"
+                          onFocus={(e) => e.target.select()}
+                          onChange={(e) =>
+                            setPhysical({ ...physical, received_jb: parseInt(e.target.value) || 0 })
+                          }
+                          className="h-8 w-32"
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <Input
+                          type="number"
+                          value={physical.received_sb || ''}
+                          placeholder="0"
+                          onFocus={(e) => e.target.select()}
+                          onChange={(e) =>
+                            setPhysical({ ...physical, received_sb: parseInt(e.target.value) || 0 })
+                          }
+                          className="h-8 w-32"
+                        />
+                      </TableCell>
+                    </TableRow>
+                    <TableRow>
+                      <TableCell className="flex items-center gap-2 font-medium text-blue-600">
+                        <ArrowUpRight className="h-4 w-4" /> Total Dispatched (-)
+                      </TableCell>
+                      <TableCell>
+                        <Input
+                          type="number"
+                          value={physical.dispatched_jb || ''}
+                          placeholder="0"
+                          onFocus={(e) => e.target.select()}
+                          onChange={(e) =>
+                            setPhysical({
+                              ...physical,
+                              dispatched_jb: parseInt(e.target.value) || 0,
+                            })
+                          }
+                          className="h-8 w-32"
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <Input
+                          type="number"
+                          value={physical.dispatched_sb || ''}
+                          placeholder="0"
+                          onFocus={(e) => e.target.select()}
+                          onChange={(e) =>
+                            setPhysical({
+                              ...physical,
+                              dispatched_sb: parseInt(e.target.value) || 0,
+                            })
+                          }
+                          className="h-8 w-32"
+                        />
+                      </TableCell>
+                    </TableRow>
+                    <TableRow>
+                      <TableCell className="flex items-center gap-2 font-medium text-purple-600">
+                        <ArrowDownRight className="h-4 w-4" /> Customer Returns (+)
+                      </TableCell>
+                      <TableCell>
+                        <Input
+                          type="number"
+                          value={physical.returned_jb || ''}
+                          placeholder="0"
+                          onFocus={(e) => e.target.select()}
+                          onChange={(e) =>
+                            setPhysical({ ...physical, returned_jb: parseInt(e.target.value) || 0 })
+                          }
+                          className="h-8 w-32"
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <Input
+                          type="number"
+                          value={physical.returned_sb || ''}
+                          placeholder="0"
+                          onFocus={(e) => e.target.select()}
+                          onChange={(e) =>
+                            setPhysical({ ...physical, returned_sb: parseInt(e.target.value) || 0 })
+                          }
+                          className="h-8 w-32"
+                        />
+                      </TableCell>
+                    </TableRow>
+                    <TableRow>
+                      <TableCell className="flex items-center gap-2 font-medium text-red-600">
+                        <ArrowUpRight className="h-4 w-4" /> Waste/Damaged (-)
+                      </TableCell>
+                      <TableCell>
+                        <Input
+                          type="number"
+                          value={physical.waste_jb || ''}
+                          placeholder="0"
+                          onFocus={(e) => e.target.select()}
+                          onChange={(e) =>
+                            setPhysical({ ...physical, waste_jb: parseInt(e.target.value) || 0 })
+                          }
+                          className="h-8 w-32"
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <Input
+                          type="number"
+                          value={physical.waste_sb || ''}
+                          placeholder="0"
+                          onFocus={(e) => e.target.select()}
+                          onChange={(e) =>
+                            setPhysical({ ...physical, waste_sb: parseInt(e.target.value) || 0 })
+                          }
+                          className="h-8 w-32"
+                        />
+                      </TableCell>
+                    </TableRow>
+                    <TableRow className="bg-primary/5 hover:bg-primary/10">
+                      <TableCell className="text-primary text-base font-bold">
+                        Today&apos;s Closing
+                      </TableCell>
+                      <TableCell className="text-lg font-bold">{closingJb}</TableCell>
+                      <TableCell className="text-lg font-bold">{closingSb}</TableCell>
+                    </TableRow>
+                  </TableBody>
+                </Table>
+              </div>
+
+              {/* Mobile — stacked metric cards, shown only below sm */}
+              <div className="divide-border divide-y sm:hidden">
+                {[
+                  {
+                    label: "Yesterday's Closing",
+                    jbKey: 'yesterday_jb',
+                    sbKey: 'yesterday_sb',
+                    icon: null,
+                    className: 'font-semibold',
+                    bg: 'bg-muted/30',
+                  },
+                  {
+                    label: 'Stock Received (+)',
+                    jbKey: 'received_jb',
+                    sbKey: 'received_sb',
+                    icon: <ArrowDownRight className="h-4 w-4" />,
+                    className: 'font-medium text-emerald-600',
+                  },
+                  {
+                    label: 'Total Dispatched (-)',
+                    jbKey: 'dispatched_jb',
+                    sbKey: 'dispatched_sb',
+                    icon: <ArrowUpRight className="h-4 w-4" />,
+                    className: 'font-medium text-blue-600',
+                  },
+                  {
+                    label: 'Customer Returns (+)',
+                    jbKey: 'returned_jb',
+                    sbKey: 'returned_sb',
+                    icon: <ArrowDownRight className="h-4 w-4" />,
+                    className: 'font-medium text-purple-600',
+                  },
+                  {
+                    label: 'Waste/Damaged (-)',
+                    jbKey: 'waste_jb',
+                    sbKey: 'waste_sb',
+                    icon: <ArrowUpRight className="h-4 w-4" />,
+                    className: 'font-medium text-red-600',
+                  },
+                ].map((row) => (
+                  <div key={row.jbKey} className={`space-y-2 p-4 ${row.bg ?? ''}`}>
+                    <p className={`flex items-center gap-2 text-sm ${row.className}`}>
+                      {row.icon}
+                      {row.label}
+                    </p>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1">
+                        <Label className="text-muted-foreground text-[10px] uppercase">
+                          JB Bags
+                        </Label>
+                        <Input
+                          type="number"
+                          value={(physical as any)[row.jbKey] || ''}
+                          placeholder="0"
+                          onFocus={(e) => e.target.select()}
+                          onChange={(e) =>
+                            setPhysical({
+                              ...physical,
+                              [row.jbKey]: parseInt(e.target.value) || 0,
+                            })
+                          }
+                          className="h-8"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-muted-foreground text-[10px] uppercase">
+                          SB Bags
+                        </Label>
+                        <Input
+                          type="number"
+                          value={(physical as any)[row.sbKey] || ''}
+                          placeholder="0"
+                          onFocus={(e) => e.target.select()}
+                          onChange={(e) =>
+                            setPhysical({
+                              ...physical,
+                              [row.sbKey]: parseInt(e.target.value) || 0,
+                            })
+                          }
+                          className="h-8"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                <div className="bg-primary/5 space-y-1 p-4">
+                  <p className="text-primary text-sm font-bold">Today&apos;s Closing</p>
+                  <div className="flex items-center gap-4">
+                    <p className="text-lg font-bold">{closingJb} JB</p>
+                    <p className="text-lg font-bold">{closingSb} SB</p>
+                  </div>
+                </div>
+              </div>
             </CardContent>
           </Card>
 
@@ -621,53 +730,90 @@ export function ReportsTab() {
               </CardDescription>
             </CardHeader>
             <CardContent className="p-0">
-              <Table>
-                <TableHeader className="bg-muted/30">
-                  <TableRow>
-                    <TableHead>Client</TableHead>
-                    <TableHead>DR Number</TableHead>
-                    <TableHead>Service</TableHead>
-                    <TableHead className="text-right">JB</TableHead>
-                    <TableHead className="text-right">SB</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {todayDispatches.length === 0 ? (
+              {/* Desktop / tablet — hidden below sm */}
+              <div className="hidden overflow-x-auto sm:block">
+                <Table>
+                  <TableHeader className="bg-muted/30">
                     <TableRow>
-                      <TableCell colSpan={5} className="text-muted-foreground py-4 text-center">
-                        No dispatches recorded today.
-                      </TableCell>
+                      <TableHead>Client</TableHead>
+                      <TableHead>DR Number</TableHead>
+                      <TableHead>Service</TableHead>
+                      <TableHead className="text-right">JB</TableHead>
+                      <TableHead className="text-right">SB</TableHead>
                     </TableRow>
-                  ) : (
-                    todayDispatches.map((d, i) => (
-                      <TableRow key={i}>
-                        <TableCell className="font-medium">{d.client}</TableCell>
-                        <TableCell>{d.dr || '—'}</TableCell>
-                        <TableCell>
-                          <Badge variant="outline" className="text-[10px] uppercase">
-                            {d.service}
-                          </Badge>
+                  </TableHeader>
+                  <TableBody>
+                    {todayDispatches.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={5} className="text-muted-foreground py-4 text-center">
+                          No dispatches recorded today.
                         </TableCell>
-                        <TableCell className="text-right font-semibold">{d.jb}</TableCell>
-                        <TableCell className="text-right font-semibold">{d.sb}</TableCell>
                       </TableRow>
-                    ))
-                  )}
-                  {todayDispatches.length > 0 && (
-                    <TableRow className="bg-muted/20">
-                      <TableCell colSpan={3} className="text-right font-bold">
-                        Total Dispatched:
-                      </TableCell>
-                      <TableCell className="text-right font-bold text-blue-600">
-                        {todayDispatches.reduce((s, d) => s + d.jb, 0)}
-                      </TableCell>
-                      <TableCell className="text-right font-bold text-blue-600">
-                        {todayDispatches.reduce((s, d) => s + d.sb, 0)}
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
+                    ) : (
+                      todayDispatches.map((d, i) => (
+                        <TableRow key={i}>
+                          <TableCell className="font-medium">{d.client}</TableCell>
+                          <TableCell>{d.dr || '—'}</TableCell>
+                          <TableCell>
+                            <Badge variant="outline" className="text-[10px] uppercase">
+                              {d.service}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-right font-semibold">{d.jb}</TableCell>
+                          <TableCell className="text-right font-semibold">{d.sb}</TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                    {todayDispatches.length > 0 && (
+                      <TableRow className="bg-muted/20">
+                        <TableCell colSpan={3} className="text-right font-bold">
+                          Total Dispatched:
+                        </TableCell>
+                        <TableCell className="text-right font-bold text-blue-600">
+                          {todayDispatches.reduce((s, d) => s + d.jb, 0)}
+                        </TableCell>
+                        <TableCell className="text-right font-bold text-blue-600">
+                          {todayDispatches.reduce((s, d) => s + d.sb, 0)}
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+              {/* Mobile cards — shown only below sm */}
+              <div className="divide-border divide-y sm:hidden">
+                {todayDispatches.length === 0 ? (
+                  <div className="text-muted-foreground px-4 py-4 text-center text-sm">
+                    No dispatches recorded today.
+                  </div>
+                ) : (
+                  <>
+                    {todayDispatches.map((d, i) => (
+                      <div key={i} className="flex items-center justify-between gap-2 px-4 py-3">
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-medium">{d.client}</p>
+                          <div className="mt-1 flex items-center gap-1.5">
+                            <Badge variant="outline" className="text-[10px] uppercase">
+                              {d.service}
+                            </Badge>
+                            <span className="text-muted-foreground text-xs">DR: {d.dr || '—'}</span>
+                          </div>
+                        </div>
+                        <span className="shrink-0 text-sm font-semibold">
+                          {d.jb} JB · {d.sb} SB
+                        </span>
+                      </div>
+                    ))}
+                    <div className="bg-muted/20 flex items-center justify-between px-4 py-3">
+                      <span className="text-sm font-bold">Total Dispatched:</span>
+                      <span className="text-sm font-bold text-blue-600">
+                        {todayDispatches.reduce((s, d) => s + d.jb, 0)} JB ·{' '}
+                        {todayDispatches.reduce((s, d) => s + d.sb, 0)} SB
+                      </span>
+                    </div>
+                  </>
+                )}
+              </div>
             </CardContent>
           </Card>
 
@@ -680,38 +826,63 @@ export function ReportsTab() {
               </CardDescription>
             </CardHeader>
             <CardContent className="p-0">
-              <Table>
-                <TableHeader className="bg-muted/30">
-                  <TableRow>
-                    <TableHead>Client Name</TableHead>
-                    <TableHead>Product</TableHead>
-                    <TableHead className="text-accent text-right">Remaining Balance</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {balances.length === 0 ? (
+              {/* Desktop / tablet — hidden below sm */}
+              <div className="hidden overflow-x-auto sm:block">
+                <Table>
+                  <TableHeader className="bg-muted/30">
                     <TableRow>
-                      <TableCell colSpan={3} className="text-muted-foreground py-4 text-center">
-                        No pending obligations.
-                      </TableCell>
+                      <TableHead>Client Name</TableHead>
+                      <TableHead>Product</TableHead>
+                      <TableHead className="text-accent text-right">Remaining Balance</TableHead>
                     </TableRow>
-                  ) : (
-                    balances.map((b) => (
-                      <TableRow key={b.id}>
-                        <TableCell className="font-medium">
-                          {b.client?.company_name || b.client?.full_name}
-                        </TableCell>
-                        <TableCell className="text-muted-foreground">{b.product?.name}</TableCell>
-                        <TableCell className="text-right">
-                          <Badge className="bg-accent/10 text-accent hover:bg-accent/20 border-0">
-                            {b.remaining_qty} {b.bag_type}
-                          </Badge>
+                  </TableHeader>
+                  <TableBody>
+                    {balances.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={3} className="text-muted-foreground py-4 text-center">
+                          No pending obligations.
                         </TableCell>
                       </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
+                    ) : (
+                      balances.map((b) => (
+                        <TableRow key={b.id}>
+                          <TableCell className="font-medium">
+                            {b.client?.company_name || b.client?.full_name}
+                          </TableCell>
+                          <TableCell className="text-muted-foreground">{b.product?.name}</TableCell>
+                          <TableCell className="text-right">
+                            <Badge className="bg-accent/10 text-accent hover:bg-accent/20 border-0">
+                              {b.remaining_qty} {b.bag_type}
+                            </Badge>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+              {/* Mobile cards — shown only below sm */}
+              <div className="divide-border divide-y sm:hidden">
+                {balances.length === 0 ? (
+                  <div className="text-muted-foreground px-4 py-4 text-center text-sm">
+                    No pending obligations.
+                  </div>
+                ) : (
+                  balances.map((b) => (
+                    <div key={b.id} className="flex items-center justify-between gap-2 px-4 py-3">
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-medium">
+                          {b.client?.company_name || b.client?.full_name}
+                        </p>
+                        <p className="text-muted-foreground text-xs">{b.product?.name}</p>
+                      </div>
+                      <Badge className="bg-accent/10 text-accent hover:bg-accent/20 shrink-0 border-0">
+                        {b.remaining_qty} {b.bag_type}
+                      </Badge>
+                    </div>
+                  ))
+                )}
+              </div>
             </CardContent>
           </Card>
         </div>

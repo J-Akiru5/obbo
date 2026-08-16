@@ -238,38 +238,66 @@ export default function AdminReportsPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="p-0">
-                <Table>
-                  <TableHeader className="bg-muted/30">
-                    <TableRow>
-                      <TableHead>Client</TableHead>
-                      <TableHead>DR</TableHead>
-                      <TableHead>Service</TableHead>
-                      <TableHead className="text-right">JB</TableHead>
-                      <TableHead className="text-right">SB</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {todayDispatches.length === 0 ? (
+                {/* Desktop / tablet — hidden below sm */}
+                <div className="hidden overflow-x-auto sm:block">
+                  <Table>
+                    <TableHeader className="bg-muted/30">
                       <TableRow>
-                        <TableCell colSpan={5} className="text-muted-foreground py-8 text-center">
-                          No dispatches recorded for this date.
-                        </TableCell>
+                        <TableHead>Client</TableHead>
+                        <TableHead>DR</TableHead>
+                        <TableHead>Service</TableHead>
+                        <TableHead className="text-right">JB</TableHead>
+                        <TableHead className="text-right">SB</TableHead>
                       </TableRow>
-                    ) : (
-                      todayDispatches.map((row, index) => (
-                        <TableRow key={`${row.client}-${index}`}>
-                          <TableCell className="font-medium">{row.client}</TableCell>
-                          <TableCell>{row.dr ?? '—'}</TableCell>
-                          <TableCell className="capitalize">
-                            {row.service.replace(/_/g, ' ')}
+                    </TableHeader>
+                    <TableBody>
+                      {todayDispatches.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={5} className="text-muted-foreground py-8 text-center">
+                            No dispatches recorded for this date.
                           </TableCell>
-                          <TableCell className="text-right font-medium">{row.jb}</TableCell>
-                          <TableCell className="text-right font-medium">{row.sb}</TableCell>
                         </TableRow>
-                      ))
-                    )}
-                  </TableBody>
-                </Table>
+                      ) : (
+                        todayDispatches.map((row, index) => (
+                          <TableRow key={`${row.client}-${index}`}>
+                            <TableCell className="font-medium">{row.client}</TableCell>
+                            <TableCell>{row.dr ?? '—'}</TableCell>
+                            <TableCell className="capitalize">
+                              {row.service.replace(/_/g, ' ')}
+                            </TableCell>
+                            <TableCell className="text-right font-medium">{row.jb}</TableCell>
+                            <TableCell className="text-right font-medium">{row.sb}</TableCell>
+                          </TableRow>
+                        ))
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+                {/* Mobile cards — shown only below sm */}
+                <div className="divide-border divide-y sm:hidden">
+                  {todayDispatches.length === 0 ? (
+                    <div className="text-muted-foreground px-4 py-8 text-center text-sm">
+                      No dispatches recorded for this date.
+                    </div>
+                  ) : (
+                    todayDispatches.map((row, index) => (
+                      <div key={`${row.client}-${index}`} className="space-y-1 px-4 py-3">
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="text-sm font-medium">{row.client}</p>
+                          <span className="text-muted-foreground text-xs capitalize">
+                            {row.service.replace(/_/g, ' ')}
+                          </span>
+                        </div>
+                        <div className="text-muted-foreground flex items-center justify-between text-xs">
+                          <span>DR: {row.dr ?? '—'}</span>
+                          <span className="text-foreground font-medium">
+                            {row.jb} JB · {row.sb} SB
+                          </span>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
               </CardContent>
             </Card>
 
@@ -283,46 +311,83 @@ export default function AdminReportsPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="p-0">
-                <Table>
-                  <TableHeader className="bg-muted/30">
-                    <TableRow>
-                      <TableHead>PO #</TableHead>
-                      <TableHead>Client</TableHead>
-                      <TableHead>Bag Type</TableHead>
-                      <TableHead className="text-right">Total Purchase</TableHead>
-                      <TableHead className="text-right font-semibold text-amber-600">
-                        Balance
-                      </TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {balances.length === 0 ? (
+                {/* Desktop / tablet — hidden below sm */}
+                <div className="hidden overflow-x-auto sm:block">
+                  <Table>
+                    <TableHeader className="bg-muted/30">
                       <TableRow>
-                        <TableCell colSpan={5} className="text-muted-foreground py-8 text-center">
-                          No pending obligations.
-                        </TableCell>
+                        <TableHead>PO #</TableHead>
+                        <TableHead>Client</TableHead>
+                        <TableHead>Bag Type</TableHead>
+                        <TableHead className="text-right">Total Purchase</TableHead>
+                        <TableHead className="text-right font-semibold text-amber-600">
+                          Balance
+                        </TableHead>
                       </TableRow>
-                    ) : (
-                      balances.map((balance) => (
-                        <TableRow key={balance.id}>
-                          <TableCell className="font-mono text-xs font-bold">
-                            {(balance as any).order?.po_number || '—'}
-                          </TableCell>
-                          <TableCell className="font-medium">
-                            {balance.client?.company_name || balance.client?.full_name || 'Unknown'}
-                          </TableCell>
-                          <TableCell>{balance.bag_type}</TableCell>
-                          <TableCell className="text-right">
-                            {(balance as any).total_purchase || 0}
-                          </TableCell>
-                          <TableCell className="text-right font-bold text-amber-600">
-                            {balance.remaining_qty}
+                    </TableHeader>
+                    <TableBody>
+                      {balances.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={5} className="text-muted-foreground py-8 text-center">
+                            No pending obligations.
                           </TableCell>
                         </TableRow>
-                      ))
-                    )}
-                  </TableBody>
-                </Table>
+                      ) : (
+                        balances.map((balance) => (
+                          <TableRow key={balance.id}>
+                            <TableCell className="font-mono text-xs font-bold">
+                              {(balance as any).order?.po_number || '—'}
+                            </TableCell>
+                            <TableCell className="font-medium">
+                              {balance.client?.company_name ||
+                                balance.client?.full_name ||
+                                'Unknown'}
+                            </TableCell>
+                            <TableCell>{balance.bag_type}</TableCell>
+                            <TableCell className="text-right">
+                              {(balance as any).total_purchase || 0}
+                            </TableCell>
+                            <TableCell className="text-right font-bold text-amber-600">
+                              {balance.remaining_qty}
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+                {/* Mobile cards — shown only below sm */}
+                <div className="divide-border divide-y sm:hidden">
+                  {balances.length === 0 ? (
+                    <div className="text-muted-foreground px-4 py-8 text-center text-sm">
+                      No pending obligations.
+                    </div>
+                  ) : (
+                    balances.map((balance) => (
+                      <div
+                        key={balance.id}
+                        className="flex items-center justify-between gap-2 px-4 py-3"
+                      >
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-medium">
+                            {balance.client?.company_name || balance.client?.full_name || 'Unknown'}
+                          </p>
+                          <p className="text-muted-foreground font-mono text-xs">
+                            {(balance as any).order?.po_number || '—'} · {balance.bag_type}
+                          </p>
+                        </div>
+                        <div className="shrink-0 text-right">
+                          <p className="text-sm font-bold text-amber-600">
+                            {balance.remaining_qty}
+                          </p>
+                          <p className="text-muted-foreground text-[10px]">
+                            of {(balance as any).total_purchase || 0}
+                          </p>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
               </CardContent>
             </Card>
           </section>
