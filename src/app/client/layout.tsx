@@ -40,6 +40,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { toast } from 'sonner';
 import { ClientKycProvider, useClientKyc, type KycStatus } from '@/lib/context/client-kyc-context';
+import { ClientBottomNavbar } from '@/components/client-bottom-navbar';
 
 const navItems = [
   { href: '/client/dashboard', label: 'Dashboard', icon: Gauge },
@@ -504,11 +505,16 @@ function ClientLayoutInner({ children }: { children: React.ReactNode }) {
         >
           Skip to content
         </a>
-        <main id="main-content" className="relative flex-1 p-4 sm:p-6">
+        <main id="main-content" className="relative flex-1 p-4 pb-20 sm:p-6 lg:pb-6">
           <div className="from-primary/5 pointer-events-none absolute inset-x-0 top-0 h-24 bg-gradient-to-b to-transparent" />
           <div className="relative">{children}</div>
         </main>
       </div>
+
+      {/* Mobile quick-access bar — coexists with the header hamburger menu,
+          which still holds the full nav list (Contact Admin, Sign Out,
+          etc). See src/components/client-bottom-navbar.tsx. */}
+      <ClientBottomNavbar />
     </div>
   );
 }
