@@ -424,7 +424,7 @@ export function PoListTab({
               />
             </div>
             <div className="flex w-full items-center gap-2 sm:w-auto">
-              <div className="bg-muted/30 flex items-center rounded-md border p-1">
+              <div className="bg-muted/30 hidden items-center rounded-md border p-1 sm:flex">
                 <Button
                   variant={viewMode === 'list' ? 'secondary' : 'ghost'}
                   size="sm"
@@ -537,271 +537,272 @@ export function PoListTab({
             )}
           </div>
 
-          {viewMode === 'list' ? (
-            <div className="overflow-x-auto rounded-lg border">
-              <Table>
-                <TableHeader className="bg-muted/50">
+          {/* Below sm, always the card grid regardless of viewMode — the
+              list/grid toggle above is hidden on mobile for the same reason. */}
+          <div
+            className={
+              viewMode === 'list' ? 'hidden overflow-x-auto rounded-lg border sm:block' : 'hidden'
+            }
+          >
+            <Table>
+              <TableHeader className="bg-muted/50">
+                <TableRow>
+                  <TableHead className="text-xs">Date</TableHead>
+                  <TableHead className="text-xs">PO #</TableHead>
+                  <TableHead className="text-xs">Client Name</TableHead>
+                  <TableHead className="text-xs">Service</TableHead>
+                  <TableHead className="text-right text-xs">Quantity</TableHead>
+                  <TableHead className="text-xs">Type</TableHead>
+                  <TableHead className="text-xs">Status</TableHead>
+                  <TableHead className="text-xs">Check No.</TableHead>
+                  <TableHead className="text-xs">Cash</TableHead>
+                  <TableHead className="text-xs">Image</TableHead>
+                  <TableHead className="w-[100px] text-right text-xs">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filtered.length === 0 ? (
                   <TableRow>
-                    <TableHead className="text-xs">Date</TableHead>
-                    <TableHead className="text-xs">PO #</TableHead>
-                    <TableHead className="text-xs">Client Name</TableHead>
-                    <TableHead className="text-xs">Service</TableHead>
-                    <TableHead className="text-right text-xs">Quantity</TableHead>
-                    <TableHead className="text-xs">Type</TableHead>
-                    <TableHead className="text-xs">Status</TableHead>
-                    <TableHead className="text-xs">Check No.</TableHead>
-                    <TableHead className="text-xs">Cash</TableHead>
-                    <TableHead className="text-xs">Image</TableHead>
-                    <TableHead className="w-[100px] text-right text-xs">Actions</TableHead>
+                    <TableCell
+                      colSpan={11}
+                      className="text-muted-foreground py-6 text-center text-xs"
+                    >
+                      No purchase orders found.
+                    </TableCell>
                   </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filtered.length === 0 ? (
-                    <TableRow>
-                      <TableCell
-                        colSpan={11}
-                        className="text-muted-foreground py-6 text-center text-xs"
-                      >
-                        No purchase orders found.
+                ) : (
+                  filtered.map((po) => (
+                    <TableRow key={po.id} className={po.order_id ? 'bg-primary/5' : ''}>
+                      <TableCell className="text-xs whitespace-nowrap">
+                        {new Date(po.date).toLocaleDateString()}
                       </TableCell>
-                    </TableRow>
-                  ) : (
-                    filtered.map((po) => (
-                      <TableRow key={po.id} className={po.order_id ? 'bg-primary/5' : ''}>
-                        <TableCell className="text-xs whitespace-nowrap">
-                          {new Date(po.date).toLocaleDateString()}
-                        </TableCell>
-                        <TableCell>
-                          <span className="text-xs font-semibold">{po.po_number}</span>
-                          {po.order_id && (
-                            <Badge
-                              variant="outline"
-                              className="border-primary/20 text-primary bg-primary/5 ml-2 text-[9px]"
-                            >
-                              AUTO
-                            </Badge>
-                          )}
-                        </TableCell>
-                        <TableCell className="text-xs font-medium">
-                          {po.client_name || '—'}
-                        </TableCell>
-                        <TableCell>
-                          <div className="text-muted-foreground flex items-center gap-1 text-[10px] font-bold whitespace-nowrap uppercase">
-                            {po.service_type === 'deliver' ? (
-                              <Truck className="h-3 w-3" />
-                            ) : (
-                              <MapPin className="h-3 w-3" />
-                            )}
-                            {po.service_type === 'deliver' ? 'Delivery' : 'Pick-up'}
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-right text-xs font-bold">
-                          {(po.jb || 0) + (po.sb || 0)}
-                        </TableCell>
-                        <TableCell className="text-xs">
-                          <Badge variant="outline" className="h-4 px-1 font-mono text-[9px]">
-                            {po.jb > 0 ? 'JB' : 'SB'}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-xs">{getStatusBadge(po.status)}</TableCell>
-                        <TableCell className="text-xs">
-                          {po.check_number ? (
-                            <div>
-                              <span className="text-xs font-medium">{po.check_number}</span>
-                              {po.check_amount ? (
-                                <p className="text-muted-foreground text-[10px]">
-                                  ₱{Number(po.check_amount).toLocaleString()}
-                                </p>
-                              ) : null}
-                            </div>
-                          ) : (
-                            <span className="text-muted-foreground text-xs">—</span>
-                          )}
-                        </TableCell>
-                        <TableCell className="text-xs">
-                          {po.cash_amount ? (
-                            <span className="text-xs font-medium">
-                              ₱{Number(po.cash_amount).toLocaleString()}
-                            </span>
-                          ) : (
-                            <span className="text-muted-foreground text-xs">—</span>
-                          )}
-                        </TableCell>
-                        <TableCell className="text-xs">
-                          {po.photo_url ? (
-                            <a
-                              href={po.photo_url}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="text-primary hover:text-primary/90 hover:bg-primary/10 inline-flex h-7 w-7 items-center justify-center rounded-md"
-                            >
-                              <FileImage className="h-4 w-4" />
-                            </a>
-                          ) : (
-                            <span className="text-muted-foreground text-xs">—</span>
-                          )}
-                        </TableCell>
-                        <TableCell className="text-right whitespace-nowrap">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => {
-                              setViewingPo(po);
-                              setIsViewOpen(true);
-                            }}
-                            className="mr-1 h-7 w-7 text-emerald-600 hover:bg-emerald-50 hover:text-emerald-700"
-                          >
-                            <Eye className="h-3.5 w-3.5" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => openEdit(po)}
-                            className="text-primary hover:text-primary/90 hover:bg-primary/10 h-7 w-7"
-                          >
-                            <Edit2 className="h-3.5 w-3.5" />
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-              {filtered.length === 0 ? (
-                <div className="text-muted-foreground col-span-full rounded-xl border-2 border-dashed py-12 text-center text-xs">
-                  No purchase orders found.
-                </div>
-              ) : (
-                filtered.map((po) => (
-                  <Card
-                    key={po.id}
-                    className="group border-border overflow-hidden transition-shadow hover:shadow-md"
-                  >
-                    <div className="bg-muted relative flex aspect-[4/3] items-center justify-center overflow-hidden">
-                      {po.photo_url ? (
-                        <img
-                          src={po.photo_url}
-                          alt={po.po_number}
-                          className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
-                        />
-                      ) : (
-                        <div className="text-muted-foreground/40 flex flex-col items-center">
-                          <FileImage className="mb-2 h-10 w-10" />
-                          <span className="text-[10px] font-bold tracking-widest uppercase">
-                            No Document
-                          </span>
-                        </div>
-                      )}
-                      <div className="absolute top-2 right-2 flex gap-1.5 opacity-0 transition-opacity group-hover:opacity-100">
-                        <Button
-                          size="icon"
-                          variant="secondary"
-                          className="h-8 w-8 shadow-sm"
-                          onClick={() => {
-                            setViewingPo(po);
-                            setIsViewOpen(true);
-                          }}
-                        >
-                          <Eye className="h-4 w-4 text-emerald-600" />
-                        </Button>
-                        <Button
-                          size="icon"
-                          variant="secondary"
-                          className="h-8 w-8 shadow-sm"
-                          onClick={() => openEdit(po)}
-                        >
-                          <Edit2 className="text-primary h-4 w-4" />
-                        </Button>
-                      </div>
-                      <div className="absolute top-2 left-2">
-                        <Badge
-                          variant="secondary"
-                          className="text-foreground bg-background/90 border-none text-[10px] font-semibold shadow-sm backdrop-blur-sm"
-                        >
-                          {new Date(po.date).toLocaleDateString()}
-                        </Badge>
-                      </div>
-                    </div>
-                    <CardContent className="space-y-3 p-3">
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="min-w-0">
-                          <p className="text-foreground truncate text-sm font-bold">
-                            {po.po_number}
-                          </p>
-                          <p className="text-muted-foreground truncate text-xs font-medium">
-                            {po.client_name || 'Unknown Client'}
-                          </p>
-                        </div>
+                      <TableCell>
+                        <span className="text-xs font-semibold">{po.po_number}</span>
                         {po.order_id && (
                           <Badge
                             variant="outline"
-                            className="bg-primary/5 text-primary border-primary/10 h-5 shrink-0 text-[9px]"
+                            className="border-primary/20 text-primary bg-primary/5 ml-2 text-[9px]"
                           >
                             AUTO
                           </Badge>
                         )}
-                      </div>
-
-                      <div className="border-border/50 flex items-center gap-3 border-y py-2">
-                        <div className="flex-1">
-                          <p className="text-muted-foreground text-[9px] font-bold uppercase">
-                            Quantity
-                          </p>
-                          <p className="text-sm font-bold">{(po.jb || 0) + (po.sb || 0)}</p>
-                        </div>
-                        <div className="bg-muted h-6 w-px"></div>
-                        <div className="flex-1">
-                          <p className="text-muted-foreground text-[9px] font-bold uppercase">
-                            Type
-                          </p>
-                          <Badge variant="outline" className="h-4 px-1 font-mono text-[9px]">
-                            {po.jb > 0 ? 'JB' : 'SB'}
-                          </Badge>
-                        </div>
-                        <div className="bg-muted h-6 w-px"></div>
-                        <div className="flex-1 text-right">
-                          <div className="text-muted-foreground inline-flex items-center text-[10px] font-bold uppercase">
-                            {po.service_type === 'deliver' ? (
-                              <Truck className="mr-1 h-3 w-3" />
-                            ) : (
-                              <MapPin className="mr-1 h-3 w-3" />
-                            )}
-                            {po.service_type === 'deliver' ? 'DLV' : 'PCK'}
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center justify-between">
-                        <div className="text-[10px]">
-                          {po.check_number ? (
-                            <div className="text-muted-foreground font-medium">
-                              CHK:{' '}
-                              <span className="text-foreground font-semibold">
-                                {po.check_number}
-                              </span>
-                            </div>
-                          ) : po.cash_amount ? (
-                            <div className="text-muted-foreground font-medium">
-                              CASH:{' '}
-                              <span className="text-foreground font-bold">
-                                ₱{Number(po.cash_amount).toLocaleString()}
-                              </span>
-                            </div>
+                      </TableCell>
+                      <TableCell className="text-xs font-medium">{po.client_name || '—'}</TableCell>
+                      <TableCell>
+                        <div className="text-muted-foreground flex items-center gap-1 text-[10px] font-bold whitespace-nowrap uppercase">
+                          {po.service_type === 'deliver' ? (
+                            <Truck className="h-3 w-3" />
                           ) : (
-                            <span className="text-muted-foreground italic">No payment</span>
+                            <MapPin className="h-3 w-3" />
                           )}
+                          {po.service_type === 'deliver' ? 'Delivery' : 'Pick-up'}
                         </div>
-                        {getStatusBadge(po.status)}
+                      </TableCell>
+                      <TableCell className="text-right text-xs font-bold">
+                        {(po.jb || 0) + (po.sb || 0)}
+                      </TableCell>
+                      <TableCell className="text-xs">
+                        <Badge variant="outline" className="h-4 px-1 font-mono text-[9px]">
+                          {po.jb > 0 ? 'JB' : 'SB'}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-xs">{getStatusBadge(po.status)}</TableCell>
+                      <TableCell className="text-xs">
+                        {po.check_number ? (
+                          <div>
+                            <span className="text-xs font-medium">{po.check_number}</span>
+                            {po.check_amount ? (
+                              <p className="text-muted-foreground text-[10px]">
+                                ₱{Number(po.check_amount).toLocaleString()}
+                              </p>
+                            ) : null}
+                          </div>
+                        ) : (
+                          <span className="text-muted-foreground text-xs">—</span>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-xs">
+                        {po.cash_amount ? (
+                          <span className="text-xs font-medium">
+                            ₱{Number(po.cash_amount).toLocaleString()}
+                          </span>
+                        ) : (
+                          <span className="text-muted-foreground text-xs">—</span>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-xs">
+                        {po.photo_url ? (
+                          <a
+                            href={po.photo_url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="text-primary hover:text-primary/90 hover:bg-primary/10 inline-flex h-7 w-7 items-center justify-center rounded-md"
+                          >
+                            <FileImage className="h-4 w-4" />
+                          </a>
+                        ) : (
+                          <span className="text-muted-foreground text-xs">—</span>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-right whitespace-nowrap">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => {
+                            setViewingPo(po);
+                            setIsViewOpen(true);
+                          }}
+                          className="mr-1 h-7 w-7 text-emerald-600 hover:bg-emerald-50 hover:text-emerald-700"
+                        >
+                          <Eye className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => openEdit(po)}
+                          className="text-primary hover:text-primary/90 hover:bg-primary/10 h-7 w-7"
+                        >
+                          <Edit2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </div>
+          <div
+            className={
+              viewMode === 'grid'
+                ? 'grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'
+                : 'grid grid-cols-1 gap-4 sm:hidden'
+            }
+          >
+            {filtered.length === 0 ? (
+              <div className="text-muted-foreground col-span-full rounded-xl border-2 border-dashed py-12 text-center text-xs">
+                No purchase orders found.
+              </div>
+            ) : (
+              filtered.map((po) => (
+                <Card
+                  key={po.id}
+                  className="group border-border overflow-hidden transition-shadow hover:shadow-md"
+                >
+                  <div className="bg-muted relative flex aspect-[4/3] items-center justify-center overflow-hidden">
+                    {po.photo_url ? (
+                      <img
+                        src={po.photo_url}
+                        alt={po.po_number}
+                        className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                      />
+                    ) : (
+                      <div className="text-muted-foreground/40 flex flex-col items-center">
+                        <FileImage className="mb-2 h-10 w-10" />
+                        <span className="text-[10px] font-bold tracking-widest uppercase">
+                          No Document
+                        </span>
                       </div>
-                    </CardContent>
-                  </Card>
-                ))
-              )}
-            </div>
-          )}
+                    )}
+                    <div className="absolute top-2 right-2 flex gap-1.5 opacity-0 transition-opacity group-hover:opacity-100">
+                      <Button
+                        size="icon"
+                        variant="secondary"
+                        className="h-8 w-8 shadow-sm"
+                        onClick={() => {
+                          setViewingPo(po);
+                          setIsViewOpen(true);
+                        }}
+                      >
+                        <Eye className="h-4 w-4 text-emerald-600" />
+                      </Button>
+                      <Button
+                        size="icon"
+                        variant="secondary"
+                        className="h-8 w-8 shadow-sm"
+                        onClick={() => openEdit(po)}
+                      >
+                        <Edit2 className="text-primary h-4 w-4" />
+                      </Button>
+                    </div>
+                    <div className="absolute top-2 left-2">
+                      <Badge
+                        variant="secondary"
+                        className="text-foreground bg-background/90 border-none text-[10px] font-semibold shadow-sm backdrop-blur-sm"
+                      >
+                        {new Date(po.date).toLocaleDateString()}
+                      </Badge>
+                    </div>
+                  </div>
+                  <CardContent className="space-y-3 p-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="text-foreground truncate text-sm font-bold">{po.po_number}</p>
+                        <p className="text-muted-foreground truncate text-xs font-medium">
+                          {po.client_name || 'Unknown Client'}
+                        </p>
+                      </div>
+                      {po.order_id && (
+                        <Badge
+                          variant="outline"
+                          className="bg-primary/5 text-primary border-primary/10 h-5 shrink-0 text-[9px]"
+                        >
+                          AUTO
+                        </Badge>
+                      )}
+                    </div>
+
+                    <div className="border-border/50 flex items-center gap-3 border-y py-2">
+                      <div className="flex-1">
+                        <p className="text-muted-foreground text-[9px] font-bold uppercase">
+                          Quantity
+                        </p>
+                        <p className="text-sm font-bold">{(po.jb || 0) + (po.sb || 0)}</p>
+                      </div>
+                      <div className="bg-muted h-6 w-px"></div>
+                      <div className="flex-1">
+                        <p className="text-muted-foreground text-[9px] font-bold uppercase">Type</p>
+                        <Badge variant="outline" className="h-4 px-1 font-mono text-[9px]">
+                          {po.jb > 0 ? 'JB' : 'SB'}
+                        </Badge>
+                      </div>
+                      <div className="bg-muted h-6 w-px"></div>
+                      <div className="flex-1 text-right">
+                        <div className="text-muted-foreground inline-flex items-center text-[10px] font-bold uppercase">
+                          {po.service_type === 'deliver' ? (
+                            <Truck className="mr-1 h-3 w-3" />
+                          ) : (
+                            <MapPin className="mr-1 h-3 w-3" />
+                          )}
+                          {po.service_type === 'deliver' ? 'DLV' : 'PCK'}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <div className="text-[10px]">
+                        {po.check_number ? (
+                          <div className="text-muted-foreground font-medium">
+                            CHK:{' '}
+                            <span className="text-foreground font-semibold">{po.check_number}</span>
+                          </div>
+                        ) : po.cash_amount ? (
+                          <div className="text-muted-foreground font-medium">
+                            CASH:{' '}
+                            <span className="text-foreground font-bold">
+                              ₱{Number(po.cash_amount).toLocaleString()}
+                            </span>
+                          </div>
+                        ) : (
+                          <span className="text-muted-foreground italic">No payment</span>
+                        )}
+                      </div>
+                      {getStatusBadge(po.status)}
+                    </div>
+                  </CardContent>
+                </Card>
+              ))
+            )}
+          </div>
         </CardContent>
       </Card>
 

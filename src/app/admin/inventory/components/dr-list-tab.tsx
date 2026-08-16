@@ -211,7 +211,7 @@ export function DrListTab({
             />
           </div>
           <div className="flex w-full items-center gap-2 sm:w-auto">
-            <div className="bg-muted/30 flex items-center rounded-md border p-1">
+            <div className="bg-muted/30 hidden items-center rounded-md border p-1 sm:flex">
               <Button
                 variant={viewMode === 'list' ? 'secondary' : 'ghost'}
                 size="sm"
@@ -267,254 +267,263 @@ export function DrListTab({
           )}
         </div>
 
-        {viewMode === 'list' ? (
-          <div className="overflow-x-auto rounded-lg border">
-            <Table>
-              <TableHeader className="bg-muted/50">
+        {/* Below sm, always the card grid regardless of viewMode — the
+            list/grid toggle above is hidden on mobile for the same reason. */}
+        <div
+          className={
+            viewMode === 'list' ? 'hidden overflow-x-auto rounded-lg border sm:block' : 'hidden'
+          }
+        >
+          <Table>
+            <TableHeader className="bg-muted/50">
+              <TableRow>
+                <TableHead>Image</TableHead>
+                <TableHead>Date</TableHead>
+                <TableHead>DR #</TableHead>
+                <TableHead>Client Name</TableHead>
+                <TableHead>PO# Link</TableHead>
+                <TableHead>Order</TableHead>
+                <TableHead>Driver Name</TableHead>
+                <TableHead>Plate #</TableHead>
+                <TableHead className="text-right">Total Bags</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filtered.length === 0 ? (
                 <TableRow>
-                  <TableHead>Image</TableHead>
-                  <TableHead>Date</TableHead>
-                  <TableHead>DR #</TableHead>
-                  <TableHead>Client Name</TableHead>
-                  <TableHead>PO# Link</TableHead>
-                  <TableHead>Order</TableHead>
-                  <TableHead>Driver Name</TableHead>
-                  <TableHead>Plate #</TableHead>
-                  <TableHead className="text-right">Total Bags</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  <TableCell colSpan={10} className="text-muted-foreground py-6 text-center">
+                    No delivery receipts found.
+                  </TableCell>
                 </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filtered.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={10} className="text-muted-foreground py-6 text-center">
-                      No delivery receipts found.
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  filtered.map((dr) => (
-                    <TableRow key={dr.id} className={dr.order_id ? 'bg-primary/5' : ''}>
-                      <TableCell>
-                        <div className="bg-muted border-border flex h-10 w-10 items-center justify-center overflow-hidden rounded border">
-                          {dr.dr_image_url ? (
-                            <OptimizedImage
-                              src={dr.dr_image_url}
-                              alt="DR"
-                              fill
-                              className="object-cover"
-                              unoptimized
-                              containerClassName="w-full h-full"
-                            />
-                          ) : (
-                            <FileImage className="text-muted-foreground/40 h-5 w-5" />
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-sm whitespace-nowrap">
-                        {new Date(dr.received_date).toLocaleDateString()}
-                      </TableCell>
-                      <TableCell>
-                        <span className="text-sm font-semibold">{dr.dr_number}</span>
-                        {dr.order_id && (
-                          <Badge
-                            variant="outline"
-                            className="border-primary/20 text-primary bg-primary/5 ml-2 text-[9px]"
-                          >
-                            AUTO
-                          </Badge>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-sm">{dr.client_name || '—'}</TableCell>
-                      <TableCell>
-                        {dr.po_number ? (
-                          <Badge variant="outline" className="cursor-default font-mono text-xs">
-                            {dr.po_number}
-                          </Badge>
+              ) : (
+                filtered.map((dr) => (
+                  <TableRow key={dr.id} className={dr.order_id ? 'bg-primary/5' : ''}>
+                    <TableCell>
+                      <div className="bg-muted border-border flex h-10 w-10 items-center justify-center overflow-hidden rounded border">
+                        {dr.dr_image_url ? (
+                          <OptimizedImage
+                            src={dr.dr_image_url}
+                            alt="DR"
+                            fill
+                            className="object-cover"
+                            unoptimized
+                            containerClassName="w-full h-full"
+                          />
                         ) : (
-                          <span className="text-muted-foreground text-xs">—</span>
+                          <FileImage className="text-muted-foreground/40 h-5 w-5" />
                         )}
-                      </TableCell>
-                      <TableCell className="text-sm">
-                        {dr.order ? (
-                          <div className="flex items-center gap-1.5">
-                            <Badge
-                              variant="outline"
-                              className="bg-primary/5 border-primary/20 text-[10px] capitalize"
-                            >
-                              {dr.order.status}
-                            </Badge>
-                            <span className="text-muted-foreground font-mono text-[10px]">
-                              {dr.order.id.slice(0, 8)}
-                            </span>
-                          </div>
-                        ) : (
-                          <span className="text-muted-foreground text-xs">—</span>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-sm">{dr.driver || '—'}</TableCell>
-                      <TableCell className="text-sm">{dr.plate_number || '—'}</TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex items-center justify-end gap-1.5">
-                          <span className="text-foreground text-xs font-bold">{dr.jb + dr.sb}</span>
-                          <Badge variant="outline" className="font-mono text-[10px]">
-                            {dr.jb > 0 ? 'JB' : 'SB'}
-                          </Badge>
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-right whitespace-nowrap">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => {
-                            setViewingDr(dr);
-                            setIsViewOpen(true);
-                          }}
-                          className="text-primary hover:text-primary hover:bg-primary/10 h-8 w-8"
-                        >
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => openEdit(dr)}
-                          className="text-primary hover:text-primary/90 hover:bg-primary/10 h-8 w-8"
-                        >
-                          <Edit2 className="h-4 w-4" />
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {filtered.length === 0 ? (
-              <div className="text-muted-foreground col-span-full rounded-xl border-2 border-dashed py-12 text-center">
-                No delivery receipts found matching your search.
-              </div>
-            ) : (
-              filtered.map((dr) => (
-                <Card
-                  key={dr.id}
-                  className={`group overflow-hidden transition-shadow hover:shadow-md ${dr.order_id ? 'border-primary/10 bg-primary/5' : ''}`}
-                >
-                  <div className="bg-muted relative aspect-video overflow-hidden border-b">
-                    {dr.dr_image_url ? (
-                      <OptimizedImage
-                        src={dr.dr_image_url}
-                        alt="DR"
-                        fill
-                        className="object-cover transition-transform duration-500 group-hover:scale-105"
-                        unoptimized
-                        containerClassName="h-full w-full"
-                      />
-                    ) : (
-                      <div className="text-muted-foreground/30 absolute inset-0 flex flex-col items-center justify-center">
-                        <FileImage className="mb-2 h-12 w-12" />
-                        <span className="text-[10px] font-bold tracking-widest uppercase">
-                          No Document Preview
-                        </span>
                       </div>
-                    )}
-                    <div className="absolute top-2 right-2 flex gap-1">
+                    </TableCell>
+                    <TableCell className="text-sm whitespace-nowrap">
+                      {new Date(dr.received_date).toLocaleDateString()}
+                    </TableCell>
+                    <TableCell>
+                      <span className="text-sm font-semibold">{dr.dr_number}</span>
                       {dr.order_id && (
-                        <Badge className="bg-primary text-primary-foreground border-none text-[9px]">
+                        <Badge
+                          variant="outline"
+                          className="border-primary/20 text-primary bg-primary/5 ml-2 text-[9px]"
+                        >
                           AUTO
                         </Badge>
                       )}
-                      <Badge
-                        variant="secondary"
-                        className="bg-background/80 text-foreground border-none font-mono text-[10px] backdrop-blur-sm"
-                      >
-                        {new Date(dr.received_date).toLocaleDateString()}
-                      </Badge>
-                    </div>
-                  </div>
-                  <CardContent className="space-y-3 p-4">
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <h4 className="text-foreground text-sm font-bold">{dr.dr_number}</h4>
-                        <p className="text-muted-foreground max-w-[150px] truncate text-xs">
-                          {dr.client_name || 'Unknown Client'}
-                        </p>
-                      </div>
-                      <div className="text-right">
-                        <div className="text-muted-foreground mb-0.5 text-[10px] font-bold uppercase">
-                          PO Link
-                        </div>
-                        <Badge variant="outline" className="font-mono text-[10px]">
-                          {dr.po_number || 'NONE'}
+                    </TableCell>
+                    <TableCell className="text-sm">{dr.client_name || '—'}</TableCell>
+                    <TableCell>
+                      {dr.po_number ? (
+                        <Badge variant="outline" className="cursor-default font-mono text-xs">
+                          {dr.po_number}
                         </Badge>
-                      </div>
-                    </div>
-
-                    {dr.order && (
-                      <div className="flex items-center justify-between text-[10px]">
-                        <span className="text-muted-foreground font-bold uppercase">Order</span>
-                        <div className="flex items-center gap-1">
+                      ) : (
+                        <span className="text-muted-foreground text-xs">—</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-sm">
+                      {dr.order ? (
+                        <div className="flex items-center gap-1.5">
                           <Badge
                             variant="outline"
-                            className="bg-primary/5 border-primary/20 text-[9px] capitalize"
+                            className="bg-primary/5 border-primary/20 text-[10px] capitalize"
                           >
                             {dr.order.status}
                           </Badge>
-                          <span className="text-muted-foreground font-mono">
+                          <span className="text-muted-foreground font-mono text-[10px]">
                             {dr.order.id.slice(0, 8)}
                           </span>
                         </div>
+                      ) : (
+                        <span className="text-muted-foreground text-xs">—</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-sm">{dr.driver || '—'}</TableCell>
+                    <TableCell className="text-sm">{dr.plate_number || '—'}</TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex items-center justify-end gap-1.5">
+                        <span className="text-foreground text-xs font-bold">{dr.jb + dr.sb}</span>
+                        <Badge variant="outline" className="font-mono text-[10px]">
+                          {dr.jb > 0 ? 'JB' : 'SB'}
+                        </Badge>
                       </div>
-                    )}
-
-                    <div className="border-border grid grid-cols-2 gap-2 border-y py-2">
-                      <div>
-                        <div className="text-muted-foreground mb-1 text-[9px] font-bold uppercase">
-                          Driver / Plate
-                        </div>
-                        <p className="truncate text-[11px] font-medium">
-                          {dr.driver || '—'} • {dr.plate_number || '—'}
-                        </p>
-                      </div>
-                      <div className="text-right">
-                        <div className="text-muted-foreground mb-1 text-[9px] font-bold uppercase">
-                          Quantity
-                        </div>
-                        <p className="text-foreground text-[11px] font-bold">
-                          {dr.jb + dr.sb} {dr.jb > 0 ? 'JB' : 'SB'}
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center justify-between pt-1">
+                    </TableCell>
+                    <TableCell className="text-right whitespace-nowrap">
                       <Button
-                        variant="secondary"
-                        size="sm"
-                        className="bg-primary text-primary-foreground hover:bg-primary/90 h-8 gap-1.5 text-[11px] font-bold"
+                        variant="ghost"
+                        size="icon"
                         onClick={() => {
                           setViewingDr(dr);
                           setIsViewOpen(true);
                         }}
+                        className="text-primary hover:text-primary hover:bg-primary/10 h-8 w-8"
                       >
-                        <Eye className="h-3.5 w-3.5" /> View Details
+                        <Eye className="h-4 w-4" />
                       </Button>
-                      <div className="flex gap-1">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => openEdit(dr)}
-                          className="text-primary hover:text-primary/90 hover:bg-primary/10 h-8 w-8"
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => openEdit(dr)}
+                        className="text-primary hover:text-primary/90 hover:bg-primary/10 h-8 w-8"
+                      >
+                        <Edit2 className="h-4 w-4" />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </div>
+        <div
+          className={
+            viewMode === 'grid'
+              ? 'grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3'
+              : 'grid grid-cols-1 gap-4 sm:hidden'
+          }
+        >
+          {filtered.length === 0 ? (
+            <div className="text-muted-foreground col-span-full rounded-xl border-2 border-dashed py-12 text-center">
+              No delivery receipts found matching your search.
+            </div>
+          ) : (
+            filtered.map((dr) => (
+              <Card
+                key={dr.id}
+                className={`group overflow-hidden transition-shadow hover:shadow-md ${dr.order_id ? 'border-primary/10 bg-primary/5' : ''}`}
+              >
+                <div className="bg-muted relative aspect-video overflow-hidden border-b">
+                  {dr.dr_image_url ? (
+                    <OptimizedImage
+                      src={dr.dr_image_url}
+                      alt="DR"
+                      fill
+                      className="object-cover transition-transform duration-500 group-hover:scale-105"
+                      unoptimized
+                      containerClassName="h-full w-full"
+                    />
+                  ) : (
+                    <div className="text-muted-foreground/30 absolute inset-0 flex flex-col items-center justify-center">
+                      <FileImage className="mb-2 h-12 w-12" />
+                      <span className="text-[10px] font-bold tracking-widest uppercase">
+                        No Document Preview
+                      </span>
+                    </div>
+                  )}
+                  <div className="absolute top-2 right-2 flex gap-1">
+                    {dr.order_id && (
+                      <Badge className="bg-primary text-primary-foreground border-none text-[9px]">
+                        AUTO
+                      </Badge>
+                    )}
+                    <Badge
+                      variant="secondary"
+                      className="bg-background/80 text-foreground border-none font-mono text-[10px] backdrop-blur-sm"
+                    >
+                      {new Date(dr.received_date).toLocaleDateString()}
+                    </Badge>
+                  </div>
+                </div>
+                <CardContent className="space-y-3 p-4">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <h4 className="text-foreground text-sm font-bold">{dr.dr_number}</h4>
+                      <p className="text-muted-foreground max-w-[150px] truncate text-xs">
+                        {dr.client_name || 'Unknown Client'}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-muted-foreground mb-0.5 text-[10px] font-bold uppercase">
+                        PO Link
+                      </div>
+                      <Badge variant="outline" className="font-mono text-[10px]">
+                        {dr.po_number || 'NONE'}
+                      </Badge>
+                    </div>
+                  </div>
+
+                  {dr.order && (
+                    <div className="flex items-center justify-between text-[10px]">
+                      <span className="text-muted-foreground font-bold uppercase">Order</span>
+                      <div className="flex items-center gap-1">
+                        <Badge
+                          variant="outline"
+                          className="bg-primary/5 border-primary/20 text-[9px] capitalize"
                         >
-                          <Edit2 className="h-3.5 w-3.5" />
-                        </Button>
+                          {dr.order.status}
+                        </Badge>
+                        <span className="text-muted-foreground font-mono">
+                          {dr.order.id.slice(0, 8)}
+                        </span>
                       </div>
                     </div>
-                  </CardContent>
-                </Card>
-              ))
-            )}
-          </div>
-        )}
+                  )}
+
+                  <div className="border-border grid grid-cols-2 gap-2 border-y py-2">
+                    <div>
+                      <div className="text-muted-foreground mb-1 text-[9px] font-bold uppercase">
+                        Driver / Plate
+                      </div>
+                      <p className="truncate text-[11px] font-medium">
+                        {dr.driver || '—'} • {dr.plate_number || '—'}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-muted-foreground mb-1 text-[9px] font-bold uppercase">
+                        Quantity
+                      </div>
+                      <p className="text-foreground text-[11px] font-bold">
+                        {dr.jb + dr.sb} {dr.jb > 0 ? 'JB' : 'SB'}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between pt-1">
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      className="bg-primary text-primary-foreground hover:bg-primary/90 h-8 gap-1.5 text-[11px] font-bold"
+                      onClick={() => {
+                        setViewingDr(dr);
+                        setIsViewOpen(true);
+                      }}
+                    >
+                      <Eye className="h-3.5 w-3.5" /> View Details
+                    </Button>
+                    <div className="flex gap-1">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => openEdit(dr)}
+                        className="text-primary hover:text-primary/90 hover:bg-primary/10 h-8 w-8"
+                      >
+                        <Edit2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))
+          )}
+        </div>
       </CardContent>
 
       {/* View Details Dialog */}

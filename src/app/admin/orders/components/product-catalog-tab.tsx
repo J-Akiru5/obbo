@@ -198,7 +198,7 @@ export function ProductCatalogTab({
             </CardDescription>
           </div>
           <div className="flex w-full items-center gap-2 sm:w-auto">
-            <div className="bg-muted/30 flex items-center rounded-md border p-1">
+            <div className="bg-muted/30 hidden items-center rounded-md border p-1 sm:flex">
               <Button
                 variant={viewMode === 'list' ? 'secondary' : 'ghost'}
                 size="sm"
@@ -226,231 +226,236 @@ export function ProductCatalogTab({
         </div>
       </CardHeader>
       <CardContent className="p-0">
-        {viewMode === 'list' ? (
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader className="bg-muted/50">
+        {/* Below sm, always the card grid regardless of viewMode — the
+            list/grid toggle above is hidden on mobile for the same reason. */}
+        <div className={viewMode === 'list' ? 'hidden overflow-x-auto sm:block' : 'hidden'}>
+          <Table>
+            <TableHeader className="bg-muted/50">
+              <TableRow>
+                <TableHead className="w-[80px]">Product</TableHead>
+                <TableHead>Details</TableHead>
+                <TableHead className="text-right text-emerald-500">Port Price</TableHead>
+                <TableHead className="text-right text-blue-500">Warehouse Price</TableHead>
+                <TableHead className="text-center">Status</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filteredProducts.length === 0 ? (
                 <TableRow>
-                  <TableHead className="w-[80px]">Product</TableHead>
-                  <TableHead>Details</TableHead>
-                  <TableHead className="text-right text-emerald-500">Port Price</TableHead>
-                  <TableHead className="text-right text-blue-500">Warehouse Price</TableHead>
-                  <TableHead className="text-center">Status</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  <TableCell colSpan={6} className="text-muted-foreground py-8 text-center">
+                    No products match your filters.
+                  </TableCell>
                 </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredProducts.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={6} className="text-muted-foreground py-8 text-center">
-                      No products match your filters.
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  filteredProducts.map((p) => {
-                    const pPort = (p as any).price_port ?? (p as any).price_per_bag ?? 0;
-                    const pWh = (p as any).price_warehouse ?? (p as any).price_per_bag ?? 0;
-                    return (
-                      <TableRow key={p.id} className="group">
-                        <TableCell>
-                          <div className="bg-muted flex h-12 w-12 items-center justify-center overflow-hidden rounded-lg border">
-                            {p.image_url ? (
-                              <OptimizedImage
-                                src={p.image_url}
-                                alt={p.name}
-                                width={48}
-                                height={48}
-                                className="h-full w-full object-cover"
-                                unoptimized
-                              />
-                            ) : (
-                              <Package className="text-muted-foreground h-6 w-6" />
-                            )}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <p className="text-sm font-semibold">{p.name}</p>
-                          <p className="text-muted-foreground mt-0.5 flex gap-2 text-xs">
-                            <Badge
-                              variant="outline"
-                              className="h-4 px-1 font-mono text-[10px] tracking-wider uppercase"
-                            >
-                              {p.bag_type}
-                            </Badge>
-                            <span className="max-w-[200px] truncate">{p.description}</span>
-                          </p>
-                        </TableCell>
-                        <TableCell className="text-right font-semibold text-emerald-500">
-                          ₱{Number(pPort).toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                        </TableCell>
-                        <TableCell className="text-right font-semibold text-blue-500">
-                          ₱{Number(pWh).toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                        </TableCell>
-                        <TableCell className="text-center">
-                          <Badge
-                            variant={p.is_active ? 'default' : 'secondary'}
-                            className={
-                              p.is_active
-                                ? 'bg-primary/10 text-primary hover:bg-primary/20 h-5 border-none text-[10px]'
-                                : 'h-5 text-[10px]'
-                            }
-                          >
-                            {p.is_active ? 'Active' : 'Inactive'}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex justify-end gap-2">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => {
-                                setViewingProduct(p);
-                                setIsViewOpen(true);
-                              }}
-                              className="text-primary hover:text-primary hover:bg-primary/10 h-8 w-8"
-                            >
-                              <Eye className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => toggleActive(p)}
-                              className="h-8 w-8"
-                            >
-                              {p.is_active ? (
-                                <Package className="h-4 w-4 text-emerald-600" />
-                              ) : (
-                                <Package className="text-muted-foreground h-4 w-4" />
-                              )}
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => openEdit(p)}
-                              className="text-primary hover:text-primary hover:bg-primary/10 h-8 w-8"
-                            >
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })
-                )}
-              </TableBody>
-            </Table>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 gap-4 p-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {filteredProducts.length === 0 ? (
-              <div className="text-muted-foreground col-span-full rounded-xl border-2 border-dashed py-12 text-center">
-                No products found matching criteria.
-              </div>
-            ) : (
-              filteredProducts.map((p) => {
-                const pPort = (p as any).price_port ?? (p as any).price_per_bag ?? 0;
-                const pWh = (p as any).price_warehouse ?? (p as any).price_per_bag ?? 0;
-                return (
-                  <Card
-                    key={p.id}
-                    className="group border-border/50 overflow-hidden transition-shadow hover:shadow-md"
-                  >
-                    <div className="bg-muted relative aspect-square overflow-hidden border-b">
-                      {p.image_url ? (
-                        <OptimizedImage
-                          src={p.image_url}
-                          alt={p.name}
-                          fill
-                          className="object-cover transition-transform duration-500 group-hover:scale-105"
-                          unoptimized
-                          containerClassName="h-full w-full"
-                        />
-                      ) : (
-                        <div className="text-muted-foreground/30 absolute inset-0 flex flex-col items-center justify-center">
-                          <Package className="mb-2 h-16 w-16" />
-                          <span className="text-[10px] font-bold tracking-widest uppercase">
-                            No Product Photo
-                          </span>
+              ) : (
+                filteredProducts.map((p) => {
+                  const pPort = (p as any).price_port ?? (p as any).price_per_bag ?? 0;
+                  const pWh = (p as any).price_warehouse ?? (p as any).price_per_bag ?? 0;
+                  return (
+                    <TableRow key={p.id} className="group">
+                      <TableCell>
+                        <div className="bg-muted flex h-12 w-12 items-center justify-center overflow-hidden rounded-lg border">
+                          {p.image_url ? (
+                            <OptimizedImage
+                              src={p.image_url}
+                              alt={p.name}
+                              width={48}
+                              height={48}
+                              className="h-full w-full object-cover"
+                              unoptimized
+                            />
+                          ) : (
+                            <Package className="text-muted-foreground h-6 w-6" />
+                          )}
                         </div>
-                      )}
-                      <div className="absolute top-2 left-2">
+                      </TableCell>
+                      <TableCell>
+                        <p className="text-sm font-semibold">{p.name}</p>
+                        <p className="text-muted-foreground mt-0.5 flex gap-2 text-xs">
+                          <Badge
+                            variant="outline"
+                            className="h-4 px-1 font-mono text-[10px] tracking-wider uppercase"
+                          >
+                            {p.bag_type}
+                          </Badge>
+                          <span className="max-w-[200px] truncate">{p.description}</span>
+                        </p>
+                      </TableCell>
+                      <TableCell className="text-right font-semibold text-emerald-500">
+                        ₱{Number(pPort).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                      </TableCell>
+                      <TableCell className="text-right font-semibold text-blue-500">
+                        ₱{Number(pWh).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                      </TableCell>
+                      <TableCell className="text-center">
                         <Badge
                           variant={p.is_active ? 'default' : 'secondary'}
                           className={
                             p.is_active
-                              ? 'bg-primary text-primary-foreground border-none shadow-sm backdrop-blur-sm'
-                              : 'backdrop-blur-sm'
+                              ? 'bg-primary/10 text-primary hover:bg-primary/20 h-5 border-none text-[10px]'
+                              : 'h-5 text-[10px]'
                           }
                         >
                           {p.is_active ? 'Active' : 'Inactive'}
                         </Badge>
-                      </div>
-                      <div className="absolute top-2 right-2">
-                        <Badge
-                          variant="outline"
-                          className="text-foreground bg-background/80 border-none font-mono text-[10px] font-black backdrop-blur-sm"
-                        >
-                          {p.bag_type}
-                        </Badge>
-                      </div>
-                    </div>
-                    <CardContent className="space-y-3 p-4">
-                      <div>
-                        <h4 className="text-foreground truncate text-sm font-bold">{p.name}</h4>
-                        <p className="text-muted-foreground line-clamp-1 h-4 text-xs">
-                          {p.description || 'No description provided.'}
-                        </p>
-                      </div>
-
-                      <div className="border-border/50 grid grid-cols-2 gap-2 border-y py-2">
-                        <div>
-                          <div className="mb-0.5 text-[9px] font-black text-emerald-500/80 uppercase">
-                            Port Price
-                          </div>
-                          <p className="text-xs font-bold text-emerald-500">
-                            ₱{Number(pPort).toLocaleString()}
-                          </p>
-                        </div>
-                        <div className="text-right">
-                          <div className="mb-0.5 text-[9px] font-black text-blue-500/80 uppercase">
-                            Warehouse
-                          </div>
-                          <p className="text-xs font-bold text-blue-500">
-                            ₱{Number(pWh).toLocaleString()}
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center justify-between pt-1">
-                        <Button
-                          variant="secondary"
-                          size="sm"
-                          className="bg-primary text-primary-foreground hover:bg-primary/90 h-8 flex-1 gap-1.5 text-[11px] font-bold"
-                          onClick={() => {
-                            setViewingProduct(p);
-                            setIsViewOpen(true);
-                          }}
-                        >
-                          <Eye className="h-3.5 w-3.5" /> View
-                        </Button>
-                        <div className="ml-2 flex gap-1">
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-2">
                           <Button
-                            variant="outline"
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => {
+                              setViewingProduct(p);
+                              setIsViewOpen(true);
+                            }}
+                            className="text-primary hover:text-primary hover:bg-primary/10 h-8 w-8"
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => toggleActive(p)}
+                            className="h-8 w-8"
+                          >
+                            {p.is_active ? (
+                              <Package className="h-4 w-4 text-emerald-600" />
+                            ) : (
+                              <Package className="text-muted-foreground h-4 w-4" />
+                            )}
+                          </Button>
+                          <Button
+                            variant="ghost"
                             size="icon"
                             onClick={() => openEdit(p)}
-                            className="text-primary border-primary/10 hover:bg-primary/10 h-8 w-8"
+                            className="text-primary hover:text-primary hover:bg-primary/10 h-8 w-8"
                           >
-                            <Edit className="h-3.5 w-3.5" />
+                            <Edit className="h-4 w-4" />
                           </Button>
                         </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })
+              )}
+            </TableBody>
+          </Table>
+        </div>
+        <div
+          className={
+            viewMode === 'grid'
+              ? 'grid grid-cols-1 gap-4 p-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'
+              : 'grid grid-cols-1 gap-4 p-4 sm:hidden'
+          }
+        >
+          {filteredProducts.length === 0 ? (
+            <div className="text-muted-foreground col-span-full rounded-xl border-2 border-dashed py-12 text-center">
+              No products found matching criteria.
+            </div>
+          ) : (
+            filteredProducts.map((p) => {
+              const pPort = (p as any).price_port ?? (p as any).price_per_bag ?? 0;
+              const pWh = (p as any).price_warehouse ?? (p as any).price_per_bag ?? 0;
+              return (
+                <Card
+                  key={p.id}
+                  className="group border-border/50 overflow-hidden transition-shadow hover:shadow-md"
+                >
+                  <div className="bg-muted relative aspect-square overflow-hidden border-b">
+                    {p.image_url ? (
+                      <OptimizedImage
+                        src={p.image_url}
+                        alt={p.name}
+                        fill
+                        className="object-cover transition-transform duration-500 group-hover:scale-105"
+                        unoptimized
+                        containerClassName="h-full w-full"
+                      />
+                    ) : (
+                      <div className="text-muted-foreground/30 absolute inset-0 flex flex-col items-center justify-center">
+                        <Package className="mb-2 h-16 w-16" />
+                        <span className="text-[10px] font-bold tracking-widest uppercase">
+                          No Product Photo
+                        </span>
                       </div>
-                    </CardContent>
-                  </Card>
-                );
-              })
-            )}
-          </div>
-        )}
+                    )}
+                    <div className="absolute top-2 left-2">
+                      <Badge
+                        variant={p.is_active ? 'default' : 'secondary'}
+                        className={
+                          p.is_active
+                            ? 'bg-primary text-primary-foreground border-none shadow-sm backdrop-blur-sm'
+                            : 'backdrop-blur-sm'
+                        }
+                      >
+                        {p.is_active ? 'Active' : 'Inactive'}
+                      </Badge>
+                    </div>
+                    <div className="absolute top-2 right-2">
+                      <Badge
+                        variant="outline"
+                        className="text-foreground bg-background/80 border-none font-mono text-[10px] font-black backdrop-blur-sm"
+                      >
+                        {p.bag_type}
+                      </Badge>
+                    </div>
+                  </div>
+                  <CardContent className="space-y-3 p-4">
+                    <div>
+                      <h4 className="text-foreground truncate text-sm font-bold">{p.name}</h4>
+                      <p className="text-muted-foreground line-clamp-1 h-4 text-xs">
+                        {p.description || 'No description provided.'}
+                      </p>
+                    </div>
+
+                    <div className="border-border/50 grid grid-cols-2 gap-2 border-y py-2">
+                      <div>
+                        <div className="mb-0.5 text-[9px] font-black text-emerald-500/80 uppercase">
+                          Port Price
+                        </div>
+                        <p className="text-xs font-bold text-emerald-500">
+                          ₱{Number(pPort).toLocaleString()}
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <div className="mb-0.5 text-[9px] font-black text-blue-500/80 uppercase">
+                          Warehouse
+                        </div>
+                        <p className="text-xs font-bold text-blue-500">
+                          ₱{Number(pWh).toLocaleString()}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between pt-1">
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        className="bg-primary text-primary-foreground hover:bg-primary/90 h-8 flex-1 gap-1.5 text-[11px] font-bold"
+                        onClick={() => {
+                          setViewingProduct(p);
+                          setIsViewOpen(true);
+                        }}
+                      >
+                        <Eye className="h-3.5 w-3.5" /> View
+                      </Button>
+                      <div className="ml-2 flex gap-1">
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          onClick={() => openEdit(p)}
+                          className="text-primary border-primary/10 hover:bg-primary/10 h-8 w-8"
+                        >
+                          <Edit className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })
+          )}
+        </div>
       </CardContent>
 
       {/* View Details Dialog */}

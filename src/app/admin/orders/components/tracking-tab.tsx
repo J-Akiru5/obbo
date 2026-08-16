@@ -52,6 +52,100 @@ function sortedReceipts(receipts: OrderDeliveryReceipt[] | undefined) {
   );
 }
 
+// Shared per-order derived fields — computed once, rendered twice (desktop
+// table row + mobile card) so the two layouts can never drift out of sync.
+function computeTrackingDisplay(order: Order) {
+  const jbQty = order.items
+    .filter((i) => i.bag_type === 'JB')
+    .reduce((s, i) => s + i.dispatched_qty, 0);
+  const sbQty = order.items
+    .filter((i) => i.bag_type === 'SB')
+    .reduce((s, i) => s + i.dispatched_qty, 0);
+  const jbReq = order.items
+    .filter((i) => i.bag_type === 'JB')
+    .reduce((s, i) => s + i.requested_qty, 0);
+  const sbReq = order.items
+    .filter((i) => i.bag_type === 'SB')
+    .reduce((s, i) => s + i.requested_qty, 0);
+  const isSplit =
+    order.is_split_delivery || order.items.some((i) => i.dispatched_qty < i.requested_qty);
+  const drs = sortedReceipts(order.delivery_receipts);
+  const latestDr = drs.length > 0 ? drs[drs.length - 1] : null;
+  return { jbQty, sbQty, jbReq, sbReq, isSplit, drs, latestDr };
+}
+
+function DrDriverCell({
+  order,
+  drs,
+  latestDr,
+}: {
+  order: Order;
+  drs: OrderDeliveryReceipt[];
+  latestDr: OrderDeliveryReceipt | null;
+}) {
+  if (drs.length > 0) {
+    return (
+      <div className="flex flex-col gap-1">
+        {drs.length > 1 && (
+          <p className="text-[10px] font-bold text-amber-600 uppercase">{drs.length} DRs</p>
+        )}
+        {drs.map((dr) =>
+          dr.dr_image_url ? (
+            <a
+              key={dr.id}
+              href={dr.dr_image_url}
+              target="_blank"
+              rel="noreferrer"
+              className="text-primary hover:text-primary/80 text-sm font-semibold"
+            >
+              {dr.dr_number}
+            </a>
+          ) : (
+            <p key={dr.id} className="text-sm font-semibold">
+              {dr.dr_number}
+            </p>
+          ),
+        )}
+        {order.service_type === 'deliver' &&
+          latestDr &&
+          (latestDr.driver || latestDr.plate_number) && (
+            <p className="text-muted-foreground mt-0.5 text-xs">
+              {latestDr.driver} · {latestDr.plate_number}
+            </p>
+          )}
+      </div>
+    );
+  }
+  if (order.dr_number) {
+    return (
+      <>
+        <p className="text-sm font-semibold">{order.dr_number}</p>
+        {order.service_type === 'deliver' && (
+          <p className="text-muted-foreground mt-0.5 text-xs">
+            {order.driver_name} · {order.plate_number}
+          </p>
+        )}
+      </>
+    );
+  }
+  return <span className="text-muted-foreground text-xs italic">No DR attached</span>;
+}
+
+function CheckCell({ order }: { order: Order }) {
+  if (!order.check_image_url) return <span className="text-muted-foreground text-xs">—</span>;
+  return (
+    <a
+      href={order.check_image_url}
+      target="_blank"
+      rel="noreferrer"
+      className="flex items-center gap-1 text-xs font-medium text-emerald-600 hover:text-emerald-700"
+    >
+      <ExternalLink className="h-3 w-3" />
+      View Check
+    </a>
+  );
+}
+
 // Restocking a return credits shipment stock in whole JB/SB UNITS, rounded
 // DOWN from the individual bag count entered here — a return that isn't an
 // exact multiple of 25 (JB) or 50 (SB) leaves a small remainder that isn't
@@ -201,195 +295,238 @@ export function TrackingTab({
   };
 
   return (
-    <div className="bg-card border-border overflow-x-auto rounded-xl border shadow-sm">
-      <Table>
-        <TableHeader className="bg-muted/50">
-          <TableRow>
-            <TableHead>Order ID</TableHead>
-            <TableHead>Client & Service</TableHead>
-            <TableHead>DR & Driver</TableHead>
-            <TableHead>Check</TableHead>
-            <TableHead>Quantities</TableHead>
-            <TableHead>Tracking Status</TableHead>
-            <TableHead className="text-right">Action</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {orders.map((order) => {
-            const jbQty = order.items
-              .filter((i) => i.bag_type === 'JB')
-              .reduce((s, i) => s + i.dispatched_qty, 0);
-            const sbQty = order.items
-              .filter((i) => i.bag_type === 'SB')
-              .reduce((s, i) => s + i.dispatched_qty, 0);
-            const jbReq = order.items
-              .filter((i) => i.bag_type === 'JB')
-              .reduce((s, i) => s + i.requested_qty, 0);
-            const sbReq = order.items
-              .filter((i) => i.bag_type === 'SB')
-              .reduce((s, i) => s + i.requested_qty, 0);
-            const isSplit =
-              order.is_split_delivery ||
-              order.items.some((i) => i.dispatched_qty < i.requested_qty);
-            const drs = sortedReceipts(order.delivery_receipts);
-            const latestDr = drs.length > 0 ? drs[drs.length - 1] : null;
+    <div className="bg-card border-border rounded-xl border shadow-sm">
+      {/* Desktop / tablet — full table, hidden below sm */}
+      <div className="hidden overflow-x-auto sm:block">
+        <Table>
+          <TableHeader className="bg-muted/50">
+            <TableRow>
+              <TableHead>Order ID</TableHead>
+              <TableHead>Client & Service</TableHead>
+              <TableHead>DR & Driver</TableHead>
+              <TableHead>Check</TableHead>
+              <TableHead>Quantities</TableHead>
+              <TableHead>Tracking Status</TableHead>
+              <TableHead className="text-right">Action</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {orders.map((order) => {
+              const { jbQty, sbQty, jbReq, sbReq, isSplit, drs, latestDr } =
+                computeTrackingDisplay(order);
 
-            return (
-              <TableRow key={order.id}>
-                <TableCell className="font-mono text-xs">
-                  {order.id.slice(0, 8)}
-                  {isSplit && (
-                    <div className="mt-1">
-                      <Badge
-                        variant="outline"
-                        className="border-amber-500 bg-amber-50 px-1 py-0 text-[9px] font-bold text-amber-600 uppercase dark:bg-amber-900/30 dark:text-amber-400"
-                      >
-                        SPLIT
-                      </Badge>
-                    </div>
-                  )}
-                </TableCell>
-                <TableCell>
-                  <div className="flex items-center gap-3">
-                    <Avatar className="border-border/50 h-8 w-8 shrink-0 border">
-                      {order.client?.avatar_url ? (
-                        <AvatarImage
-                          src={order.client.avatar_url}
-                          alt="Client"
-                          className="object-cover"
-                        />
-                      ) : (
-                        <AvatarFallback className="bg-primary text-primary-foreground text-[10px] font-bold">
-                          {(order.client?.full_name || 'CL')
-                            .split(' ')
-                            .map((n) => n[0])
-                            .join('')
-                            .toUpperCase()
-                            .slice(0, 2)}
-                        </AvatarFallback>
-                      )}
-                    </Avatar>
-                    <div>
-                      <p className="font-medium">
-                        {order.client?.company_name || order.client?.full_name}
-                      </p>
-                      <div className="text-muted-foreground mt-1 flex items-center gap-1 text-[10px] font-bold uppercase">
-                        {order.service_type === 'deliver' ? (
-                          <Truck className="h-3 w-3" />
+              return (
+                <TableRow key={order.id}>
+                  <TableCell className="font-mono text-xs">
+                    {order.id.slice(0, 8)}
+                    {isSplit && (
+                      <div className="mt-1">
+                        <Badge
+                          variant="outline"
+                          className="border-amber-500 bg-amber-50 px-1 py-0 text-[9px] font-bold text-amber-600 uppercase dark:bg-amber-900/30 dark:text-amber-400"
+                        >
+                          SPLIT
+                        </Badge>
+                      </div>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-3">
+                      <Avatar className="border-border/50 h-8 w-8 shrink-0 border">
+                        {order.client?.avatar_url ? (
+                          <AvatarImage
+                            src={order.client.avatar_url}
+                            alt="Client"
+                            className="object-cover"
+                          />
                         ) : (
-                          <MapPin className="h-3 w-3" />
+                          <AvatarFallback className="bg-primary text-primary-foreground text-[10px] font-bold">
+                            {(order.client?.full_name || 'CL')
+                              .split(' ')
+                              .map((n) => n[0])
+                              .join('')
+                              .toUpperCase()
+                              .slice(0, 2)}
+                          </AvatarFallback>
                         )}
-                        {order.service_type}
+                      </Avatar>
+                      <div>
+                        <p className="font-medium">
+                          {order.client?.company_name || order.client?.full_name}
+                        </p>
+                        <div className="text-muted-foreground mt-1 flex items-center gap-1 text-[10px] font-bold uppercase">
+                          {order.service_type === 'deliver' ? (
+                            <Truck className="h-3 w-3" />
+                          ) : (
+                            <MapPin className="h-3 w-3" />
+                          )}
+                          {order.service_type}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                </TableCell>
-                <TableCell>
-                  {drs.length > 0 ? (
+                  </TableCell>
+                  <TableCell>
+                    <DrDriverCell order={order} drs={drs} latestDr={latestDr} />
+                  </TableCell>
+                  <TableCell>
+                    <CheckCell order={order} />
+                  </TableCell>
+                  <TableCell>
                     <div className="flex flex-col gap-1">
-                      {drs.length > 1 && (
-                        <p className="text-[10px] font-bold text-amber-600 uppercase">
-                          {drs.length} DRs
-                        </p>
+                      {jbQty > 0 && (
+                        <div className="flex items-center gap-2">
+                          <Badge variant="outline" className="text-xs font-bold">
+                            {(jbQty * BAG_EQUIVALENT.JB).toLocaleString()} bags ({jbQty} JB)
+                          </Badge>
+                          {isSplit && jbReq > 0 && (
+                            <span className="text-muted-foreground text-[10px]">/ {jbReq} JB</span>
+                          )}
+                        </div>
                       )}
-                      {drs.map((dr) =>
-                        dr.dr_image_url ? (
-                          <a
-                            key={dr.id}
-                            href={dr.dr_image_url}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="text-primary hover:text-primary/80 text-sm font-semibold"
-                          >
-                            {dr.dr_number}
-                          </a>
-                        ) : (
-                          <p key={dr.id} className="text-sm font-semibold">
-                            {dr.dr_number}
-                          </p>
-                        ),
+                      {sbQty > 0 && (
+                        <div className="flex items-center gap-2">
+                          <Badge variant="outline" className="text-xs font-bold">
+                            {(sbQty * BAG_EQUIVALENT.SB).toLocaleString()} bags ({sbQty} SB)
+                          </Badge>
+                          {isSplit && sbReq > 0 && (
+                            <span className="text-muted-foreground text-[10px]">/ {sbReq} SB</span>
+                          )}
+                        </div>
                       )}
-                      {order.service_type === 'deliver' &&
-                        latestDr &&
-                        (latestDr.driver || latestDr.plate_number) && (
-                          <p className="text-muted-foreground mt-0.5 text-xs">
-                            {latestDr.driver} · {latestDr.plate_number}
-                          </p>
-                        )}
+                      {jbQty === 0 && sbQty === 0 && (
+                        <span className="text-muted-foreground text-xs">—</span>
+                      )}
                     </div>
-                  ) : order.dr_number ? (
-                    <>
-                      <p className="text-sm font-semibold">{order.dr_number}</p>
-                      {order.service_type === 'deliver' && (
-                        <p className="text-muted-foreground mt-0.5 text-xs">
-                          {order.driver_name} · {order.plate_number}
-                        </p>
-                      )}
-                    </>
-                  ) : (
-                    <span className="text-muted-foreground text-xs italic">No DR attached</span>
-                  )}
-                </TableCell>
-                <TableCell>
-                  {order.check_image_url ? (
-                    <a
-                      href={order.check_image_url}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="flex items-center gap-1 text-xs font-medium text-emerald-600 hover:text-emerald-700"
+                  </TableCell>
+                  <TableCell>
+                    {renderStatusBadge(order.tracking_status || 'pending_dispatch')}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => openUpdate(order)}
+                      className="text-xs"
                     >
-                      <ExternalLink className="h-3 w-3" />
-                      View Check
-                    </a>
-                  ) : (
-                    <span className="text-muted-foreground text-xs">—</span>
+                      <Edit2 className="mr-1.5 h-3.5 w-3.5" /> Update
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              );
+            })}
+          </TableBody>
+        </Table>
+      </div>
+
+      {/* Mobile — stacked cards, shown only below sm */}
+      <div className="divide-border divide-y sm:hidden">
+        {orders.map((order) => {
+          const { jbQty, sbQty, jbReq, sbReq, isSplit, drs, latestDr } =
+            computeTrackingDisplay(order);
+
+          return (
+            <div key={order.id} className="space-y-3 p-4">
+              <div className="flex items-start justify-between gap-2">
+                <div className="flex items-center gap-3">
+                  <Avatar className="border-border/50 h-8 w-8 shrink-0 border">
+                    {order.client?.avatar_url ? (
+                      <AvatarImage
+                        src={order.client.avatar_url}
+                        alt="Client"
+                        className="object-cover"
+                      />
+                    ) : (
+                      <AvatarFallback className="bg-primary text-primary-foreground text-[10px] font-bold">
+                        {(order.client?.full_name || 'CL')
+                          .split(' ')
+                          .map((n) => n[0])
+                          .join('')
+                          .toUpperCase()
+                          .slice(0, 2)}
+                      </AvatarFallback>
+                    )}
+                  </Avatar>
+                  <div>
+                    <p className="font-medium">
+                      {order.client?.company_name || order.client?.full_name}
+                    </p>
+                    <div className="text-muted-foreground mt-1 flex items-center gap-1 text-[10px] font-bold uppercase">
+                      {order.service_type === 'deliver' ? (
+                        <Truck className="h-3 w-3" />
+                      ) : (
+                        <MapPin className="h-3 w-3" />
+                      )}
+                      {order.service_type}
+                    </div>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <p className="font-mono text-[10px]">{order.id.slice(0, 8)}</p>
+                  {isSplit && (
+                    <Badge
+                      variant="outline"
+                      className="mt-1 border-amber-500 bg-amber-50 px-1 py-0 text-[9px] font-bold text-amber-600 uppercase dark:bg-amber-900/30 dark:text-amber-400"
+                    >
+                      SPLIT
+                    </Badge>
                   )}
-                </TableCell>
-                <TableCell>
-                  <div className="flex flex-col gap-1">
-                    {jbQty > 0 && (
-                      <div className="flex items-center gap-2">
-                        <Badge variant="outline" className="text-xs font-bold">
-                          {(jbQty * BAG_EQUIVALENT.JB).toLocaleString()} bags ({jbQty} JB)
-                        </Badge>
-                        {isSplit && jbReq > 0 && (
-                          <span className="text-muted-foreground text-[10px]">/ {jbReq} JB</span>
-                        )}
-                      </div>
-                    )}
-                    {sbQty > 0 && (
-                      <div className="flex items-center gap-2">
-                        <Badge variant="outline" className="text-xs font-bold">
-                          {(sbQty * BAG_EQUIVALENT.SB).toLocaleString()} bags ({sbQty} SB)
-                        </Badge>
-                        {isSplit && sbReq > 0 && (
-                          <span className="text-muted-foreground text-[10px]">/ {sbReq} SB</span>
-                        )}
-                      </div>
-                    )}
-                    {jbQty === 0 && sbQty === 0 && (
-                      <span className="text-muted-foreground text-xs">—</span>
+                </div>
+              </div>
+
+              <div className="border-border/50 flex items-center gap-3 border-y py-2">
+                <div className="flex-1">
+                  <p className="text-muted-foreground mb-1 text-[9px] font-bold uppercase">
+                    DR & Driver
+                  </p>
+                  <DrDriverCell order={order} drs={drs} latestDr={latestDr} />
+                </div>
+                <div className="flex-1">
+                  <p className="text-muted-foreground mb-1 text-[9px] font-bold uppercase">Check</p>
+                  <CheckCell order={order} />
+                </div>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2">
+                {jbQty > 0 && (
+                  <div className="flex items-center gap-1.5">
+                    <Badge variant="outline" className="text-xs font-bold">
+                      {(jbQty * BAG_EQUIVALENT.JB).toLocaleString()} bags ({jbQty} JB)
+                    </Badge>
+                    {isSplit && jbReq > 0 && (
+                      <span className="text-muted-foreground text-[10px]">/ {jbReq} JB</span>
                     )}
                   </div>
-                </TableCell>
-                <TableCell>
-                  {renderStatusBadge(order.tracking_status || 'pending_dispatch')}
-                </TableCell>
-                <TableCell className="text-right">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => openUpdate(order)}
-                    className="text-xs"
-                  >
-                    <Edit2 className="mr-1.5 h-3.5 w-3.5" /> Update
-                  </Button>
-                </TableCell>
-              </TableRow>
-            );
-          })}
-        </TableBody>
-      </Table>
+                )}
+                {sbQty > 0 && (
+                  <div className="flex items-center gap-1.5">
+                    <Badge variant="outline" className="text-xs font-bold">
+                      {(sbQty * BAG_EQUIVALENT.SB).toLocaleString()} bags ({sbQty} SB)
+                    </Badge>
+                    {isSplit && sbReq > 0 && (
+                      <span className="text-muted-foreground text-[10px]">/ {sbReq} SB</span>
+                    )}
+                  </div>
+                )}
+                {jbQty === 0 && sbQty === 0 && (
+                  <span className="text-muted-foreground text-xs">—</span>
+                )}
+              </div>
+
+              <div className="flex items-center justify-between gap-2 pt-1">
+                {renderStatusBadge(order.tracking_status || 'pending_dispatch')}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => openUpdate(order)}
+                  className="text-xs"
+                >
+                  <Edit2 className="mr-1.5 h-3.5 w-3.5" /> Update
+                </Button>
+              </div>
+            </div>
+          );
+        })}
+      </div>
 
       <Dialog open={!!selectedOrder} onOpenChange={(open) => !open && setSelectedOrder(null)}>
         <DialogContent>

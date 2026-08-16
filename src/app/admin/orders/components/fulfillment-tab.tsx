@@ -318,7 +318,7 @@ export function FulfillmentTab({
                         </span>
                       </div>
                     )}
-                    {order.po_image_url && (
+                    {order.po_image_url ? (
                       <a
                         href={order.po_image_url}
                         target="_blank"
@@ -327,6 +327,13 @@ export function FulfillmentTab({
                       >
                         <ExternalLink className="h-3 w-3" /> View PO
                       </a>
+                    ) : (
+                      <span
+                        className="text-muted-foreground mt-1 block w-fit text-[10px] font-semibold tracking-wide uppercase"
+                        title="No purchase order was ever created for this dispatch — a manual/walk-in DR entry, not a missing upload."
+                      >
+                        No PO
+                      </span>
                     )}
                     {drs.length > 0 && (
                       <div className="text-muted-foreground mt-1 flex flex-wrap items-center gap-2 text-xs">
