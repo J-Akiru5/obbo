@@ -796,7 +796,6 @@ export default function LedgerClient({
                       max={selectedBalance.remaining_qty}
                       value={deliverNowQty || ''}
                       placeholder="0"
-                      onFocus={(e) => e.target.select()}
                       onChange={(e) => setDeliverNowQty(parseInt(e.target.value) || 0)}
                     />
                     <p className="text-muted-foreground text-[10px] italic">

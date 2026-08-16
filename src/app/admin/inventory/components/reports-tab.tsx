@@ -466,7 +466,6 @@ export function ReportsTab() {
                           type="number"
                           value={physical.yesterday_jb || ''}
                           placeholder="0"
-                          onFocus={(e) => e.target.select()}
                           onChange={(e) =>
                             setPhysical({
                               ...physical,
@@ -481,7 +480,6 @@ export function ReportsTab() {
                           type="number"
                           value={physical.yesterday_sb || ''}
                           placeholder="0"
-                          onFocus={(e) => e.target.select()}
                           onChange={(e) =>
                             setPhysical({
                               ...physical,
@@ -501,7 +499,6 @@ export function ReportsTab() {
                           type="number"
                           value={physical.received_jb || ''}
                           placeholder="0"
-                          onFocus={(e) => e.target.select()}
                           onChange={(e) =>
                             setPhysical({ ...physical, received_jb: parseInt(e.target.value) || 0 })
                           }
@@ -513,7 +510,6 @@ export function ReportsTab() {
                           type="number"
                           value={physical.received_sb || ''}
                           placeholder="0"
-                          onFocus={(e) => e.target.select()}
                           onChange={(e) =>
                             setPhysical({ ...physical, received_sb: parseInt(e.target.value) || 0 })
                           }
@@ -530,7 +526,6 @@ export function ReportsTab() {
                           type="number"
                           value={physical.dispatched_jb || ''}
                           placeholder="0"
-                          onFocus={(e) => e.target.select()}
                           onChange={(e) =>
                             setPhysical({
                               ...physical,
@@ -545,7 +540,6 @@ export function ReportsTab() {
                           type="number"
                           value={physical.dispatched_sb || ''}
                           placeholder="0"
-                          onFocus={(e) => e.target.select()}
                           onChange={(e) =>
                             setPhysical({
                               ...physical,
@@ -565,7 +559,6 @@ export function ReportsTab() {
                           type="number"
                           value={physical.returned_jb || ''}
                           placeholder="0"
-                          onFocus={(e) => e.target.select()}
                           onChange={(e) =>
                             setPhysical({ ...physical, returned_jb: parseInt(e.target.value) || 0 })
                           }
@@ -577,7 +570,6 @@ export function ReportsTab() {
                           type="number"
                           value={physical.returned_sb || ''}
                           placeholder="0"
-                          onFocus={(e) => e.target.select()}
                           onChange={(e) =>
                             setPhysical({ ...physical, returned_sb: parseInt(e.target.value) || 0 })
                           }
@@ -594,7 +586,6 @@ export function ReportsTab() {
                           type="number"
                           value={physical.waste_jb || ''}
                           placeholder="0"
-                          onFocus={(e) => e.target.select()}
                           onChange={(e) =>
                             setPhysical({ ...physical, waste_jb: parseInt(e.target.value) || 0 })
                           }
@@ -606,7 +597,6 @@ export function ReportsTab() {
                           type="number"
                           value={physical.waste_sb || ''}
                           placeholder="0"
-                          onFocus={(e) => e.target.select()}
                           onChange={(e) =>
                             setPhysical({ ...physical, waste_sb: parseInt(e.target.value) || 0 })
                           }
@@ -679,7 +669,6 @@ export function ReportsTab() {
                           type="number"
                           value={(physical as any)[row.jbKey] || ''}
                           placeholder="0"
-                          onFocus={(e) => e.target.select()}
                           onChange={(e) =>
                             setPhysical({
                               ...physical,
@@ -697,7 +686,6 @@ export function ReportsTab() {
                           type="number"
                           value={(physical as any)[row.sbKey] || ''}
                           placeholder="0"
-                          onFocus={(e) => e.target.select()}
                           onChange={(e) =>
                             setPhysical({
                               ...physical,
