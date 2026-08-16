@@ -15,6 +15,7 @@ import { Button } from '@/components/ui/button';
 import { ScrollReveal } from '@/components/scroll-reveal';
 import { Navbar } from '@/components/landing/navbar';
 import { Stats } from '@/components/landing/stats';
+import { BackToTop } from '@/components/landing/back-to-top';
 
 // ─── Hero ──────────────────────────────────────────────
 function Hero() {
@@ -365,26 +366,78 @@ function CTA() {
 // ─── Footer ──────────────────────────────────────────────
 function Footer() {
   return (
-    <footer className="bg-[#0c1a2b] py-12 text-white/50">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="flex flex-col items-center justify-between gap-6 md:flex-row">
-          <div className="group flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center transition-transform duration-300 group-hover:scale-110 group-hover:rotate-6">
-              <Image
-                src="/logo.png"
-                alt="OBBO iManage Logo"
-                width={32}
-                height={32}
-                className="object-contain"
-              />
+    <footer className="bg-[#0c1a2b] text-white/60">
+      <div className="mx-auto max-w-7xl px-4 pt-16 pb-8 sm:px-6 lg:px-8">
+        {/* Main Footer Grid — only real, working links get a column.
+            Social profiles, company pages, and contact details don't exist
+            yet; they'll come back here once real instead of shipping dead
+            hrefs / a support inbox nobody's watching. */}
+        <div className="grid grid-cols-1 gap-10 sm:grid-cols-2">
+          {/* Brand Column */}
+          <div className="space-y-4">
+            <div className="group flex items-center gap-2">
+              <div className="flex h-8 w-8 items-center justify-center transition-transform duration-300 group-hover:scale-110 group-hover:rotate-6">
+                <Image
+                  src="/logo.png"
+                  alt="OBBO iManage Logo"
+                  width={32}
+                  height={32}
+                  className="object-contain"
+                />
+              </div>
+              <span className="text-lg font-bold text-white/90">OBBO iManage</span>
             </div>
-            <span className="text-lg font-bold text-white/80">OBBO iManage</span>
+            <p className="text-sm leading-relaxed">
+              Modern distribution management for cement dealers. Streamline operations, track
+              deliveries, and grow your business.
+            </p>
           </div>
-          <p className="text-sm">
+
+          {/* Product Links */}
+          <div>
+            <h3 className="mb-4 text-sm font-semibold tracking-wider text-white/90 uppercase">
+              Product
+            </h3>
+            <ul className="space-y-2.5">
+              {[
+                { label: 'Features', href: '#features' },
+                { label: 'How It Works', href: '#how-it-works' },
+                { label: 'FAQ', href: '#faq' },
+              ].map((link) => (
+                <li key={link.label}>
+                  <a
+                    href={link.href}
+                    className="text-sm transition-colors duration-200 hover:text-white/90"
+                  >
+                    {link.label}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+
+        {/* Divider */}
+        <div className="mt-12 border-t border-white/10 pt-8">
+          <p className="text-center text-xs">
             &copy; {new Date().getFullYear()} OBBO Cement Distribution. All rights reserved.
           </p>
         </div>
+
+        {/* Powered by Prism Watermark */}
+        <div className="mt-6 text-center">
+          <a
+            href="https://prism.syntaxure.dev/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 text-[11px] text-white/25 transition-colors duration-200 hover:text-white/50"
+          >
+            Powered by prism-context-engine
+          </a>
+        </div>
       </div>
+
+      <BackToTop />
     </footer>
   );
 }
