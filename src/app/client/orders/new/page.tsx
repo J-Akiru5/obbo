@@ -23,10 +23,11 @@ import {
   getSplitSchema,
   getPrice,
   getSubtotalByBagType,
-  getSplitDeliveryUnits,
   getTotalIndividualBags,
   bgsToUnits,
+  bagsToUnitsFloor,
   unitsToBags,
+  BAG_EQUIVALENT,
 } from '@/components/orders/wizard/order-schema';
 import {
   submitOrder,
@@ -52,7 +53,8 @@ const INITIAL_FORM = {
   po_number: '',
   payment_method: 'cash' as 'cash' | 'check',
   wants_split: false,
-  deliver_now_total: 0,
+  deliver_now_jb_bags: 0,
+  deliver_now_sb_bags: 0,
 };
 
 export default function NewOrderPageWrapper() {
@@ -79,7 +81,7 @@ function NewOrderPage() {
   // sessionStorage from before this deploy misses under the new key and
   // falls back to INITIAL_FORM cleanly, instead of resuming mid-wizard with
   // zeroed-out quantities under stale field names.
-  const FORM_STORAGE_KEY = 'obbo-order-form-v2';
+  const FORM_STORAGE_KEY = 'obbo-order-form-v3';
   const [form, updateForm, clearForm] = usePersistedForm(FORM_STORAGE_KEY, INITIAL_FORM);
   const [currentStep, setCurrentStep] = useState(() => {
     if (typeof window === 'undefined') return 0;
@@ -173,7 +175,8 @@ function NewOrderPage() {
           po_number: draft.po_number || '',
           payment_method: draft.payment_method || 'cash',
           wants_split: draft.is_split_delivery || false,
-          deliver_now_total: (draft.deliver_now_jb || 0) * 25 + (draft.deliver_now_sb || 0) * 50,
+          deliver_now_jb_bags: unitsToBags(draft.deliver_now_jb || 0, 'JB'),
+          deliver_now_sb_bags: unitsToBags(draft.deliver_now_sb || 0, 'SB'),
         } as Partial<typeof INITIAL_FORM>);
 
         // Jump to Review step
@@ -258,7 +261,6 @@ function NewOrderPage() {
         po_file: poFile,
         payment_method: form.payment_method,
         wants_split: form.wants_split,
-        deliver_now_total: form.deliver_now_total,
       });
       if (!result.success) {
         for (const issue of result.error.issues) {
@@ -267,10 +269,12 @@ function NewOrderPage() {
         }
       }
       if (form.wants_split) {
-        const totalBags = getTotalIndividualBags(jbUnits, sbUnits);
-        const splitResult = getSplitSchema(totalBags).safeParse({
+        const jbBagsTotal = jbUnits * BAG_EQUIVALENT.JB;
+        const sbBagsTotal = sbUnits * BAG_EQUIVALENT.SB;
+        const splitResult = getSplitSchema(jbBagsTotal, sbBagsTotal).safeParse({
           wants_split: form.wants_split,
-          deliver_now_total: form.deliver_now_total,
+          deliver_now_jb_bags: form.deliver_now_jb_bags,
+          deliver_now_sb_bags: form.deliver_now_sb_bags,
         });
         if (!splitResult.success) {
           for (const issue of splitResult.error.issues) {
@@ -396,9 +400,9 @@ function NewOrderPage() {
       };
 
       const totalBagsForSplit = getTotalIndividualBags(jbQty, sbQty);
-      const deliverNowQty = form.deliver_now_total;
-      // deliverNowQty is individual bags; deliverNowJB/SB must be whole units.
-      const { deliverNowJB, deliverNowSB } = getSplitDeliveryUnits(jbQty, sbQty, deliverNowQty);
+      const deliverNowJB = form.wants_split ? bagsToUnitsFloor(form.deliver_now_jb_bags, 'JB') : 0;
+      const deliverNowSB = form.wants_split ? bagsToUnitsFloor(form.deliver_now_sb_bags, 'SB') : 0;
+      const deliverNowQty = form.deliver_now_jb_bags + form.deliver_now_sb_bags;
       const splitDetails = form.wants_split
         ? {
             wantsSplit: true,
@@ -476,16 +480,13 @@ function NewOrderPage() {
         notes: '',
       };
 
-      // deliver_now_total is individual bags; deliverNowJB/SB must be whole units.
-      const { deliverNowJB: dNowJB, deliverNowSB: dNowSB } = getSplitDeliveryUnits(
-        jbQty,
-        sbQty,
-        form.deliver_now_total,
-      );
+      // Convert per-type bags to floor-rounded units for submission.
+      const dNowJB = form.wants_split ? bagsToUnitsFloor(form.deliver_now_jb_bags, 'JB') : 0;
+      const dNowSB = form.wants_split ? bagsToUnitsFloor(form.deliver_now_sb_bags, 'SB') : 0;
       const splitDetails = form.wants_split
         ? {
             wantsSplit: true,
-            deliverNowQty: form.deliver_now_total,
+            deliverNowQty: form.deliver_now_jb_bags + form.deliver_now_sb_bags,
             deliverNowJB: dNowJB,
             deliverNowSB: dNowSB,
           }
@@ -590,6 +591,9 @@ function NewOrderPage() {
               onFileChange={(_field, file) => setPoFile(file)}
               errors={errors}
               totalBags={getTotalIndividualBags(jbUnits, sbUnits)}
+              jbBags={jbUnits * BAG_EQUIVALENT.JB}
+              sbBags={sbUnits * BAG_EQUIVALENT.SB}
+              bagType={bagType}
             />
           )}
           {currentStep === 4 && (

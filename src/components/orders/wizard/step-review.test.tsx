@@ -41,7 +41,8 @@ const baseForm = {
   po_number: '',
   payment_method: 'cash',
   wants_split: false,
-  deliver_now_total: 0,
+  deliver_now_jb_bags: 0,
+  deliver_now_sb_bags: 0,
 };
 
 describe('StepOrderReview (regression: §3.1 25x/50x undercharge on review lines)', () => {

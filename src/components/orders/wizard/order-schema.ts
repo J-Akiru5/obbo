@@ -44,22 +44,26 @@ export const poPaymentSchema = z.object({
   po_file: z.custom<File>().refine((f) => f instanceof File && f.size > 0, 'PO image is required'),
   payment_method: z.enum(['cash', 'check'], 'Please select a payment method'),
   wants_split: z.boolean(),
-  deliver_now_total: z.number().min(0),
 });
 
-export function getSplitSchema(totalBags: number) {
+export function getSplitSchema(jbBagsTotal: number, sbBagsTotal: number) {
   return z
     .object({
       wants_split: z.boolean(),
-      deliver_now_total: z.number().min(0),
+      deliver_now_jb_bags: z.number().min(0),
+      deliver_now_sb_bags: z.number().min(0),
     })
-    .refine((d) => !d.wants_split || d.deliver_now_total <= totalBags, {
-      message: 'Cannot exceed ordered quantity',
-      path: ['deliver_now_total'],
+    .refine((d) => !d.wants_split || d.deliver_now_jb_bags <= jbBagsTotal, {
+      message: 'Cannot exceed ordered JB quantity',
+      path: ['deliver_now_jb_bags'],
     })
-    .refine((d) => !d.wants_split || d.deliver_now_total > 0, {
+    .refine((d) => !d.wants_split || d.deliver_now_sb_bags <= sbBagsTotal, {
+      message: 'Cannot exceed ordered SB quantity',
+      path: ['deliver_now_sb_bags'],
+    })
+    .refine((d) => !d.wants_split || d.deliver_now_jb_bags + d.deliver_now_sb_bags > 0, {
       message: 'At least one bag must be delivered now',
-      path: ['deliver_now_total'],
+      path: ['deliver_now_jb_bags'],
     });
 }
 

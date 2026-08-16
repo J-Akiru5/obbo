@@ -541,7 +541,10 @@ export default function OrdersClient({
           {order.is_split_delivery && (
             <div className="text-status-info-text bg-status-info-bg border-status-info-text/20 flex items-center gap-2 rounded-lg border px-3 py-2 text-xs">
               <ArrowRight className="h-3 w-3" />
-              <span>Split delivery: {order.deliver_now_qty} bags now, rest saved to balance</span>
+              <span>
+                Split delivery: JB {(order.deliver_now_jb * BAG_EQUIVALENT.JB).toLocaleString()}{' '}
+                bags now, SB {(order.deliver_now_sb * BAG_EQUIVALENT.SB).toLocaleString()} bags now
+              </span>
             </div>
           )}
 

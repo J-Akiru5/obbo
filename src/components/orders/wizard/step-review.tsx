@@ -24,7 +24,8 @@ interface StepOrderReviewProps {
     po_number: string;
     payment_method: string;
     wants_split: boolean;
-    deliver_now_total: number;
+    deliver_now_jb_bags: number;
+    deliver_now_sb_bags: number;
   };
   files: {
     po_file: File | null;
@@ -99,6 +100,8 @@ export function StepOrderReview({
   const sbBags = form.sb_qty * BAG_EQUIVALENT.SB;
   const jbLineTotal = getSubtotal(jbBags, jbPrice);
   const sbLineTotal = getSubtotal(sbBags, sbPrice);
+  const deliverNowTotal = form.deliver_now_jb_bags + form.deliver_now_sb_bags;
+  const isCombined = form.jb_qty > 0 && form.sb_qty > 0;
 
   return (
     <div className="space-y-5">
@@ -178,7 +181,11 @@ export function StepOrderReview({
               <Separator className="my-2" />
               <ReviewField
                 label="Split delivery"
-                value={`Deliver ${form.deliver_now_total.toLocaleString()} now, ${(totalBags - form.deliver_now_total).toLocaleString()} remaining`}
+                value={
+                  isCombined
+                    ? `JB: ${form.deliver_now_jb_bags.toLocaleString()} now, ${(jbBags - form.deliver_now_jb_bags).toLocaleString()} remaining · SB: ${form.deliver_now_sb_bags.toLocaleString()} now, ${(sbBags - form.deliver_now_sb_bags).toLocaleString()} remaining`
+                    : `Deliver ${deliverNowTotal.toLocaleString()} now, ${(totalBags - deliverNowTotal).toLocaleString()} remaining`
+                }
               />
             </>
           )}

@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react';
 import { toast } from 'sonner';
-import { Upload, X, FileCheck, Split } from 'lucide-react';
+import { Upload, X, FileCheck, Split, Info } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
@@ -13,13 +13,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { bgsToUnits, unitsToBags } from './order-schema';
 
 interface StepPoPaymentProps {
   form: {
     po_number: string;
     payment_method: 'cash' | 'check';
     wants_split: boolean;
-    deliver_now_total: number;
+    deliver_now_jb_bags: number;
+    deliver_now_sb_bags: number;
   };
   files: {
     po_file: File | null;
@@ -28,6 +30,9 @@ interface StepPoPaymentProps {
   onFileChange: (field: 'po_file', file: File | null) => void;
   errors: Record<string, string>;
   totalBags: number;
+  jbBags: number;
+  sbBags: number;
+  bagType: 'JB' | 'SB' | null;
 }
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
@@ -103,6 +108,22 @@ function FileDropZone({
   );
 }
 
+function SplitRoundUpHint({ bags, type }: { bags: number; type: 'JB' | 'SB' }) {
+  if (bags <= 0) return null;
+  const units = bgsToUnits(bags, type);
+  const actualBags = unitsToBags(units, type);
+  if (actualBags === bags) return null;
+  return (
+    <div className="flex items-start gap-2 rounded border border-amber-200 bg-amber-50 p-2 text-xs">
+      <Info className="mt-0.5 h-3 w-3 shrink-0 text-amber-600" />
+      <span className="text-amber-700">
+        {bags.toLocaleString()} individual bags → {units.toLocaleString()} {type} unit
+        {units === 1 ? '' : 's'} ({actualBags.toLocaleString()} actual bags)
+      </span>
+    </div>
+  );
+}
+
 export function StepPoPayment({
   form,
   files,
@@ -110,16 +131,29 @@ export function StepPoPayment({
   onFileChange,
   errors,
   totalBags,
+  jbBags,
+  sbBags,
+  bagType,
 }: StepPoPaymentProps) {
-  const remainingBalance = totalBags - form.deliver_now_total;
+  const remainingBalance = totalBags - form.deliver_now_jb_bags - form.deliver_now_sb_bags;
+  const isCombined = bagType === null && jbBags > 0 && sbBags > 0;
 
   useEffect(() => {
     if (!form.wants_split) {
-      onFieldChange('deliver_now_total', totalBags);
+      onFieldChange('deliver_now_jb_bags', jbBags);
+      onFieldChange('deliver_now_sb_bags', sbBags);
     } else {
-      if (form.deliver_now_total > totalBags) onFieldChange('deliver_now_total', totalBags);
+      if (form.deliver_now_jb_bags > jbBags) onFieldChange('deliver_now_jb_bags', jbBags);
+      if (form.deliver_now_sb_bags > sbBags) onFieldChange('deliver_now_sb_bags', sbBags);
     }
-  }, [form.wants_split, totalBags, onFieldChange, form.deliver_now_total]);
+  }, [
+    form.wants_split,
+    jbBags,
+    sbBags,
+    onFieldChange,
+    form.deliver_now_jb_bags,
+    form.deliver_now_sb_bags,
+  ]);
 
   return (
     <div className="space-y-6">
@@ -228,30 +262,78 @@ export function StepPoPayment({
 
         {form.wants_split && (
           <div className="space-y-4 border-t border-blue-500/20 pt-3">
-            <div>
-              <Label className="text-xs font-bold text-blue-600 uppercase">
-                Individual bags to receive now (max {totalBags.toLocaleString()})
-              </Label>
-              <Input
-                type="number"
-                min={0}
-                max={totalBags}
-                value={form.deliver_now_total || ''}
-                placeholder="0"
-                onChange={(e) =>
-                  onFieldChange(
-                    'deliver_now_total',
-                    Math.min(totalBags, Math.max(0, parseInt(e.target.value) || 0)),
-                  )
-                }
-                className="mt-1.5 h-10 border-blue-500/20 font-semibold"
-              />
-            </div>
+            {isCombined ? (
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label className="text-xs font-bold text-blue-600 uppercase">
+                    JB bags to receive now (max {jbBags.toLocaleString()})
+                  </Label>
+                  <Input
+                    type="number"
+                    min={0}
+                    max={jbBags}
+                    value={form.deliver_now_jb_bags || ''}
+                    placeholder="0"
+                    onChange={(e) =>
+                      onFieldChange(
+                        'deliver_now_jb_bags',
+                        Math.min(jbBags, Math.max(0, parseInt(e.target.value) || 0)),
+                      )
+                    }
+                    className="h-10 border-blue-500/20 font-semibold"
+                  />
+                  <SplitRoundUpHint bags={form.deliver_now_jb_bags} type="JB" />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-xs font-bold text-blue-600 uppercase">
+                    SB bags to receive now (max {sbBags.toLocaleString()})
+                  </Label>
+                  <Input
+                    type="number"
+                    min={0}
+                    max={sbBags}
+                    value={form.deliver_now_sb_bags || ''}
+                    placeholder="0"
+                    onChange={(e) =>
+                      onFieldChange(
+                        'deliver_now_sb_bags',
+                        Math.min(sbBags, Math.max(0, parseInt(e.target.value) || 0)),
+                      )
+                    }
+                    className="h-10 border-blue-500/20 font-semibold"
+                  />
+                  <SplitRoundUpHint bags={form.deliver_now_sb_bags} type="SB" />
+                </div>
+              </div>
+            ) : (
+              <div>
+                <Label className="text-xs font-bold text-blue-600 uppercase">
+                  Individual bags to receive now (max {totalBags.toLocaleString()})
+                </Label>
+                <Input
+                  type="number"
+                  min={0}
+                  max={totalBags}
+                  value={
+                    (bagType === 'JB' ? form.deliver_now_jb_bags : form.deliver_now_sb_bags) || ''
+                  }
+                  placeholder="0"
+                  onChange={(e) => {
+                    const v = Math.min(totalBags, Math.max(0, parseInt(e.target.value) || 0));
+                    if (bagType === 'JB') onFieldChange('deliver_now_jb_bags', v);
+                    else onFieldChange('deliver_now_sb_bags', v);
+                  }}
+                  className="mt-1.5 h-10 border-blue-500/20 font-semibold"
+                />
+              </div>
+            )}
 
             <div className="rounded border border-blue-500/20 bg-blue-500/10 p-3 text-sm">
               <div className="flex justify-between font-bold text-blue-600">
                 <span>Delivering now</span>
-                <span>{form.deliver_now_total.toLocaleString()} bags</span>
+                <span>
+                  {(form.deliver_now_jb_bags + form.deliver_now_sb_bags).toLocaleString()} bags
+                </span>
               </div>
               <div className="mt-1 flex justify-between font-medium text-blue-500/70">
                 <span>Remaining balance</span>
@@ -259,8 +341,10 @@ export function StepPoPayment({
               </div>
             </div>
 
-            {errors.deliver_now_total && (
-              <p className="text-destructive text-sm">{errors.deliver_now_total}</p>
+            {(errors.deliver_now_jb_bags || errors.deliver_now_sb_bags) && (
+              <p className="text-destructive text-sm">
+                {errors.deliver_now_jb_bags || errors.deliver_now_sb_bags}
+              </p>
             )}
           </div>
         )}
