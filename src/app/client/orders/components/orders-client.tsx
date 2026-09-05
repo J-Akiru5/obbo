@@ -64,49 +64,34 @@ export function formatOrderItems(items: OrderItem[]) {
   let jbQty = 0;
   let sbQty = 0;
   let otherQty = 0;
-  let jbBalance = 0;
-  let sbBalance = 0;
+  let jbDispatched = 0;
+  let sbDispatched = 0;
 
   for (const item of items) {
     const requested = item.requested_qty || 0;
-    // Show the best-known TRUE quantity, not always what was originally
-    // requested: once dispatched, dispatched_qty is the ground truth of
-    // what physically went out (can be less than requested on a split
-    // delivery — the remainder lands in the client's balance for later
-    // redelivery, it isn't lost). Before dispatch, prefer approved_qty
-    // (may differ from requested after a partial approval). Before that,
-    // fall back to the original request.
-    const effective =
-      item.dispatched_qty > 0
-        ? item.dispatched_qty
-        : item.approved_qty > 0
-          ? item.approved_qty
-          : requested;
-    // Only meaningful once actually dispatched — before that there's no
-    // "held back" amount yet, just an order still working through approval.
-    const held = item.dispatched_qty > 0 ? Math.max(0, requested - item.dispatched_qty) : 0;
+    const dispatched = item.dispatched_qty || 0;
     const bagType = (item.bag_type || item.product?.bag_type || '').toUpperCase();
+
+    // Always use the ORIGINAL requested quantity for the primary display.
+    // The order's total_amount is based on requested_qty, so the bag count
+    // shown must match it — dispatched_qty is fulfillment status, not the
+    // order's financial identity.
     if (bagType === 'JB') {
-      jbQty += effective;
-      jbBalance += held;
+      jbQty += requested;
+      jbDispatched += dispatched;
     } else if (bagType === 'SB') {
-      sbQty += effective;
-      sbBalance += held;
+      sbQty += requested;
+      sbDispatched += dispatched;
     } else {
-      otherQty += effective;
+      otherQty += requested;
     }
   }
 
-  // jbQty/sbQty are JB/SB UNITS, not individual bags, and 1 JB unit !=
-  // 1 SB unit — summing the raw unit counts together and calling it "bags"
-  // both understates the true bag count and mixes two denominations as if
-  // they were one. Convert each to individual bags before combining. (otherQty
-  // has no recognized bag_type, so there's no known conversion factor for
-  // it — left as-is, same as before.) See §3.3 bug writeup.
   const jbBags = jbQty * BAG_EQUIVALENT.JB;
   const sbBags = sbQty * BAG_EQUIVALENT.SB;
   const totalQty = jbBags + sbBags + otherQty;
-  const totalBalance = jbBalance * BAG_EQUIVALENT.JB + sbBalance * BAG_EQUIVALENT.SB;
+  const totalDispatched = jbDispatched * BAG_EQUIVALENT.JB + sbDispatched * BAG_EQUIVALENT.SB;
+  const totalHeld = totalQty - totalDispatched;
 
   let label: string;
   if (jbQty > 0 && sbQty > 0) {
@@ -121,11 +106,13 @@ export function formatOrderItems(items: OrderItem[]) {
     label = '0 bags';
   }
 
-  // Split delivery held some bags back — say so, so the number here still
-  // reconciles with what the client was actually charged/ordered instead
-  // of just silently looking smaller than before.
-  if (totalBalance > 0) {
-    label += ` (+${totalBalance.toLocaleString()} in balance)`;
+  // If some bags are still pending delivery (split delivery), show the
+  // dispatched portion so the user can see fulfillment progress without
+  // the bag count silently shrinking below what they were charged for.
+  if (totalHeld > 0 && totalDispatched > 0) {
+    label += ` (${totalDispatched.toLocaleString()} dispatched, ${totalHeld.toLocaleString()} in balance)`;
+  } else if (totalDispatched > 0 && totalDispatched < totalQty) {
+    label += ` (${totalDispatched.toLocaleString()} dispatched)`;
   }
 
   return label;

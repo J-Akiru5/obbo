@@ -246,19 +246,12 @@ export default async function ClientDashboardPage() {
             ) : (
               <div className="space-y-4">
                 {recentOrders.map((order: Order) => {
-                  // Same priority as the Orders page: once dispatched,
-                  // dispatched_qty is the true amount that went out (can be
-                  // less than requested on a split delivery); before that,
-                  // approved_qty; before that, the original request.
+                  // Always show the ORIGINAL ordered quantity — the order's
+                  // total_amount is based on requested_qty, so the bag count
+                  // must match it. dispatched_qty is fulfillment status, not
+                  // the order's financial identity.
                   const totalBags = order.items.reduce((acc: number, item: OrderItem) => {
-                    const requested = item.requested_qty || 0;
-                    const effective =
-                      item.dispatched_qty > 0
-                        ? item.dispatched_qty
-                        : item.approved_qty > 0
-                          ? item.approved_qty
-                          : requested;
-                    return acc + effective;
+                    return acc + (item.requested_qty || 0);
                   }, 0);
 
                   let statusVariant: 'default' | 'secondary' | 'destructive' | 'outline' =
