@@ -3,14 +3,7 @@ import { Order, Shipment } from '@/lib/types/database';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-  DialogDescription,
-} from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import {
@@ -424,50 +417,64 @@ export function FulfillmentTab({
       </div>
 
       <Dialog open={!!selectedOrder} onOpenChange={(open) => !open && setSelectedOrder(null)}>
-        <DialogContent className="sm:max-w-[500px]">
-          <DialogHeader>
-            <DialogTitle>Dispatch Order</DialogTitle>
-            <DialogDescription>
-              Fill in dispatch details and select the shipment batch to deduct stock from.
+        <DialogContent className="gap-0 overflow-hidden p-0 sm:max-w-[600px]">
+          {/* ── Header ── */}
+          <div className="px-6 pt-6 pb-0">
+            <DialogTitle className="text-lg font-semibold tracking-tight">
+              Dispatch Order
+            </DialogTitle>
+            <DialogDescription className="mt-1 text-sm">
+              Fill in dispatch details and confirm stock deduction.
             </DialogDescription>
-          </DialogHeader>
+          </div>
 
           {selectedOrder && actionType === 'dispatch' && (
-            <div className="space-y-4 py-4">
-              <div className="bg-muted mb-2 grid grid-cols-2 gap-4 rounded-lg p-3 text-sm">
-                <div>
-                  <p className="text-muted-foreground mb-1 text-xs">Items to Deduct</p>
-                  <p className="font-bold">
-                    {(() => {
-                      const deductJb = selectedOrder.items
-                        .filter((i) => i.bag_type === 'JB')
-                        .reduce((s, i) => s + i.approved_qty, 0);
-                      const deductSb = selectedOrder.items
-                        .filter((i) => i.bag_type === 'SB')
-                        .reduce((s, i) => s + i.approved_qty, 0);
-                      const parts: string[] = [];
-                      if (deductJb > 0)
-                        parts.push(
-                          `${(deductJb * BAG_EQUIVALENT.JB).toLocaleString()} bags (${deductJb} JB)`,
-                        );
-                      if (deductSb > 0)
-                        parts.push(
-                          `${(deductSb * BAG_EQUIVALENT.SB).toLocaleString()} bags (${deductSb} SB)`,
-                        );
-                      return parts.length > 0 ? parts.join(' · ') : '—';
-                    })()}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-muted-foreground mb-1 text-xs">Service Type</p>
-                  <p className="text-primary font-bold uppercase">{selectedOrder.service_type}</p>
+            <div className="space-y-6 px-6 py-6">
+              {/* ── Section 1: Dispatch Summary (read-only) ── */}
+              <div>
+                <p className="text-muted-foreground mb-3 text-xs font-semibold tracking-wider uppercase">
+                  Dispatch Summary
+                </p>
+                <div className="bg-muted/50 grid grid-cols-2 gap-4 rounded-lg border p-4">
+                  <div>
+                    <p className="text-muted-foreground mb-1 text-[11px] font-medium tracking-wider uppercase">
+                      Items to Deduct
+                    </p>
+                    <p className="text-sm font-semibold">
+                      {(() => {
+                        const deductJb = selectedOrder.items
+                          .filter((i) => i.bag_type === 'JB')
+                          .reduce((s, i) => s + i.approved_qty, 0);
+                        const deductSb = selectedOrder.items
+                          .filter((i) => i.bag_type === 'SB')
+                          .reduce((s, i) => s + i.approved_qty, 0);
+                        const parts: string[] = [];
+                        if (deductJb > 0)
+                          parts.push(
+                            `${(deductJb * BAG_EQUIVALENT.JB).toLocaleString()} bags (${deductJb} JB)`,
+                          );
+                        if (deductSb > 0)
+                          parts.push(
+                            `${(deductSb * BAG_EQUIVALENT.SB).toLocaleString()} bags (${deductSb} SB)`,
+                          );
+                        return parts.length > 0 ? parts.join(' · ') : '—';
+                      })()}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground mb-1 text-[11px] font-medium tracking-wider uppercase">
+                      Service Type
+                    </p>
+                    <p className="text-sm font-semibold uppercase">{selectedOrder.service_type}</p>
+                  </div>
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <Label>
-                  Select Shipment Batch (Source of Truth) <span className="text-red-500">*</span>
-                </Label>
+              {/* ── Section 2: Shipment Source ── */}
+              <div>
+                <p className="text-muted-foreground mb-3 text-xs font-semibold tracking-wider uppercase">
+                  Shipment Source
+                </p>
                 {(() => {
                   const jbBags = selectedOrder.items
                     .filter((i) => i.bag_type === 'JB')
@@ -477,128 +484,224 @@ export function FulfillmentTab({
                     .reduce((s, i) => s + i.approved_qty, 0);
                   const shipmentOptions = shipments.map((s) => {
                     const hasEnough = s.remaining_jb >= jbBags && s.remaining_sb >= sbBags;
-                    // s.remaining_jb/remaining_sb and jbBags/sbBags are all
-                    // JB/SB UNITS despite the "Bags" variable name — show
-                    // both the unit count and its individual-bag equivalent.
-                    const availJb = `${(s.remaining_jb * BAG_EQUIVALENT.JB).toLocaleString()} bags (${s.remaining_jb} JB)`;
-                    const availSb = `${(s.remaining_sb * BAG_EQUIVALENT.SB).toLocaleString()} bags (${s.remaining_sb} SB)`;
-                    const needJb = `${(jbBags * BAG_EQUIVALENT.JB).toLocaleString()} bags (${jbBags} JB)`;
-                    const needSb = `${(sbBags * BAG_EQUIVALENT.SB).toLocaleString()} bags (${sbBags} SB)`;
-                    const label = `${s.batch_name} (Avail: ${availJb}, ${availSb} · Need: ${needJb}, ${needSb})${!hasEnough ? ' - Insufficient' : ''}`;
-                    return { value: s.id, label, disabled: !hasEnough };
+                    return { ...s, hasEnough, jbBags, sbBags };
                   });
 
+                  const selectedBatch = shipments.find((s) => s.id === shipmentId);
+
                   return (
-                    <Select
-                      items={shipmentOptions}
-                      value={shipmentId}
-                      onValueChange={(v) => setShipmentId(v ?? '')}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select a shipment batch" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {shipmentOptions.map((opt) => (
-                          <SelectItem key={opt.value} value={opt.value} disabled={opt.disabled}>
-                            {opt.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <div className="space-y-3">
+                      <Label className="text-sm">
+                        Shipment Batch <span className="text-red-500">*</span>
+                      </Label>
+                      <Select
+                        items={shipmentOptions.map((s) => ({
+                          value: s.id,
+                          label: s.batch_name,
+                          disabled: !s.hasEnough,
+                        }))}
+                        value={shipmentId}
+                        onValueChange={(v) => setShipmentId(v ?? '')}
+                      >
+                        <SelectTrigger className="w-full">
+                          <SelectValue placeholder="Select a shipment batch" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {shipmentOptions.map((opt) => (
+                            <SelectItem
+                              key={opt.id}
+                              value={opt.id}
+                              disabled={!opt.hasEnough}
+                              className="py-2.5"
+                            >
+                              <div className="flex min-w-0 flex-col gap-1.5">
+                                <span className="truncate text-sm font-medium">
+                                  {opt.batch_name}
+                                </span>
+                                <div className="text-muted-foreground flex flex-wrap gap-x-4 gap-y-1 text-[11px]">
+                                  <span>
+                                    Avail:{' '}
+                                    <span className="text-foreground font-medium">
+                                      {(opt.remaining_jb * BAG_EQUIVALENT.JB).toLocaleString()} bags
+                                    </span>{' '}
+                                    ({opt.remaining_jb} JB)
+                                  </span>
+                                  <span>
+                                    <span className="text-foreground font-medium">
+                                      {(opt.remaining_sb * BAG_EQUIVALENT.SB).toLocaleString()} bags
+                                    </span>{' '}
+                                    ({opt.remaining_sb} SB)
+                                  </span>
+                                </div>
+                                <div className="flex flex-wrap gap-x-4 gap-y-1 text-[11px]">
+                                  <span className="text-muted-foreground">
+                                    Need:{' '}
+                                    <span className="text-foreground font-medium">
+                                      {(opt.jbBags * BAG_EQUIVALENT.JB).toLocaleString()} bags
+                                    </span>{' '}
+                                    ({opt.jbBags} JB)
+                                  </span>
+                                  <span className="text-muted-foreground">
+                                    <span className="text-foreground font-medium">
+                                      {(opt.sbBags * BAG_EQUIVALENT.SB).toLocaleString()} bags
+                                    </span>{' '}
+                                    ({opt.sbBags} SB)
+                                  </span>
+                                </div>
+                                {!opt.hasEnough && (
+                                  <span className="text-[11px] font-medium text-red-600">
+                                    Insufficient stock
+                                  </span>
+                                )}
+                              </div>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+
+                      {/* Selected batch summary card */}
+                      {selectedBatch && (
+                        <div className="bg-background rounded-lg border border-dashed p-3">
+                          <div className="flex items-center justify-between text-xs">
+                            <span className="text-foreground font-medium">
+                              {selectedBatch.batch_name}
+                            </span>
+                            <span
+                              className={
+                                selectedBatch.remaining_jb >= jbBags &&
+                                selectedBatch.remaining_sb >= sbBags
+                                  ? 'font-medium text-emerald-600'
+                                  : 'font-medium text-red-600'
+                              }
+                            >
+                              {selectedBatch.remaining_jb >= jbBags &&
+                              selectedBatch.remaining_sb >= sbBags
+                                ? 'Sufficient stock'
+                                : 'Insufficient stock'}
+                            </span>
+                          </div>
+                          <div className="mt-2 grid grid-cols-2 gap-3 text-xs">
+                            <div>
+                              <span className="text-muted-foreground block">Remaining</span>
+                              <span className="font-semibold">
+                                {(selectedBatch.remaining_jb * BAG_EQUIVALENT.JB).toLocaleString()}{' '}
+                                bags ({selectedBatch.remaining_jb} JB)
+                              </span>
+                            </div>
+                            <div>
+                              <span className="text-muted-foreground block">Remaining</span>
+                              <span className="font-semibold">
+                                {(selectedBatch.remaining_sb * BAG_EQUIVALENT.SB).toLocaleString()}{' '}
+                                bags ({selectedBatch.remaining_sb} SB)
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   );
                 })()}
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="dr-number">
-                  DR Number <span className="text-red-500">*</span>
-                </Label>
-                <Input
-                  id="dr-number"
-                  value={drNumber}
-                  onChange={(e) => setDrNumber(e.target.value)}
-                />
-              </div>
-
-              {selectedOrder.service_type === 'deliver' && (
-                <div className="grid grid-cols-2 gap-4">
+              {/* ── Section 3: Dispatch Details ── */}
+              <div>
+                <p className="text-muted-foreground mb-3 text-xs font-semibold tracking-wider uppercase">
+                  Dispatch Details
+                </p>
+                <div className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="driver-name">
-                      Driver Name <span className="text-red-500">*</span>
+                    <Label htmlFor="dr-number" className="text-sm">
+                      DR Number <span className="text-red-500">*</span>
                     </Label>
                     <Input
-                      id="driver-name"
-                      value={driverName}
-                      onChange={(e) => setDriverName(e.target.value)}
+                      id="dr-number"
+                      value={drNumber}
+                      onChange={(e) => setDrNumber(e.target.value)}
+                      placeholder="e.g. DR-2026-001"
                     />
                   </div>
+
+                  {selectedOrder.service_type === 'deliver' && (
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="driver-name" className="text-sm">
+                          Driver Name <span className="text-red-500">*</span>
+                        </Label>
+                        <Input
+                          id="driver-name"
+                          value={driverName}
+                          onChange={(e) => setDriverName(e.target.value)}
+                          placeholder="Full name"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="plate-number" className="text-sm">
+                          Plate Number <span className="text-red-500">*</span>
+                        </Label>
+                        <Input
+                          id="plate-number"
+                          value={plateNumber}
+                          onChange={(e) => setPlateNumber(e.target.value)}
+                          placeholder="e.g. ABC 1234"
+                        />
+                      </div>
+                    </div>
+                  )}
+
                   <div className="space-y-2">
-                    <Label htmlFor="plate-number">
-                      Plate Number <span className="text-red-500">*</span>
+                    <Label htmlFor="dr-image-upload" className="text-sm">
+                      DR Picture <span className="text-red-500">*</span>
                     </Label>
-                    <Input
-                      id="plate-number"
-                      value={plateNumber}
-                      onChange={(e) => setPlateNumber(e.target.value)}
-                    />
+                    {drImageFile ? (
+                      <div className="flex items-center gap-3 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3">
+                        <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" />
+                        <span className="flex-1 truncate text-sm text-emerald-800">
+                          {drImageFile.name}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setDrImageFile(null)}
+                          className="text-emerald-700 hover:text-red-600"
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                      </div>
+                    ) : (
+                      <div
+                        className="hover:bg-muted/30 border-muted-foreground/25 hover:border-muted-foreground/40 cursor-pointer rounded-lg border-2 border-dashed p-6 text-center transition-colors"
+                        onClick={() => document.getElementById('dr-image-upload')?.click()}
+                      >
+                        <UploadCloud className="text-muted-foreground/40 mx-auto mb-2 h-8 w-8" />
+                        <p className="text-muted-foreground text-sm font-medium">
+                          Click to upload DR photo
+                        </p>
+                        <p className="text-muted-foreground/60 mt-1 text-xs">
+                          JPG, PNG, or PDF — required before dispatch
+                        </p>
+                        <input
+                          id="dr-image-upload"
+                          type="file"
+                          className="hidden"
+                          accept="image/*,.pdf"
+                          onChange={(e) => setDrImageFile(e.target.files?.[0] || null)}
+                        />
+                      </div>
+                    )}
                   </div>
                 </div>
-              )}
-
-              <div className="mt-4 space-y-2 border-t pt-2">
-                <Label htmlFor="dr-image-upload">
-                  DR Picture
-                  <span className="ml-1 text-red-500">*</span>
-                </Label>
-                {drImageFile ? (
-                  <div className="flex items-center gap-3 rounded-lg border border-emerald-200 bg-emerald-50 p-3">
-                    <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" />
-                    <span className="flex-1 truncate text-sm text-emerald-800">
-                      {drImageFile.name}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => setDrImageFile(null)}
-                      className="text-emerald-700 hover:text-red-600"
-                    >
-                      <X className="h-4 w-4" />
-                    </button>
-                  </div>
-                ) : (
-                  <div
-                    className="hover:bg-muted/30 cursor-pointer rounded-lg border-2 border-dashed border-red-300 p-4 text-center transition-colors hover:border-red-400"
-                    onClick={() => document.getElementById('dr-image-upload')?.click()}
-                  >
-                    <UploadCloud className="mx-auto mb-1 h-6 w-6 text-red-400" />
-                    <p className="text-muted-foreground text-xs">
-                      DR photo is required before dispatch
-                    </p>
-                    <p className="text-muted-foreground/60 mt-0.5 text-[10px]">JPG, PNG, PDF</p>
-                    <input
-                      id="dr-image-upload"
-                      type="file"
-                      className="hidden"
-                      accept="image/*,.pdf"
-                      onChange={(e) => setDrImageFile(e.target.files?.[0] || null)}
-                    />
-                  </div>
-                )}
               </div>
             </div>
           )}
 
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setSelectedOrder(null)}
-              disabled={isSubmitting}
-            >
+          {/* ── Footer ── */}
+          <div className="bg-muted/30 flex items-center justify-between border-t px-6 py-4">
+            <Button variant="ghost" onClick={() => setSelectedOrder(null)} disabled={isSubmitting}>
               Cancel
             </Button>
-            <Button onClick={handleSubmit} disabled={isSubmitting} className="bg-primary">
+            <Button onClick={handleSubmit} disabled={isSubmitting}>
               {isSubmitting ? 'Processing...' : 'Dispatch & Deduct Stock'}
             </Button>
-          </DialogFooter>
+          </div>
         </DialogContent>
       </Dialog>
 
