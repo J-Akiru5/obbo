@@ -3,6 +3,8 @@
 import { revalidatePath } from 'next/cache';
 import { requireAdmin, logActivity, createOrderForClientPortal } from './admin-helpers';
 import { addLedgerEntry } from './ledger-actions';
+import { applyRedeliveryToCustomerBalances } from './balance-actions';
+import { BAG_EQUIVALENT } from './profit-utils';
 import { createUserNotification } from './notification-actions';
 import { deliveryReceiptCreateSchema, deliveryReceiptUpdateSchema } from './schemas';
 import { safeAction } from './action-result';
@@ -128,6 +130,35 @@ async function _createDeliveryReceipt(rawDr: Record<string, unknown>) {
           .eq('id', data.id);
         if (drLinkError) console.error('Failed to link DR to order:', drLinkError);
         data.order_id = poData.order_id;
+
+        // A manual DR created against a redelivery order's PO fulfils the
+        // original balance the same way the dispatch modal does — clear or
+        // decrement it so the obligation/ledger stay in sync.
+        const { data: orderMeta } = await supabase
+          .from('orders')
+          .select('id, order_type, linked_po_number')
+          .eq('id', poData.order_id)
+          .single();
+        if (orderMeta?.order_type === 'redelivery' && orderMeta.linked_po_number) {
+          const { data: orderItems } = await supabase
+            .from('order_items')
+            .select('product_id, bag_type')
+            .eq('order_id', orderMeta.id);
+          const balanceResult = await applyRedeliveryToCustomerBalances({
+            linkedPoNumber: orderMeta.linked_po_number,
+            excludeOrderId: orderMeta.id,
+            items: (orderItems ?? []).map((item) => ({
+              productId: item.product_id,
+              bagType: item.bag_type,
+              dispatchedUnits: item.bag_type === 'JB' ? jb : sb,
+            })),
+          });
+          if (balanceResult.updated === 0) {
+            console.error(
+              `Manual DR ${dr.dr_number}: no pending customer balance rows cleared for PO ${orderMeta.linked_po_number}.`,
+            );
+          }
+        }
 
         await createUserNotification({
           userId: effectiveClientId,
@@ -267,8 +298,21 @@ async function _updateDeliveryReceipt(id: string, rawUpdates: Record<string, unk
         .single();
 
       if (shipment) {
-        const correctedJb = Math.max(0, (shipment.remaining_jb ?? 0) + (oldDr.jb || 0) - newJb);
-        const correctedSb = Math.max(0, (shipment.remaining_sb ?? 0) + (oldDr.sb || 0) - newSb);
+        // DR jb/sb columns are JB/SB UNITS; shipment remaining columns are
+        // INDIVIDUAL BAGS. Convert both the reverse (old) and apply (new)
+        // side before correcting.
+        const correctedJb = Math.max(
+          0,
+          (shipment.remaining_jb ?? 0) +
+            (oldDr.jb || 0) * BAG_EQUIVALENT.JB -
+            newJb * BAG_EQUIVALENT.JB,
+        );
+        const correctedSb = Math.max(
+          0,
+          (shipment.remaining_sb ?? 0) +
+            (oldDr.sb || 0) * BAG_EQUIVALENT.SB -
+            newSb * BAG_EQUIVALENT.SB,
+        );
 
         const { error: correctError } = await supabase
           .from('shipments')
@@ -288,8 +332,8 @@ async function _updateDeliveryReceipt(id: string, rawUpdates: Record<string, unk
           .eq('id', newShipmentId)
           .single();
         if (newShipment) {
-          const newRemJb = Math.max(0, (newShipment.remaining_jb ?? 0) - newJb);
-          const newRemSb = Math.max(0, (newShipment.remaining_sb ?? 0) - newSb);
+          const newRemJb = Math.max(0, (newShipment.remaining_jb ?? 0) - newJb * BAG_EQUIVALENT.JB);
+          const newRemSb = Math.max(0, (newShipment.remaining_sb ?? 0) - newSb * BAG_EQUIVALENT.SB);
           const { error: newCorrectError } = await supabase
             .from('shipments')
             .update({

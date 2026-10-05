@@ -17,17 +17,42 @@ import {
   fetchCustomerBalances,
   fetchDispatchesForDate,
   fetchWarehouseReport,
-  fetchDashboardKPIs,
+  generateDailyReportData,
   autoSubmitEndOfDayReports,
   fetchSalesProfitReport,
 } from '@/lib/actions/admin-actions';
 import { createClient } from '@/lib/supabase/client';
 import type { WarehouseReport } from '@/lib/types/database';
 
+interface PhysicalInventory {
+  yesterday_jb: number;
+  yesterday_sb: number;
+  received_jb: number;
+  received_sb: number;
+  dispatched_jb: number;
+  dispatched_sb: number;
+  returned_jb: number;
+  returned_sb: number;
+  waste_jb: number;
+  waste_sb: number;
+}
+
+const EMPTY_PHYSICAL: PhysicalInventory = {
+  yesterday_jb: 0,
+  yesterday_sb: 0,
+  received_jb: 0,
+  received_sb: 0,
+  dispatched_jb: 0,
+  dispatched_sb: 0,
+  returned_jb: 0,
+  returned_sb: 0,
+  waste_jb: 0,
+  waste_sb: 0,
+};
+
 export default function AdminReportsPage() {
   const [reportDate, setReportDate] = useState(new Date().toISOString().split('T')[0]);
-  const [report, setReport] = useState<WarehouseReport | null>(null);
-  const [currentInventory, setCurrentInventory] = useState({ jb: 0, sb: 0 });
+  const [physical, setPhysical] = useState<PhysicalInventory>(EMPTY_PHYSICAL);
   const [todayDispatches, setTodayDispatches] = useState<
     Array<{ client: string; dr: string | null; service: string; jb: number; sb: number }>
   >([]);
@@ -41,7 +66,6 @@ export default function AdminReportsPage() {
     }>
   >([]);
   const [loading, setLoading] = useState(true);
-  const [notAvailable, setNotAvailable] = useState(false);
 
   // Sales & Profit Report state
   const today = new Date().toISOString().split('T')[0];
@@ -60,25 +84,32 @@ export default function AdminReportsPage() {
 
   const loadReportData = useCallback(async () => {
     setLoading(true);
-    setNotAvailable(false);
     try {
-      const today = new Date().toISOString().split('T')[0];
-      const [reportRow, dispatchRows, balanceRows, dashboardKpis] = await Promise.all([
+      const [reportRow, dispatchRows, balanceRows, generated] = await Promise.all([
         fetchWarehouseReport(reportDate),
         fetchDispatchesForDate(reportDate),
         fetchCustomerBalances(),
-        fetchDashboardKPIs(),
+        generateDailyReportData(reportDate),
       ]);
 
       const fetchedReport = (reportRow ?? null) as WarehouseReport | null;
-      setReport(fetchedReport);
 
-      // If today's date and no report returned, it may be unsubmitted
-      if (!fetchedReport && reportDate === today) {
-        setNotAvailable(true);
-      }
-
-      setCurrentInventory({ jb: dashboardKpis.jbGood, sb: dashboardKpis.sbGood });
+      // When a submitted report exists, use its stored movement figures
+      // (historical immutability); otherwise use the live auto-generated
+      // numbers. Closing is ALWAYS recomputed from the formula below, so a
+      // stale stored 0 can never resurface.
+      setPhysical({
+        yesterday_jb: fetchedReport ? fetchedReport.yesterday_jb : generated.yesterday_jb,
+        yesterday_sb: fetchedReport ? fetchedReport.yesterday_sb : generated.yesterday_sb,
+        received_jb: fetchedReport ? fetchedReport.received_jb : generated.received_jb,
+        received_sb: fetchedReport ? fetchedReport.received_sb : generated.received_sb,
+        dispatched_jb: fetchedReport ? fetchedReport.dispatched_jb : generated.dispatched_jb,
+        dispatched_sb: fetchedReport ? fetchedReport.dispatched_sb : generated.dispatched_sb,
+        returned_jb: fetchedReport ? fetchedReport.returned_jb : generated.returned_jb,
+        returned_sb: fetchedReport ? fetchedReport.returned_sb : generated.returned_sb,
+        waste_jb: fetchedReport ? fetchedReport.waste_jb : generated.waste_jb,
+        waste_sb: fetchedReport ? fetchedReport.waste_sb : generated.waste_sb,
+      });
 
       setTodayDispatches(dispatchRows);
 
@@ -89,6 +120,23 @@ export default function AdminReportsPage() {
       setLoading(false);
     }
   }, [reportDate]);
+
+  const closingJb = Math.max(
+    0,
+    physical.yesterday_jb +
+      physical.received_jb -
+      physical.dispatched_jb +
+      physical.returned_jb -
+      physical.waste_jb,
+  );
+  const closingSb = Math.max(
+    0,
+    physical.yesterday_sb +
+      physical.received_sb -
+      physical.dispatched_sb +
+      physical.returned_sb -
+      physical.waste_sb,
+  );
 
   const loadProfitReport = useCallback(async () => {
     if (!profitDateFrom || !profitDateTo) return;
@@ -184,47 +232,61 @@ export default function AdminReportsPage() {
                 <CardTitle className="text-base font-semibold">
                   Physical warehouse inventory
                 </CardTitle>
-                <CardDescription>Simplified daily snapshot of warehouse stock.</CardDescription>
+                <CardDescription>
+                  Closing = Yesterday&apos;s closing + Stock received − Dispatched + Returns −
+                  Waste/Damaged (individual bags).
+                </CardDescription>
               </CardHeader>
               <CardContent className="p-0">
-                {notAvailable ? (
-                  <div className="flex flex-col items-center gap-3 py-12 text-center">
-                    <div className="border-border/60 bg-muted/30 rounded-full border p-3">
-                      <Calendar className="text-muted-foreground/60 h-6 w-6" />
-                    </div>
-                    <p className="text-foreground text-sm font-medium">
-                      Today&apos;s report is not yet available
-                    </p>
-                    <p className="text-muted-foreground max-w-md text-xs">
-                      The warehouse report for today will be visible here once the warehouse manager
-                      submits it, or it will be automatically uploaded at the end of the day.
-                    </p>
-                  </div>
-                ) : (
-                  <Table>
-                    <TableHeader className="bg-muted/30">
-                      <TableRow>
-                        <TableHead className="w-[220px]">Metric</TableHead>
-                        <TableHead>JB Bags</TableHead>
-                        <TableHead>SB Bags</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      <TableRow>
-                        <TableCell className="font-medium">Yesterday&apos;s closing</TableCell>
-                        <TableCell>{report?.yesterday_jb ?? 0}</TableCell>
-                        <TableCell>{report?.yesterday_sb ?? 0}</TableCell>
-                      </TableRow>
-                      <TableRow className="bg-primary/5">
-                        <TableCell className="text-primary font-semibold">
-                          Today&apos;s closing (Current)
-                        </TableCell>
-                        <TableCell className="font-semibold">{currentInventory.jb}</TableCell>
-                        <TableCell className="font-semibold">{currentInventory.sb}</TableCell>
-                      </TableRow>
-                    </TableBody>
-                  </Table>
-                )}
+                <Table>
+                  <TableHeader className="bg-muted/30">
+                    <TableRow>
+                      <TableHead className="w-[220px]">Metric</TableHead>
+                      <TableHead>JB Bags</TableHead>
+                      <TableHead>SB Bags</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    <TableRow>
+                      <TableCell className="font-medium">Yesterday&apos;s closing</TableCell>
+                      <TableCell>{physical.yesterday_jb.toLocaleString()}</TableCell>
+                      <TableCell>{physical.yesterday_sb.toLocaleString()}</TableCell>
+                    </TableRow>
+                    <TableRow>
+                      <TableCell className="font-medium text-emerald-600">
+                        Stock received (+)
+                      </TableCell>
+                      <TableCell>{physical.received_jb.toLocaleString()}</TableCell>
+                      <TableCell>{physical.received_sb.toLocaleString()}</TableCell>
+                    </TableRow>
+                    <TableRow>
+                      <TableCell className="font-medium text-blue-600">
+                        Total dispatched (−)
+                      </TableCell>
+                      <TableCell>{physical.dispatched_jb.toLocaleString()}</TableCell>
+                      <TableCell>{physical.dispatched_sb.toLocaleString()}</TableCell>
+                    </TableRow>
+                    <TableRow>
+                      <TableCell className="font-medium text-purple-600">
+                        Customer returns (+)
+                      </TableCell>
+                      <TableCell>{physical.returned_jb.toLocaleString()}</TableCell>
+                      <TableCell>{physical.returned_sb.toLocaleString()}</TableCell>
+                    </TableRow>
+                    <TableRow>
+                      <TableCell className="font-medium text-red-600">Waste/Damaged (−)</TableCell>
+                      <TableCell>{physical.waste_jb.toLocaleString()}</TableCell>
+                      <TableCell>{physical.waste_sb.toLocaleString()}</TableCell>
+                    </TableRow>
+                    <TableRow className="bg-primary/5">
+                      <TableCell className="text-primary font-semibold">
+                        Today&apos;s closing (Current)
+                      </TableCell>
+                      <TableCell className="font-semibold">{closingJb.toLocaleString()}</TableCell>
+                      <TableCell className="font-semibold">{closingSb.toLocaleString()}</TableCell>
+                    </TableRow>
+                  </TableBody>
+                </Table>
               </CardContent>
             </Card>
           </section>

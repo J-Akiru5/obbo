@@ -19,6 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { BAG_EQUIVALENT } from '@/components/orders/wizard/order-schema';
 
 interface LedgerEntryDialogProps {
   open: boolean;
@@ -240,7 +241,7 @@ export function LedgerEntryDialog({ open, onOpenChange, entry, onSubmit }: Ledge
           <div className="grid grid-cols-3 gap-3">
             <div className="space-y-1.5">
               <Label className="text-xs" htmlFor="ledger-jb">
-                Total JB (out)
+                Total JB units (out)
               </Label>
               <Input
                 id="ledger-jb"
@@ -254,7 +255,7 @@ export function LedgerEntryDialog({ open, onOpenChange, entry, onSubmit }: Ledge
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs" htmlFor="ledger-sb">
-                Total SB (out)
+                Total SB units (out)
               </Label>
               <Input
                 id="ledger-sb"
@@ -267,9 +268,12 @@ export function LedgerEntryDialog({ open, onOpenChange, entry, onSubmit }: Ledge
               />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-muted-foreground text-xs">Total Bags (auto)</Label>
+              <Label className="text-muted-foreground text-xs">Total individual bags (auto)</Label>
               <div className="bg-muted/50 flex h-9 items-center rounded-md border px-3 text-sm font-bold">
-                {(Number(form.jb) || 0) + (Number(form.sb) || 0)}
+                {(
+                  (Number(form.jb) || 0) * BAG_EQUIVALENT.JB +
+                  (Number(form.sb) || 0) * BAG_EQUIVALENT.SB
+                ).toLocaleString()}
               </div>
             </div>
           </div>

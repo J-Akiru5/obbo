@@ -136,12 +136,12 @@ describe('Ledger Server Actions — profit calculations', () => {
     });
   });
 
-  describe('addLedgerEntry — restockable return credits stock in whole UNITS, not raw bags (denomination-mismatch fix)', () => {
-    // bags_returned is an INDIVIDUAL BAG count (same value computeReturnProfitDelta
-    // uses above), but shipments.remaining_jb/remaining_sb are JB/SB UNIT-denominated.
-    // The pre-fix code added bags_returned directly to a unit-denominated column —
-    // e.g. "5 individual bags returned" would have credited back 5 whole JB units
-    // (125 bags) instead of 0 (5 bags don't make a full 25-bag unit).
+  describe('addLedgerEntry — shipment stock moves in INDIVIDUAL BAGS (denomination fix)', () => {
+    // shipments.remaining_jb/remaining_sb are INDIVIDUAL BAGS. Ledger jb/sb
+    // entry columns are JB/SB UNITS and must be multiplied by 25/50 before
+    // deducting; bags_returned is already an individual-bag count and is
+    // credited exactly (no unit floor). Fixture shipment starts at
+    // remaining_jb: 100 / remaining_sb: 100 (see noopHandlers).
 
     function captureShipmentPatch() {
       const captured: Record<string, unknown>[] = [];
@@ -165,25 +165,53 @@ describe('Ledger Server Actions — profit calculations', () => {
       return captured;
     }
 
-    it('credits 0 whole JB units when the returned bag count is below one full unit', async () => {
+    it('deducts individual bags — not raw units — when a dispatch is recorded', async () => {
       noopHandlers();
       const patches = captureShipmentPatch();
-      // fixture shipment starts at remaining_jb: 100 (see noopHandlers)
+      // 4 JB UNITS = 100 individual bags. A unit-count deduction would leave
+      // 96; the correct bag deduction is 100 - 100 = 0.
+      await addLedgerEntry('ship-001', {
+        dr_number: 'DR-NEW-002',
+        jb: 4,
+        sb: 0,
+        amount: 18000,
+      });
+      expect(patches[0].remaining_jb).toBe(0);
+      expect(patches[0].remaining_sb).toBe(100);
+      expect(patches[0].good_stock).toBe(100);
+    });
+
+    it('deducts SB units at 50 bags per unit', async () => {
+      noopHandlers();
+      const patches = captureShipmentPatch();
+      await addLedgerEntry('ship-001', {
+        dr_number: 'DR-NEW-003',
+        jb: 0,
+        sb: 2,
+        amount: 18500,
+      });
+      expect(patches[0].remaining_sb).toBe(0);
+      expect(patches[0].remaining_jb).toBe(100);
+    });
+
+    it('credits the exact individual bag count on a restockable return (no unit floor)', async () => {
+      noopHandlers();
+      const patches = captureShipmentPatch();
+      // 5 individual bags return to stock -> 100 + 5, no rounding loss.
       await addLedgerEntry('ship-001', {
         dr_number: 'DR-2026-001',
         jb: 0,
         sb: 0,
-        bags_returned: 5, // 5 individual bags -> floor(5/25) = 0 JB units
+        bags_returned: 5,
         bag_returned_type: 'JB',
         return_reason: 'return',
       });
-      expect(patches[0].remaining_jb).toBe(100); // unchanged, not 105
+      expect(patches[0].remaining_jb).toBe(105);
     });
 
-    it('credits whole units and drops the sub-unit remainder for a non-exact bag count', async () => {
+    it('credits non-multiple bag counts in full', async () => {
       noopHandlers();
       const patches = captureShipmentPatch();
-      // 30 individual JB bags -> floor(30/25) = 1 unit credited, 5 bags dropped
       await addLedgerEntry('ship-001', {
         dr_number: 'DR-2026-001',
         jb: 0,
@@ -192,13 +220,12 @@ describe('Ledger Server Actions — profit calculations', () => {
         bag_returned_type: 'JB',
         return_reason: 'return',
       });
-      expect(patches[0].remaining_jb).toBe(101); // 100 + 1, not 100 + 30
+      expect(patches[0].remaining_jb).toBe(130); // 100 + 30
     });
 
-    it('credits the exact unit count for an exact-multiple bag return', async () => {
+    it('credits SB returns in exact bags too', async () => {
       noopHandlers();
       const patches = captureShipmentPatch();
-      // 100 individual SB bags -> exactly 2 SB units, no rounding loss
       await addLedgerEntry('ship-001', {
         dr_number: 'DR-2026-001',
         jb: 0,
@@ -207,7 +234,7 @@ describe('Ledger Server Actions — profit calculations', () => {
         bag_returned_type: 'SB',
         return_reason: 'return',
       });
-      expect(patches[0].remaining_sb).toBe(102); // 100 + 2
+      expect(patches[0].remaining_sb).toBe(200); // 100 + 100
     });
 
     it('does not credit stock at all for a non-restockable (waste/damage) return', async () => {

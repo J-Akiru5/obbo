@@ -146,26 +146,6 @@ function CheckCell({ order }: { order: Order }) {
   );
 }
 
-// Restocking a return credits shipment stock in whole JB/SB UNITS, rounded
-// DOWN from the individual bag count entered here — a return that isn't an
-// exact multiple of 25 (JB) or 50 (SB) leaves a small remainder that isn't
-// restocked. Disclosed here so the admin isn't surprised stock didn't move
-// by the full amount typed. See ledger-actions.ts's denomination-mismatch
-// bug writeup for why this conversion exists.
-function ReturnStockHint({ bags, type }: { bags: number; type: 'JB' | 'SB' }) {
-  if (bags <= 0) return null;
-  const units = Math.floor(bags / BAG_EQUIVALENT[type]);
-  const creditedBags = units * BAG_EQUIVALENT[type];
-  const remainder = bags - creditedBags;
-  if (remainder === 0) return null;
-  return (
-    <p className="text-muted-foreground mt-1 text-[11px] leading-snug">
-      Credits {units} {type} unit{units === 1 ? '' : 's'} ({creditedBags} bags) back to stock —{' '}
-      {remainder} bag{remainder === 1 ? '' : 's'} short of a full unit won&apos;t be restocked.
-    </p>
-  );
-}
-
 export function TrackingTab({
   orders,
   onUpdateTracking,
@@ -620,7 +600,6 @@ export function TrackingTab({
                       placeholder="0"
                       onChange={(e) => setJbReturned(parseInt(e.target.value) || 0)}
                     />
-                    {status === 'returned_good' && <ReturnStockHint bags={jbReturned} type="JB" />}
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="sb-returned">Individual bags returned (SB)</Label>
@@ -632,7 +611,6 @@ export function TrackingTab({
                       placeholder="0"
                       onChange={(e) => setSbReturned(parseInt(e.target.value) || 0)}
                     />
-                    {status === 'returned_good' && <ReturnStockHint bags={sbReturned} type="SB" />}
                   </div>
                 </div>
                 <div className="space-y-2">
@@ -673,7 +651,6 @@ export function TrackingTab({
                       placeholder="0"
                       onChange={(e) => setJbReturned(parseInt(e.target.value) || 0)}
                     />
-                    <ReturnStockHint bags={jbReturned} type="JB" />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="sb-returned">Individual bags returned (SB)</Label>
@@ -685,7 +662,6 @@ export function TrackingTab({
                       placeholder="0"
                       onChange={(e) => setSbReturned(parseInt(e.target.value) || 0)}
                     />
-                    <ReturnStockHint bags={sbReturned} type="SB" />
                   </div>
                 </div>
                 <p className="text-primary/70 text-xs">

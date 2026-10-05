@@ -582,9 +582,12 @@ export function ShipmentsTab({
                     <p className="text-primary mb-0.5 text-[10px] font-bold tracking-wider uppercase">
                       Remaining
                     </p>
-                    <p className="text-primary text-base font-bold">{totalRemaining} bags</p>
+                    <p className="text-primary text-base font-bold">
+                      {totalRemaining.toLocaleString()} bags
+                    </p>
                     <p className="text-muted-foreground text-[10px]">
-                      {shipment.remaining_jb} JB · {shipment.remaining_sb} SB
+                      {shipment.remaining_jb.toLocaleString()} JB bags ·{' '}
+                      {shipment.remaining_sb.toLocaleString()} SB bags
                     </p>
                   </div>
                   <div onClick={(e) => e.stopPropagation()}>
@@ -627,12 +630,16 @@ export function ShipmentsTab({
                       </div>
                       <div className="text-muted-foreground space-y-0.5 text-xs">
                         <p>
-                          JB:{' '}
-                          <span className="text-foreground font-bold">{shipment.remaining_jb}</span>
+                          JB bags:{' '}
+                          <span className="text-foreground font-bold">
+                            {shipment.remaining_jb.toLocaleString()}
+                          </span>
                         </p>
                         <p>
-                          SB:{' '}
-                          <span className="text-foreground font-bold">{shipment.remaining_sb}</span>
+                          SB bags:{' '}
+                          <span className="text-foreground font-bold">
+                            {shipment.remaining_sb.toLocaleString()}
+                          </span>
                         </p>
                       </div>
                       <Button
@@ -1006,7 +1013,7 @@ export function ShipmentsTab({
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="shipment-edit-initial-jb">Initial JB</Label>
+                <Label htmlFor="shipment-edit-initial-jb">Initial JB (bags)</Label>
                 <Input
                   id="shipment-edit-initial-jb"
                   type="number"
@@ -1019,7 +1026,7 @@ export function ShipmentsTab({
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="shipment-edit-initial-sb">Initial SB</Label>
+                <Label htmlFor="shipment-edit-initial-sb">Initial SB (bags)</Label>
                 <Input
                   id="shipment-edit-initial-sb"
                   type="number"
@@ -1075,7 +1082,7 @@ export function ShipmentsTab({
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="shipment-override-remaining-jb">Remaining JB</Label>
+                <Label htmlFor="shipment-override-remaining-jb">Remaining JB (bags)</Label>
                 <Input
                   id="shipment-override-remaining-jb"
                   type="number"
@@ -1086,7 +1093,7 @@ export function ShipmentsTab({
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="shipment-override-remaining-sb">Remaining SB</Label>
+                <Label htmlFor="shipment-override-remaining-sb">Remaining SB (bags)</Label>
                 <Input
                   id="shipment-override-remaining-sb"
                   type="number"

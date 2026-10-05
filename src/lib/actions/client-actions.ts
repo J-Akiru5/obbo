@@ -552,19 +552,24 @@ export async function fetchBalanceSummary() {
     }
   }
 
-  // Total delivered: sum of dispatched_qty ONLY from fully completed orders.
-  // Orders still in transit (status: 'dispatched') are intentionally excluded
-  // to prevent premature counting of bags that haven't been received yet.
+  // Total delivered: sum of dispatched_qty from fully completed orders, PLUS
+  // redelivery orders as soon as they are dispatched. A redelivery's bags
+  // were paid for long ago and its pending balance row is marked 'fulfilled'
+  // at dispatch time — waiting for tracking confirmation to count it would
+  // leave the ledger's Total Delivered out of sync with Remaining Balance.
+  // (In-transit FIRST orders are still excluded to avoid counting bags the
+  // client hasn't received yet.)
   const { data: dispatchedOrders } = await supabase
     .from('orders')
-    .select('items:order_items(dispatched_qty, bag_type)')
+    .select('status, order_type, items:order_items(dispatched_qty, bag_type)')
     .eq('client_id', user.id)
     .neq('order_type', 'draft')
-    .eq('status', 'completed');
+    .in('status', ['dispatched', 'completed']);
 
   let totalDelivered = 0;
   if (dispatchedOrders) {
     for (const order of dispatchedOrders) {
+      if (order.order_type !== 'redelivery' && order.status !== 'completed') continue;
       const items = order.items as { dispatched_qty: number; bag_type: 'JB' | 'SB' }[];
       totalDelivered += items.reduce(
         (acc, item) => acc + individualBagsFromUnits(item.bag_type, item.dispatched_qty),

@@ -1,6 +1,7 @@
 'use server';
 
 import { requireAdmin, logActivity } from './admin-helpers';
+import { BAG_EQUIVALENT } from './profit-utils';
 import { warehouseReportSaveSchema, dispatchReportDateSchema } from './schemas';
 import { createRoleNotification } from './notification-actions';
 import type { WarehouseReport } from '@/lib/types/database';
@@ -62,8 +63,6 @@ export async function generateDailyReportData(date: string) {
     .select('closing_jb, closing_sb')
     .eq('report_date', prevDateStr)
     .maybeSingle();
-  const yesterday_jb = yesterdayReport?.closing_jb || 0;
-  const yesterday_sb = yesterdayReport?.closing_sb || 0;
 
   const { data: shipments } = await supabase
     .from('shipments')
@@ -74,9 +73,12 @@ export async function generateDailyReportData(date: string) {
   const shipmentDamagedJb = shipments?.reduce((sum, s) => sum + (s.damaged_jb || 0), 0) || 0;
   const shipmentDamagedSb = shipments?.reduce((sum, s) => sum + (s.damaged_sb || 0), 0) || 0;
 
+  // Ledger jb/sb are JB/SB UNITS; warehouse report quantities are INDIVIDUAL
+  // BAGS (same denomination as shipment stock). Convert dispatched units to
+  // bags before feeding the closing-stock formula.
   const { data: ledger } = await supabase.from('shipment_ledger').select('*').eq('date', date);
-  const dispatched_jb = ledger?.reduce((sum, l) => sum + (l.jb || 0), 0) || 0;
-  const dispatched_sb = ledger?.reduce((sum, l) => sum + (l.sb || 0), 0) || 0;
+  const dispatched_jb = ledger?.reduce((sum, l) => sum + (l.jb || 0) * BAG_EQUIVALENT.JB, 0) || 0;
+  const dispatched_sb = ledger?.reduce((sum, l) => sum + (l.sb || 0) * BAG_EQUIVALENT.SB, 0) || 0;
 
   let returned_jb = 0;
   let returned_sb = 0;
@@ -96,6 +98,42 @@ export async function generateDailyReportData(date: string) {
 
   waste_jb += shipmentDamagedJb;
   waste_sb += shipmentDamagedSb;
+
+  // Yesterday's closing normally comes from the previous day's submitted
+  // report. When no report chain exists yet (fresh deployment, or nobody has
+  // saved a daily report) and the selected date is TODAY, derive the opening
+  // position from LIVE shipment stock rolled back by today's net movements:
+  //   opening = live − received + dispatched − returned + waste
+  // so that Today's Closing = opening + received − dispatched + returned −
+  // waste resolves to the actual current stock instead of 0. For historical
+  // dates (live stock includes later movements) leave the opening at 0 rather
+  // than fabricating a number.
+  const today = new Date().toISOString().split('T')[0];
+  let yesterday_jb = yesterdayReport?.closing_jb ?? null;
+  let yesterday_sb = yesterdayReport?.closing_sb ?? null;
+  if (date !== today) {
+    yesterday_jb = yesterday_jb ?? 0;
+    yesterday_sb = yesterday_sb ?? 0;
+  } else if (yesterday_jb === null || yesterday_sb === null) {
+    const { data: liveShipments } = await supabase
+      .from('shipments')
+      .select('remaining_jb, remaining_sb');
+    const live_jb = liveShipments?.reduce((sum, s) => sum + (s.remaining_jb || 0), 0) ?? 0;
+    const live_sb = liveShipments?.reduce((sum, s) => sum + (s.remaining_sb || 0), 0) ?? 0;
+    yesterday_jb = Math.max(0, live_jb - received_jb + dispatched_jb - returned_jb + waste_jb);
+    yesterday_sb = Math.max(0, live_sb - received_sb + dispatched_sb - returned_sb + waste_sb);
+  }
+
+  // Today's Closing = Yesterday's Closing + Stock Received − Total Dispatched
+  // + Customer Returns − Waste/Damaged (all in INDIVIDUAL BAGS).
+  const closing_jb = Math.max(
+    0,
+    yesterday_jb + received_jb - dispatched_jb + returned_jb - waste_jb,
+  );
+  const closing_sb = Math.max(
+    0,
+    yesterday_sb + received_sb - dispatched_sb + returned_sb - waste_sb,
+  );
 
   const dispatches = await fetchDispatchesForDate(date);
 
@@ -124,6 +162,8 @@ export async function generateDailyReportData(date: string) {
     returned_sb,
     waste_jb,
     waste_sb,
+    closing_jb,
+    closing_sb,
     dispatches,
     balances,
   };

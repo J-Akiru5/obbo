@@ -160,6 +160,66 @@ describe('fetchDispatchesForDate', () => {
   });
 });
 
+describe('generateDailyReportData — individual-bag conversion + dynamic closing stock', () => {
+  const ledgerRows = [
+    { jb: 2, sb: 1, bags_returned: 0, bag_returned_type: null, return_reason: 'return' },
+  ];
+
+  it('converts dispatched JB/SB units to bags and resolves closing to live stock when no prior report exists', async () => {
+    useDeliveryReceipts([]);
+    server.use(
+      // No previous day report → fallback opening derivation
+      http.get('*/rest/v1/warehouse_reports', () => HttpResponse.json(null)),
+      http.get('*/rest/v1/shipments', ({ request }) => {
+        const url = new URL(request.url);
+        const arrival = url.searchParams.get('arrival_date')?.replace('eq.', '');
+        if (arrival) {
+          // Stock received that day (individual bags)
+          return HttpResponse.json([{ total_jb: 100, total_sb: 0, damaged_jb: 0, damaged_sb: 0 }]);
+        }
+        // Live stock (no filters → the fallback query)
+        return HttpResponse.json([{ remaining_jb: 200, remaining_sb: 345 }]);
+      }),
+      http.get('*/rest/v1/shipment_ledger', () => HttpResponse.json(ledgerRows)),
+      http.get('*/rest/v1/customer_balances', () => HttpResponse.json([])),
+    );
+
+    // The live-stock fallback only applies to TODAY (historical dates would
+    // misattribute later movements), so query with the real current date.
+    const today = new Date().toISOString().split('T')[0];
+    const data = await generateDailyReportData(today);
+
+    // Ledger jb/sb are UNITS: 2 JB = 50 bags, 1 SB = 50 bags.
+    expect(data.dispatched_jb).toBe(50);
+    expect(data.dispatched_sb).toBe(50);
+    // opening = live − received + dispatched (JB: 200−100+50 = 150; SB: 345−0+50 = 395)
+    expect(data.yesterday_jb).toBe(150);
+    expect(data.yesterday_sb).toBe(395);
+    // closing = opening + received − dispatched → back to live stock, never 0
+    expect(data.closing_jb).toBe(200);
+    expect(data.closing_sb).toBe(345);
+  });
+
+  it('uses the prior report closing when the chain exists and still applies the formula', async () => {
+    useDeliveryReceipts([]);
+    server.use(
+      http.get('*/rest/v1/warehouse_reports', () =>
+        HttpResponse.json({ closing_jb: 1000, closing_sb: 2000 }),
+      ),
+      http.get('*/rest/v1/shipments', () => HttpResponse.json([])),
+      http.get('*/rest/v1/shipment_ledger', () => HttpResponse.json(ledgerRows)),
+      http.get('*/rest/v1/customer_balances', () => HttpResponse.json([])),
+    );
+
+    const data = await generateDailyReportData('2026-08-01');
+
+    expect(data.yesterday_jb).toBe(1000);
+    expect(data.yesterday_sb).toBe(2000);
+    expect(data.closing_jb).toBe(950); // 1000 + 0 − 50
+    expect(data.closing_sb).toBe(1950); // 2000 + 0 − 50
+  });
+});
+
 describe('generateDailyReportData dispatches', () => {
   it('includes every same-day DR (not just the order\u2019s latest)', async () => {
     useDeliveryReceipts([

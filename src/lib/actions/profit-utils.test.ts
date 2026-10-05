@@ -227,6 +227,54 @@ describe('prorateOrderSalesByValue (value-based — the Issue 1 fix)', () => {
   });
 });
 
+describe('split-delivery revenue proration (reported client scenario: PO 1,200 bags = ₱222,000)', () => {
+  const PO_TOTAL = 222000; // 24 SB units × 50 bags × ₱185
+  const fullOrderItem: OrderItemPrice = {
+    requested_qty: 24,
+    approved_qty: 22,
+    selling_price_per_bag: 185,
+    bag_type: 'SB',
+  };
+
+  it('attributes DR-003 (22 SB / 1,100 bags) its proportional revenue of ₱203,500', () => {
+    expect(prorateOrderSalesByValue(PO_TOTAL, [fullOrderItem])).toBe(203500);
+  });
+
+  it('attributes DR-004 (2 SB / 100 bags) its proportional revenue of ₱18,500', () => {
+    const redeliveryItem: OrderItemPrice = { ...fullOrderItem, approved_qty: 2 };
+    expect(prorateOrderSalesByValue(PO_TOTAL, [redeliveryItem])).toBe(18500);
+  });
+
+  it('the two dispatch slices sum to the full PO revenue (no revenue lost or double-counted)', () => {
+    const first = prorateOrderSalesByValue(PO_TOTAL, [fullOrderItem]);
+    const second = prorateOrderSalesByValue(PO_TOTAL, [{ ...fullOrderItem, approved_qty: 2 }]);
+    expect(first + second).toBe(PO_TOTAL);
+  });
+
+  it('re-dispatched balance yields POSITIVE margins and totals match the PO (₱44,832 gross / ₱20,832 net)', () => {
+    const rates = { landedCostPerBag: 147.64, localExpensesPerBag: 20 };
+    const dr003 = computeDispatchProfit({ totalBags: 1100, totalSales: 203500, ...rates });
+    const dr004 = computeDispatchProfit({ totalBags: 100, totalSales: 18500, ...rates });
+    // The old behavior (sales 0 against 100 bags of cost) produced -14,764/-16,764.
+    expect(dr004.total_sales).toBe(18500);
+    expect(dr004.gross_profit).toBe(3736);
+    expect(dr004.net_profit).toBe(1736);
+    expect(dr003.gross_profit + dr004.gross_profit).toBe(44832);
+    expect(dr003.net_profit + dr004.net_profit).toBe(20832);
+  });
+
+  it('three such POs total ₱666,000 sales / ₱134,496 gross / ₱62,496 net', () => {
+    const rates = { landedCostPerBag: 147.64, localExpensesPerBag: 20 };
+    const dr003 = computeDispatchProfit({ totalBags: 1100, totalSales: 203500, ...rates });
+    const dr004 = computeDispatchProfit({ totalBags: 100, totalSales: 18500, ...rates });
+    const perPoGross = dr003.gross_profit + dr004.gross_profit;
+    const perPoNet = dr003.net_profit + dr004.net_profit;
+    expect(PO_TOTAL * 3).toBe(666000);
+    expect(perPoGross * 3).toBe(134496);
+    expect(perPoNet * 3).toBe(62496);
+  });
+});
+
 describe('computeReturnProfitDelta', () => {
   it('restockable return reverses sales, landed cost, AND local expenses', () => {
     const result = computeReturnProfitDelta({

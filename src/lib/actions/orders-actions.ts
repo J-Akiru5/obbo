@@ -6,9 +6,11 @@ import {
   computeDispatchProfit,
   prorateOrderSalesByValue,
   individualBagsFromUnits,
+  BAG_EQUIVALENT,
 } from './profit-utils';
 import { orderApproveSchema, orderRejectSchema, orderTrackingUpdateSchema } from './schemas';
 import { applyBagReturnToLedger } from './ledger-actions';
+import { applyRedeliveryToCustomerBalances } from './balance-actions';
 import { createRoleNotification } from './notification-actions';
 import { safeAction } from './action-result';
 
@@ -282,6 +284,13 @@ async function _dispatchOrder(
     );
   }
 
+  // Shipment stock columns are INDIVIDUAL BAGS; order quantities are JB/SB
+  // UNITS. Convert before validating/deducting (dispatch_order_v2 does the
+  // same conversion atomically on the DB side).
+  const jbBags = jbQty * BAG_EQUIVALENT.JB;
+  const sbBags = sbQty * BAG_EQUIVALENT.SB;
+  const totalBags = jbBags + sbBags;
+
   // Get shipment
   const { data: shipment } = await supabase
     .from('shipments')
@@ -289,7 +298,7 @@ async function _dispatchOrder(
     .eq('id', shipmentId)
     .single();
   if (!shipment) throw new Error('Shipment batch not found');
-  if (shipment.remaining_jb < jbQty || shipment.remaining_sb < sbQty) {
+  if (shipment.remaining_jb < jbBags || shipment.remaining_sb < sbBags) {
     throw new Error('Insufficient stock in selected batch');
   }
 
@@ -304,24 +313,73 @@ async function _dispatchOrder(
 
   // Compute profit values — prorate revenue to only the bags actually
   // going out on this dispatch, by value (price × qty) instead of weight.
+  //
+  // A redelivery order is a fulfillment of the ORIGINAL prepaid PO and is
+  // created with total_amount = 0 (the money was already recognized on the
+  // original order). Prorating 0 yields blank sales matched against a full
+  // bag's landed/local cost — the negative-margin bug on re-dispatched split
+  // balances. When this is a redelivery, prorate this dispatch's share from
+  // the original order's total_amount instead, so the PO's revenue across
+  // its split dispatches still sums to the full amount.
   const costConfig = await getCostConfig();
-  const totalBags = jbQty * 25 + sbQty * 50;
-  const totalSales = prorateOrderSalesByValue(
-    order.total_amount,
-    order.items.map(
-      (i: {
-        requested_qty: number;
-        approved_qty: number;
-        selling_price_per_bag: number;
-        bag_type: 'JB' | 'SB';
-      }) => ({
-        requested_qty: i.requested_qty || 0,
-        approved_qty: i.approved_qty || 0,
-        selling_price_per_bag: i.selling_price_per_bag || 0,
-        bag_type: i.bag_type,
-      }),
-    ),
+  let salesBasisTotal = order.total_amount;
+  let salesBasisItems = order.items.map(
+    (i: {
+      requested_qty: number;
+      approved_qty: number;
+      selling_price_per_bag: number;
+      bag_type: 'JB' | 'SB';
+    }) => ({
+      requested_qty: i.requested_qty || 0,
+      approved_qty: i.approved_qty || 0,
+      selling_price_per_bag: i.selling_price_per_bag || 0,
+      bag_type: i.bag_type,
+    }),
   );
+
+  if (order.order_type === 'redelivery' && order.linked_po_number) {
+    const { data: originalOrder } = await supabase
+      .from('orders')
+      .select('id, total_amount, items:order_items(*)')
+      .eq('po_number', order.linked_po_number)
+      .neq('order_type', 'redelivery')
+      .neq('id', orderId)
+      .order('created_at', { ascending: true })
+      .limit(1)
+      .maybeSingle();
+
+    if (originalOrder && Number(originalOrder.total_amount) > 0) {
+      salesBasisTotal = originalOrder.total_amount;
+      salesBasisItems = order.items.map(
+        (i: {
+          product_id: string;
+          requested_qty: number;
+          approved_qty: number;
+          selling_price_per_bag: number;
+          bag_type: 'JB' | 'SB';
+        }) => {
+          const originalItem = (
+            originalOrder.items as {
+              product_id: string;
+              bag_type: string;
+              requested_qty: number;
+              selling_price_per_bag: number;
+            }[]
+          )?.find((o) => o.product_id === i.product_id && o.bag_type === i.bag_type);
+          const requestedQty = originalItem?.requested_qty ?? i.requested_qty ?? 0;
+          return {
+            requested_qty: requestedQty,
+            approved_qty: Math.min(i.approved_qty || 0, Math.max(0, requestedQty)),
+            selling_price_per_bag:
+              originalItem?.selling_price_per_bag || i.selling_price_per_bag || 0,
+            bag_type: i.bag_type,
+          };
+        },
+      );
+    }
+  }
+
+  const totalSales = prorateOrderSalesByValue(salesBasisTotal, salesBasisItems);
   const profitFields = computeDispatchProfit({
     totalBags,
     totalSales,
@@ -357,85 +415,68 @@ async function _dispatchOrder(
     throw new Error(rpcData?.error ?? 'Dispatch RPC returned an unknown error');
   }
 
-  // Handle Split Delivery: Create customer balance for remaining quantities
-  for (const item of order.items) {
-    if ((item.approved_qty || 0) < (item.requested_qty || 0)) {
-      // Same unit fix as approveOrder: requested_qty/approved_qty are JB/SB
-      // UNITS, but customer_balances (both remaining_qty and total_purchase,
-      // since the ledger UI computes total_purchase - remaining_qty) must be
-      // in INDIVIDUAL bags.
-      const bagType = item.bag_type as 'JB' | 'SB';
-      const remaining = individualBagsFromUnits(bagType, item.requested_qty - item.approved_qty);
-      const totalPurchase = individualBagsFromUnits(bagType, item.requested_qty);
+  // Handle Split Delivery: Create customer balance for remaining quantities.
+  // Redelivery orders are skipped — their remainder is already tracked by the
+  // ORIGINAL order's pending balance row; creating another here would double
+  // count the same withheld bags.
+  if (order.order_type !== 'redelivery') {
+    for (const item of order.items) {
+      if ((item.approved_qty || 0) < (item.requested_qty || 0)) {
+        // Same unit fix as approveOrder: requested_qty/approved_qty are JB/SB
+        // UNITS, but customer_balances (both remaining_qty and total_purchase,
+        // since the ledger UI computes total_purchase - remaining_qty) must be
+        // in INDIVIDUAL bags.
+        const bagType = item.bag_type as 'JB' | 'SB';
+        const remaining = individualBagsFromUnits(bagType, item.requested_qty - item.approved_qty);
+        const totalPurchase = individualBagsFromUnits(bagType, item.requested_qty);
 
-      // Check if a balance already exists for this item in this order (idempotency)
-      const { data: existing } = await supabase
-        .from('customer_balances')
-        .select('id')
-        .eq('order_id', orderId)
-        .eq('product_id', item.product_id)
-        .eq('bag_type', item.bag_type)
-        .single();
+        // Check if a balance already exists for this item in this order (idempotency)
+        const { data: existing } = await supabase
+          .from('customer_balances')
+          .select('id')
+          .eq('order_id', orderId)
+          .eq('product_id', item.product_id)
+          .eq('bag_type', item.bag_type)
+          .single();
 
-      if (!existing) {
-        const { error: balanceError } = await supabase.from('customer_balances').insert({
-          client_id: order.client_id,
-          order_id: orderId,
-          product_id: item.product_id,
-          bag_type: item.bag_type,
-          total_purchase: totalPurchase,
-          remaining_qty: remaining,
-          status: 'pending',
-        });
-        if (balanceError) console.error('Balance creation error:', balanceError);
+        if (!existing) {
+          const { error: balanceError } = await supabase.from('customer_balances').insert({
+            client_id: order.client_id,
+            order_id: orderId,
+            product_id: item.product_id,
+            bag_type: item.bag_type,
+            total_purchase: totalPurchase,
+            remaining_qty: remaining,
+            status: 'pending',
+          });
+          if (balanceError) console.error('Balance creation error:', balanceError);
+        }
       }
     }
   }
 
-  // If this is a redelivery order, deduct dispatched qty from original customer balance
+  // If this is a redelivery order, deduct the dispatched quantity from the
+  // ORIGINAL order's pending customer balances. Rows fully covered by this
+  // dispatch are marked 'fulfilled' so they drop out of the Customer
+  // Obligation Report and the Client Portal Balance Ledger. Uses a dedicated
+  // helper because the original-order lookup must exclude the redelivery
+  // order itself (both share the same po_number).
   if (order.order_type === 'redelivery' && order.linked_po_number) {
-    const { data: originalOrder } = await supabase
-      .from('orders')
-      .select('id')
-      .eq('po_number', order.linked_po_number)
-      .maybeSingle();
-
-    if (originalOrder) {
-      for (const item of order.items) {
-        const dispatchedUnits = item.approved_qty || 0;
-        if (dispatchedUnits <= 0) continue;
-        // A redelivery order's approved_qty is also in JB/SB UNITS (it's an
-        // order_items row like any other) — convert before touching a
-        // balance that's now denominated in individual bags.
-        const dispatchedQty = individualBagsFromUnits(
-          item.bag_type as 'JB' | 'SB',
-          dispatchedUnits,
-        );
-
-        const { data: balance } = await supabase
-          .from('customer_balances')
-          .select('id, remaining_qty')
-          .eq('order_id', originalOrder.id)
-          .eq('product_id', item.product_id)
-          .eq('bag_type', item.bag_type)
-          .eq('status', 'pending')
-          .maybeSingle();
-
-        if (balance && balance.remaining_qty > 0) {
-          const newRemaining = balance.remaining_qty - dispatchedQty;
-          const newStatus = newRemaining <= 0 ? 'fulfilled' : 'pending';
-          const { error: balanceUpdateError } = await supabase
-            .from('customer_balances')
-            .update({
-              remaining_qty: Math.max(0, newRemaining),
-              status: newStatus,
-            })
-            .eq('id', balance.id);
-          if (balanceUpdateError) {
-            console.error('Balance deduction on redelivery dispatch failed:', balanceUpdateError);
-          }
-        }
-      }
+    const balanceResult = await applyRedeliveryToCustomerBalances({
+      linkedPoNumber: order.linked_po_number,
+      excludeOrderId: orderId,
+      items: order.items.map(
+        (item: { product_id: string; bag_type: string; approved_qty: number }) => ({
+          productId: item.product_id,
+          bagType: item.bag_type,
+          dispatchedUnits: item.approved_qty || 0,
+        }),
+      ),
+    });
+    if (balanceResult.updated === 0) {
+      console.error(
+        `Redelivery dispatch ${orderId}: no pending customer balance rows were cleared for PO ${order.linked_po_number}.`,
+      );
     }
   }
 
@@ -451,53 +492,59 @@ async function _dispatchOrder(
   }
 
   // ── AUTO-GENERATE PO RECORD ──────────────────────────────
-  let checkNumberStr: string | null = null;
-  let checkAmountNum: number | null = null;
-  let cashAmountNum: number | null = null;
+  // Redeliveries reuse the ORIGINAL purchase order (same po_number) and are
+  // prepaid with total_amount = 0 — re-upserting here would overwrite the
+  // original PO's negotiated jb/sb/check/cash amounts with the re-dispatched
+  // slice and an empty payment amount. The PO already exists; leave it alone.
+  if (order.order_type !== 'redelivery') {
+    let checkNumberStr: string | null = null;
+    let checkAmountNum: number | null = null;
+    let cashAmountNum: number | null = null;
 
-  if (order.payment_method === 'check') {
-    checkNumberStr = order.check_number || null;
-    checkAmountNum = Number(order.total_amount) || null;
-  } else if (order.payment_method === 'cash') {
-    cashAmountNum = Number(order.total_amount) || null;
-  } else {
-    cashAmountNum = Number(order.total_amount) || null;
-  }
+    if (order.payment_method === 'check') {
+      checkNumberStr = order.check_number || null;
+      checkAmountNum = Number(order.total_amount) || null;
+    } else if (order.payment_method === 'cash') {
+      cashAmountNum = Number(order.total_amount) || null;
+    } else {
+      cashAmountNum = Number(order.total_amount) || null;
+    }
 
-  const poPayload = {
-    po_number: poNumber,
-    client_id: order.client_id,
-    client_name: clientName,
-    jb: jbQty,
-    sb: sbQty,
-    date: dispatchDate,
-    status: 'dispatched',
-    source: order.source,
-    service_type: order.service_type,
-    shipment_id: shipmentId,
-    order_id: orderId,
-    check_number: checkNumberStr,
-    check_amount: checkAmountNum,
-    cash_amount: cashAmountNum,
-    photo_url: order.po_image_url,
-    updated_at: new Date().toISOString(),
-  };
+    const poPayload = {
+      po_number: poNumber,
+      client_id: order.client_id,
+      client_name: clientName,
+      jb: jbQty,
+      sb: sbQty,
+      date: dispatchDate,
+      status: 'dispatched',
+      source: order.source,
+      service_type: order.service_type,
+      shipment_id: shipmentId,
+      order_id: orderId,
+      check_number: checkNumberStr,
+      check_amount: checkAmountNum,
+      cash_amount: cashAmountNum,
+      photo_url: order.po_image_url,
+      updated_at: new Date().toISOString(),
+    };
 
-  const { data: existingPo } = await supabase
-    .from('purchase_orders')
-    .select('id')
-    .eq('po_number', poNumber)
-    .maybeSingle();
+    const { data: existingPo } = await supabase
+      .from('purchase_orders')
+      .select('id')
+      .eq('po_number', poNumber)
+      .maybeSingle();
 
-  let poResult;
-  if (existingPo) {
-    poResult = await supabase.from('purchase_orders').update(poPayload).eq('id', existingPo.id);
-  } else {
-    poResult = await supabase.from('purchase_orders').insert(poPayload);
-  }
+    let poResult;
+    if (existingPo) {
+      poResult = await supabase.from('purchase_orders').update(poPayload).eq('id', existingPo.id);
+    } else {
+      poResult = await supabase.from('purchase_orders').insert(poPayload);
+    }
 
-  if (poResult?.error) {
-    console.error('PO Auto-generation error:', poResult.error);
+    if (poResult?.error) {
+      console.error('PO Auto-generation error:', poResult.error);
+    }
   }
 
   await logActivity(supabase, userId, 'order_dispatched', 'order', orderId, {

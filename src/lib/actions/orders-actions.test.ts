@@ -157,12 +157,14 @@ const bug3Order = {
   ],
 };
 
+// Shipment stock is INDIVIDUAL BAGS (same as production). bug3Order approves
+// 100 JB units = 2,500 bags, so the fixture must hold at least that.
 const bug3Shipment = {
   id: 'ship-001',
   batch_name: 'BATCH-TEST-001',
-  remaining_jb: 500,
-  remaining_sb: 500,
-  good_stock: 1000,
+  remaining_jb: 5000,
+  remaining_sb: 5000,
+  good_stock: 10000,
 };
 
 // ── Tests ────────────────────────────────────────────────────────
@@ -391,6 +393,213 @@ describe('Orders Server Actions', () => {
       expect(capturedLedgers[0].p_total_sales).toBe(capturedLedgers[1].p_total_sales);
       expect(capturedLedgers[0].p_gross_profit).toBe(capturedLedgers[1].p_gross_profit);
       expect(capturedLedgers[0].p_net_profit).toBe(capturedLedgers[1].p_net_profit);
+    });
+  });
+
+  describe('dispatchOrder — bag-denominated stock + redelivery accounting', () => {
+    it('rejects a dispatch whose bag requirement exceeds bag-denominated shipment stock', async () => {
+      const order = {
+        id: 'order-bags-1',
+        client_id: 'client-001',
+        status: 'approved',
+        total_amount: 250,
+        payment_method: 'cash',
+        po_number: 'PO-BAGS-1',
+        source: 'warehouse',
+        service_type: 'deliver',
+        shipping_fee: 0,
+        tracking_status: 'pending_dispatch',
+        order_type: 'new',
+        linked_po_number: null,
+        is_split_delivery: false,
+        client: {
+          id: 'client-001',
+          full_name: 'Juan Dela Cruz',
+          company_name: 'ACME Construction',
+          address_street: null,
+          address_city: null,
+          address_province: null,
+          avatar_url: null,
+        },
+        items: [
+          {
+            id: 'item-bags-1',
+            order_id: 'order-bags-1',
+            product_id: 'prod-jb-001',
+            bag_type: 'JB',
+            requested_qty: 1,
+            approved_qty: 1,
+            dispatched_qty: 0,
+            selling_price_per_bag: 250,
+          },
+        ],
+      };
+
+      server.use(
+        http.get('*/rest/v1/orders', ({ request }) => {
+          const url = new URL(request.url);
+          const id = url.searchParams.get('id')?.replace('eq.', '');
+          return HttpResponse.json(id === order.id ? order : []);
+        }),
+        http.get('*/rest/v1/shipments', ({ request }) => {
+          const url = new URL(request.url);
+          const id = url.searchParams.get('id')?.replace('eq.', '');
+          // 24 individual bags available, but 1 JB unit = 25 bags needed.
+          // The old raw-unit check (24 >= 1) let this through.
+          return HttpResponse.json(
+            id === 'ship-bags-1'
+              ? { id, batch_name: 'BATCH-BAGS', remaining_jb: 24, remaining_sb: 0, good_stock: 24 }
+              : [],
+          );
+        }),
+      );
+
+      const result = await dispatchOrder(
+        'order-bags-1',
+        'ship-bags-1',
+        'DR-BAGS-1',
+        null,
+        'Driver',
+        'PLATE',
+      );
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error).toMatch(/insufficient stock/i);
+      }
+    });
+
+    it('prorates a redelivery dispatch from the original PO revenue and fulfils the cleared balance', async () => {
+      const redeliveryOrder = {
+        id: 'redelivery-order-1',
+        client_id: 'client-001',
+        status: 'approved',
+        // Prepaid balance re-dispatch: the money was recognized on the original PO.
+        total_amount: 0,
+        payment_method: 'cash',
+        po_number: 'PO-2026-003',
+        linked_po_number: 'PO-2026-003',
+        order_type: 'redelivery',
+        source: 'warehouse',
+        service_type: 'deliver',
+        shipping_fee: 0,
+        tracking_status: 'pending_dispatch',
+        is_split_delivery: false,
+        client: {
+          id: 'client-001',
+          full_name: 'Roxanne Agub',
+          company_name: null,
+          address_street: null,
+          address_city: null,
+          address_province: null,
+          avatar_url: null,
+        },
+        items: [
+          {
+            id: 'item-redelivery-1',
+            order_id: 'redelivery-order-1',
+            product_id: 'prod-sb-001',
+            bag_type: 'SB',
+            requested_qty: 2,
+            approved_qty: 2,
+            dispatched_qty: 0,
+            selling_price_per_bag: 185,
+          },
+        ],
+      };
+
+      const originalOrder = {
+        id: 'order-orig-1',
+        total_amount: 222000, // 24 SB = 1,200 bags × ₱185
+        created_at: '2026-01-01T00:00:00.000Z',
+        items: [
+          {
+            id: 'item-orig-1',
+            order_id: 'order-orig-1',
+            product_id: 'prod-sb-001',
+            bag_type: 'SB',
+            requested_qty: 24,
+            approved_qty: 22,
+            dispatched_qty: 22,
+            selling_price_per_bag: 185,
+          },
+        ],
+      };
+
+      const rpcBodies: Record<string, unknown>[] = [];
+      let balancePatch: Record<string, unknown> | undefined;
+      let originalLookupUrl = '';
+
+      server.use(
+        http.get('*/rest/v1/orders', ({ request }) => {
+          const url = new URL(request.url);
+          const id = url.searchParams.get('id')?.replace('eq.', '');
+          if (id === redeliveryOrder.id) return HttpResponse.json(redeliveryOrder);
+          if (url.searchParams.get('po_number')?.replace('eq.', '') === 'PO-2026-003') {
+            originalLookupUrl = url.toString();
+            return HttpResponse.json(originalOrder);
+          }
+          return HttpResponse.json([]);
+        }),
+        http.get('*/rest/v1/shipments', ({ request }) => {
+          const url = new URL(request.url);
+          const id = url.searchParams.get('id')?.replace('eq.', '');
+          return HttpResponse.json(
+            id === 'ship-red-1'
+              ? {
+                  id,
+                  batch_name: 'BATCH-RED',
+                  remaining_jb: 0,
+                  remaining_sb: 500,
+                  good_stock: 500,
+                }
+              : [],
+          );
+        }),
+        http.post('*/rest/v1/rpc/dispatch_order_v2', async ({ request }) => {
+          rpcBodies.push((await request.json()) as Record<string, unknown>);
+          return HttpResponse.json({ success: true, dr_id: 'dr-red-1' });
+        }),
+        http.get('*/rest/v1/customer_balances', ({ request }) => {
+          const accept = request.headers.get('accept') || '';
+          const balance = {
+            id: 'bal-orig-1',
+            order_id: 'order-orig-1',
+            product_id: 'prod-sb-001',
+            bag_type: 'SB',
+            remaining_qty: 100, // 2 SB units in individual bags
+            status: 'pending',
+          };
+          return HttpResponse.json(accept.includes('object+json') ? balance : [balance]);
+        }),
+        http.patch('*/rest/v1/customer_balances', async ({ request }) => {
+          balancePatch = (await request.json()) as Record<string, unknown>;
+          return HttpResponse.json([]);
+        }),
+        http.post('*/rest/v1/activity_log', () => HttpResponse.json([])),
+      );
+
+      const result = await dispatchOrder(
+        redeliveryOrder.id,
+        'ship-red-1',
+        'DR-004',
+        null,
+        'Driver',
+        'PLATE',
+      );
+
+      expect(result.success).toBe(true);
+      expect(rpcBodies).toHaveLength(1);
+      // 2 of 24 SB → 100 of 1,200 bags → 222,000 × 100/1,200 = 18,500
+      expect(rpcBodies[0].p_total_sales).toBe(18500);
+      expect(rpcBodies[0].p_gross_profit).toBe(3736); // 18,500 − 100×147.64
+      expect(rpcBodies[0].p_net_profit).toBe(1736); // 18,500 − 100×167.64
+      // The original-order lookup MUST exclude redelivery rows — both share
+      // the same po_number, and an unfiltered maybeSingle() fails on multiple
+      // rows, silently skipping the balance update.
+      expect(originalLookupUrl).toContain('order_type=neq.redelivery');
+      expect(balancePatch).toBeDefined();
+      expect(balancePatch?.remaining_qty).toBe(0);
+      expect(balancePatch?.status).toBe('fulfilled');
     });
   });
 

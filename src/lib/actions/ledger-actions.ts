@@ -104,19 +104,21 @@ async function _addLedgerEntry(
     .single();
   if (shipment) {
     const restockReturned = returnReason === 'return' && returned > 0;
-    // `returned` (bags_returned) is an INDIVIDUAL BAG count — same
-    // denomination computeReturnProfitDelta above already uses it as — but
-    // shipments.remaining_jb/remaining_sb are JB/SB UNIT-denominated. Convert
-    // before crediting stock, rounding DOWN: credit only whole units
-    // confirmed physically returned, never more than actually came back.
-    // Any bag-count remainder below a full unit is a disclosed rounding
-    // loss, not phantom stock. See denomination-mismatch bug writeup.
+    // jbOut/sbOut are JB/SB UNITS (ledger denomination); returned is an
+    // INDIVIDUAL BAG count; shipments.remaining_jb/remaining_sb are INDIVIDUAL
+    // BAGS. Convert the dispatch side up to bags and credit returns as the
+    // exact bag count that physically came back — no unit floor needed now
+    // that stock itself is bag-denominated.
     const jbReturnedBags = restockReturned && returnedType === 'JB' ? returned : 0;
     const sbReturnedBags = restockReturned && returnedType === 'SB' ? returned : 0;
-    const jbReturned = Math.floor(jbReturnedBags / BAG_EQUIVALENT.JB);
-    const sbReturned = Math.floor(sbReturnedBags / BAG_EQUIVALENT.SB);
-    const newRemainingJb = Math.max(0, (shipment.remaining_jb ?? 0) - jbOut + jbReturned);
-    const newRemainingSb = Math.max(0, (shipment.remaining_sb ?? 0) - sbOut + sbReturned);
+    const newRemainingJb = Math.max(
+      0,
+      (shipment.remaining_jb ?? 0) - jbOut * BAG_EQUIVALENT.JB + jbReturnedBags,
+    );
+    const newRemainingSb = Math.max(
+      0,
+      (shipment.remaining_sb ?? 0) - sbOut * BAG_EQUIVALENT.SB + sbReturnedBags,
+    );
     const { error: stockError } = await supabase
       .from('shipments')
       .update({
@@ -261,10 +263,9 @@ async function _updateLedgerEntry(
     .eq('id', shipmentId)
     .single();
   if (shipment) {
-    // bags_returned is an INDIVIDUAL BAG count (same denomination the
-    // profit-delta recompute above uses); remaining_jb/remaining_sb are
-    // UNIT-denominated. Convert bags -> units, rounding DOWN, same as
-    // _addLedgerEntry — see denomination-mismatch bug writeup there.
+    // Entry jb/sb are JB/SB UNITS; bags_returned is an INDIVIDUAL BAG count;
+    // remaining_jb/remaining_sb are INDIVIDUAL BAGS. Convert entry units to
+    // bags on both the reverse (old) and apply (new) side.
     const oldJbReturnedBags =
       wasRestockable && oldEntry.bags_returned > 0 && oldEntry.bag_returned_type === 'JB'
         ? oldEntry.bags_returned
@@ -273,8 +274,6 @@ async function _updateLedgerEntry(
       wasRestockable && oldEntry.bags_returned > 0 && oldEntry.bag_returned_type === 'SB'
         ? oldEntry.bags_returned
         : 0;
-    const oldJbReturned = Math.floor(oldJbReturnedBags / BAG_EQUIVALENT.JB);
-    const oldSbReturned = Math.floor(oldSbReturnedBags / BAG_EQUIVALENT.SB);
     const newJbOut = updates.jb ?? oldEntry.jb;
     const newSbOut = updates.sb ?? oldEntry.sb;
     const newReturned = updates.bags_returned ?? oldEntry.bags_returned;
@@ -283,13 +282,19 @@ async function _updateLedgerEntry(
       isRestockable && newReturned > 0 && newReturnedType === 'JB' ? newReturned : 0;
     const newSbReturnedBags =
       isRestockable && newReturned > 0 && newReturnedType === 'SB' ? newReturned : 0;
-    const newJbReturned = Math.floor(newJbReturnedBags / BAG_EQUIVALENT.JB);
-    const newSbReturned = Math.floor(newSbReturnedBags / BAG_EQUIVALENT.SB);
 
     const correctedJb =
-      (shipment.remaining_jb ?? 0) + oldEntry.jb - oldJbReturned - newJbOut + newJbReturned;
+      (shipment.remaining_jb ?? 0) +
+      oldEntry.jb * BAG_EQUIVALENT.JB -
+      oldJbReturnedBags -
+      newJbOut * BAG_EQUIVALENT.JB +
+      newJbReturnedBags;
     const correctedSb =
-      (shipment.remaining_sb ?? 0) + oldEntry.sb - oldSbReturned - newSbOut + newSbReturned;
+      (shipment.remaining_sb ?? 0) +
+      oldEntry.sb * BAG_EQUIVALENT.SB -
+      oldSbReturnedBags -
+      newSbOut * BAG_EQUIVALENT.SB +
+      newSbReturnedBags;
 
     const { error: stockError } = await supabase
       .from('shipments')

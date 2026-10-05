@@ -469,23 +469,27 @@ export function FulfillmentTab({
                   Select Shipment Batch (Source of Truth) <span className="text-red-500">*</span>
                 </Label>
                 {(() => {
-                  const jbBags = selectedOrder.items
+                  // approved_qty is JB/SB UNITS; shipment remaining stock is
+                  // INDIVIDUAL BAGS. Convert the need to bags before comparing.
+                  const jbUnits = selectedOrder.items
                     .filter((i) => i.bag_type === 'JB')
                     .reduce((s, i) => s + i.approved_qty, 0);
-                  const sbBags = selectedOrder.items
+                  const sbUnits = selectedOrder.items
                     .filter((i) => i.bag_type === 'SB')
                     .reduce((s, i) => s + i.approved_qty, 0);
+                  const jbBags = jbUnits * BAG_EQUIVALENT.JB;
+                  const sbBags = sbUnits * BAG_EQUIVALENT.SB;
                   const shipmentOptions = shipments.map((s) => {
                     const hasEnough = s.remaining_jb >= jbBags && s.remaining_sb >= sbBags;
-                    // s.remaining_jb/remaining_sb and jbBags/sbBags are all
-                    // JB/SB UNITS despite the "Bags" variable name — show
-                    // both the unit count and its individual-bag equivalent.
-                    const availJb = `${(s.remaining_jb * BAG_EQUIVALENT.JB).toLocaleString()} bags (${s.remaining_jb} JB)`;
-                    const availSb = `${(s.remaining_sb * BAG_EQUIVALENT.SB).toLocaleString()} bags (${s.remaining_sb} SB)`;
-                    const needJb = `${(jbBags * BAG_EQUIVALENT.JB).toLocaleString()} bags (${jbBags} JB)`;
-                    const needSb = `${(sbBags * BAG_EQUIVALENT.SB).toLocaleString()} bags (${sbBags} SB)`;
-                    const label = `${s.batch_name} (Avail: ${availJb}, ${availSb} · Need: ${needJb}, ${needSb})${!hasEnough ? ' - Insufficient' : ''}`;
-                    return { value: s.id, label, disabled: !hasEnough };
+                    const availJb = `${s.remaining_jb.toLocaleString()} bags`;
+                    const availSb = `${s.remaining_sb.toLocaleString()} bags`;
+                    const needJb = jbBags > 0 ? `${jbBags.toLocaleString()} bags JB` : '';
+                    const needSb = sbBags > 0 ? `${sbBags.toLocaleString()} bags SB` : '';
+                    const needLabel = [needJb, needSb].filter(Boolean).join(', ') || '0 bags';
+                    const label =
+                      `${s.batch_name} — Available: ${availJb} JB / ${availSb} SB · ` +
+                      `Needed: ${needLabel}${!hasEnough ? ' · INSUFFICIENT STOCK' : ''}`;
+                    return { value: s.id, label, disabled: !hasEnough, insufficient: !hasEnough };
                   });
 
                   return (
@@ -494,13 +498,21 @@ export function FulfillmentTab({
                       value={shipmentId}
                       onValueChange={(v) => setShipmentId(v ?? '')}
                     >
-                      <SelectTrigger>
+                      <SelectTrigger className="w-full min-w-0">
                         <SelectValue placeholder="Select a shipment batch" />
                       </SelectTrigger>
-                      <SelectContent>
+                      <SelectContent className="max-w-[min(560px,calc(100vw-2rem))]">
                         {shipmentOptions.map((opt) => (
-                          <SelectItem key={opt.value} value={opt.value} disabled={opt.disabled}>
-                            {opt.label}
+                          <SelectItem
+                            key={opt.value}
+                            value={opt.value}
+                            disabled={opt.disabled}
+                            title={opt.label}
+                            className="items-start py-2"
+                          >
+                            <span className="block min-w-0 flex-1 leading-snug break-words whitespace-normal">
+                              {opt.label}
+                            </span>
                           </SelectItem>
                         ))}
                       </SelectContent>

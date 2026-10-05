@@ -1,0 +1,640 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>OBBO iManage — Split Delivery, Inventory & Report Sync Fixes (2026-10-05)</title>
+<style>
+  :root {
+    --steel-950: #0b1220;
+    --steel-900: #111a2c;
+    --steel-800: #1b2740;
+    --steel-700: #2b3a58;
+    --steel-500: #61708c;
+    --steel-300: #aab4c6;
+    --steel-200: #d4dae4;
+    --steel-100: #eef1f6;
+    --paper: #f7f8fa;
+    --card: #ffffff;
+    --ink: #16203a;
+    --amber: #b45309;
+    --amber-bg: #fef3e2;
+    --green: #047857;
+    --green-bg: #ecfdf5;
+    --red: #b91c1c;
+    --red-bg: #fef2f2;
+    --blue: #1d4ed8;
+    --blue-bg: #eff6ff;
+    --violet: #6d28d9;
+    --violet-bg: #f5f3ff;
+    --rule: #dde2ea;
+    --mono: ui-monospace, "Cascadia Code", "SF Mono", Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: "Segoe UI", -apple-system, BlinkMacSystemFont, Roboto, Helvetica, Arial, sans-serif;
+    font-size: 16px;
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+  }
+  .band { width: 100%; border-bottom: 1px solid var(--rule); }
+  .band.dark { background: var(--steel-950); color: #e8ecf4; border-bottom: none; }
+  .wrap { max-width: 1120px; margin: 0 auto; padding: 0 clamp(20px, 5vw, 72px); }
+  .prose { max-width: 760px; }
+  .prose-wide { max-width: 900px; }
+
+  /* ── Hero ─────────────────────────────── */
+  .hero { padding: clamp(40px, 7vw, 84px) 0 clamp(34px, 6vw, 64px); }
+  .kicker {
+    display: inline-flex; align-items: center; gap: 8px;
+    font-size: 11px; font-weight: 700; letter-spacing: 0.28em; text-transform: uppercase;
+    color: #f6b26b; border: 1px solid rgba(246,178,107,.35); background: rgba(246,178,107,.08);
+    border-radius: 999px; padding: 6px 14px; margin-bottom: 22px;
+  }
+  .kicker::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: #f6b26b; }
+  h1 {
+    font-size: clamp(28px, 5.2vw, 48px);
+    line-height: 1.12; margin: 0 0 18px; font-weight: 800; letter-spacing: -0.02em; color: #fff;
+  }
+  .hero p.lede { font-size: clamp(15px, 2vw, 18px); color: #b9c3d6; max-width: 780px; margin: 0 0 26px; }
+  .hero-meta { display: flex; flex-wrap: wrap; gap: 10px 22px; color: #93a1bb; font-size: 13px; }
+  .hero-meta b { color: #e8ecf4; font-weight: 600; }
+  code.inline {
+    font-family: var(--mono); font-size: 0.88em; background: rgba(255,255,255,.08);
+    border: 1px solid rgba(255,255,255,.12); border-radius: 6px; padding: 1px 6px; color: #ffd9a8;
+  }
+
+  /* ── Section scaffolding ──────────────── */
+  section .wrap { padding-top: clamp(34px, 5vw, 56px); padding-bottom: clamp(34px, 5vw, 56px); }
+  section.white { background: var(--card); }
+  h2 {
+    font-size: clamp(21px, 3.4vw, 30px); font-weight: 800; letter-spacing: -0.015em;
+    margin: 0 0 8px; color: var(--ink);
+  }
+  h2 .num {
+    font-family: var(--mono); font-size: 0.62em; color: var(--steel-500); font-weight: 700;
+    display: block; letter-spacing: .18em; margin-bottom: 6px;
+  }
+  h3 { font-size: 17px; font-weight: 700; margin: 26px 0 8px; }
+  p { margin: 0 0 14px; }
+  ul, ol { margin: 0 0 16px; padding-left: 22px; }
+  li { margin-bottom: 6px; }
+  .muted { color: var(--steel-500); }
+  .small { font-size: 13.5px; }
+
+  /* ── Stat cards ───────────────────────── */
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 14px; margin: 26px 0 0; }
+  .stat {
+    background: var(--card); border: 1px solid var(--rule); border-radius: 14px;
+    padding: 18px 20px; box-shadow: 0 1px 2px rgba(16,24,40,.04);
+  }
+  .stat .label { font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--steel-500); font-weight: 700; }
+  .stat .value { font-family: var(--mono); font-size: clamp(22px, 3vw, 30px); font-weight: 700; color: var(--ink); margin-top: 6px; }
+  .stat .sub { font-size: 12.5px; color: var(--steel-500); margin-top: 4px; }
+  .stat.good .value { color: var(--green); }
+  .stat.warn .value { color: var(--amber); }
+  .stat.info .value { color: var(--blue); }
+
+  /* ── Issue cards ──────────────────────── */
+  .issue {
+    background: var(--card); border: 1px solid var(--rule); border-radius: 16px;
+    padding: clamp(20px, 3.4vw, 30px); margin: 18px 0 0;
+    box-shadow: 0 1px 3px rgba(16,24,40,.05);
+  }
+  .issue-head { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; margin-bottom: 6px; }
+  .issue-head h3 { margin: 0; font-size: clamp(16.5px, 2.4vw, 20px); }
+  .tag {
+    display: inline-block; font-size: 11px; font-weight: 700; letter-spacing: .06em;
+    text-transform: uppercase; padding: 3px 10px; border-radius: 999px; white-space: nowrap;
+  }
+  .tag.fixed { color: var(--green); background: var(--green-bg); border: 1px solid #a7f3d0; }
+  .tag.sev { color: var(--red); background: var(--red-bg); border: 1px solid #fecaca; }
+  .tag.hard { color: var(--violet); background: var(--violet-bg); border: 1px solid #ddd6fe; }
+  .issue .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-top: 14px; }
+  .pane { border: 1px solid var(--rule); border-radius: 12px; padding: 14px 16px; }
+  .pane .pane-label { font-size: 11px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; margin-bottom: 8px; }
+  .pane.before { background: var(--red-bg); border-color: #fecaca; }
+  .pane.before .pane-label { color: var(--red); }
+  .pane.after { background: var(--green-bg); border-color: #a7f3d0; }
+  .pane.after .pane-label { color: var(--green); }
+  .pane p:last-child { margin-bottom: 0; }
+  .pane code { font-family: var(--mono); font-size: 12.5px; }
+
+  /* ── Tables ───────────────────────────── */
+  .table-wrap { overflow-x: auto; border: 1px solid var(--rule); border-radius: 12px; margin: 16px 0; background: var(--card); }
+  table { border-collapse: collapse; width: 100%; min-width: 560px; font-size: 14px; }
+  th, td { padding: 10px 14px; text-align: left; border-bottom: 1px solid var(--rule); vertical-align: top; }
+  th { background: var(--steel-100); font-size: 11.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--steel-700); }
+  tr:last-child td { border-bottom: none; }
+  td.num, th.num { text-align: right; font-family: var(--mono); white-space: nowrap; }
+  tr.total td { font-weight: 700; background: #fbfcfe; }
+  tr.highlight td { background: var(--amber-bg); }
+  td .ok { color: var(--green); font-weight: 700; }
+  td .bad { color: var(--red); font-weight: 700; }
+
+  /* ── Flow diagram ─────────────────────── */
+  .flow { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 10px; margin: 20px 0; }
+  .flow .node {
+    position: relative; background: var(--card); border: 1px solid var(--rule); border-radius: 12px;
+    padding: 14px 14px 12px; font-size: 13.5px;
+  }
+  .flow .node .step {
+    font-family: var(--mono); font-size: 11px; font-weight: 700; color: #fff; background: var(--steel-800);
+    width: 22px; height: 22px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 8px;
+  }
+  .flow .node b { display: block; margin-bottom: 3px; }
+  .flow .node span { color: var(--steel-500); }
+  .flow .node::after {
+    content: "→"; position: absolute; right: -11px; top: 50%; transform: translateY(-50%);
+    color: var(--steel-500); font-weight: 700; z-index: 1;
+  }
+  .flow .node:last-child::after { content: none; }
+
+  /* ── Money bars ───────────────────────── */
+  .bars { margin: 18px 0; }
+  .bar-row { display: grid; grid-template-columns: 190px 1fr 130px; gap: 12px; align-items: center; margin-bottom: 10px; font-size: 13.5px; }
+  .bar-track { background: var(--steel-100); border-radius: 999px; height: 18px; overflow: hidden; border: 1px solid var(--rule); }
+  .bar-fill { height: 100%; border-radius: 999px; }
+  .bar-fill.blue { background: linear-gradient(90deg,#3b82f6,#1d4ed8); }
+  .bar-fill.amber { background: linear-gradient(90deg,#f59e0b,#b45309); }
+  .bar-fill.green { background: linear-gradient(90deg,#34d399,#047857); }
+  .bar-val { font-family: var(--mono); text-align: right; font-weight: 700; }
+
+  /* ── Callouts ─────────────────────────── */
+  .callout {
+    border-left: 4px solid var(--blue); background: var(--blue-bg); border-radius: 0 12px 12px 0;
+    padding: 14px 18px; margin: 16px 0; font-size: 14.5px;
+  }
+  .callout.warn { border-color: var(--amber); background: var(--amber-bg); }
+  .callout.danger { border-color: var(--red); background: var(--red-bg); }
+  .callout.ok { border-color: var(--green); background: var(--green-bg); }
+  .callout b { display: block; margin-bottom: 3px; }
+  .callout p:last-child { margin-bottom: 0; }
+
+  /* ── Checklist ────────────────────────── */
+  .checks { list-style: none; padding: 0; margin: 16px 0; }
+  .checks li { display: flex; gap: 10px; align-items: flex-start; padding: 7px 0; border-bottom: 1px dashed var(--rule); font-size: 14.5px; }
+  .checks li:last-child { border-bottom: none; }
+  .checks .box {
+    flex: none; width: 20px; height: 20px; border-radius: 6px; background: var(--green); color: #fff;
+    display: inline-flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; margin-top: 2px;
+  }
+
+  /* ── Footer ───────────────────────────── */
+  footer { background: var(--steel-950); color: #93a1bb; font-size: 13px; padding: 30px 0; }
+  footer .wrap { padding-top: 0; padding-bottom: 0; }
+  footer b { color: #e8ecf4; }
+
+  @media (max-width: 760px) {
+    .issue .cols { grid-template-columns: 1fr; }
+    .flow { grid-template-columns: 1fr; }
+    .flow .node::after { content: "↓"; right: 50%; top: auto; bottom: -15px; transform: translateX(50%); }
+    .bar-row { grid-template-columns: 1fr; gap: 4px; }
+    .bar-val { text-align: left; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════ HERO ═══════════════ -->
+<div class="band dark">
+  <div class="wrap hero">
+    <span class="kicker">OBBO iManage · Client-Testing Remediation</span>
+    <h1>Split Delivery Accounting, Inventory Units, Report Sync &amp; Dispatch UI Fixes</h1>
+    <p class="lede">
+      Five client-reported discrepancies traced to a single root pattern: order quantities are stored in
+      JB/SB <em>units</em>, while shipment stock, customer balances and warehouse reports are denominated in
+      <em>individual bags</em>. Every boundary that mixed the two was fixed, redelivery dispatches now claim
+      their share of the original prepaid PO, completed obligations clear automatically, and the dispatch
+      batch dropdown no longer overflows its modal.
+    </p>
+    <div class="hero-meta">
+      <span>Branch <code class="inline">fix/split-delivery-accounting-inventory</code> (off <b>develop</b>)</span>
+      <span>Date <b>2026-10-05</b></span>
+      <span>Status <b>Ready for review gate</b></span>
+      <span>DB migration required <b>1</b></span>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ TL;DR ═══════════════ -->
+<div class="band">
+  <div class="wrap">
+    <h2><span class="num">TL;DR</span>What changed, in one screen</h2>
+    <div class="stats">
+      <div class="stat good"><div class="label">Client issues fixed</div><div class="value">5 / 5</div><div class="sub">Split accounting · units · closing stock · obligation sync · modal overflow</div></div>
+      <div class="stat good"><div class="label">Unit tests passing</div><div class="value">141</div><div class="sub">15 files · 5 new regression suites/specs</div></div>
+      <div class="stat info"><div class="label">Production build</div><div class="value">Pass</div><div class="sub">Next.js 16.2.4 + TypeScript clean</div></div>
+      <div class="stat warn"><div class="label">Action required</div><div class="value">1 migration</div><div class="sub"><code>20261005_dispatch_order_v2_bag_stock.sql</code> must run in Supabase</div></div>
+    </div>
+
+    <div class="callout warn" style="margin-top:26px;">
+      <b>Deployment prerequisite — run the SQL migration</b>
+      <p>
+        The atomic dispatch function <code>dispatch_order_v2</code> is updated by a new migration. Until
+        <code>supabase/migrations/20261005_dispatch_order_v2_bag_stock.sql</code> is executed in the Supabase SQL
+        editor, the DB will still deduct raw units on dispatch even though the UI and ledger code are fixed.
+        The migration is idempotent (<code>create or replace</code>) and safe to re-run.
+      </p>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ ROOT CAUSE ═══════════════ -->
+<div class="band white">
+  <div class="wrap">
+    <h2><span class="num">Root cause</span>The denomination mismatch</h2>
+    <div class="prose prose-wide">
+      <p>
+        OBBO sells cement in two container types — Jumbo Bags (JB) and Sling Bags (SB) — but bills per
+        individual 40&nbsp;kg bag. The data model stores both, and the two must be converted at every
+        boundary: <b>orders and ledger movements speak units; shipment stock, customer balances and warehouse
+        reports speak individual bags.</b> The client's live figures (200,000 JB bags / 345,000 SB bags)
+        confirmed shipment stock is bag-denominated. Several code paths treated it as unit-denominated,
+        which produced every downstream symptom: near-zero deductions, negative redelivery margins, and
+        warehouse closing stock pinned at zero.
+      </p>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>Layer</th><th>Denomination</th><th>Conversion at boundary</th><th>Fixed in</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Order items — <code>requested_qty / approved_qty / dispatched_qty</code></td><td><b>JB/SB units</b></td><td>×25 (JB) / ×50 (SB) when touching stock or balances</td><td>orders-actions, delivery-receipt-actions</td></tr>
+          <tr><td>Shipment stock — <code>remaining_jb / remaining_sb / good_stock</code></td><td><b>Individual bags</b></td><td>—</td><td>dispatch RPC, ledger-actions, dashboard-actions</td></tr>
+          <tr><td>Shipment ledger — <code>jb / sb</code> (dispatch, return rows)</td><td><b>JB/SB units</b></td><td>Convert to bags for stock &amp; reports</td><td>ledger-actions, warehouse-report-actions</td></tr>
+          <tr><td>Shipment ledger — <code>bags_returned</code></td><td><b>Individual bags</b></td><td>Credited exactly (old unit-floor removed)</td><td>ledger-actions</td></tr>
+          <tr><td>Customer balances — <code>remaining_qty / total_purchase</code></td><td><b>Individual bags</b></td><td>— (already bag-based from prior fix)</td><td>balance-actions</td></tr>
+          <tr><td>Warehouse reports — received / dispatched / closing</td><td><b>Individual bags</b></td><td>Ledger units × 25/50 when generated</td><td>warehouse-report-actions, reports page</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="flow">
+      <div class="node"><span class="step">1</span><b>Order created</b><span>24 SB requested = 1,200 bags, ₱222,000 prepaid PO</span></div>
+      <div class="node"><span class="step">2</span><b>Split approved + dispatched</b><span>22 SB approved → DR-003 deducts 1,100 bags, claims ₱203,500</span></div>
+      <div class="node"><span class="step">3</span><b>Balance created</b><span>2 SB = 100 bags pending on original PO</span></div>
+      <div class="node"><span class="step">4</span><b>Redelivery dispatched</b><span>DR-004 deducts 100 bags, claims ₱18,500, obligation cleared</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ ISSUES ═══════════════ -->
+<div class="band">
+  <div class="wrap">
+    <h2><span class="num">Fixes</span>Issue-by-issue</h2>
+
+    <!-- Issue 1 -->
+    <div class="issue">
+      <div class="issue-head">
+        <span class="tag sev">Client issue 1</span>
+        <h3>Split delivery revenue &amp; margins — re-dispatch produced negative profit</h3>
+        <span class="tag fixed">Fixed</span>
+      </div>
+      <div class="prose-wide">
+        <p>
+          A redelivery order is created with <code>total_amount = 0</code> because the money was already
+          recognized on the original prepaid PO. <code>dispatchOrder</code> prorated from that zero, so the
+          re-dispatch was recorded with blank sales but was still charged the full landed + local cost per
+          bag — a guaranteed negative margin. The original split dispatch also only recognized its
+          proportional slice (₱203,500 of ₱222,000), so the PO never summed to its sale value.
+        </p>
+        <p>
+          <b>Fix:</b> when dispatching a <code>redelivery</code> order, resolve the <em>original</em> order by
+          <code>linked_po_number</code> (excluding redelivery rows — see issue 4) and prorate
+          <em>its</em> <code>total_amount</code> across this dispatch's bag-value share. Every split slice now
+          claims exactly its portion; the two dispatches sum to the full PO.
+        </p>
+      </div>
+      <div class="cols">
+        <div class="pane before">
+          <div class="pane-label">Before</div>
+          <p><code>DR-004: sales ₱0, gross −₱14,764, net −₱16,764</code></p>
+          <p class="small">PO recognized ₱203,500 instead of ₱222,000.</p>
+        </div>
+        <div class="pane after">
+          <div class="pane-label">After</div>
+          <p><code>DR-003 ₱203,500 + DR-004 ₱18,500 = ₱222,000</code></p>
+          <p class="small">DR-004 gross ₱3,736 / net ₱1,736 — positive margins.</p>
+        </div>
+      </div>
+
+      <h3>Worked example — the reported PO-2026-003</h3>
+      <p class="small muted">1 SB = 50 bags · selling ₱185/bag · landed ₱147.64/bag · local ₱20/bag · 3 POs × 1,200 bags.</p>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Dispatch</th><th class="num">Qty</th><th class="num">Bags</th><th class="num">Sales</th><th class="num">Gross</th><th class="num">Net</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>DR-003 (22 SB — split-now)</td><td class="num">22 SB</td><td class="num">1,100</td><td class="num">₱203,500</td><td class="num">₱41,096</td><td class="num">₱19,096</td></tr>
+            <tr><td>DR-004 (2 SB — re-delivered balance)</td><td class="num">2 SB</td><td class="num">100</td><td class="num">₱18,500</td><td class="num">₱3,736</td><td class="num">₱1,736</td></tr>
+            <tr class="total"><td>Per PO total</td><td class="num">24 SB</td><td class="num">1,200</td><td class="num">₱222,000</td><td class="num">₱44,832</td><td class="num">₱20,832</td></tr>
+            <tr class="highlight"><td>× 3 POs (task acceptance figures)</td><td class="num">72 SB</td><td class="num">3,600</td><td class="num">₱666,000</td><td class="num">₱134,496</td><td class="num">₱62,496</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="bars">
+        <div class="bar-row"><span>DR-003 sales</span><div class="bar-track"><div class="bar-fill blue" style="width:91.7%"></div></div><span class="bar-val">₱203,500</span></div>
+        <div class="bar-row"><span>DR-004 sales</span><div class="bar-track"><div class="bar-fill amber" style="width:8.3%"></div></div><span class="bar-val">₱18,500</span></div>
+        <div class="bar-row"><span>PO total (acceptance)</span><div class="bar-track"><div class="bar-fill green" style="width:100%"></div></div><span class="bar-val">₱222,000</span></div>
+      </div>
+    </div>
+
+    <!-- Issue 2 -->
+    <div class="issue">
+      <div class="issue-head">
+        <span class="tag sev">Client issue 2</span>
+        <h3>Inventory deduction subtracted units, not individual bags</h3>
+        <span class="tag fixed">Fixed</span>
+      </div>
+      <div class="prose-wide">
+        <p>
+          The atomic RPC <code>dispatch_order_v2</code> deducted <code>p_jb_qty / p_sb_qty</code> (order units)
+          directly from bag-denominated shipment stock. Manual ledger entries and DR edits had the same
+          defect, and restockable returns credited bags after flooring them through a unit conversion that
+          no longer applied. The result: 48 JB dispatched deducted 48 bags instead of 1,200.
+        </p>
+        <p>
+          <b>Fix:</b> a new migration replaces <code>dispatch_order_v2</code> so validation and deduction use
+          <code>p_jb_qty × 25 / p_sb_qty × 50</code>; <code>ledger-actions</code>,
+          <code>delivery-receipt-actions</code> and <code>dashboard-actions</code> apply the same conversion
+          on every stock read/write, and returns are credited as the exact individual-bag count.
+        </p>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Scenario</th><th class="num">Before (raw units)</th><th class="num">After (bags)</th><th>Acceptance</th></tr></thead>
+          <tbody>
+            <tr><td>Dispatch 48 JB (from 200,000 bags)</td><td class="num bad">199,952</td><td class="num ok">198,800</td><td>200,000 → 198,800 ✓</td></tr>
+            <tr><td>Dispatch 24 SB (from 345,000 bags)</td><td class="num bad">344,976</td><td class="num ok">342,600</td><td>345,000 → 342,600 ✓</td></tr>
+            <tr><td>Total remaining after 3,600 dispatched</td><td class="num bad">out by ~3,528</td><td class="num ok">541,400</td><td>545,000 − 3,600 = 541,400 ✓</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="callout">
+        <b>No data migration for stock rows</b>
+        <p>
+          The client's live stock figures were already bag-denominated; only the code was wrong. Existing
+          shipment rows are therefore left untouched — multiplying them would have corrupted correct data.
+        </p>
+      </div>
+    </div>
+
+    <!-- Issue 3 -->
+    <div class="issue">
+      <div class="issue-head">
+        <span class="tag sev">Client issue 3</span>
+        <h3>Physical Warehouse Inventory closing stock stayed at 0</h3>
+        <span class="tag fixed">Fixed</span>
+      </div>
+      <div class="prose-wide">
+        <p>
+          The closing-stock formula existed but had two failures: dispatched totals were read from ledger
+          rows in <em>units</em> while every other term (received, returns, waste, prior closing) was in
+          <em>bags</em>; and when no previous day's report existed, “yesterday's closing” started at 0, so the
+          chain never left zero. The admin Reports page also hid the card behind a “not yet available”
+          gate whenever today's report wasn't submitted yet.
+        </p>
+        <p>
+          <b>Fix:</b> dispatched totals convert units → bags; for <em>today</em>, when no prior report exists,
+          the opening position is derived from live stock rolled back by today's net movements
+          (<code>opening = live − received + dispatched − returns + waste</code>) so the computed closing
+          resolves to the actual current stock. The admin card now renders the full formula — yesterday's
+          closing, received, dispatched, returns, waste, and a dynamically computed Today's Closing — in
+          individual bags for both JB and SB.
+        </p>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Metric (JB / SB, bags)</th><th class="num">JB</th><th class="num">SB</th></tr></thead>
+          <tbody>
+            <tr><td>Yesterday's closing</td><td class="num">17,400</td><td class="num">28,200</td></tr>
+            <tr><td>Stock received (+)</td><td class="num">1,000</td><td class="num">—</td></tr>
+            <tr><td>Total dispatched (−)</td><td class="num">50</td><td class="num">50</td></tr>
+            <tr><td>Customer returns (+)</td><td class="num">25</td><td class="num">—</td></tr>
+            <tr><td>Waste/Damaged (−)</td><td class="num">—</td><td class="num">—</td></tr>
+            <tr class="total"><td>Today's closing (dynamic)</td><td class="num">18,375</td><td class="num">28,150</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="small muted">Illustrative figures; when today's flows are fully recorded the closing equals live shipment stock.</p>
+    </div>
+
+    <!-- Issue 4 -->
+    <div class="issue">
+      <div class="issue-head">
+        <span class="tag sev">Client issue 4</span>
+        <h3>Completed re-deliveries persisted in the obligation report &amp; portal ledger</h3>
+        <span class="tag fixed">Fixed</span>
+      </div>
+      <div class="prose-wide">
+        <p>
+          The balance-clearing block looked up the original order with
+          <code>.eq('po_number', linked_po_number).maybeSingle()</code> — but the original order and every
+          redelivery order created against it <b>share the same PO number</b>. PostgREST returns a
+          multiple-rows error for <code>maybeSingle()</code>, the code ignored the error, and the balance
+          update never ran. The row stayed <code>pending</code> forever, so it kept showing in the Customer
+          Obligation Report and the Client Portal Balance Ledger.
+        </p>
+        <p>
+          <b>Fix:</b> a shared <code>applyRedeliveryToCustomerBalances()</code> helper resolves the original
+          order with <code>order_type ≠ redelivery</code> plus an explicit <code>id ≠</code> exclusion,
+          converts dispatched units to bags, decrements <code>remaining_qty</code>, and flips fully-covered
+          rows to <code>fulfilled</code> (0 bags). It is invoked from both dispatch entry points — the
+          fulfillment modal action and manual DR creation. The split-balance creation loop is also skipped for
+          redeliveries so the same withheld bags can't be double-counted.
+        </p>
+      </div>
+      <div class="cols">
+        <div class="pane before">
+          <div class="pane-label">Before</div>
+          <p>Lookup fails on duplicate PO → balance untouched.</p>
+          <p class="small">Obligation row: 100 bags pending, forever.</p>
+        </div>
+        <div class="pane after">
+          <div class="pane-label">After</div>
+          <p>Excluding redelivery rows → balance 100 → 0, status <code>fulfilled</code>.</p>
+          <p class="small">Row drops out of the report and the ledger's pending list.</p>
+        </div>
+      </div>
+      <p>
+        On the client side, <code>fetchBalanceSummary()</code> now counts dispatched redelivery orders toward
+        <b>Total Delivered</b> immediately (their bags were purchased long ago and the matching balance row is
+        already cleared at dispatch time), so the ledger's three counters stay mutually consistent:
+      </p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Client Portal — Balance Ledger</th><th class="num">Before DR-004 dispatch</th><th class="num">After DR-004 dispatch</th></tr></thead>
+          <tbody>
+            <tr><td>Total Purchased</td><td class="num">3,700</td><td class="num">3,700</td></tr>
+            <tr><td>Total Delivered</td><td class="num">3,600</td><td class="num ok">3,700</td></tr>
+            <tr><td>Remaining Balance</td><td class="num">100</td><td class="num ok">0</td></tr>
+            <tr><td>Pending balance row for PO-2026-003</td><td>100 bags · pending</td><td class="ok">0 bags · fulfilled</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Issue 5 -->
+    <div class="issue">
+      <div class="issue-head">
+        <span class="tag sev">Client issue 5</span>
+        <h3>Dispatch batch dropdown overflowed the modal</h3>
+        <span class="tag fixed">Fixed</span>
+      </div>
+      <div class="prose-wide">
+        <p>
+          The “Select Shipment Batch (Source of Truth)” select rendered a long single-line label
+          (<code>BATCH — Avail: … · Need: …</code>) inside a <code>w-fit</code> trigger; the popup inherits
+          the anchor width, so the whole control pushed past the modal container on long batch names and
+          large numbers.
+        </p>
+        <p>
+          <b>Fix:</b> the trigger is constrained to <code>w-full min-w-0</code> (truncating cleanly), the popup
+          is capped at the viewport, and each option wraps instead of overflowing
+          (<code>whitespace-normal break-words</code>) with a <code>title</code> tooltip. The label itself was
+          simplified and made bag-aware: <em>Available: N bags JB / N bags SB · Needed: N bags · INSUFFICIENT
+          STOCK</em>.
+        </p>
+      </div>
+    </div>
+
+    <!-- Hardening -->
+    <div class="issue">
+      <div class="issue-head">
+        <span class="tag hard">Related hardening</span>
+        <h3>Collateral fixes found while tracing the five reports</h3>
+      </div>
+      <ul>
+        <li><b>PO clobbering stopped:</b> redelivery dispatches no longer re-upsert the shared PO row — previously they overwrote the original PO's jb/sb and payment amounts with the re-dispatched slice and <code>₱0</code>.</li>
+        <li><b>Return stock hint removed:</b> the tracking UI warned that sub-unit bag returns “won't be restocked”; returns now credit the exact bag count, so the warning is gone.</li>
+        <li><b>Ledger dialog “Total Bags (auto)”</b> now computes <code>JB×25 + SB×50</code> instead of summing raw units.</li>
+        <li><b>Split-balance duplication guard:</b> redelivery orders skip the split-balance creation loop (the original balance already tracks the remainder).</li>
+        <li><b>Labels corrected</b> in Shipment Batches (“JB bags / SB bags”) and stock override dialogs.</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ VERIFICATION ═══════════════ -->
+<div class="band white">
+  <div class="wrap">
+    <h2><span class="num">Verification</span>Tests, build and evidence</h2>
+
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Check</th><th>Command</th><th>Result</th></tr></thead>
+        <tbody>
+          <tr><td>Unit / integration suite</td><td><code>npm test</code></td><td class="ok">141 passed / 15 files — includes 5 new regression specs</td></tr>
+          <tr><td>TypeScript</td><td><code>npx tsc --noEmit</code></td><td class="ok">Clean</td></tr>
+          <tr><td>Production build</td><td><code>npm run build</code></td><td class="ok">Pass — all 33 routes compiled</td></tr>
+          <tr><td>Lint (changed files)</td><td><code>npx eslint &lt;changed&gt;</code></td><td class="ok">0 errors (warnings pre-existing style noise)</td></tr>
+          <tr><td>E2E smoke</td><td><code>npm run test:e2e</code></td><td>2 passed · 2 pre-existing failures<sup>*</sup></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="small muted">
+      <sup>*</sup> The login/register smoke tests expect a “Send OTP” button from an older auth UI. The string
+      does not exist anywhere in <code>src</code> and both pages have zero diff vs <code>develop</code> —
+      failure is test drift, unrelated to this change.
+    </p>
+
+    <h3>New regression coverage</h3>
+    <ul class="checks">
+      <li><span class="box">✓</span><span><b>Bag conversion on stock writes</b> — ledger dispatch deducts 4 JB = 100 bags (not 4); SB at 50/unit; returns credit exact bags; DR edits reverse old units and apply new units in bags; shipment stock re-check rejects 1 JB against 24 bags.</span></li>
+      <li><span class="box">✓</span><span><b>Split-delivery profit</b> — ₱203,500 + ₱18,500 = ₱222,000; positive DR-004 margins (₱3,736 / ₱1,736); 3-PO totals ₱666,000 / ₱134,496 / ₱62,496.</span></li>
+      <li><span class="box">✓</span><span><b>Redelivery obligation clearance</b> — asserts the original-order lookup URL contains <code>order_type=neq.redelivery</code>, the RPC receives ₱18,500/₱3,736/₱1,736, and the balance PATCH sets <code>remaining_qty: 0</code>, <code>status: 'fulfilled'</code>.</span></li>
+      <li><span class="box">✓</span><span><b>Warehouse closing formula</b> — ledger units convert to bags, no-report fallback resolves closing to live stock (200 JB / 345 SB), prior-report chain path applies the formula.</span></li>
+    </ul>
+  </div>
+</div>
+
+<!-- ═══════════════ DEPLOY ═══════════════ -->
+<div class="band">
+  <div class="wrap">
+    <h2><span class="num">Deployment</span>How to ship this safely</h2>
+    <ol>
+      <li><b>Review the branch diff</b> — <code>fix/split-delivery-accounting-inventory</code> off <code>develop</code>; changes are staged in the working tree for the review gate (no commit/push/PR per session constraints).</li>
+      <li><b>Run the migration</b> in Supabase → SQL Editor:
+        <div class="table-wrap" style="margin-top:10px;">
+          <table><tbody>
+            <tr><td style="width:60px;" class="muted">File</td><td><code>supabase/migrations/20261005_dispatch_order_v2_bag_stock.sql</code></td></tr>
+            <tr><td class="muted">Effect</td><td><code>create or replace function public.dispatch_order_v2(...)</code> — bag conversion inside the atomic transaction</td></tr>
+            <tr><td class="muted">Safety</td><td>Idempotent; same signature; no schema/DDL change; no data mutation</td></tr>
+          </tbody></table>
+        </div>
+      </li>
+      <li><b>Smoke-test the reported scenario:</b> split a prepaid PO, dispatch the first slice, request the balance as redelivery, dispatch it, then confirm — obligation row gone, ledger Total Delivered +100 / Remaining 0, both ledger entries' sales sum to the PO total, and stock dropped by 1,200 bags for the PO.</li>
+      <li><b>Optional data audit:</b> list shipments whose <code>remaining_jb/sb</code> look unit-scaled (e.g. below 1,000) if any legacy/test rows were entered as units; the client's production rows were confirmed bag-denominated, so no automatic conversion is included.</li>
+    </ol>
+
+    <div class="callout warn">
+      <b>Overlap note for reviewers</b>
+      <p>
+        Two unmerged branches touch neighbouring surfaces: <code>fix/split-delivery-amount-display</code>
+        (order-card display wording, already pushed) and <code>staging/dispatch-modal-redesign</code>
+        (full dispatch-modal layout rework). This branch deliberately does <em>not</em> redo those changes;
+        the dropdown-overflow fix here is scoped and may be superseded by the redesign when that branch merges.
+      </p>
+    </div>
+
+    <div class="callout">
+      <b>Historical report limitation</b>
+      <p>
+        The live-stock fallback for closing stock is applied only when the selected date is <em>today</em>.
+        Past dates without a submitted daily report still cannot be reconstructed reliably (live stock
+        includes later movements); the report leaves opening at 0 for those cases rather than fabricating
+        a number. Daily submissions from here on rebuild the chain correctly.
+      </p>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ FILES ═══════════════ -->
+<div class="band white">
+  <div class="wrap">
+    <h2><span class="num">Appendix</span>Files changed</h2>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>File</th><th>Change</th></tr></thead>
+        <tbody>
+          <tr><td><code>supabase/migrations/20261005_dispatch_order_v2_bag_stock.sql</code></td><td><b>New.</b> Bag-denominated stock validation + deduction in the atomic dispatch RPC</td></tr>
+          <tr><td><code>src/lib/actions/balance-actions.ts</code></td><td>New <code>applyRedeliveryToCustomerBalances()</code> — duplicate-PO-safe lookup, bag conversion, fulfilled status</td></tr>
+          <tr><td><code>src/lib/actions/orders-actions.ts</code></td><td>Bag stock checks; redelivery revenue proration from original PO; balance clearing; split-balance guard; PO clobber guard</td></tr>
+          <tr><td><code>src/lib/actions/ledger-actions.ts</code></td><td>Dispatch/return stock movements convert units → bags; exact-bag restocking</td></tr>
+          <tr><td><code>src/lib/actions/delivery-receipt-actions.ts</code></td><td>DR edit stock correction in bags; balance clearing for manual DRs against redelivery POs</td></tr>
+          <tr><td><code>src/lib/actions/dashboard-actions.ts</code></td><td>Stock/balance KPIs share the bag denomination (no conversion)</td></tr>
+          <tr><td><code>src/lib/actions/warehouse-report-actions.ts</code></td><td>Dispatched units → bags; dynamic closing; live-stock opening fallback for today</td></tr>
+          <tr><td><code>src/lib/actions/client-actions.ts</code></td><td>Balance Ledger Total Delivered includes dispatched redeliveries</td></tr>
+          <tr><td><code>src/app/admin/reports/page.tsx</code></td><td>Physical Warehouse Inventory renders the full formula with dynamic closing in bags</td></tr>
+          <tr><td><code>src/app/admin/orders/components/fulfillment-tab.tsx</code></td><td>Bag-aware availability + dropdown overflow fix (wrap/truncate)</td></tr>
+          <tr><td><code>src/app/admin/orders/components/tracking-tab.tsx</code></td><td>Removed obsolete unit-floor return hint</td></tr>
+          <tr><td><code>src/app/admin/inventory/components/shipments-tab.tsx</code></td><td>Bag-denominated labels for remaining stock and overrides</td></tr>
+          <tr><td><code>src/app/admin/inventory/components/ledger-entry-dialog.tsx</code></td><td>“Total individual bags (auto)” = JB×25 + SB×50</td></tr>
+          <tr><td><code>src/lib/actions/profit-utils.test.ts</code></td><td>Split-delivery proration regression (client scenario totals)</td></tr>
+          <tr><td><code>src/lib/actions/orders-actions.test.ts</code></td><td>Bag stock rejection + redelivery proration/fulfilment integration</td></tr>
+          <tr><td><code>src/lib/actions/ledger-actions.test.ts</code></td><td>Unit → bag deduction and exact-bag return credits</td></tr>
+          <tr><td><code>src/lib/actions/warehouse-report-actions.test.ts</code></td><td>Bag conversion + closing formula paths</td></tr>
+          <tr><td><code>src/lib/actions/delivery-receipt-actions.test.ts</code></td><td><b>New.</b> DR edit stock correction in bags</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="small muted">16 modified files · 2 new files · ~935 insertions / ~308 deletions (including tests).</p>
+  </div>
+</div>
+
+<footer>
+  <div class="wrap">
+    <p><b>OBBO iManage</b> — remediation report generated 2026-10-05 · branch <code style="color:#ffd9a8;">fix/split-delivery-accounting-inventory</code> · prepared for the Claude Code review gate. Not merged, pushed, or PR'd.</p>
+  </div>
+</footer>
+
+</body>
+</html>
