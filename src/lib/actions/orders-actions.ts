@@ -475,7 +475,8 @@ async function _dispatchOrder(
     });
     if (balanceResult.updated === 0) {
       console.error(
-        `Redelivery dispatch ${orderId}: no pending customer balance rows were cleared for PO ${order.linked_po_number}.`,
+        `Redelivery dispatch ${orderId}: no pending customer balance rows were cleared for PO ${order.linked_po_number}.` +
+          (balanceResult.errors.length > 0 ? ` Errors: ${balanceResult.errors.join('; ')}` : ''),
       );
     }
   }

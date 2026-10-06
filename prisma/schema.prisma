@@ -225,6 +225,7 @@ model CustomerBalance {
   remainingQty Int      @map("remaining_qty")
   status       String   @default("pending")
   createdAt    DateTime @default(now()) @db.Timestamptz(6) @map("created_at")
+  updatedAt    DateTime @default(now()) @db.Timestamptz(6) @map("updated_at")
 
   profile Profile @relation(fields: [clientId], references: [id])
   order   Order   @relation(fields: [orderId], references: [id])

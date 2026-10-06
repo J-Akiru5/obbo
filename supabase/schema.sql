@@ -320,12 +320,17 @@ create table if not exists public.customer_balances (
   product_id     uuid not null references public.products(id) on delete set null,
   bag_type       text not null check (bag_type in ('JB', 'SB')),
   total_purchase integer not null default 0,
-  remaining_qty  integer not null check (remaining_qty > 0),
+  -- >= 0: a pending row always has bags remaining, but a fulfilled row
+  -- legitimately reaches 0 after its redelivery dispatch. See
+  -- 20261006_customer_balances_fulfilled_state.sql.
+  remaining_qty  integer not null check (remaining_qty >= 0),
   status         text not null default 'pending' check (status in ('pending', 'fulfilled')),
-  created_at     timestamptz not null default now()
+  created_at     timestamptz not null default now(),
+  updated_at     timestamptz not null default now()
 );
 -- For existing DBs
 alter table public.customer_balances add column if not exists total_purchase integer not null default 0;
+alter table public.customer_balances add column if not exists updated_at timestamptz not null default now();
 
 -- ── PURCHASE ORDERS ──────────────────────────────────────────
 create table if not exists public.purchase_orders (

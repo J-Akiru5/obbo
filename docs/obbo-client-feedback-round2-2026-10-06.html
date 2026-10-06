@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>OBBO iManage — Client Feedback Round 2: Balance Clearing & Dispatch Modal (2026-10-06)</title>
+<style>
+  :root {
+    --steel-950:#0b1220; --steel-900:#111a2c; --steel-700:#2b3a58; --steel-500:#61708c;
+    --steel-200:#d4dae4; --steel-100:#eef1f6; --paper:#f7f8fa; --card:#fff; --ink:#16203a;
+    --amber:#b45309; --amber-bg:#fef3e2; --green:#047857; --green-bg:#ecfdf5;
+    --red:#b91c1c; --red-bg:#fef2f2; --blue:#1d4ed8; --blue-bg:#eff6ff; --rule:#dde2ea;
+    --mono:ui-monospace,"Cascadia Code","SF Mono",Consolas,monospace;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--paper);color:var(--ink);font-family:"Segoe UI",-apple-system,BlinkMacSystemFont,Roboto,Helvetica,Arial,sans-serif;font-size:16px;line-height:1.65;-webkit-font-smoothing:antialiased}
+  .band{width:100%;border-bottom:1px solid var(--rule)}
+  .band.dark{background:var(--steel-950);color:#e8ecf4;border-bottom:none}
+  .wrap{max-width:1120px;margin:0 auto;padding:0 clamp(20px,5vw,72px)}
+  .prose{max-width:760px}.prose-wide{max-width:920px}
+  .hero{padding:clamp(40px,7vw,80px) 0 clamp(32px,5vw,60px)}
+  .kicker{display:inline-flex;align-items:center;gap:8px;font-size:11px;font-weight:700;letter-spacing:.28em;text-transform:uppercase;color:#f6b26b;border:1px solid rgba(246,178,107,.35);background:rgba(246,178,107,.08);border-radius:999px;padding:6px 14px;margin-bottom:22px}
+  .kicker::before{content:"";width:7px;height:7px;border-radius:50%;background:#f6b26b}
+  h1{font-size:clamp(27px,5vw,46px);line-height:1.12;margin:0 0 18px;font-weight:800;letter-spacing:-.02em;color:#fff}
+  .hero p.lede{font-size:clamp(15px,2vw,18px);color:#b9c3d6;max-width:800px;margin:0 0 24px}
+  .hero-meta{display:flex;flex-wrap:wrap;gap:10px 22px;color:#93a1bb;font-size:13px}
+  .hero-meta b{color:#e8ecf4;font-weight:600}
+  code.inline,.inline{font-family:var(--mono);font-size:.88em;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);border-radius:6px;padding:1px 6px;color:#ffd9a8}
+  section .wrap{padding-top:clamp(32px,5vw,54px);padding-bottom:clamp(32px,5vw,54px)}
+  section.white{background:var(--card)}
+  h2{font-size:clamp(21px,3.4vw,30px);font-weight:800;letter-spacing:-.015em;margin:0 0 8px}
+  h2 .num{font-family:var(--mono);font-size:.6em;color:var(--steel-500);font-weight:700;display:block;letter-spacing:.18em;margin-bottom:6px}
+  h3{font-size:17px;font-weight:700;margin:24px 0 8px}
+  p{margin:0 0 14px} ul,ol{margin:0 0 16px;padding-left:22px} li{margin-bottom:6px}
+  .muted{color:var(--steel-500)} .small{font-size:13.5px}
+  .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;margin:26px 0 0}
+  .stat{background:var(--card);border:1px solid var(--rule);border-radius:14px;padding:18px 20px;box-shadow:0 1px 2px rgba(16,24,40,.04)}
+  .stat .label{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--steel-500);font-weight:700}
+  .stat .value{font-family:var(--mono);font-size:clamp(20px,3vw,28px);font-weight:700;margin-top:6px}
+  .stat .sub{font-size:12.5px;color:var(--steel-500);margin-top:4px}
+  .stat.good .value{color:var(--green)} .stat.warn .value{color:var(--amber)} .stat.info .value{color:var(--blue)} .stat.bad .value{color:var(--red)}
+  .issue{background:var(--card);border:1px solid var(--rule);border-radius:16px;padding:clamp(20px,3.4vw,30px);margin:18px 0 0;box-shadow:0 1px 3px rgba(16,24,40,.05)}
+  .issue-head{display:flex;flex-wrap:wrap;align-items:center;gap:10px 14px;margin-bottom:6px}
+  .issue-head h3{margin:0;font-size:clamp(16.5px,2.4vw,20px)}
+  .tag{display:inline-block;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:3px 10px;border-radius:999px;white-space:nowrap}
+  .tag.fixed{color:var(--green);background:var(--green-bg);border:1px solid #a7f3d0}
+  .tag.false{color:var(--blue);background:var(--blue-bg);border:1px solid #bfdbfe}
+  .tag.real{color:var(--red);background:var(--red-bg);border:1px solid #fecaca}
+  .cols{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:14px}
+  .pane{border:1px solid var(--rule);border-radius:12px;padding:14px 16px}
+  .pane .pane-label{font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;margin-bottom:8px}
+  .pane.before{background:var(--red-bg);border-color:#fecaca}.pane.before .pane-label{color:var(--red)}
+  .pane.after{background:var(--green-bg);border-color:#a7f3d0}.pane.after .pane-label{color:var(--green)}
+  .pane p:last-child{margin-bottom:0} .pane code{font-family:var(--mono);font-size:12.5px}
+  .table-wrap{overflow-x:auto;border:1px solid var(--rule);border-radius:12px;margin:16px 0;background:var(--card)}
+  table{border-collapse:collapse;width:100%;min-width:580px;font-size:14px}
+  th,td{padding:10px 14px;text-align:left;border-bottom:1px solid var(--rule);vertical-align:top}
+  th{background:var(--steel-100);font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--steel-700)}
+  tr:last-child td{border-bottom:none}
+  td.num,th.num{text-align:right;font-family:var(--mono);white-space:nowrap}
+  tr.total td{font-weight:700;background:#fbfcfe}
+  td .ok{color:var(--green);font-weight:700}td .bad{color:var(--red);font-weight:700}
+  .flow{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;margin:20px 0}
+  .flow .node{position:relative;background:var(--card);border:1px solid var(--rule);border-radius:12px;padding:14px;font-size:13px}
+  .flow .node .step{font-family:var(--mono);font-size:11px;font-weight:700;color:#fff;background:var(--steel-700);width:22px;height:22px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;margin-bottom:8px}
+  .flow .node b{display:block;margin-bottom:3px}.flow .node span{color:var(--steel-500)}
+  .flow .node::after{content:"→";position:absolute;right:-11px;top:50%;transform:translateY(-50%);color:var(--steel-500);font-weight:700}
+  .flow .node:last-child::after{content:none}
+  .callout{border-left:4px solid var(--blue);background:var(--blue-bg);border-radius:0 12px 12px 0;padding:14px 18px;margin:16px 0;font-size:14.5px}
+  .callout.warn{border-color:var(--amber);background:var(--amber-bg)}
+  .callout.danger{border-color:var(--red);background:var(--red-bg)}
+  .callout.ok{border-color:var(--green);background:var(--green-bg)}
+  .callout b{display:block;margin-bottom:3px}.callout p:last-child{margin-bottom:0}
+  .checks{list-style:none;padding:0;margin:16px 0}
+  .checks li{display:flex;gap:10px;align-items:flex-start;padding:7px 0;border-bottom:1px dashed var(--rule);font-size:14.5px}
+  .checks li:last-child{border-bottom:none}
+  .checks .box{flex:none;width:20px;height:20px;border-radius:6px;background:var(--green);color:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;margin-top:2px}
+  footer{background:var(--steel-950);color:#93a1bb;font-size:13px;padding:30px 0}
+  footer .wrap{padding:0}
+  footer b{color:#e8ecf4}
+  @media(max-width:900px){.flow{grid-template-columns:1fr 1fr}}
+  @media(max-width:640px){.cols{grid-template-columns:1fr}.flow{grid-template-columns:1fr}.flow .node::after{content:"↓";right:50%;top:auto;bottom:-15px;transform:translateX(50%)}}
+</style>
+</head>
+<body>
+
+<div class="band dark">
+  <div class="wrap hero">
+    <span class="kicker">OBBO iManage · Client Feedback Round 2</span>
+    <h1>Redelivery Balance Clearing, Dispatch Modal Overflow — and One False Alarm</h1>
+    <p class="lede">
+      Three complaints from the client's retest: a dropdown overflowing the dispatch modal, a suspected
+      wrong remaining-stock calculation, and a fulfilled balance stuck at 100. The live database's
+      activity log disproved the stock complaint (deductions were exactly correct), while the balance bug
+      turned out to be a real defect in the previous fix: the database rejects the write it attempted.
+      Both real issues are fixed, with regression tests that now simulate the live schema.
+    </p>
+    <div class="hero-meta">
+      <span>Branch <code class="inline">fix/redelivery-balance-clear-and-dispatch-ui</code> (off <b>main</b>)</span>
+      <span>Date <b>2026-10-06</b></span>
+      <span>DB migration required <b>1</b></span>
+      <span>Tests <b>152 passing</b></span>
+    </div>
+  </div>
+</div>
+
+<div class="band">
+  <div class="wrap">
+    <h2><span class="num">TL;DR</span>Verdicts and what changed</h2>
+    <div class="stats">
+      <div class="stat bad"><div class="label">Issue 3 · balance stuck at 100</div><div class="value">Real bug</div><div class="sub">Previous clearing write rejected by live schema — fixed + migration</div></div>
+      <div class="stat bad"><div class="label">Issue 1 · dropdown overflow</div><div class="value">Real bug</div><div class="sub">Long label + missing min-w-0 — truncation + summary card</div></div>
+      <div class="stat good"><div class="label">Issue 2 · "wrong" remaining stock</div><div class="value">False positive</div><div class="sub">Deductions verified exact from audit log — no code change</div></div>
+      <div class="stat info"><div class="label">Verification</div><div class="value">152 tests</div><div class="sub">+ tsc clean, production build pass</div></div>
+    </div>
+    <div class="callout warn" style="margin-top:26px;">
+      <b>Deployment prerequisite — run the new SQL migration</b>
+      <p>
+        <code>supabase/migrations/20261006_customer_balances_fulfilled_state.sql</code> adds the missing
+        <code>updated_at</code> column and relaxes <code>CHECK (remaining_qty &gt; 0)</code> to
+        <code>&gt;= 0</code>. Until it runs, fulfilled balances still cannot be written. It also fixes the
+        admin "Adjust balance" action, which has been silently failing against the same missing column.
+      </p>
+    </div>
+  </div>
+</div>
+
+<div class="band white">
+  <div class="wrap">
+    <h2><span class="num">Evidence</span>What the live database actually recorded</h2>
+    <p class="prose-wide">
+      The activity log from the client's post-wipe test reconstructs the whole sequence. Starting stock was
+      <b>199,904 JB / 344,750 SB</b> individual bags (the preserved baseline). Every movement below is
+      consistent with order units × 25/50.
+    </p>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Time (UTC)</th><th>Action</th><th class="num">Qty</th><th class="num">JB remaining</th><th class="num">SB remaining</th></tr></thead>
+        <tbody>
+          <tr><td>13:50</td><td>PO-2026-001 approved — 24 SB</td><td class="num">—</td><td class="num">199,904</td><td class="num">344,750</td></tr>
+          <tr><td>13:51</td><td>DR-001 dispatched — sb 24</td><td class="num">1,200 bags</td><td class="num">199,904</td><td class="num">343,550</td></tr>
+          <tr><td>13:57</td><td>PO-2026-002 approved — 44 of 48 JB (split)</td><td class="num">—</td><td class="num">199,904</td><td class="num">343,550</td></tr>
+          <tr><td>13:58</td><td>DR-002 dispatched — jb 44</td><td class="num">1,100 bags</td><td class="num">198,804</td><td class="num">343,550</td></tr>
+          <tr><td>14:03</td><td>Redelivery DR-003 — jb 4 (balance)</td><td class="num">100 bags</td><td class="num">198,704</td><td class="num">343,550</td></tr>
+          <tr class="total"><td colspan="2">Total deducted</td><td class="num">1,200 JB + 1,200 SB</td><td class="num">−1,200 ✓</td><td class="num">−1,200 ✓</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="prose-wide small muted">
+      Live revenue check from the same run: DR-002 claims ₱203,500 and DR-003 claims ₱18,500 — together the
+      full ₱222,000 PO. The split-delivery proration fix is demonstrably working in production.
+    </p>
+  </div>
+</div>
+
+<div class="band">
+  <div class="wrap">
+    <h2><span class="num">Issues</span>Issue-by-issue</h2>
+
+    <div class="issue">
+      <div class="issue-head">
+        <span class="tag real">Real · client issue 3</span>
+        <h3>Balance still 100 after the redelivery was dispatched and completed</h3>
+        <span class="tag fixed">Fixed</span>
+      </div>
+      <div class="prose-wide">
+        <p>
+          DR-003 delivered the 100-bag balance and the order was marked completed, yet the balance row
+          (<code>order 1a0fb8cd</code>, 100 JB, created by the original split dispatch) was still
+          <code>pending</code>. Root cause: the clearing helper PATCHes <code>updated_at</code> — a column
+          that <b>does not exist</b> on <code>customer_balances</code> — and writes
+          <code>remaining_qty = 0</code>, which the table's original <code>CHECK (remaining_qty &gt; 0)</code>
+          rejects. PostgREST rejected the whole update; the caller only logged it, so the dispatch still
+          reported success while the obligation survived.
+        </p>
+        <p>
+          Fixed with a migration (add <code>updated_at</code>, relax the check to <code>&gt;= 0</code>),
+          a hardened helper (list queries instead of <code>maybeSingle()</code>, explicit
+          <code>{ updated, failed, errors }</code> reporting, <code>fulfilled</code>/0 write), and a manual-DR
+          path that clears balances for any DR against an already-dispatched PO — with a pre-dispatch guard
+          so a first dispatch can't clear the balance it is creating.
+        </p>
+      </div>
+      <div class="flow" style="grid-template-columns:repeat(4,minmax(0,1fr))">
+        <div class="node"><span class="step">1</span><b>Dispatch writes fail</b><span>unknown column <code>updated_at</code> → PGRST204</span></div>
+        <div class="node"><span class="step">2</span><b>Error swallowed</b><span>console.error only; DR still "completed"</span></div>
+        <div class="node"><span class="step">3</span><b>Obligation persists</b><span>still pending in report + ledger</span></div>
+        <div class="node"><span class="step">4</span><b>Fixed + schema-aware tests</b><span>mock now rejects unknown columns</span></div>
+      </div>
+    </div>
+
+    <div class="issue">
+      <div class="issue-head">
+        <span class="tag real">Real · client issue 1</span>
+        <h3>Batch dropdown overflowing the Dispatch Order modal</h3>
+        <span class="tag fixed">Fixed</span>
+      </div>
+      <div class="prose-wide">
+        <p>
+          The trigger rendered a full single-line sentence (<code>VESSEL 1 — Available: … · Needed: …</code>).
+          The shared <code>SelectValue</code> was a <code>flex flex-1</code> child with no
+          <code>min-w-0</code>, so it refused to shrink, and the trigger's <code>line-clamp-1</code> was
+          neutralised by its own <code>display: flex</code> — the text simply painted past the container.
+        </p>
+        <p>
+          Fixed at both levels: the shared value/trigger now clip and ellipsize
+          (<code>min-w-0 overflow-hidden text-ellipsis</code>), the trigger label is just the batch name
+          (+ <em>INSUFFICIENT</em> when relevant), and the full Available/Needed detail moved into a
+          wrapping summary card under the select plus the popup options. Modal widened to 560&nbsp;px.
+        </p>
+      </div>
+      <div class="cols">
+        <div class="pane before">
+          <div class="pane-label">Before</div>
+          <p><code>VESSEL 1 — Available: 198,704 bags JB / 343,550 bags SB · Needed: 1,100 bags JB · …</code></p>
+          <p class="small">Paints past the trigger; overlaps/overflows the modal.</p>
+        </div>
+        <div class="pane after">
+          <div class="pane-label">After</div>
+          <p>Trigger: <code>VESSEL 1</code> (ellipsized if ever long)</p>
+          <p class="small">Summary card below: “198,704 bags JB / 343,550 bags SB available · Needed: 1,100 bags JB”.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="issue">
+      <div class="issue-head">
+        <span class="tag false">False positive · client issue 2</span>
+        <h3>“SB remaining should be 343,750, not 343,550”</h3>
+        <span class="tag fixed">No code change</span>
+      </div>
+      <div class="prose-wide">
+        <p>
+          The client's expected value was computed from a starting balance of <b>344,950 SB</b>. The actual
+          stored starting balance was <b>344,750 SB</b>, so exactly one 1,200-bag dispatch produces
+          <b>343,550</b> — which is what the system recorded (verified from the activity log and ledger,
+          with no manual stock adjustments in the log). The submitted screenshot is also from an earlier
+          session: its redelivery modal shows a <b>2 SB</b> dispatch, while this run's redelivery was
+          <b>4 JB</b>. Per your decision, stock is left as-is and the audit above is the client-facing
+          answer.
+        </p>
+      </div>
+      <div class="callout ok">
+        <b>Consistency check that settles it</b>
+        <p>
+          Total JB deducted across the run = 1,100 (DR-002) + 100 (DR-003) = exactly 1,200 bags for a
+          1,200-bag JB order. Total SB deducted = exactly 1,200 bags for a 1,200-bag SB order. Both
+          remaining values are arithmetically forced by those movements.
+        </p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="band white">
+  <div class="wrap">
+    <h2><span class="num">Verification</span>Tests, build and the next acceptance run</h2>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Check</th><th>Command</th><th>Result</th></tr></thead>
+        <tbody>
+          <tr><td>Unit / integration suite</td><td><code>npm test</code></td><td class="ok">152 passed / 17 files</td></tr>
+          <tr><td>TypeScript</td><td><code>npx tsc --noEmit</code></td><td class="ok">Clean</td></tr>
+          <tr><td>Production build</td><td><code>npm run build</code></td><td class="ok">Pass — all routes compiled</td></tr>
+          <tr><td>Lint (changed files)</td><td><code>npx eslint &lt;changed&gt;</code></td><td class="ok">0 errors</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>New regression coverage</h3>
+    <ul class="checks">
+      <li><span class="box">✓</span><span><b>Schema-aware balance mock:</b> PATCH handlers now reject unknown columns (e.g. <code>updated_at</code> before the migration) and negative quantities — the exact failure mode that slipped through last time can no longer pass CI silently.</span></li>
+      <li><span class="box">✓</span><span><b>Fulfilment writes:</b> partial decrement 100→75 stays pending; full coverage writes <code>remaining_qty: 0</code> + <code>fulfilled</code>; original-order resolution asserts <code>order_type=neq.redelivery</code> and <code>id=neq.&lt;dispatching order&gt;</code>.</span></li>
+      <li><span class="box">✓</span><span><b>Manual DR path:</b> clearing fires for an already-dispatched PO and is skipped for a first dispatch (<code>partially_approved</code> guard).</span></li>
+      <li><span class="box">✓</span><span><b>Dispatch modal:</b> option builder produces short trigger labels + full detail; a rendered interaction test selects a batch and asserts the truncating trigger and wrapping summary card.</span></li>
+    </ul>
+
+    <h3>Next live acceptance run</h3>
+    <ol>
+      <li>Run migration <code>20261006_customer_balances_fulfilled_state.sql</code> in Supabase.</li>
+      <li>Create a split order → dispatch the first portion → client requests the balance → dispatch the redelivery.</li>
+      <li>Verify: balance row becomes <code>fulfilled</code>/0, the Customer Obligation Report row disappears, the client ledger Total Delivered increments and Remaining hits 0.</li>
+      <li>Open the dispatch modal at mobile width (~375&nbsp;px): trigger stays inside the modal, summary card wraps, long batch options wrap in the popup.</li>
+    </ol>
+  </div>
+</div>
+
+<div class="band">
+  <div class="wrap">
+    <h2><span class="num">Appendix</span>Files changed</h2>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>File</th><th>Change</th></tr></thead>
+        <tbody>
+          <tr><td><code>supabase/migrations/20261006_customer_balances_fulfilled_state.sql</code></td><td><b>New.</b> Adds <code>updated_at</code>; relaxes remaining_qty check to ≥ 0 (idempotent)</td></tr>
+          <tr><td><code>src/lib/actions/balance-actions.ts</code></td><td>Robust list lookups, fulfilled/0 write, <code>{updated, failed, errors}</code> reporting</td></tr>
+          <tr><td><code>src/lib/actions/delivery-receipt-actions.ts</code></td><td>Manual-DR balance clearing for both link styles, with pre-dispatch guard</td></tr>
+          <tr><td><code>src/components/ui/select.tsx</code></td><td>SelectValue/Trigger truncation (<code>min-w-0</code>, <code>overflow-hidden</code>, ellipsis)</td></tr>
+          <tr><td><code>src/app/admin/orders/components/fulfillment-tab.tsx</code></td><td>Short trigger label, wrapping summary card, 560px modal, testable option builder</td></tr>
+          <tr><td><code>src/lib/actions/orders-actions.ts</code></td><td>Logs helper failure detail</td></tr>
+          <tr><td><code>prisma/schema.prisma</code> · <code>supabase/schema.sql</code></td><td>CustomerBalance <code>updated_at</code>; fresh-DB check relaxed to ≥ 0</td></tr>
+          <tr><td><code>balance-actions.test.ts</code> · <code>delivery-receipt-actions.test.ts</code> · <code>fulfillment-tab.test.tsx</code> · <code>orders-actions.test.ts</code></td><td>New/updated regression suites described above</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="small muted">9 modified files · 4 new files · ~340 insertions / ~95 deletions in app code (tests excluded from the count).</p>
+  </div>
+</div>
+
+<footer>
+  <div class="wrap">
+    <p><b>OBBO iManage</b> — client feedback round 2 · 2026-10-06 · branch <code style="color:#ffd9a8;">fix/redelivery-balance-clear-and-dispatch-ui</code>. Migration must be run before retesting.</p>
+  </div>
+</footer>
+
+</body>
+</html>

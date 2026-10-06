@@ -90,6 +90,30 @@ async function _createDeliveryReceipt(rawDr: Record<string, unknown>) {
 
   if (effectiveClientId) {
     try {
+      const drPoNumber = dr.po_number || poData?.po_number || null;
+
+      // Resolve the ORIGINAL order for this PO BEFORE any status write below.
+      // Only an order that was already dispatched/completed before this DR
+      // can have a withheld balance this DR is fulfilling; a first dispatch
+      // (approved -> dispatched) must not clear the balance it is creating.
+      let balanceTargetOrderId: string | null = null;
+      if (drPoNumber) {
+        const { data: originalOrders } = await supabase
+          .from('orders')
+          .select('id, status')
+          .eq('po_number', drPoNumber)
+          .neq('order_type', 'redelivery')
+          .order('created_at', { ascending: true })
+          .limit(1);
+        const originalOrder = originalOrders?.[0];
+        if (
+          originalOrder &&
+          (originalOrder.status === 'dispatched' || originalOrder.status === 'completed')
+        ) {
+          balanceTargetOrderId = originalOrder.id;
+        }
+      }
+
       if (poData?.order_id) {
         const { error: syncError } = await supabase
           .from('orders')
@@ -130,35 +154,6 @@ async function _createDeliveryReceipt(rawDr: Record<string, unknown>) {
           .eq('id', data.id);
         if (drLinkError) console.error('Failed to link DR to order:', drLinkError);
         data.order_id = poData.order_id;
-
-        // A manual DR created against a redelivery order's PO fulfils the
-        // original balance the same way the dispatch modal does — clear or
-        // decrement it so the obligation/ledger stay in sync.
-        const { data: orderMeta } = await supabase
-          .from('orders')
-          .select('id, order_type, linked_po_number')
-          .eq('id', poData.order_id)
-          .single();
-        if (orderMeta?.order_type === 'redelivery' && orderMeta.linked_po_number) {
-          const { data: orderItems } = await supabase
-            .from('order_items')
-            .select('product_id, bag_type')
-            .eq('order_id', orderMeta.id);
-          const balanceResult = await applyRedeliveryToCustomerBalances({
-            linkedPoNumber: orderMeta.linked_po_number,
-            excludeOrderId: orderMeta.id,
-            items: (orderItems ?? []).map((item) => ({
-              productId: item.product_id,
-              bagType: item.bag_type,
-              dispatchedUnits: item.bag_type === 'JB' ? jb : sb,
-            })),
-          });
-          if (balanceResult.updated === 0) {
-            console.error(
-              `Manual DR ${dr.dr_number}: no pending customer balance rows cleared for PO ${orderMeta.linked_po_number}.`,
-            );
-          }
-        }
 
         await createUserNotification({
           userId: effectiveClientId,
@@ -209,6 +204,30 @@ async function _createDeliveryReceipt(rawDr: Record<string, unknown>) {
           href: '/client/orders',
           severity: 'success',
         });
+      }
+
+      // Fulfil (decrement/clear) the original order's pending balance when
+      // this manual DR is a re-dispatch against an already-dispatched PO.
+      // Covers BOTH cases: a DR linked to a redelivery order and a DR linked
+      // straight to the original order.
+      if (balanceTargetOrderId && drPoNumber) {
+        const { data: originalItems } = await supabase
+          .from('order_items')
+          .select('product_id, bag_type')
+          .eq('order_id', balanceTargetOrderId);
+        const balanceResult = await applyRedeliveryToCustomerBalances({
+          linkedPoNumber: drPoNumber,
+          items: (originalItems ?? []).map((item) => ({
+            productId: item.product_id,
+            bagType: item.bag_type,
+            dispatchedUnits: item.bag_type === 'JB' ? jb : sb,
+          })),
+        });
+        if (balanceResult.failed > 0) {
+          console.error(
+            `Manual DR ${dr.dr_number}: balance clearing failed for PO ${drPoNumber}. ${balanceResult.errors.join('; ')}`,
+          );
+        }
       }
 
       revalidatePath('/client/orders');

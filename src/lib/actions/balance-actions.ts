@@ -43,18 +43,30 @@ export interface RedeliveryBalanceDeduction {
   dispatchedUnits: number;
 }
 
+export interface RedeliveryBalanceResult {
+  updated: number;
+  failed: number;
+  errors: string[];
+}
+
 /**
  * Clears (or decrements) the pending customer_balance rows that a redelivery
- * dispatch just fulfilled, then marks fully-delivered rows 'fulfilled' so they
- * disappear from the Customer Obligation Report and the Client Portal Balance
- * Ledger.
+ * dispatch just fulfilled, then marks fully-delivered rows 'fulfilled'
+ * (remaining_qty = 0) so they disappear from the Customer Obligation Report
+ * and the Client Portal Balance Ledger.
  *
- * IMPORTANT: resolves the ORIGINAL order by PO number while explicitly
- * excluding 'redelivery' orders. The original PO and every redelivery order
- * created against it share the same po_number, so an unfiltered
- * `.maybeSingle()` lookup fails with PostgREST's multiple-rows error and the
- * balance update silently never runs — the root cause of fulfilled
- * obligations persisting after re-delivery.
+ * IMPORTANT invariants:
+ *   - Resolves the ORIGINAL order by PO number while explicitly excluding
+ *     'redelivery' orders. The original PO and every redelivery order created
+ *     against it share the same po_number, so an unfiltered lookup can return
+ *     multiple rows and silently skip the whole balance update.
+ *   - Uses list queries with `.limit(1)` instead of `.maybeSingle()`: PostgREST
+ *     errors a maybeSingle() request when more than one row matches, which is
+ *     exactly the failure mode that made obligations persist.
+ *   - Writes `remaining_qty = 0` + `status = 'fulfilled'`. This requires the
+ *     updated_at column and the relaxed `remaining_qty >= 0` check from
+ *     migration 20261006_customer_balances_fulfilled_state.sql. Without that
+ *     migration the PATCH is rejected and reported in `failed`/`errors`.
  */
 export async function applyRedeliveryToCustomerBalances(params: {
   linkedPoNumber: string;
@@ -62,9 +74,10 @@ export async function applyRedeliveryToCustomerBalances(params: {
   // The order being dispatched right now; excluded from the original-order
   // lookup so a redelivery order can never be mistaken for its own original.
   excludeOrderId?: string;
-}): Promise<{ updated: number }> {
+}): Promise<RedeliveryBalanceResult> {
   const { linkedPoNumber, items, excludeOrderId } = params;
-  if (!linkedPoNumber || items.length === 0) return { updated: 0 };
+  const result: RedeliveryBalanceResult = { updated: 0, failed: 0, errors: [] };
+  if (!linkedPoNumber || items.length === 0) return result;
 
   const { supabase } = await requireAdmin();
 
@@ -74,16 +87,19 @@ export async function applyRedeliveryToCustomerBalances(params: {
     .eq('po_number', linkedPoNumber)
     .neq('order_type', 'redelivery');
   if (excludeOrderId) originalQuery = originalQuery.neq('id', excludeOrderId);
-  const { data: originalOrder, error: originalError } = await originalQuery
+  const { data: originalOrders, error: originalError } = await originalQuery
     .order('created_at', { ascending: true })
-    .limit(1)
-    .maybeSingle();
+    .limit(1);
+  const originalOrder = originalOrders?.[0];
   if (originalError || !originalOrder) {
-    console.error('Redelivery balance clearing: original order not found', originalError?.message);
-    return { updated: 0 };
+    result.failed += 1;
+    result.errors.push(
+      `original order not found for PO ${linkedPoNumber}: ${originalError?.message ?? 'no rows'}`,
+    );
+    console.error('Redelivery balance clearing: original order not found', result.errors[0]);
+    return result;
   }
 
-  let updated = 0;
   for (const item of items) {
     if (item.dispatchedUnits <= 0) continue;
     const dispatchedBags = individualBagsFromUnits(
@@ -91,15 +107,23 @@ export async function applyRedeliveryToCustomerBalances(params: {
       item.dispatchedUnits,
     );
 
-    const { data: balance } = await supabase
+    const { data: balances, error: balanceError } = await supabase
       .from('customer_balances')
       .select('id, remaining_qty, status')
       .eq('order_id', originalOrder.id)
       .eq('product_id', item.productId)
       .eq('bag_type', item.bagType)
       .eq('status', 'pending')
-      .maybeSingle();
+      .order('created_at', { ascending: true })
+      .limit(1);
+    if (balanceError) {
+      result.failed += 1;
+      result.errors.push(`balance lookup failed: ${balanceError.message}`);
+      console.error('Redelivery balance lookup failed:', balanceError);
+      continue;
+    }
 
+    const balance = balances?.[0];
     if (!balance || balance.remaining_qty <= 0) continue;
 
     const newRemaining = Math.max(0, balance.remaining_qty - dispatchedBags);
@@ -112,11 +136,13 @@ export async function applyRedeliveryToCustomerBalances(params: {
       })
       .eq('id', balance.id);
     if (balanceUpdateError) {
+      result.failed += 1;
+      result.errors.push(`balance update failed: ${balanceUpdateError.message}`);
       console.error('Balance deduction on redelivery dispatch failed:', balanceUpdateError);
       continue;
     }
-    updated += 1;
+    result.updated += 1;
   }
 
-  return { updated };
+  return result;
 }

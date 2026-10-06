@@ -53,6 +53,52 @@ function sortedReceipts(receipts: OrderDeliveryReceipt[] | undefined) {
   );
 }
 
+export interface ShipmentBatchOption {
+  value: string;
+  // Short label rendered inside the closed trigger — a long availability
+  // string here would overflow the modal (see the dispatch modal overflow
+  // bug). Never includes Available/Needed detail.
+  label: string;
+  fullLabel: string;
+  availLabel: string;
+  needLabel: string;
+  hasEnough: boolean;
+  disabled: boolean;
+}
+
+/**
+ * Builds the shipment-batch dropdown options for a dispatch.
+ * `jbBags`/`sbBags` are INDIVIDUAL BAGS (order approved units × 25/50) and
+ * shipment stock is also individual bags.
+ */
+export function buildShipmentBatchOptions(
+  shipments: Shipment[],
+  jbBags: number,
+  sbBags: number,
+): ShipmentBatchOption[] {
+  return shipments.map((s) => {
+    const hasEnough = s.remaining_jb >= jbBags && s.remaining_sb >= sbBags;
+    const needParts: string[] = [];
+    if (jbBags > 0) needParts.push(`${jbBags.toLocaleString()} bags JB`);
+    if (sbBags > 0) needParts.push(`${sbBags.toLocaleString()} bags SB`);
+    const needLabel = needParts.join(', ') || '0 bags';
+    const availLabel = `${s.remaining_jb.toLocaleString()} bags JB / ${s.remaining_sb.toLocaleString()} bags SB`;
+    const fullLabel =
+      `${s.batch_name} — Available: ${availLabel} · Needed: ${needLabel}` +
+      `${!hasEnough ? ' · INSUFFICIENT STOCK' : ''}`;
+    const label = `${s.batch_name}${!hasEnough ? ' — INSUFFICIENT' : ''}`;
+    return {
+      value: s.id,
+      label,
+      fullLabel,
+      availLabel,
+      needLabel,
+      hasEnough,
+      disabled: !hasEnough,
+    };
+  });
+}
+
 export function FulfillmentTab({
   orders,
   shipments,
@@ -424,7 +470,7 @@ export function FulfillmentTab({
       </div>
 
       <Dialog open={!!selectedOrder} onOpenChange={(open) => !open && setSelectedOrder(null)}>
-        <DialogContent className="sm:max-w-[500px]">
+        <DialogContent className="sm:max-w-[560px]">
           <DialogHeader>
             <DialogTitle>Dispatch Order</DialogTitle>
             <DialogDescription>
@@ -479,44 +525,53 @@ export function FulfillmentTab({
                     .reduce((s, i) => s + i.approved_qty, 0);
                   const jbBags = jbUnits * BAG_EQUIVALENT.JB;
                   const sbBags = sbUnits * BAG_EQUIVALENT.SB;
-                  const shipmentOptions = shipments.map((s) => {
-                    const hasEnough = s.remaining_jb >= jbBags && s.remaining_sb >= sbBags;
-                    const availJb = `${s.remaining_jb.toLocaleString()} bags`;
-                    const availSb = `${s.remaining_sb.toLocaleString()} bags`;
-                    const needJb = jbBags > 0 ? `${jbBags.toLocaleString()} bags JB` : '';
-                    const needSb = sbBags > 0 ? `${sbBags.toLocaleString()} bags SB` : '';
-                    const needLabel = [needJb, needSb].filter(Boolean).join(', ') || '0 bags';
-                    const label =
-                      `${s.batch_name} — Available: ${availJb} JB / ${availSb} SB · ` +
-                      `Needed: ${needLabel}${!hasEnough ? ' · INSUFFICIENT STOCK' : ''}`;
-                    return { value: s.id, label, disabled: !hasEnough, insufficient: !hasEnough };
-                  });
+                  const shipmentOptions = buildShipmentBatchOptions(shipments, jbBags, sbBags);
+                  const selectedOption = shipmentOptions.find((o) => o.value === shipmentId);
 
                   return (
-                    <Select
-                      items={shipmentOptions}
-                      value={shipmentId}
-                      onValueChange={(v) => setShipmentId(v ?? '')}
-                    >
-                      <SelectTrigger className="w-full min-w-0">
-                        <SelectValue placeholder="Select a shipment batch" />
-                      </SelectTrigger>
-                      <SelectContent className="max-w-[min(560px,calc(100vw-2rem))]">
-                        {shipmentOptions.map((opt) => (
-                          <SelectItem
-                            key={opt.value}
-                            value={opt.value}
-                            disabled={opt.disabled}
-                            title={opt.label}
-                            className="items-start py-2"
+                    <>
+                      <Select
+                        items={shipmentOptions}
+                        value={shipmentId}
+                        onValueChange={(v) => setShipmentId(v ?? '')}
+                      >
+                        <SelectTrigger className="w-full min-w-0">
+                          <SelectValue placeholder="Select a shipment batch" />
+                        </SelectTrigger>
+                        <SelectContent className="max-w-[min(560px,calc(100vw-2rem))]">
+                          {shipmentOptions.map((opt) => (
+                            <SelectItem
+                              key={opt.value}
+                              value={opt.value}
+                              disabled={opt.disabled}
+                              title={opt.fullLabel}
+                              className="items-start py-2"
+                            >
+                              <span className="block min-w-0 flex-1 leading-snug break-words whitespace-normal">
+                                {opt.fullLabel}
+                              </span>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      {selectedOption && (
+                        <div className="bg-muted/50 border-border space-y-0.5 rounded-lg border p-3 text-xs">
+                          <p className="text-foreground font-semibold">
+                            {selectedOption.availLabel} available
+                          </p>
+                          <p
+                            className={
+                              selectedOption.hasEnough
+                                ? 'text-muted-foreground'
+                                : 'font-semibold text-red-600'
+                            }
                           >
-                            <span className="block min-w-0 flex-1 leading-snug break-words whitespace-normal">
-                              {opt.label}
-                            </span>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                            Needed: {selectedOption.needLabel}
+                            {selectedOption.hasEnough ? '' : ' — INSUFFICIENT STOCK'}
+                          </p>
+                        </div>
+                      )}
+                    </>
                   );
                 })()}
               </div>

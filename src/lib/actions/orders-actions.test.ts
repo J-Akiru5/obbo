@@ -532,11 +532,16 @@ describe('Orders Server Actions', () => {
       server.use(
         http.get('*/rest/v1/orders', ({ request }) => {
           const url = new URL(request.url);
+          const accept = request.headers.get('accept') || '';
           const id = url.searchParams.get('id')?.replace('eq.', '');
           if (id === redeliveryOrder.id) return HttpResponse.json(redeliveryOrder);
           if (url.searchParams.get('po_number')?.replace('eq.', '') === 'PO-2026-003') {
             originalLookupUrl = url.toString();
-            return HttpResponse.json(originalOrder);
+            // Sales-basis lookup uses .maybeSingle() (object); the balance
+            // helper uses a list query with .limit(1) (array).
+            return HttpResponse.json(
+              accept.includes('object+json') ? originalOrder : [originalOrder],
+            );
           }
           return HttpResponse.json([]);
         }),
