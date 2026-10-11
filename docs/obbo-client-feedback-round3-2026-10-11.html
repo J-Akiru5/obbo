@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>OBBO iManage — Client Feedback Round 3: Redelivery Sales, Returns &amp; Bag Accounting (2026-10-11)</title>
+<style>
+  :root {
+    --steel-950:#0b1220; --steel-900:#111a2c; --steel-700:#2b3a58; --steel-500:#61708c;
+    --steel-200:#d4dae4; --steel-100:#eef1f6; --paper:#f7f8fa; --card:#fff; --ink:#16203a;
+    --amber:#b45309; --amber-bg:#fef3e2; --green:#047857; --green-bg:#ecfdf5;
+    --red:#b91c1c; --red-bg:#fef2f2; --blue:#1d4ed8; --blue-bg:#eff6ff; --rule:#dde2ea;
+    --mono:ui-monospace,"Cascadia Code","SF Mono",Consolas,monospace;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--paper);color:var(--ink);font-family:"Segoe UI",-apple-system,BlinkMacSystemFont,Roboto,Helvetica,Arial,sans-serif;font-size:16px;line-height:1.65;-webkit-font-smoothing:antialiased}
+  .band{width:100%;border-bottom:1px solid var(--rule)}
+  .band.dark{background:var(--steel-950);color:#e8ecf4;border-bottom:none}
+  .wrap{max-width:1120px;margin:0 auto;padding:0 clamp(20px,5vw,72px)}
+  .prose{max-width:760px}.prose-wide{max-width:920px}
+  .hero{padding:clamp(40px,7vw,80px) 0 clamp(32px,5vw,60px)}
+  .kicker{display:inline-flex;align-items:center;gap:8px;font-size:11px;font-weight:700;letter-spacing:.28em;text-transform:uppercase;color:#f6b26b;border:1px solid rgba(246,178,107,.35);background:rgba(246,178,107,.08);border-radius:999px;padding:6px 14px;margin-bottom:22px}
+  .kicker::before{content:"";width:7px;height:7px;border-radius:50%;background:#f6b26b}
+  h1{font-size:clamp(27px,5vw,46px);line-height:1.12;margin:0 0 18px;font-weight:800;letter-spacing:-.02em;color:#fff}
+  .hero p.lede{font-size:clamp(15px,2vw,18px);color:#b9c3d6;max-width:800px;margin:0 0 24px}
+  .hero-meta{display:flex;flex-wrap:wrap;gap:10px 22px;color:#93a1bb;font-size:13px}
+  .hero-meta b{color:#e8ecf4;font-weight:600}
+  code.inline,.inline{font-family:var(--mono);font-size:.88em;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);border-radius:6px;padding:1px 6px;color:#ffd9a8}
+  section .wrap{padding-top:clamp(32px,5vw,54px);padding-bottom:clamp(32px,5vw,54px)}
+  section.white{background:var(--card)}
+  h2{font-size:clamp(21px,3.4vw,30px);font-weight:800;letter-spacing:-.015em;margin:0 0 8px}
+  h2 .num{font-family:var(--mono);font-size:.6em;color:var(--steel-500);font-weight:700;display:block;letter-spacing:.18em;margin-bottom:6px}
+  h3{font-size:17px;font-weight:700;margin:24px 0 8px}
+  p{margin:0 0 14px} ul,ol{margin:0 0 16px;padding-left:22px} li{margin-bottom:6px}
+  .muted{color:var(--steel-500)} .small{font-size:13.5px}
+  .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;margin:26px 0 0}
+  .stat{background:var(--card);border:1px solid var(--rule);border-radius:14px;padding:18px 20px;box-shadow:0 1px 2px rgba(16,24,40,.04)}
+  .stat .label{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--steel-500);font-weight:700}
+  .stat .value{font-family:var(--mono);font-size:clamp(20px,3vw,28px);font-weight:700;margin-top:6px}
+  .stat .sub{font-size:12.5px;color:var(--steel-500);margin-top:4px}
+  .stat.good .value{color:var(--green)} .stat.warn .value{color:var(--amber)} .stat.info .value{color:var(--blue)} .stat.bad .value{color:var(--red)}
+  .issue{background:var(--card);border:1px solid var(--rule);border-radius:16px;padding:clamp(20px,3.4vw,30px);margin:18px 0 0;box-shadow:0 1px 3px rgba(16,24,40,.05)}
+  .issue-head{display:flex;flex-wrap:wrap;align-items:center;gap:10px 14px;margin-bottom:6px}
+  .issue-head h3{margin:0;font-size:clamp(16.5px,2.4vw,20px)}
+  .tag{display:inline-block;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:3px 10px;border-radius:999px;white-space:nowrap}
+  .tag.fixed{color:var(--green);background:var(--green-bg);border:1px solid #a7f3d0}
+  .tag.false{color:var(--blue);background:var(--blue-bg);border:1px solid #bfdbfe}
+  .tag.real{color:var(--red);background:var(--red-bg);border:1px solid #fecaca}
+  .tag.done{color:var(--green);background:var(--green-bg);border:1px solid #a7f3d0}
+  .cols{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:14px}
+  .pane{border:1px solid var(--rule);border-radius:12px;padding:14px 16px}
+  .pane .pane-label{font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;margin-bottom:8px}
+  .pane.before{background:var(--red-bg);border-color:#fecaca}.pane.before .pane-label{color:var(--red)}
+  .pane.after{background:var(--green-bg);border-color:#a7f3d0}.pane.after .pane-label{color:var(--green)}
+  .pane p:last-child{margin-bottom:0} .pane code{font-family:var(--mono);font-size:12.5px}
+  .table-wrap{overflow-x:auto;border:1px solid var(--rule);border-radius:12px;margin:16px 0;background:var(--card)}
+  table{border-collapse:collapse;width:100%;min-width:580px;font-size:14px}
+  th,td{padding:10px 14px;text-align:left;border-bottom:1px solid var(--rule);vertical-align:top}
+  th{background:var(--steel-100);font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--steel-700)}
+  tr:last-child td{border-bottom:none}
+  td.num,th.num{text-align:right;font-family:var(--mono);white-space:nowrap}
+  tr.total td{font-weight:700;background:#fbfcfe}
+  td .ok{color:var(--green);font-weight:700}td .bad{color:var(--red);font-weight:700}
+  .flow{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;margin:20px 0}
+  .flow .node{position:relative;background:var(--card);border:1px solid var(--rule);border-radius:12px;padding:14px;font-size:13px}
+  .flow .node .step{font-family:var(--mono);font-size:11px;font-weight:700;color:#fff;background:var(--steel-700);width:22px;height:22px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;margin-bottom:8px}
+  .flow .node b{display:block;margin-bottom:3px}.flow .node span{color:var(--steel-500)}
+  .flow .node::after{content:"→";position:absolute;right:-11px;top:50%;transform:translateY(-50%);color:var(--steel-500);font-weight:700}
+  .flow .node:last-child::after{content:none}
+  .callout{border-left:4px solid var(--blue);background:var(--blue-bg);border-radius:0 12px 12px 0;padding:14px 18px;margin:16px 0;font-size:14.5px}
+  .callout.warn{border-color:var(--amber);background:var(--amber-bg)}
+  .callout.danger{border-color:var(--red);background:var(--red-bg)}
+  .callout.ok{border-color:var(--green);background:var(--green-bg)}
+  .callout b{display:block;margin-bottom:3px}.callout p:last-child{margin-bottom:0}
+  .checks{list-style:none;padding:0;margin:16px 0}
+  .checks li{display:flex;gap:10px;align-items:flex-start;padding:7px 0;border-bottom:1px dashed var(--rule);font-size:14.5px}
+  .checks li:last-child{border-bottom:none}
+  .checks .box{flex:none;width:20px;height:20px;border-radius:6px;background:var(--green);color:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;margin-top:2px}
+  footer{background:var(--steel-950);color:#93a1bb;font-size:13px;padding:30px 0}
+  footer .wrap{padding:0}
+  footer b{color:#e8ecf4}
+  @media(max-width:900px){.flow{grid-template-columns:1fr 1fr}}
+  @media(max-width:640px){.cols{grid-template-columns:1fr}.flow{grid-template-columns:1fr}.flow .node::after{content:"↓";right:50%;top:auto;bottom:-15px;transform:translateX(50%)}}
+</style>
+</head>
+<body>
+
+<div class="band dark">
+  <div class="wrap hero">
+    <span class="kicker">OBBO iManage · Client Feedback Round 3</span>
+    <h1>Redelivery Sales Inflation, Returns Clawbacks, and Bags vs. Units</h1>
+    <p class="lede">
+      Six complaints from the client's third retest (Correctin-2.pdf): redelivery buttons that spin,
+      TOTAL PURCHASED that grows every time a redelivery is dispatched, returns surfaces the client
+      wanted gone, damage returns that claw revenue back out of the books, and a manual delivery-receipt
+      flow that had no way to record a partial bag count. All six were real. The unifying defect was
+      that a redelivery or replacement DR re-recognized revenue the client had already paid for — that
+      is now capped at the purchase order total.
+    </p>
+    <div class="hero-meta">
+      <span>Merged to <code class="inline">main</code> @ <b>cc0d287</b></span>
+      <span>Date <b>2026-10-11</b></span>
+      <span>DB migration required <b>1</b> <span style="color:#6ee7b7">(applied + verified)</span></span>
+      <span>Tests <b>166 passing</b></span>
+    </div>
+  </div>
+</div>
+
+<div class="band">
+  <div class="wrap">
+    <h2><span class="num">TL;DR</span>What changed, by the numbers</h2>
+    <div class="stats">
+      <div class="stat bad"><div class="label">Issue 1a · buttons spin</div><div class="value">Real bug</div><div class="sub">Pending-redelivery check ignored bag type</div></div>
+      <div class="stat bad"><div class="label">Issue 1b · TOTAL PURCHASED</div><div class="value">Real bug</div><div class="sub">PO-family revenue cap added</div></div>
+      <div class="stat good"><div class="label">Issue 2 · return surfaces</div><div class="value">Removed</div><div class="sub">UI-only; actions dormant on disk</div></div>
+      <div class="stat good"><div class="label">Issue 3 · return accounting</div><div class="value">Fixed</div><div class="sub">Damage/waste zero out money lines</div></div>
+      <div class="stat info"><div class="label">Verification</div><div class="value">166 tests</div><div class="sub">+ tsc clean, build pass, live-DB checked</div></div>
+    </div>
+    <div class="callout ok" style="margin-top:26px;">
+      <b>Migration already applied and verified against the live testing database</b>
+      <p>
+        <code>supabase/migrations/20261011_dr_ledger_numeric_quantities.sql</code> widens
+        <code>delivery_receipts.jb / sb / quantity</code> and <code>shipment_ledger.jb / sb</code> to
+        <code>numeric(14,4)</code> and re-creates <code>dispatch_order_v2</code> with numeric parameters.
+        Confirmed on project <code>xjfbrjyvinljseqbbika</code>: all five columns report
+        <code>numeric</code>, the 126 pre-existing rows survived the rewrite intact, and a stored
+        <code>0.28</code> units multiplies back to exactly <b>7 JB bags</b>.
+      </p>
+    </div>
+  </div>
+</div>
+
+<div class="band white">
+  <div class="wrap">
+    <h2><span class="num">Model</span>The one rule that fixed four of the six complaints</h2>
+    <p class="prose-wide">
+      A redelivery does not create new demand — the bags were already paid for on the original purchase
+      order. Likewise, a second manual DR against a PO that is already fully recognized books nothing.
+      Every path that writes sales now sums the ledger rows for the whole <b>PO family</b> (the root PO
+      plus every redelivery order that points at it) and clamps this dispatch's share to what is left of
+      the PO total.
+    </p>
+    <div class="flow">
+      <div class="node"><span class="step">1</span><b>Resolve PO family</b><span>root = <code>linked_po_number</code> for redeliveries, else the PO itself</span></div>
+      <div class="node"><span class="step">2</span><b>Sum booked sales</b><span>every <code>shipment_ledger</code> row in the family</span></div>
+      <div class="node"><span class="step">3</span><b>Compute this share</b><span>split-delivery proration over the PO's sales basis</span></div>
+      <div class="node"><span class="step">4</span><b>Clamp</b><span>remaining = PO total − already recorded; below zero → 0</span></div>
+      <div class="node"><span class="step">5</span><b>Book</b><span>bag counts and the delivery log still update; money lines stop at 0</span></div>
+    </div>
+    <div class="callout">
+      <b>Deliberate exception: admin ledger edits</b>
+      <p>
+        The cap is intentionally <em>not</em> re-applied in <code>_updateLedgerEntry</code>. Editing a
+        ledger row is a data-correction path, not a new sale — clamping there would prevent an admin
+        from fixing an under-recorded amount. This is documented in the code.
+      </p>
+    </div>
+  </div>
+</div>
+
+<div class="band">
+  <div class="wrap">
+    <h2><span class="num">Denominations</span>Units in storage, bags on screen</h2>
+    <p class="prose-wide">
+      The client's warehouse staff count individual bags, but order quantities and stock balances are
+      denominated in JB/SB units (1 JB = 25 bags, 1 SB = 50 bags). Round 3 makes the split explicit and
+      stops the two from being displayed interchangeably.
+    </p>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Layer</th><th>Denomination</th><th>Why</th></tr></thead>
+        <tbody>
+          <tr><td><code>order_items</code> qty</td><td>JB / SB <b>units</b></td><td>Order pricing is per unit; matches the catalog</td></tr>
+          <tr><td><code>shipments.remaining_jb / remaining_sb / good_stock</code></td><td>Individual <b>bags</b> (integer)</td><td>Physical stock is whole bags; rounded at every write</td></tr>
+          <tr><td><code>customer_balances.remaining_qty</code></td><td>Individual <b>bags</b></td><td>Matches what the client can see outstanding</td></tr>
+          <tr><td><code>shipment_ledger.jb / sb</code> · <code>delivery_receipts.jb / sb</code></td><td>JB / SB <b>units</b> (now <code>numeric</code>)</td><td>Matches the order they derive from; fractional for manual DRs</td></tr>
+          <tr><td>Every table on screen</td><td>Individual <b>bags</b></td><td>Header now reads "JB bags / SB bags / Total bags"</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="callout warn">
+      <b>Why the columns had to become numeric</b>
+      <p>
+        A replacement DR for <b>7 damaged JB bags</b> is <code>0.28</code> units. An integer column cannot
+        store that, so the manual-DR form either rejected it or silently rounded. Widening to
+        <code>numeric(14,4)</code> makes the division exact: <code>0.28 × 25 = 7</code>, verified live.
+        Stock columns stay <code>integer</code> — physical bags are always whole, and every writer rounds
+        bag math at the boundary via <code>wholeBagsFromUnits()</code>.
+      </p>
+    </div>
+  </div>
+</div>
+
+<div class="band white">
+  <div class="wrap">
+    <h2><span class="num">Issues</span>Issue-by-issue</h2>
+
+    <div class="issue">
+      <div class="issue-head">
+        <span class="tag real">Real · client issue 1a</span>
+        <h3>Both redelivery buttons spin forever, for JB and SB alike</h3>
+        <span class="tag fixed">Fixed</span>
+      </div>
+      <div class="prose-wide">
+        <p>
+          The client ledger checked for a pending redelivery by matching the <b>PO number only</b>. Because
+          a JB order and an SB order can share a PO, a pending JB redelivery also marked the SB order as
+          having one — so both rows rendered a spinner and neither request button worked. The check now
+          matches on <b>PO number <em>and</em> bag type</b>, and the balance summary excludes redelivery
+          rows so they cannot inflate the client's totals.
+        </p>
+      </div>
+      <div class="cols">
+        <div class="pane before">
+          <div class="pane-label">Before</div>
+          <p><code>pending.has(order.po_number)</code></p>
+          <p class="small">One SB redelivery spins both the JB and SB orders.</p>
+        </div>
+        <div class="pane after">
+          <div class="pane-label">After</div>
+          <p><code>pending.has(`${order.po_number}:${item.bag_type}`)</code></p>
+          <p class="small">Only the matching bag type shows a pending state.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="issue">
+      <div class="issue-head">
+        <span class="tag real">Real · client issue 1b</span>
+        <h3>TOTAL PURCHASED keeps growing every time a redelivery is dispatched</h3>
+        <span class="tag fixed">Fixed</span>
+      </div>
+      <div class="prose-wide">
+        <p>
+          Two independent causes, both now closed. First, the client's Total Purchased summed redelivery
+          orders alongside originals — dispatching a redelivery added its value a second time. Second,
+          <code>dispatchOrder</code> and <code>createDeliveryReceipt</code> recognized the full prorated
+          share with no memory of what had already been booked against the PO, so a second DR re-earned
+          the same revenue.
+        </p>
+        <p>
+          Fixed by excluding redelivery rows from <code>fetchBalanceSummary</code> and adding the
+          PO-family revenue cap described above to both dispatch paths. A second DR for a fully-recognized
+          PO now books <b>₱0</b> sales, gross and net — while the bag counts, stock deduction and delivery
+          log still update normally.
+        </p>
+      </div>
+      <div class="cols">
+        <div class="pane before">
+          <div class="pane-label">Before</div>
+          <p>Original DR books ₱222,000.<br>Redelivery DR books ₱18,500.<br>TOTAL PURCHASED = ₱240,500.</p>
+        </div>
+        <div class="pane after">
+          <div class="pane-label">After</div>
+          <p>Original DR books ₱222,000.<br>Redelivery DR books ₱0.<br>TOTAL PURCHASED = ₱222,000.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="issue">
+      <div class="issue-head">
+        <span class="tag done">Client request · issue 2</span>
+        <h3>Remove "Report Return" from the client portal and the Returns tab from warehouse inventory</h3>
+        <span class="tag done">Done</span>
+      </div>
+      <div class="prose-wide">
+        <p>
+          Both surfaces are removed from the UI. Per your decision this is a <b>UI-only</b> removal:
+          <code>return-actions.ts</code>, <code>returns-tab.tsx</code>, the <code>order_returns</code>
+          table and <code>submitOrderReturn</code> all remain on disk, unreferenced and dormant. Nothing
+          is deleted, so the feature can be re-enabled later without archaeology.
+        </p>
+      </div>
+      <div class="callout">
+        <b>Inventory tabs now</b>
+        <p>Shipments · Delivery Receipts · Reports — three tabs, down from four.</p>
+      </div>
+    </div>
+
+    <div class="issue">
+      <div class="issue-head">
+        <span class="tag real">Real · client issue 3</span>
+        <h3>Returns were clawing sales, gross and net back out of the books</h3>
+        <span class="tag fixed">Fixed</span>
+      </div>
+      <div class="prose-wide">
+        <p>
+          "Delivered (With Returns)" was treating every returned bag as a full revenue reversal. That is
+          correct when a bag comes back <b>good</b> and is restocked for resale — the sale truly did not
+          happen. It is wrong when the bag comes back <b>damaged or wasted</b>: the bag is not restocked,
+          the sale was genuinely made, and clawing the money out overstates the loss and understates
+          revenue.
+        </p>
+        <p>
+          <code>computeReturnProfitDelta</code> now zeroes <code>total_sales</code>,
+          <code>gross_profit</code> and <code>net_profit</code> for non-restockable returns while
+          preserving the per-bag rates, so the row still reports what the bag originally sold and cost
+          for. Only good (restockable) returns keep the full reversal.
+        </p>
+      </div>
+      <div class="cols">
+        <div class="pane before">
+          <div class="pane-label">Before</div>
+          <p>Damage return of 5 JB bags:<br><code>total_sales −1,250</code><br><code>gross_profit −1,250</code><br><code>net_profit −1,250</code></p>
+        </div>
+        <div class="pane after">
+          <div class="pane-label">After</div>
+          <p>Damage return of 5 JB bags:<br><code>total_sales 0</code><br><code>gross_profit 0</code><br><code>net_profit 0</code></p>
+        </div>
+      </div>
+      <div class="callout warn">
+        <b>The tracking form now forces the distinction</b>
+        <p>
+          Selecting <code>bags_returned</code> as the tracking status opens a required <b>Category</b>
+          control (Damage / Waste), with copy stating the bags are not restocked and the sales, gross and
+          net figures stay put. The confirm dialog restates the same before committing. The chosen category
+          is written to the ledger row's <code>return_reason</code> instead of a hard-coded value.
+        </p>
+      </div>
+    </div>
+
+    <div class="issue">
+      <div class="issue-head">
+        <span class="tag real">Real · client issue 3</span>
+        <h3>Manual DR input had to accept any bag count, including partial bags</h3>
+        <span class="tag fixed">Fixed</span>
+      </div>
+      <div class="prose-wide">
+        <p>
+          The manual delivery-receipt form collected whole numbers only, and the schema enforced
+          <code>.int()</code> on JB, SB and quantity. Entering a replacement DR for 7 JB bags — a partial
+          unit — was rejected outright.
+        </p>
+        <p>
+          The form now converts <b>bags → units at the boundary</b> and stores fractional units
+          (<code>7 / 25 = 0.28</code>). Stock corrections round back to whole bags. The Zod schemas accept
+          any non-negative number on the DR and ledger quantity fields, and the form labels say "JB Bags
+          (individual bags)" with helper text explaining the conversion. Display sites convert units back
+          to bags with <code>wholeBagsFromUnits()</code> so the table never shows <code>0.28</code>.
+        </p>
+      </div>
+      <div class="flow" style="grid-template-columns:repeat(4,minmax(0,1fr))">
+        <div class="node"><span class="step">1</span><b>Warehouse types bags</b><span>"7 JB bags" in the manual DR form</span></div>
+        <div class="node"><span class="step">2</span><b>Convert at the boundary</b><span><code>7 / 25 = 0.28</code> units stored</span></div>
+        <div class="node"><span class="step">3</span><b>Stock stays whole</b><span><code>round(0.28 × 25) = 7</code> bags deducted</span></div>
+        <div class="node"><span class="step">4</span><b>Display converts back</b><span>tables and reports always show bags</span></div>
+      </div>
+    </div>
+
+    <div class="issue">
+      <div class="issue-head">
+        <span class="tag real">Related · not in the PDF</span>
+        <h3>Warehouse report mixed arrival damage with customer-reported damage</h3>
+        <span class="tag fixed">Fixed</span>
+      </div>
+      <div class="prose-wide">
+        <p>
+          Found while implementing the above. The report's closing-stock formula subtracted
+          <em>customer-reported</em> damage as if it were arrival damage, double-counting it against a
+          stock figure that had already been reduced at dispatch. Arrival damage now feeds the closing
+          formula; customer-reported damage is display-only and excluded from the live-stock derivation.
+          The visible "waste" total still shows both.
+        </p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="band white">
+  <div class="wrap">
+    <h2><span class="num">Verification</span>Tests, live database, and the next acceptance run</h2>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Check</th><th>Command</th><th>Result</th></tr></thead>
+        <tbody>
+          <tr><td>Unit / integration suite</td><td><code>npx vitest run</code></td><td class="ok">166 passed / 17 files</td></tr>
+          <tr><td>TypeScript</td><td><code>npx tsc --noEmit</code></td><td class="ok">Clean</td></tr>
+          <tr><td>Production build</td><td><code>npm run build</code></td><td class="ok">Pass — all 33 routes compiled</td></tr>
+          <tr><td>Lint</td><td><code>npm run lint</code></td><td class="ok">0 errors in changed files</td></tr>
+          <tr><td>Migration applied</td><td>Supabase SQL Editor</td><td class="ok">Applied to <code>xjfbrjyvinljseqbbika</code></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Live database checks (run after the migration)</h3>
+    <ul class="checks">
+      <li><span class="box">✓</span><span><b>Column types:</b> <code>delivery_receipts.jb / sb / quantity</code> and <code>shipment_ledger.jb / sb</code> all report <code>numeric</code> via the PostgREST OpenAPI schema.</span></li>
+      <li><span class="box">✓</span><span><b>Lossless rewrite:</b> the 126 pre-existing rows (1 shipment, 11 ledger, 5 DRs, 6 orders, and the rest) survived the <code>integer → numeric</code> conversion with values intact.</span></li>
+      <li><span class="box">✓</span><span><b>Fractional exactness:</b> a stored <code>0.28</code> units multiplies back to exactly <b>7 JB bags</b> in both <code>delivery_receipts</code> and <code>shipment_ledger</code>.</span></li>
+      <li><span class="box">✓</span><span><b>RPC accepts numerics:</b> <code>dispatch_order_v2</code> called with <code>p_jb_qty: 0.28</code> reached our own validation ("Shipment not found") rather than failing with an integer type error — the signature re-create took.</span></li>
+    </ul>
+
+    <h3>New regression coverage</h3>
+    <ul class="checks">
+      <li><span class="box">✓</span><span><b>PO-family revenue cap:</b> a second DR against a fully-recognized PO books ₱0; a partial second DR books only what remains; a redelivery whose family already recorded full revenue books ₱0 while still deducting stock.</span></li>
+      <li><span class="box">✓</span><span><b>Per-bag-type pending:</b> a pending JB redelivery renders exactly one spinner and one request button, not two.</span></li>
+      <li><span class="box">✓</span><span><b>Non-restockable returns:</b> damage/waste returns assert zero money deltas with per-bag rates preserved; good returns keep the full reversal.</span></li>
+      <li><span class="box">✓</span><span><b>Units ↔ bags:</b> <code>wholeBagsFromUnits</code> and the warehouse-report choke points are tested with whole and fractional inputs (e.g. <code>7/25</code> units → 7 bags).</span></li>
+      <li><span class="box">✓</span><span><b>Manual DR:</b> bag inputs convert to fractional units on write and round back to whole bags on stock correction; the schema accepts non-integers on DR and ledger quantities.</span></li>
+    </ul>
+
+    <h3>Next live acceptance run</h3>
+    <ol>
+      <li>Dispatch a full PO, then dispatch a second DR (or a redelivery) against the same PO.</li>
+      <li>Verify: the second DR reports ₱0 sales / gross / net, bag counts and stock still move, and the client's <b>TOTAL PURCHASED</b> stays at the PO total instead of growing.</li>
+      <li>Open the client portal: with a pending JB redelivery, only the JB order should show a spinner.</li>
+      <li>Warehouse → Inventory: confirm the Returns tab is gone (three tabs) and the client portal has no "Report Return" action.</li>
+      <li>Tracking tab → status <code>bags_returned</code>: confirm the Damage/Waste category is required and that the ledger row records ₱0 movement with the chosen reason.</li>
+      <li>Create a manual DR for <b>7 JB bags</b>: it should save, deduct 7 bags from stock, and display as "7 bags" everywhere — never as 0.28.</li>
+    </ol>
+  </div>
+</div>
+
+<div class="band">
+  <div class="wrap">
+    <h2><span class="num">Appendix</span>Files changed</h2>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>File</th><th>Change</th></tr></thead>
+        <tbody>
+          <tr><td><code>supabase/migrations/20261011_dr_ledger_numeric_quantities.sql</code></td><td><b>New.</b> Widens 5 columns to <code>numeric(14,4)</code>; re-creates <code>dispatch_order_v2</code> with numeric params and rounded bag math</td></tr>
+          <tr><td><code>src/lib/actions/ledger-actions.ts</code></td><td><code>sumLedgerSalesForPoFamily</code>, <code>getPoSalesCap</code>, PO-family resolution; cap deliberately not applied on admin edits</td></tr>
+          <tr><td><code>src/lib/actions/orders-actions.ts</code></td><td>PO cap in <code>_dispatchOrder</code>; <code>bags_returned</code> reason mapping; redelivery excluded from balance inserts</td></tr>
+          <tr><td><code>src/lib/actions/delivery-receipt-actions.ts</code></td><td>Manual-DR bags→units conversion, PO cap, rounded stock corrections</td></tr>
+          <tr><td><code>src/lib/actions/profit-utils.ts</code></td><td><code>capSalesToPoTotal</code>, <code>wholeBagsFromUnits</code>; non-restockable returns zero out money deltas</td></tr>
+          <tr><td><code>src/lib/actions/warehouse-report-actions.ts</code></td><td>Arrival vs. customer damage split; units→bags at the dispatch choke point</td></tr>
+          <tr><td><code>src/lib/actions/client-actions.ts</code></td><td>Per-bag-type pending redeliveries; redelivery excluded from Total Purchased</td></tr>
+          <tr><td><code>src/lib/actions/schemas.ts</code></td><td><code>unitQuantity</code> replaces <code>.int()</code> on DR and ledger JB/SB/quantity</td></tr>
+          <tr><td><code>src/app/client/orders/components/orders-client.tsx</code></td><td>Report Return UI, state and handlers removed</td></tr>
+          <tr><td><code>src/app/admin/inventory/page.tsx</code></td><td>Returns tab removed; TabsList reduced to three</td></tr>
+          <tr><td><code>src/app/admin/orders/components/tracking-tab.tsx</code></td><td>Damage/Waste category select + confirm copy for <code>bags_returned</code></td></tr>
+          <tr><td><code>src/app/admin/inventory/components/{dr-list-tab,shipments-tab,ledger-entry-dialog}.tsx</code></td><td>Bag-denominated labels, unit→bag display conversion, fractional input</td></tr>
+          <tr><td><code>src/app/admin/reports/page.tsx</code> · <code>reports-tab.tsx</code> · <code>report-generators/*</code></td><td>Headers now read "JB bags / SB bags / Total bags"</td></tr>
+          <tr><td><code>prisma/schema.prisma</code> · <code>supabase/schema.sql</code></td><td>Widened column types to <code>numeric(14,4)</code>, idempotent</td></tr>
+          <tr><td><code>mocks/handlers/shipments.ts</code></td><td>MSW ledger handler now honors <code>po_number=in.(…)</code>, matching PostgREST</td></tr>
+          <tr><td><code>*.test.ts(x)</code> — 6 files</td><td>New and updated suites covering all of the above</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="small muted">30 files changed · 1 new file · ~1,470 insertions / ~630 deletions. Commit <code>cc0d287</code> on <code>fix/client-feedback-round3</code>, fast-forwarded to <code>main</code> and pushed.</p>
+  </div>
+</div>
+
+<footer>
+  <div class="wrap">
+    <p><b>OBBO iManage</b> — client feedback round 3 · 2026-10-11 · commit <code style="color:#ffd9a8;">cc0d287</code> (merged to <code style="color:#ffd9a8;">main</code>). Migration already applied and verified on the testing database.</p>
+  </div>
+</footer>
+
+</body>
+</html>
