@@ -6,6 +6,7 @@ import {
   prorateOrderSalesByValue,
   computeReturnProfitDelta,
   capSalesToPoTotal,
+  formatBagBreakdown,
   individualBagsFromUnits,
   unitsFromIndividualBags,
   wholeBagsFromUnits,
@@ -374,5 +375,27 @@ describe('capSalesToPoTotal (client-feedback round 3 — second DR books no sale
 
   it('caps at the PO total when the caller over-requests', () => {
     expect(capSalesToPoTotal({ poTotal: 5000, alreadyRecorded: 0, desired: 99999 })).toBe(5000);
+  });
+});
+
+describe('formatBagBreakdown (PO/DR lists must not lump a mixed order under one type)', () => {
+  it('renders both bag types separately for a mixed order', () => {
+    expect(formatBagBreakdown(50, 100)).toBe('50 JB · 100 SB');
+  });
+
+  it('omits a zero count rather than labelling the whole quantity with the other type', () => {
+    // Regression: the old PO/DR tables did `jb > 0 ? 'JB' : 'SB'`, so an
+    // SB-only order rendered as JB whenever jb happened to be 0, and a mixed
+    // order's total was stamped with a single type.
+    expect(formatBagBreakdown(75, 0)).toBe('75 JB');
+    expect(formatBagBreakdown(0, 100)).toBe('100 SB');
+  });
+
+  it('renders "0" when both counts are zero', () => {
+    expect(formatBagBreakdown(0, 0)).toBe('0');
+  });
+
+  it('groups thousands so large bag counts stay readable', () => {
+    expect(formatBagBreakdown(199904, 343550)).toBe('199,904 JB · 343,550 SB');
   });
 });

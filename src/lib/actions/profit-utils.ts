@@ -49,6 +49,25 @@ export function unitsFromIndividualBags(bagType: 'JB' | 'SB', bags: number): num
   return bags / BAG_EQUIVALENT[bagType];
 }
 
+/**
+ * Human-readable per-bag-type quantity for list and table cells.
+ *
+ * One order can carry BOTH bag types, so a quantity must never collapse into a
+ * single number under a single type label — "50 JB · 100 SB", never "150 JB".
+ * Zero counts are omitted, and an all-zero pair renders "0".
+ *
+ * Takes individual BAGS, not JB/SB units. Convert first with
+ * wholeBagsFromUnits() when the source column is denominated in units
+ * (delivery_receipts.jb/sb, shipment_ledger.jb/sb).
+ */
+export function formatBagBreakdown(jbBags: number, sbBags: number): string {
+  const parts = [
+    jbBags > 0 ? `${jbBags.toLocaleString()} JB` : null,
+    sbBags > 0 ? `${sbBags.toLocaleString()} SB` : null,
+  ].filter(Boolean);
+  return parts.length > 0 ? parts.join(' · ') : '0';
+}
+
 export function getSourcePrice(
   product:
     | { price_per_bag: number; price_port?: number | null; price_warehouse?: number | null }

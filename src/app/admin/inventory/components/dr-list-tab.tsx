@@ -37,7 +37,7 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Check, ChevronsUpDown, Eye, LayoutGrid, List, Package } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
-import { wholeBagsFromUnits } from '@/lib/actions/profit-utils';
+import { formatBagBreakdown, wholeBagsFromUnits } from '@/lib/actions/profit-utils';
 import { PurchaseOrder } from '@/lib/types/database';
 
 export function DrListTab({
@@ -363,15 +363,12 @@ export function DrListTab({
                     <TableCell className="text-sm">{dr.driver || '—'}</TableCell>
                     <TableCell className="text-sm">{dr.plate_number || '—'}</TableCell>
                     <TableCell className="text-right">
-                      <div className="flex items-center justify-end gap-1.5">
-                        <span className="text-foreground text-xs font-bold">
-                          {wholeBagsFromUnits('JB', dr.jb || 0) +
-                            wholeBagsFromUnits('SB', dr.sb || 0)}
-                        </span>
-                        <Badge variant="outline" className="font-mono text-[10px]">
-                          {dr.jb > 0 ? 'JB' : 'SB'}
-                        </Badge>
-                      </div>
+                      <span className="text-foreground text-xs font-bold">
+                        {formatBagBreakdown(
+                          wholeBagsFromUnits('JB', dr.jb || 0),
+                          wholeBagsFromUnits('SB', dr.sb || 0),
+                        )}
+                      </span>
                     </TableCell>
                     <TableCell className="text-right whitespace-nowrap">
                       <Button
@@ -498,15 +495,10 @@ export function DrListTab({
                         Quantity (bags)
                       </div>
                       <p className="text-foreground text-[11px] font-bold">
-                        {(() => {
-                          const jbBags = wholeBagsFromUnits('JB', dr.jb || 0);
-                          const sbBags = wholeBagsFromUnits('SB', dr.sb || 0);
-                          return (
-                            [jbBags > 0 ? `${jbBags} JB` : null, sbBags > 0 ? `${sbBags} SB` : null]
-                              .filter(Boolean)
-                              .join(' · ') || '0'
-                          );
-                        })()}
+                        {formatBagBreakdown(
+                          wholeBagsFromUnits('JB', dr.jb || 0),
+                          wholeBagsFromUnits('SB', dr.sb || 0),
+                        )}
                       </p>
                     </div>
                   </div>
@@ -608,15 +600,10 @@ export function DrListTab({
                     <Package className="h-4 w-4" /> Quantity (bags)
                   </span>
                   <span className="text-foreground font-black">
-                    {(() => {
-                      const jbBags = wholeBagsFromUnits('JB', viewingDr?.jb || 0);
-                      const sbBags = wholeBagsFromUnits('SB', viewingDr?.sb || 0);
-                      return (
-                        [jbBags > 0 ? `${jbBags} JB` : null, sbBags > 0 ? `${sbBags} SB` : null]
-                          .filter(Boolean)
-                          .join(' · ') || '0'
-                      );
-                    })()}
+                    {formatBagBreakdown(
+                      wholeBagsFromUnits('JB', viewingDr?.jb || 0),
+                      wholeBagsFromUnits('SB', viewingDr?.sb || 0),
+                    )}
                   </span>
                 </div>
               </div>

@@ -66,6 +66,7 @@ import {
 } from '@/components/ui/command';
 import { cn } from '@/lib/utils';
 import { createClient } from '@/lib/supabase/client';
+import { formatBagBreakdown } from '@/lib/actions/profit-utils';
 
 export function PoListTab({
   purchaseOrders,
@@ -599,12 +600,21 @@ export function PoListTab({
                         </div>
                       </TableCell>
                       <TableCell className="text-right text-xs font-bold">
-                        {(po.jb || 0) + (po.sb || 0)}
+                        {formatBagBreakdown(po.jb || 0, po.sb || 0)}
                       </TableCell>
                       <TableCell className="text-xs">
-                        <Badge variant="outline" className="h-4 px-1 font-mono text-[9px]">
-                          {po.jb > 0 ? 'JB' : 'SB'}
-                        </Badge>
+                        <div className="flex items-center gap-1">
+                          {(po.jb || 0) > 0 && (
+                            <Badge variant="outline" className="h-4 px-1 font-mono text-[9px]">
+                              JB
+                            </Badge>
+                          )}
+                          {(po.sb || 0) > 0 && (
+                            <Badge variant="outline" className="h-4 px-1 font-mono text-[9px]">
+                              SB
+                            </Badge>
+                          )}
+                        </div>
                       </TableCell>
                       <TableCell className="text-xs">{getStatusBadge(po.status)}</TableCell>
                       <TableCell className="text-xs">
@@ -756,14 +766,25 @@ export function PoListTab({
                         <p className="text-muted-foreground text-[9px] font-bold uppercase">
                           Quantity
                         </p>
-                        <p className="text-sm font-bold">{(po.jb || 0) + (po.sb || 0)}</p>
+                        <p className="text-sm font-bold">
+                          {formatBagBreakdown(po.jb || 0, po.sb || 0)}
+                        </p>
                       </div>
                       <div className="bg-muted h-6 w-px"></div>
                       <div className="flex-1">
                         <p className="text-muted-foreground text-[9px] font-bold uppercase">Type</p>
-                        <Badge variant="outline" className="h-4 px-1 font-mono text-[9px]">
-                          {po.jb > 0 ? 'JB' : 'SB'}
-                        </Badge>
+                        <div className="flex flex-wrap items-center gap-1">
+                          {(po.jb || 0) > 0 && (
+                            <Badge variant="outline" className="h-4 px-1 font-mono text-[9px]">
+                              JB
+                            </Badge>
+                          )}
+                          {(po.sb || 0) > 0 && (
+                            <Badge variant="outline" className="h-4 px-1 font-mono text-[9px]">
+                              SB
+                            </Badge>
+                          )}
+                        </div>
                       </div>
                       <div className="bg-muted h-6 w-px"></div>
                       <div className="flex-1 text-right">
@@ -1137,7 +1158,7 @@ export function PoListTab({
                     Quantity
                   </p>
                   <p className="text-sm font-bold">
-                    {((viewingPo.jb || 0) + (viewingPo.sb || 0)).toLocaleString()} bags
+                    {formatBagBreakdown(viewingPo.jb || 0, viewingPo.sb || 0)}
                   </p>
                 </div>
                 <div className="space-y-1">
@@ -1145,7 +1166,12 @@ export function PoListTab({
                     Bag Type
                   </p>
                   <p className="text-sm font-bold">
-                    {viewingPo.jb > 0 ? 'Jumbo Bag (JB)' : 'Sling Bag (SB)'}
+                    {[
+                      (viewingPo.jb || 0) > 0 ? 'Jumbo Bag (JB)' : null,
+                      (viewingPo.sb || 0) > 0 ? 'Sling Bag (SB)' : null,
+                    ]
+                      .filter(Boolean)
+                      .join(' · ') || '—'}
                   </p>
                 </div>
                 <div className="space-y-1">
