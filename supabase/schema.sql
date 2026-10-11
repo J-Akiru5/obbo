@@ -147,8 +147,8 @@ create table if not exists public.shipment_ledger (
   plate_number      text,
   destination       text,
   service_type      text check (service_type in ('pickup', 'deliver')),
-  jb                integer not null default 0, -- JB UNITS dispatched (not bags)
-  sb                integer not null default 0, -- SB UNITS dispatched (not bags)
+  jb                numeric(14, 4) not null default 0, -- JB UNITS dispatched (not bags)
+  sb                numeric(14, 4) not null default 0, -- SB UNITS dispatched (not bags)
   payment_method    text check (payment_method in ('cash', 'check')),
   check_number      text,
   amount            numeric(14, 2),
@@ -196,6 +196,10 @@ alter table public.shipment_ledger add column if not exists net_profit          
 alter table public.shipment_ledger add column if not exists selling_price_per_bag  numeric(10, 2);
 alter table public.shipment_ledger add column if not exists landed_cost_per_bag    numeric(10, 2);
 alter table public.shipment_ledger add column if not exists local_expenses_per_bag numeric(10, 2);
+-- Manual DRs are entered in whole bags, but the internal unit equivalent can be
+-- fractional (7 bags = 0.28 JB units) — see 20261011_dr_ledger_numeric_quantities.sql.
+alter table public.shipment_ledger alter column jb type numeric(14, 4) using jb::numeric;
+alter table public.shipment_ledger alter column sb type numeric(14, 4) using sb::numeric;
 
 
 -- ── DELIVERY RECEIPTS ────────────────────────────────────────
@@ -203,15 +207,15 @@ create table if not exists public.delivery_receipts (
   id            uuid primary key default gen_random_uuid(),
   shipment_id   uuid not null references public.shipments(id) on delete cascade,
   dr_number     text not null unique,
-  quantity      integer not null check (quantity > 0),
+  quantity      numeric(14, 4) not null check (quantity > 0),
   bag_type      text not null check (bag_type in ('JB', 'SB')),
   received_date date not null,
   notes         text,
   po_number     text,
   client_name   text,
   client_id     uuid references public.profiles(id) on delete set null,
-  jb            integer not null default 0,
-  sb            integer not null default 0,
+  jb            numeric(14, 4) not null default 0, -- JB UNITS (not bags)
+  sb            numeric(14, 4) not null default 0, -- SB UNITS (not bags)
   driver        text,
   plate_number  text,
   shipping_fee  numeric(12, 2),
@@ -222,14 +226,18 @@ create table if not exists public.delivery_receipts (
 alter table public.delivery_receipts add column if not exists po_number    text;
 alter table public.delivery_receipts add column if not exists client_name  text;
 alter table public.delivery_receipts add column if not exists client_id    uuid references public.profiles(id) on delete set null;
-alter table public.delivery_receipts add column if not exists jb           integer not null default 0;
-alter table public.delivery_receipts add column if not exists sb           integer not null default 0;
+alter table public.delivery_receipts add column if not exists jb           numeric(14, 4) not null default 0;
+alter table public.delivery_receipts add column if not exists sb           numeric(14, 4) not null default 0;
 alter table public.delivery_receipts add column if not exists driver       text;
 alter table public.delivery_receipts add column if not exists plate_number text;
 alter table public.delivery_receipts add column if not exists shipping_fee numeric(12, 2);
 alter table public.delivery_receipts add column if not exists dr_image_url text;
 alter table public.delivery_receipts add column if not exists destination  text;
 alter table public.delivery_receipts add column if not exists order_id     uuid references public.orders(id) on delete set null;
+-- Manual DRs are entered in whole bags; the internal unit equivalent can be fractional.
+alter table public.delivery_receipts alter column jb       type numeric(14, 4) using jb::numeric;
+alter table public.delivery_receipts alter column sb       type numeric(14, 4) using sb::numeric;
+alter table public.delivery_receipts alter column quantity type numeric(14, 4) using quantity::numeric;
 
 -- ── ORDERS ───────────────────────────────────────────────────
 create table if not exists public.orders (

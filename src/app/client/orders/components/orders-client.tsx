@@ -4,11 +4,7 @@ import { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { createClient } from '@/lib/supabase/client';
-import {
-  submitPaymentDetails,
-  submitOrderReturn,
-  deleteDraftOrder,
-} from '@/lib/actions/client-actions';
+import { submitPaymentDetails, deleteDraftOrder } from '@/lib/actions/client-actions';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -35,7 +31,6 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import {
-  CornerDownLeft,
   PackageSearch,
   CreditCard,
   UploadCloud,
@@ -219,12 +214,6 @@ export default function OrdersClient({
   // Delete Draft Confirmation
   const [deleteDraftId, setDeleteDraftId] = useState<string | null>(null);
 
-  // Return Report
-  const [isReturnOpen, setIsReturnOpen] = useState(false);
-  const [returnJb, setReturnJb] = useState(0);
-  const [returnSb, setReturnSb] = useState(0);
-  const [returnReason, setReturnReason] = useState('');
-
   // History filters
   const [searchQuery, setSearchQuery] = useState('');
   const [dateFrom, setDateFrom] = useState('');
@@ -340,43 +329,6 @@ export default function OrdersClient({
 
   const toggleExpanded = (orderId: string) => {
     setExpandedOrderId(expandedOrderId === orderId ? null : orderId);
-  };
-
-  const handleOpenReturn = (order: Order) => {
-    setSelectedOrder(order);
-    setReturnJb(0);
-    setReturnSb(0);
-    setReturnReason('');
-    setIsReturnOpen(true);
-  };
-
-  const handleSubmitReturn = async () => {
-    if (!selectedOrder) return;
-    if (returnJb <= 0 && returnSb <= 0) {
-      toast.error('Please enter at least one bag quantity to return.');
-      return;
-    }
-    if (!returnReason.trim()) {
-      toast.error('Please provide a reason for the return.');
-      return;
-    }
-    setIsSubmitting(true);
-    try {
-      const result = await submitOrderReturn(selectedOrder.id, returnJb, returnSb, returnReason);
-      if (!result.success) {
-        toast.error(result.error);
-        setIsSubmitting(false);
-        return;
-      }
-      toast.success('Return request submitted. The warehouse team will review it shortly.');
-      setIsReturnOpen(false);
-      router.refresh();
-    } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : 'Failed to submit return request.';
-      toast.error(msg);
-    } finally {
-      setIsSubmitting(false);
-    }
   };
 
   const handleDeleteDraft = async () => {
@@ -523,19 +475,6 @@ export default function OrdersClient({
               )}
             </div>
           </div>
-
-          {/* Report Return — for dispatched and completed orders */}
-          {(order.status === 'dispatched' || order.status === 'completed') && (
-            <Button
-              variant="outline"
-              size="sm"
-              className="w-full gap-2 border-amber-200 text-amber-700 hover:bg-amber-50 dark:border-amber-800 dark:text-amber-400 dark:hover:bg-amber-950"
-              onClick={() => handleOpenReturn(order)}
-            >
-              <CornerDownLeft className="h-4 w-4" />
-              Report Return
-            </Button>
-          )}
 
           {/* Split delivery badge */}
           {order.is_split_delivery && (
@@ -964,71 +903,6 @@ export default function OrdersClient({
               </DialogFooter>
             </form>
           )}
-        </DialogContent>
-      </Dialog>
-
-      {/* Return Report Dialog */}
-      <Dialog open={isReturnOpen} onOpenChange={setIsReturnOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Report Bag Return</DialogTitle>
-            <DialogDescription>
-              Report returned bags for PO {selectedOrder?.po_number}. The warehouse team will review
-              your request and process the return.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Individual bags returned (JB)</Label>
-                <Input
-                  type="number"
-                  min={0}
-                  value={returnJb || ''}
-                  onChange={(e) => setReturnJb(parseInt(e.target.value) || 0)}
-                  placeholder="0"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Individual bags returned (SB)</Label>
-                <Input
-                  type="number"
-                  min={0}
-                  value={returnSb || ''}
-                  onChange={(e) => setReturnSb(parseInt(e.target.value) || 0)}
-                  placeholder="0"
-                />
-              </div>
-            </div>
-            <div className="space-y-2">
-              <Label>
-                Reason for Return <span className="text-red-500">*</span>
-              </Label>
-              <textarea
-                className="border-input bg-background ring-offset-background placeholder:text-muted-foreground focus-visible:ring-ring min-h-[80px] w-full rounded-md border px-3 py-2 text-sm focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
-                value={returnReason}
-                onChange={(e) => setReturnReason(e.target.value)}
-                placeholder="Explain why the bags are being returned (e.g., damaged on arrival, wrong product, excess quantity)..."
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setIsReturnOpen(false)}
-              disabled={isSubmitting}
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleSubmitReturn}
-              disabled={isSubmitting}
-              className="bg-primary gap-2"
-            >
-              <CornerDownLeft className="h-4 w-4" />
-              {isSubmitting ? 'Submitting...' : 'Submit Return Request'}
-            </Button>
-          </DialogFooter>
         </DialogContent>
       </Dialog>
 

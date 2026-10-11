@@ -1,7 +1,7 @@
 'use server';
 
 import { requireAdmin, logActivity } from './admin-helpers';
-import { BAG_EQUIVALENT } from './profit-utils';
+import { wholeBagsFromUnits } from './profit-utils';
 import { warehouseReportSaveSchema, dispatchReportDateSchema } from './schemas';
 import { createRoleNotification } from './notification-actions';
 import type { WarehouseReport } from '@/lib/types/database';
@@ -42,12 +42,16 @@ export async function fetchDispatchesForDate(date: string): Promise<DispatchRow[
     }
   }
 
+  // delivery_receipts.jb/sb are JB/SB UNITS and can be fractional (manual DRs
+  // are entered in whole bags). DispatchRow is INDIVIDUAL BAGS — the
+  // denomination every consumer renders, exports, and sums in — so convert
+  // here once rather than at each of the four display sinks downstream.
   return (drs || []).map((dr) => ({
     client: dr.client_name || 'Walk-in',
     dr: dr.dr_number,
     service: dr.order?.service_type || poServiceTypes.get(dr.po_number) || 'pickup',
-    jb: dr.jb || 0,
-    sb: dr.sb || 0,
+    jb: wholeBagsFromUnits('JB', dr.jb || 0),
+    sb: wholeBagsFromUnits('SB', dr.sb || 0),
   }));
 }
 
@@ -73,41 +77,64 @@ export async function generateDailyReportData(date: string) {
   const shipmentDamagedJb = shipments?.reduce((sum, s) => sum + (s.damaged_jb || 0), 0) || 0;
   const shipmentDamagedSb = shipments?.reduce((sum, s) => sum + (s.damaged_sb || 0), 0) || 0;
 
-  // Ledger jb/sb are JB/SB UNITS; warehouse report quantities are INDIVIDUAL
-  // BAGS (same denomination as shipment stock). Convert dispatched units to
-  // bags before feeding the closing-stock formula.
+  // Ledger jb/sb are JB/SB UNITS and can be fractional (manual DRs are
+  // entered in whole bags); warehouse report quantities are INDIVIDUAL BAGS.
+  // Round per term so the aggregate is always a whole-bag integer — a float
+  // here would fail `z.number().int()` in warehouseReportSaveSchema and
+  // render as 7.000000000000001 in the report UIs.
   const { data: ledger } = await supabase.from('shipment_ledger').select('*').eq('date', date);
-  const dispatched_jb = ledger?.reduce((sum, l) => sum + (l.jb || 0) * BAG_EQUIVALENT.JB, 0) || 0;
-  const dispatched_sb = ledger?.reduce((sum, l) => sum + (l.sb || 0) * BAG_EQUIVALENT.SB, 0) || 0;
+  const dispatched_jb =
+    ledger?.reduce((sum, l) => sum + wholeBagsFromUnits('JB', l.jb || 0), 0) || 0;
+  const dispatched_sb =
+    ledger?.reduce((sum, l) => sum + wholeBagsFromUnits('SB', l.sb || 0), 0) || 0;
 
+  // Two very different things land in the "waste" bucket, and only one of
+  // them is a stock movement:
+  //
+  //   * ARRIVAL damage (shipments.damaged_jb/sb) — counted inside
+  //     `received_*` above but never became good stock, so closing must
+  //     subtract it back out.
+  //   * CUSTOMER damage/waste returns (shipment_ledger rows with a
+  //     return_reason of 'damage'/'waste') — the bags physically came back
+  //     but are NEVER restocked; they were already subtracted at dispatch.
+  //     Counting them in closing too subtracts the same bags twice, which is
+  //     the under-reported closing stock the client flagged.
+  //
+  // Displayed waste totals keep both (the warehouse still needs to see what
+  // clients damaged); the closing-stock formula only uses arrival damage.
+  let arrivalDamagedJb = 0;
+  let arrivalDamagedSb = 0;
+  let customerDamagedJb = 0;
+  let customerDamagedSb = 0;
   let returned_jb = 0;
   let returned_sb = 0;
-  let waste_jb = 0;
-  let waste_sb = 0;
   ledger?.forEach((l) => {
-    const isWaste = l.return_reason === 'waste' || l.return_reason === 'damage';
-    if (l.bags_returned && l.bag_returned_type === 'JB') {
-      if (isWaste) waste_jb += l.bags_returned;
+    if (!l.bags_returned) return;
+    const isNonRestockable = l.return_reason === 'waste' || l.return_reason === 'damage';
+    if (l.bag_returned_type === 'JB') {
+      if (isNonRestockable) customerDamagedJb += l.bags_returned;
       else returned_jb += l.bags_returned;
     }
-    if (l.bags_returned && l.bag_returned_type === 'SB') {
-      if (isWaste) waste_sb += l.bags_returned;
+    if (l.bag_returned_type === 'SB') {
+      if (isNonRestockable) customerDamagedSb += l.bags_returned;
       else returned_sb += l.bags_returned;
     }
   });
 
-  waste_jb += shipmentDamagedJb;
-  waste_sb += shipmentDamagedSb;
+  arrivalDamagedJb = shipmentDamagedJb;
+  arrivalDamagedSb = shipmentDamagedSb;
+  const waste_jb = arrivalDamagedJb + customerDamagedJb;
+  const waste_sb = arrivalDamagedSb + customerDamagedSb;
 
   // Yesterday's closing normally comes from the previous day's submitted
   // report. When no report chain exists yet (fresh deployment, or nobody has
   // saved a daily report) and the selected date is TODAY, derive the opening
   // position from LIVE shipment stock rolled back by today's net movements:
-  //   opening = live − received + dispatched − returned + waste
+  //   opening = live − received + dispatched − returned + arrival damage
   // so that Today's Closing = opening + received − dispatched + returned −
-  // waste resolves to the actual current stock instead of 0. For historical
-  // dates (live stock includes later movements) leave the opening at 0 rather
-  // than fabricating a number.
+  // arrival damage resolves to the actual current stock instead of 0. For
+  // historical dates (live stock includes later movements) leave the opening
+  // at 0 rather than fabricating a number.
   const today = new Date().toISOString().split('T')[0];
   let yesterday_jb = yesterdayReport?.closing_jb ?? null;
   let yesterday_sb = yesterdayReport?.closing_sb ?? null;
@@ -120,19 +147,27 @@ export async function generateDailyReportData(date: string) {
       .select('remaining_jb, remaining_sb');
     const live_jb = liveShipments?.reduce((sum, s) => sum + (s.remaining_jb || 0), 0) ?? 0;
     const live_sb = liveShipments?.reduce((sum, s) => sum + (s.remaining_sb || 0), 0) ?? 0;
-    yesterday_jb = Math.max(0, live_jb - received_jb + dispatched_jb - returned_jb + waste_jb);
-    yesterday_sb = Math.max(0, live_sb - received_sb + dispatched_sb - returned_sb + waste_sb);
+    yesterday_jb = Math.max(
+      0,
+      live_jb - received_jb + dispatched_jb - returned_jb + arrivalDamagedJb,
+    );
+    yesterday_sb = Math.max(
+      0,
+      live_sb - received_sb + dispatched_sb - returned_sb + arrivalDamagedSb,
+    );
   }
 
   // Today's Closing = Yesterday's Closing + Stock Received − Total Dispatched
-  // + Customer Returns − Waste/Damaged (all in INDIVIDUAL BAGS).
+  // + Customer Returns − Arrival Damage (all in INDIVIDUAL BAGS). Customer
+  // damage returns are deliberately absent: those bags are never restocked,
+  // so they were already removed by the Dispatched term above.
   const closing_jb = Math.max(
     0,
-    yesterday_jb + received_jb - dispatched_jb + returned_jb - waste_jb,
+    yesterday_jb + received_jb - dispatched_jb + returned_jb - arrivalDamagedJb,
   );
   const closing_sb = Math.max(
     0,
-    yesterday_sb + received_sb - dispatched_sb + returned_sb - waste_sb,
+    yesterday_sb + received_sb - dispatched_sb + returned_sb - arrivalDamagedSb,
   );
 
   const dispatches = await fetchDispatchesForDate(date);

@@ -535,7 +535,14 @@ export function TrackingTab({
                   <Select
                     items={statusOptions}
                     value={status}
-                    onValueChange={(v) => setStatus(v || '')}
+                    onValueChange={(v) => {
+                      setStatus(v || '');
+                      // "Delivered (With Returned Bags)" is a damage write-off
+                      // by default — those bags never re-enter good stock and
+                      // don't reverse sales. Preselect it so the warehouse only
+                      // changes it if the bags really are waste.
+                      if (v === 'bags_returned') setWasteCategory('damage');
+                    }}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Select status" />
@@ -638,8 +645,37 @@ export function TrackingTab({
             {status === 'bags_returned' && (
               <div className="bg-primary/5 border-primary/10 space-y-4 rounded-lg border p-4">
                 <p className="text-primary flex items-center gap-2 text-sm font-medium">
-                  <CornerDownLeft className="h-4 w-4" /> Record Returned Bags
+                  <CornerDownLeft className="h-4 w-4" /> Record Returned Bags — Damaged (no restock)
                 </p>
+                <div className="space-y-2">
+                  <Label>Category</Label>
+                  {(() => {
+                    const conditionOptions = [
+                      { value: 'damage', label: 'Damage (e.g. torn, wet, crushed in transit)' },
+                      { value: 'waste', label: 'Waste (e.g. spoiled, expired)' },
+                    ];
+                    return (
+                      <Select
+                        items={conditionOptions}
+                        value={wasteCategory}
+                        onValueChange={(v) =>
+                          setWasteCategory((v as 'waste' | 'damage') || 'damage')
+                        }
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select category" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {conditionOptions.map((opt) => (
+                            <SelectItem key={opt.value} value={opt.value}>
+                              {opt.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    );
+                  })()}
+                </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="jb-returned">Individual bags returned (JB)</Label>
@@ -665,8 +701,8 @@ export function TrackingTab({
                   </div>
                 </div>
                 <p className="text-primary/70 text-xs">
-                  Automatically creates a shipment ledger entry — bags will be added back to
-                  warehouse physical stock and reflected in reports.
+                  Bags will NOT be restocked. Only the bag counts and delivery log update — sales,
+                  gross, and net stay as originally recorded.
                 </p>
               </div>
             )}
@@ -702,10 +738,14 @@ export function TrackingTab({
             <AlertDialogDescription>
               Update tracking status to <strong>{getStatusLabel(status)}</strong> for order{' '}
               <strong>{selectedOrder?.id.slice(0, 8)}</strong>?
-              {(status === 'returned_good' || status === 'returned_waste') && (
+              {(status === 'returned_good' ||
+                status === 'returned_waste' ||
+                status === 'bags_returned') && (
                 <span className="mt-2 block">
                   This will record {jbReturned} individual JB bags and {sbReturned} individual SB
-                  bags returned{status === 'returned_waste' ? ` as ${wasteCategory}` : ''}.
+                  bags returned
+                  {status === 'returned_good' ? '' : ` as ${wasteCategory}`}
+                  {status === 'returned_good' ? ' and restock them.' : ' with no restock.'}
                 </span>
               )}
               {status === 'delivered' && (

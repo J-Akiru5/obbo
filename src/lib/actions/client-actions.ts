@@ -534,11 +534,18 @@ export async function fetchBalanceSummary() {
 
   // Total purchased: sum of all requested_qty from all completed/dispatched
   // orders, converted to INDIVIDUAL bags (the unit the ledger UI displays).
+  //
+  // Redelivery orders are EXCLUDED: TOTAL PURCHASED is PO-based (what the
+  // client bought and paid for), and a redelivery re-ships bags that were
+  // already counted on the original order. Counting it again inflates the
+  // client's purchase total the moment the redelivery leaves 'pending'.
+  // Redelivery bags still reach TOTAL DELIVERED via the query below.
   const { data: orders } = await supabase
     .from('orders')
     .select('items:order_items(requested_qty, bag_type)')
     .eq('client_id', user.id)
     .neq('order_type', 'draft')
+    .neq('order_type', 'redelivery')
     .in('status', ['approved', 'partially_approved', 'dispatched', 'completed', 'awaiting_check']);
 
   let totalPurchased = 0;
@@ -590,19 +597,39 @@ export async function fetchBalanceSummary() {
   return { totalPurchased, totalDelivered, remainingBalance };
 }
 
-export async function fetchPendingRedeliveryPoNumbers() {
+// A pending redelivery is tracked per (PO, bag_type), not per PO. A balance
+// row is per order × bag type, so a PO with both a JB and an SB remainder has
+// two rows — keying on PO alone made tapping either button flip BOTH into the
+// spinner, and the untouched bag type lost its request button.
+export interface PendingRedelivery {
+  po_number: string;
+  bag_type: 'JB' | 'SB';
+}
+
+export async function fetchPendingRedeliveries(): Promise<PendingRedelivery[]> {
   const { supabase, user } = await requireClient();
   const { data } = await supabase
     .from('orders')
-    .select('linked_po_number')
+    .select('linked_po_number, order_items(bag_type)')
     .eq('client_id', user.id)
     .eq('order_type', 'redelivery')
     .in('status', ['pending', 'approved', 'partially_approved', 'awaiting_check', 'dispatched'])
     .not('linked_po_number', 'is', null);
 
-  // Return unique PO numbers that have pending redelivery requests
-  const poNumbers = [...new Set((data || []).map((o) => o.linked_po_number).filter(Boolean))];
-  return poNumbers as string[];
+  const seen = new Set<string>();
+  const pending: PendingRedelivery[] = [];
+  for (const order of data || []) {
+    const po = order.linked_po_number as string | null;
+    if (!po) continue;
+    const items = (order.order_items ?? []) as { bag_type: 'JB' | 'SB' }[];
+    for (const item of items) {
+      const key = `${po}:${item.bag_type}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      pending.push({ po_number: po, bag_type: item.bag_type });
+    }
+  }
+  return pending;
 }
 
 // Internal implementation unchanged — safeAction() wraps the export below.

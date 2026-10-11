@@ -10,6 +10,10 @@ vi.mock('next/cache', () => ({ revalidatePath: vi.fn() }));
 // ── Fixtures ─────────────────────────────────────────────────────
 // Shape mirrors a delivery_receipts row PLUS the PostgREST-embedded
 // `order:orders(service_type)` join row that fetchDispatchesForDate selects.
+//
+// `jb` / `sb` here are JB/SB UNITS, exactly as stored on the row — the whole
+// point of the tests below is that fetchDispatchesForDate converts them to
+// INDIVIDUAL BAGS (×25 / ×50) before returning.
 function drRow(overrides: Record<string, unknown> = {}) {
   return {
     id: 'dr-0001',
@@ -22,7 +26,7 @@ function drRow(overrides: Record<string, unknown> = {}) {
     po_number: 'PO-2026-100',
     client_name: 'ACME Construction',
     client_id: 'client-001',
-    jb: 2,
+    jb: 2, // 2 JB UNITS = 50 individual bags
     sb: 0,
     driver: 'Danny Driver',
     plate_number: 'ABC1234',
@@ -66,7 +70,7 @@ function usePurchaseOrders(rows: { po_number: string; service_type: string }[]) 
 // ── Tests ────────────────────────────────────────────────────────
 
 describe('fetchDispatchesForDate', () => {
-  it('returns one dispatch row for a single order with a single DR (baseline)', async () => {
+  it('returns one dispatch row in INDIVIDUAL BAGS for a single order with a single DR', async () => {
     useDeliveryReceipts([drRow()]);
 
     const rows = await fetchDispatchesForDate('2026-08-01');
@@ -76,9 +80,22 @@ describe('fetchDispatchesForDate', () => {
       client: 'ACME Construction',
       dr: 'DR-2026-001',
       service: 'deliver',
-      jb: 2,
+      // 2 JB UNITS on the stored row -> 50 individual bags in DispatchRow,
+      // so every downstream table/PDF/XLSX that sums jb + sb gets a real
+      // bag total rather than a unit count.
+      jb: 50,
       sb: 0,
     });
+  });
+
+  it('rounds a fractional unit back to the whole bag it came from', async () => {
+    // A manual DR for 7 JB bags stores 0.28 units; the report must show 7.
+    useDeliveryReceipts([drRow({ id: 'dr-frac', dr_number: 'DR-FRAC', jb: 7 / 25, sb: 0 })]);
+
+    const rows = await fetchDispatchesForDate('2026-08-01');
+
+    expect(rows[0].jb).toBe(7);
+    expect(rows[0].sb).toBe(0);
   });
 
   it('returns 3 dispatch rows for a single order with 3 DRs on the same day', async () => {
@@ -132,7 +149,8 @@ describe('fetchDispatchesForDate', () => {
     expect(rows[0].client).toBe('Walk-in Buyer');
     // service_type resolved via the po_number fallback lookup
     expect(rows[0].service).toBe('deliver');
-    expect(rows[0].sb).toBe(1);
+    // 1 SB UNIT on the stored row -> 50 individual bags in DispatchRow
+    expect(rows[0].sb).toBe(50);
   });
 
   it('falls back to pickup / Walk-in when a DR has no order, PO, or client name', async () => {

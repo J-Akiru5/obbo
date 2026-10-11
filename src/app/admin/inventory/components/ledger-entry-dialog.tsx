@@ -19,7 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { BAG_EQUIVALENT } from '@/components/orders/wizard/order-schema';
+import { wholeBagsFromUnits } from '@/lib/actions/profit-utils';
 
 interface LedgerEntryDialogProps {
   open: boolean;
@@ -247,9 +247,10 @@ export function LedgerEntryDialog({ open, onOpenChange, entry, onSubmit }: Ledge
                 id="ledger-jb"
                 type="number"
                 min={0}
+                step="any"
                 value={form.jb || ''}
                 placeholder="0"
-                onChange={(e) => set('jb', parseInt(e.target.value) || 0)}
+                onChange={(e) => set('jb', parseFloat(e.target.value) || 0)}
                 className="h-9"
               />
             </div>
@@ -261,9 +262,10 @@ export function LedgerEntryDialog({ open, onOpenChange, entry, onSubmit }: Ledge
                 id="ledger-sb"
                 type="number"
                 min={0}
+                step="any"
                 value={form.sb || ''}
                 placeholder="0"
-                onChange={(e) => set('sb', parseInt(e.target.value) || 0)}
+                onChange={(e) => set('sb', parseFloat(e.target.value) || 0)}
                 className="h-9"
               />
             </div>
@@ -271,8 +273,8 @@ export function LedgerEntryDialog({ open, onOpenChange, entry, onSubmit }: Ledge
               <Label className="text-muted-foreground text-xs">Total individual bags (auto)</Label>
               <div className="bg-muted/50 flex h-9 items-center rounded-md border px-3 text-sm font-bold">
                 {(
-                  (Number(form.jb) || 0) * BAG_EQUIVALENT.JB +
-                  (Number(form.sb) || 0) * BAG_EQUIVALENT.SB
+                  wholeBagsFromUnits('JB', Number(form.jb) || 0) +
+                  wholeBagsFromUnits('SB', Number(form.sb) || 0)
                 ).toLocaleString()}
               </div>
             </div>

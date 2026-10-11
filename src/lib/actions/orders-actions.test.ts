@@ -33,6 +33,13 @@ const { bug3Mode, mockSupabase, setTableData, clearTableData } = vi.hoisted(() =
     const chain: Record<string, any> = {};
     chain.select = () => chain;
     chain.eq = () => chain;
+    chain.neq = () => chain;
+    chain.in = () => chain;
+    chain.or = () => chain;
+    chain.not = () => chain;
+    chain.gte = () => chain;
+    chain.lte = () => chain;
+    chain.limit = () => chain;
     chain.order = () => chain;
     chain.single = () => thenable(() => resultFor(table));
     chain.maybeSingle = () => thenable(() => resultFor(table));
@@ -605,6 +612,134 @@ describe('Orders Server Actions', () => {
       expect(balancePatch).toBeDefined();
       expect(balancePatch?.remaining_qty).toBe(0);
       expect(balancePatch?.status).toBe('fulfilled');
+    });
+
+    it('books ZERO sales on a redelivery whose PO family already recorded full revenue', async () => {
+      // Client-feedback round 3, Issue 1b: a second DR (redelivery) against a
+      // fully-recognized PO must not re-book sales — TOTAL PURCHASED inflates
+      // otherwise. Bag counts and delivery log still update; money lines stay 0.
+      const redeliveryOrder = {
+        id: 'redelivery-order-2',
+        client_id: 'client-001',
+        status: 'approved',
+        total_amount: 0,
+        payment_method: 'cash',
+        po_number: 'PO-2026-003',
+        linked_po_number: 'PO-2026-003',
+        order_type: 'redelivery',
+        source: 'warehouse',
+        service_type: 'deliver',
+        shipping_fee: 0,
+        tracking_status: 'pending_dispatch',
+        is_split_delivery: false,
+        client: {
+          id: 'client-001',
+          full_name: 'Roxanne Agub',
+          company_name: null,
+          address_street: null,
+          address_city: null,
+          address_province: null,
+          avatar_url: null,
+        },
+        items: [
+          {
+            id: 'item-redelivery-2',
+            order_id: 'redelivery-order-2',
+            product_id: 'prod-sb-001',
+            bag_type: 'SB',
+            requested_qty: 2,
+            approved_qty: 2,
+            dispatched_qty: 0,
+            selling_price_per_bag: 185,
+          },
+        ],
+      };
+
+      const originalOrder = {
+        id: 'order-orig-1',
+        total_amount: 222000,
+        created_at: '2026-01-01T00:00:00.000Z',
+        items: [
+          {
+            id: 'item-orig-1',
+            order_id: 'order-orig-1',
+            product_id: 'prod-sb-001',
+            bag_type: 'SB',
+            requested_qty: 24,
+            approved_qty: 22,
+            dispatched_qty: 22,
+            selling_price_per_bag: 185,
+          },
+        ],
+      };
+
+      const rpcBodies: Record<string, unknown>[] = [];
+
+      server.use(
+        http.get('*/rest/v1/orders', ({ request }) => {
+          const url = new URL(request.url);
+          const accept = request.headers.get('accept') || '';
+          const id = url.searchParams.get('id')?.replace('eq.', '');
+          if (id === redeliveryOrder.id) return HttpResponse.json(redeliveryOrder);
+          if (url.searchParams.get('po_number')?.replace('eq.', '') === 'PO-2026-003') {
+            return HttpResponse.json(
+              accept.includes('object+json') ? originalOrder : [originalOrder],
+            );
+          }
+          // No redelivery orders link to this root → family = {PO-2026-003} only.
+          return HttpResponse.json([]);
+        }),
+        http.get('*/rest/v1/shipments', ({ request }) => {
+          const url = new URL(request.url);
+          const id = url.searchParams.get('id')?.replace('eq.', '');
+          return HttpResponse.json(
+            id === 'ship-red-1'
+              ? {
+                  id,
+                  batch_name: 'BATCH-RED',
+                  remaining_jb: 0,
+                  remaining_sb: 500,
+                  good_stock: 500,
+                }
+              : [],
+          );
+        }),
+        http.get('*/rest/v1/shipment_ledger', () => HttpResponse.json([{ total_sales: 222000 }])),
+        http.post('*/rest/v1/rpc/dispatch_order_v2', async ({ request }) => {
+          rpcBodies.push((await request.json()) as Record<string, unknown>);
+          return HttpResponse.json({ success: true, dr_id: 'dr-red-2' });
+        }),
+        http.get('*/rest/v1/customer_balances', ({ request }) => {
+          const accept = request.headers.get('accept') || '';
+          const balance = {
+            id: 'bal-orig-1',
+            order_id: 'order-orig-1',
+            product_id: 'prod-sb-001',
+            bag_type: 'SB',
+            remaining_qty: 100,
+            status: 'pending',
+          };
+          return HttpResponse.json(accept.includes('object+json') ? balance : [balance]);
+        }),
+        http.patch('*/rest/v1/customer_balances', () => HttpResponse.json([])),
+        http.post('*/rest/v1/activity_log', () => HttpResponse.json([])),
+      );
+
+      const result = await dispatchOrder(
+        redeliveryOrder.id,
+        'ship-red-1',
+        'DR-005',
+        null,
+        'Driver',
+        'PLATE',
+      );
+
+      expect(result.success).toBe(true);
+      expect(rpcBodies).toHaveLength(1);
+      // Family already booked the full 222,000 → this redelivery recognizes 0.
+      expect(rpcBodies[0].p_total_sales).toBe(0);
+      expect(rpcBodies[0].p_gross_profit).toBe(-14764); // 0 − 100 bags × 147.64
+      expect(rpcBodies[0].p_net_profit).toBe(-16764); // −14,764 − 100 × 20
     });
   });
 

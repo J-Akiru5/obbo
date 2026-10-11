@@ -2,9 +2,9 @@
 
 import { revalidatePath } from 'next/cache';
 import { requireAdmin, logActivity, createOrderForClientPortal } from './admin-helpers';
-import { addLedgerEntry } from './ledger-actions';
+import { addLedgerEntry, sumLedgerSalesForPoFamily, getPoSalesCap } from './ledger-actions';
 import { applyRedeliveryToCustomerBalances } from './balance-actions';
-import { BAG_EQUIVALENT } from './profit-utils';
+import { BAG_EQUIVALENT, capSalesToPoTotal, unitsFromIndividualBags } from './profit-utils';
 import { createUserNotification } from './notification-actions';
 import { deliveryReceiptCreateSchema, deliveryReceiptUpdateSchema } from './schemas';
 import { safeAction } from './action-result';
@@ -44,8 +44,15 @@ async function _createDeliveryReceipt(rawDr: Record<string, unknown>) {
   const clientName = dr.client_name || poData?.client_name || 'Unknown';
   const effectiveClientId = dr.client_id || poData?.client_id || null;
 
-  const jb = dr.jb ?? (dr.bag_type === 'JB' ? (dr.quantity ?? 0) : 0);
-  const sb = dr.sb ?? (dr.bag_type === 'SB' ? (dr.quantity ?? 0) : 0);
+  // The manual-DR form is filled in with INDIVIDUAL BAGS (client-feedback
+  // round 3 — the warehouse counts bags off the truck, not internal units).
+  // delivery_receipts.jb/sb stay JB/SB UNITS so the existing
+  // `bags = units * 25 / * 50` formulas keep working; convert once here at
+  // the boundary.
+  const jbBags = dr.jb ?? (dr.bag_type === 'JB' ? (dr.quantity ?? 0) : 0);
+  const sbBags = dr.sb ?? (dr.bag_type === 'SB' ? (dr.quantity ?? 0) : 0);
+  const jb = unitsFromIndividualBags('JB', jbBags);
+  const sb = unitsFromIndividualBags('SB', sbBags);
 
   const { data, error } = await supabase
     .from('delivery_receipts')
@@ -55,13 +62,29 @@ async function _createDeliveryReceipt(rawDr: Record<string, unknown>) {
       client_id: effectiveClientId,
       jb,
       sb,
-      quantity: dr.quantity ?? jb + sb,
-      bag_type: dr.bag_type ?? (jb > 0 ? 'JB' : 'SB'),
+      quantity: jbBags + sbBags,
+      bag_type: dr.bag_type ?? (jbBags > 0 ? 'JB' : 'SB'),
       received_date: dr.received_date ?? new Date().toISOString().split('T')[0],
     })
     .select()
     .single();
   if (error) throw new Error(error.message);
+
+  // ── PO revenue cap (client-feedback round 3) ────────────────────────────
+  // Without it, every manual DR booked the PO's FULL selling value, so a
+  // second DR for the same PO doubled TOTAL PURCHASED. Book at most the PO's
+  // remaining un-recognized value: a replacement or redelivery DR for bags
+  // the client already paid for records ¥0 while the bag counts and delivery
+  // log still update.
+  const poAmountFromPoRecord =
+    (Number(poData?.check_amount) || 0) + (Number(poData?.cash_amount) || 0);
+  const poSalesCap = await getPoSalesCap(supabase, dr.po_number);
+  const poTotal = poAmountFromPoRecord || poSalesCap || 0;
+  let amount: number | undefined;
+  if (poTotal > 0) {
+    const alreadyRecorded = await sumLedgerSalesForPoFamily(supabase, dr.po_number);
+    amount = capSalesToPoTotal({ poTotal, alreadyRecorded, desired: poTotal });
+  }
 
   const ledgerResult = await addLedgerEntry(dr.shipment_id, {
     dr_number: dr.dr_number,
@@ -76,9 +99,7 @@ async function _createDeliveryReceipt(rawDr: Record<string, unknown>) {
     plate_number: dr.plate_number,
     payment_method: poData?.check_number ? 'check' : poData?.cash_amount ? 'cash' : undefined,
     check_number: poData?.check_number,
-    amount: poData
-      ? Number(poData.check_amount) || Number(poData.cash_amount) || undefined
-      : undefined,
+    amount,
     delivery_receipt_id: data.id,
   });
   // addLedgerEntry no longer throws — matches this function's own
@@ -254,17 +275,22 @@ async function _updateDeliveryReceipt(id: string, rawUpdates: Record<string, unk
 
   const updates = parsed.data;
 
+  // The edit form sends INDIVIDUAL BAGS; delivery_receipts.jb/sb and
+  // shipment_ledger.jb/sb are JB/SB UNITS. Convert once, up front, so every
+  // use below (ledger write, stock correction) sees the storage unit.
+  if (updates.jb !== undefined) updates.jb = unitsFromIndividualBags('JB', updates.jb);
+  if (updates.sb !== undefined) updates.sb = unitsFromIndividualBags('SB', updates.sb);
+  if (updates.quantity !== undefined && updates.bag_type !== undefined) {
+    updates.jb = updates.bag_type === 'JB' ? unitsFromIndividualBags('JB', updates.quantity) : 0;
+    updates.sb = updates.bag_type === 'SB' ? unitsFromIndividualBags('SB', updates.quantity) : 0;
+  }
+
   const { data: oldDr } = await supabase
     .from('delivery_receipts')
     .select('*')
     .eq('id', id)
     .single();
   if (!oldDr) throw new Error('Delivery receipt not found');
-
-  if (updates.quantity !== undefined && updates.bag_type !== undefined) {
-    updates.jb = updates.bag_type === 'JB' ? updates.quantity : 0;
-    updates.sb = updates.bag_type === 'SB' ? updates.quantity : 0;
-  }
 
   const newJb = updates.jb ?? oldDr.jb;
   const newSb = updates.sb ?? oldDr.sb;
@@ -319,19 +345,14 @@ async function _updateDeliveryReceipt(id: string, rawUpdates: Record<string, unk
       if (shipment) {
         // DR jb/sb columns are JB/SB UNITS; shipment remaining columns are
         // INDIVIDUAL BAGS. Convert both the reverse (old) and apply (new)
-        // side before correcting.
-        const correctedJb = Math.max(
-          0,
-          (shipment.remaining_jb ?? 0) +
-            (oldDr.jb || 0) * BAG_EQUIVALENT.JB -
-            newJb * BAG_EQUIVALENT.JB,
-        );
-        const correctedSb = Math.max(
-          0,
-          (shipment.remaining_sb ?? 0) +
-            (oldDr.sb || 0) * BAG_EQUIVALENT.SB -
-            newSb * BAG_EQUIVALENT.SB,
-        );
+        // side before correcting, rounding each term so fractional units
+        // (0.28 JB units = 7 bags) resolve to the exact whole-bag stock.
+        const oldJbBags = Math.round(Number(oldDr.jb || 0) * BAG_EQUIVALENT.JB);
+        const oldSbBags = Math.round(Number(oldDr.sb || 0) * BAG_EQUIVALENT.SB);
+        const newJbBags = Math.round(Number(newJb) * BAG_EQUIVALENT.JB);
+        const newSbBags = Math.round(Number(newSb) * BAG_EQUIVALENT.SB);
+        const correctedJb = Math.max(0, (shipment.remaining_jb ?? 0) + oldJbBags - newJbBags);
+        const correctedSb = Math.max(0, (shipment.remaining_sb ?? 0) + oldSbBags - newSbBags);
 
         const { error: correctError } = await supabase
           .from('shipments')
@@ -351,8 +372,10 @@ async function _updateDeliveryReceipt(id: string, rawUpdates: Record<string, unk
           .eq('id', newShipmentId)
           .single();
         if (newShipment) {
-          const newRemJb = Math.max(0, (newShipment.remaining_jb ?? 0) - newJb * BAG_EQUIVALENT.JB);
-          const newRemSb = Math.max(0, (newShipment.remaining_sb ?? 0) - newSb * BAG_EQUIVALENT.SB);
+          const newJbBags = Math.round(Number(newJb) * BAG_EQUIVALENT.JB);
+          const newSbBags = Math.round(Number(newSb) * BAG_EQUIVALENT.SB);
+          const newRemJb = Math.max(0, (newShipment.remaining_jb ?? 0) - newJbBags);
+          const newRemSb = Math.max(0, (newShipment.remaining_sb ?? 0) - newSbBags);
           const { error: newCorrectError } = await supabase
             .from('shipments')
             .update({

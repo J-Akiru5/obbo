@@ -3,21 +3,23 @@
 import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Badge } from '@/components/ui/badge';
 import {
   fetchShipments,
   fetchPurchaseOrders,
   fetchDeliveryReceipts,
-  fetchOrderReturns,
 } from '@/lib/actions/admin-actions';
 import { ShipmentsTab } from './components/shipments-tab';
 import { PoListTab } from './components/po-list-tab';
 import { DrListTab } from './components/dr-list-tab';
-import { ReturnsTab } from './components/returns-tab';
-import { Shipment, PurchaseOrder, DeliveryReceipt, OrderReturn } from '@/lib/types/database';
+import { Shipment, PurchaseOrder, DeliveryReceipt } from '@/lib/types/database';
 import { toast } from 'sonner';
 import { createClient } from '@/lib/supabase/client';
 
+// The client-side "Report Return" flow and the Inventory "Returns" approval
+// tab were removed in client-feedback round 3: returns are now recorded only
+// by the warehouse manager from the Tracking tab
+// (/admin/orders?tab=tracking), which already feeds the warehouse reports.
+// return-actions.ts and returns-tab.tsx remain on disk but are unreferenced.
 function InventoryContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -26,7 +28,6 @@ function InventoryContent() {
   const [shipments, setShipments] = useState<Shipment[]>([]);
   const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrder[]>([]);
   const [deliveryReceipts, setDeliveryReceipts] = useState<DeliveryReceipt[]>([]);
-  const [orderReturns, setOrderReturns] = useState<OrderReturn[]>([]);
   const [loading, setLoading] = useState(true);
 
   const DEMO_MODE = false;
@@ -36,21 +37,18 @@ function InventoryContent() {
       setShipments([]);
       setPurchaseOrders([]);
       setDeliveryReceipts([]);
-      setOrderReturns([]);
       setLoading(false);
       return;
     }
     try {
-      const [s, p, d, r] = await Promise.all([
+      const [s, p, d] = await Promise.all([
         fetchShipments(),
         fetchPurchaseOrders(),
         fetchDeliveryReceipts(),
-        fetchOrderReturns(),
       ]);
       setShipments(s as Shipment[]);
       setPurchaseOrders(p as PurchaseOrder[]);
       setDeliveryReceipts(d as DeliveryReceipt[]);
-      setOrderReturns(r as OrderReturn[]);
     } catch (error) {
       console.error('Error loading inventory data:', error);
       toast.error('Failed to load inventory data.');
@@ -84,9 +82,6 @@ function InventoryContent() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'delivery_receipts' }, () =>
         loadData(),
       )
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'order_returns' }, () =>
-        loadData(),
-      )
       .subscribe();
 
     return () => {
@@ -109,7 +104,7 @@ function InventoryContent() {
       </div>
 
       <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-        <TabsList className="no-scrollbar mb-4 flex h-auto w-full justify-start overflow-x-auto rounded-none border-b pb-1 md:mb-0 md:grid md:grid-cols-4 md:rounded-md md:border-b-0 md:pb-0">
+        <TabsList className="no-scrollbar mb-4 flex h-auto w-full justify-start overflow-x-auto rounded-none border-b pb-1 md:mb-0 md:grid md:grid-cols-3 md:rounded-md md:border-b-0 md:pb-0">
           <TabsTrigger value="shipments" className="shrink-0 py-2.5 whitespace-nowrap">
             Shipment Batches
           </TabsTrigger>
@@ -118,14 +113,6 @@ function InventoryContent() {
           </TabsTrigger>
           <TabsTrigger value="dr" className="shrink-0 py-2.5 whitespace-nowrap">
             DR List
-          </TabsTrigger>
-          <TabsTrigger value="returns" className="shrink-0 py-2.5 whitespace-nowrap">
-            Returns
-            {orderReturns.length > 0 && (
-              <Badge className="bg-accent text-accent-foreground hover:bg-accent/90 ml-1.5 px-1.5 py-0 text-xs">
-                {orderReturns.length}
-              </Badge>
-            )}
           </TabsTrigger>
         </TabsList>
 
@@ -146,10 +133,6 @@ function InventoryContent() {
               loading={loading}
               onReload={loadData}
             />
-          </TabsContent>
-
-          <TabsContent value="returns">
-            <ReturnsTab returns={orderReturns} loading={loading} onReload={loadData} />
           </TabsContent>
         </div>
       </Tabs>

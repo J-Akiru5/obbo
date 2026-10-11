@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Calendar } from 'lucide-react';
+import { wholeBagsFromUnits } from '@/lib/actions/profit-utils';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -308,8 +309,8 @@ export default function AdminReportsPage() {
                         <TableHead>Client</TableHead>
                         <TableHead>DR</TableHead>
                         <TableHead>Service</TableHead>
-                        <TableHead className="text-right">JB</TableHead>
-                        <TableHead className="text-right">SB</TableHead>
+                        <TableHead className="text-right">JB Bags</TableHead>
+                        <TableHead className="text-right">SB Bags</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -353,7 +354,7 @@ export default function AdminReportsPage() {
                         <div className="text-muted-foreground flex items-center justify-between text-xs">
                           <span>DR: {row.dr ?? '—'}</span>
                           <span className="text-foreground font-medium">
-                            {row.jb} JB · {row.sb} SB
+                            {row.jb} JB bags · {row.sb} SB bags
                           </span>
                         </div>
                       </div>
@@ -561,8 +562,8 @@ export default function AdminReportsPage() {
                       </TableCell>
                       <TableCell className="text-right text-sm">
                         {(
-                          (Number(entry.jb) || 0) * 25 +
-                          (Number(entry.sb) || 0) * 50
+                          wholeBagsFromUnits('JB', Number(entry.jb) || 0) +
+                          wholeBagsFromUnits('SB', Number(entry.sb) || 0)
                         ).toLocaleString()}
                       </TableCell>
                       <TableCell className="text-right text-sm font-medium">

@@ -37,6 +37,7 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Check, ChevronsUpDown, Eye, LayoutGrid, List, Package } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
+import { wholeBagsFromUnits } from '@/lib/actions/profit-utils';
 import { PurchaseOrder } from '@/lib/types/database';
 
 export function DrListTab({
@@ -95,8 +96,11 @@ export function DrListTab({
     setShipmentId(dr.shipment_id);
     setClientName(dr.client_name || '');
     setPoNumber(dr.po_number || '');
-    setJbQty(dr.jb || 0);
-    setSbQty(dr.sb || 0);
+    // Stored jb/sb are JB/SB UNITS; the form below (and updateDeliveryReceipt)
+    // works in INDIVIDUAL BAGS. Convert before prefilling or saving would
+    // divide the number again on the way back in.
+    setJbQty(wholeBagsFromUnits('JB', dr.jb || 0));
+    setSbQty(wholeBagsFromUnits('SB', dr.sb || 0));
     setDriver(dr.driver || '');
     setPlateNumber(dr.plate_number || '');
     setDestination(dr.destination || '');
@@ -360,7 +364,10 @@ export function DrListTab({
                     <TableCell className="text-sm">{dr.plate_number || '—'}</TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-1.5">
-                        <span className="text-foreground text-xs font-bold">{dr.jb + dr.sb}</span>
+                        <span className="text-foreground text-xs font-bold">
+                          {wholeBagsFromUnits('JB', dr.jb || 0) +
+                            wholeBagsFromUnits('SB', dr.sb || 0)}
+                        </span>
                         <Badge variant="outline" className="font-mono text-[10px]">
                           {dr.jb > 0 ? 'JB' : 'SB'}
                         </Badge>
@@ -488,10 +495,18 @@ export function DrListTab({
                     </div>
                     <div className="text-right">
                       <div className="text-muted-foreground mb-1 text-[9px] font-bold uppercase">
-                        Quantity
+                        Quantity (bags)
                       </div>
                       <p className="text-foreground text-[11px] font-bold">
-                        {dr.jb + dr.sb} {dr.jb > 0 ? 'JB' : 'SB'}
+                        {(() => {
+                          const jbBags = wholeBagsFromUnits('JB', dr.jb || 0);
+                          const sbBags = wholeBagsFromUnits('SB', dr.sb || 0);
+                          return (
+                            [jbBags > 0 ? `${jbBags} JB` : null, sbBags > 0 ? `${sbBags} SB` : null]
+                              .filter(Boolean)
+                              .join(' · ') || '0'
+                          );
+                        })()}
                       </p>
                     </div>
                   </div>
@@ -590,18 +605,18 @@ export function DrListTab({
                 </p>
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-muted-foreground flex items-center gap-2 font-medium">
-                    <Package className="h-4 w-4" /> Quantity
+                    <Package className="h-4 w-4" /> Quantity (bags)
                   </span>
                   <span className="text-foreground font-black">
-                    {(viewingDr?.jb || 0) + (viewingDr?.sb || 0)}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground flex items-center gap-2 font-medium">
-                    <Package className="h-4 w-4" /> Bag Type
-                  </span>
-                  <span className="text-foreground font-black">
-                    {(viewingDr?.jb ?? 0) > 0 ? 'JB' : 'SB'}
+                    {(() => {
+                      const jbBags = wholeBagsFromUnits('JB', viewingDr?.jb || 0);
+                      const sbBags = wholeBagsFromUnits('SB', viewingDr?.sb || 0);
+                      return (
+                        [jbBags > 0 ? `${jbBags} JB` : null, sbBags > 0 ? `${sbBags} SB` : null]
+                          .filter(Boolean)
+                          .join(' · ') || '0'
+                      );
+                    })()}
                   </span>
                 </div>
               </div>
@@ -843,28 +858,36 @@ export function DrListTab({
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="dr-jb-quantity">Quantity JB (Jumbo Bag)</Label>
+                <Label htmlFor="dr-jb-quantity">JB Bags (individual bags)</Label>
                 <Input
                   id="dr-jb-quantity"
                   type="number"
                   min="0"
+                  step="1"
                   value={jbQty || ''}
-                  placeholder="0"
+                  placeholder="e.g. 7"
                   onChange={(e) => setJbQty(parseInt(e.target.value) || 0)}
                   className="font-bold"
                 />
+                <p className="text-muted-foreground text-[11px]">
+                  Count of individual 40kg bags. 25 JB bags = 1 JB unit internally.
+                </p>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="dr-sb-quantity">Quantity SB (Sling Bag)</Label>
+                <Label htmlFor="dr-sb-quantity">SB Bags (individual bags)</Label>
                 <Input
                   id="dr-sb-quantity"
                   type="number"
                   min="0"
+                  step="1"
                   value={sbQty || ''}
-                  placeholder="0"
+                  placeholder="e.g. 14"
                   onChange={(e) => setSbQty(parseInt(e.target.value) || 0)}
                   className="font-bold"
                 />
+                <p className="text-muted-foreground text-[11px]">
+                  Count of individual 40kg bags. 50 SB bags = 1 SB unit internally.
+                </p>
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">

@@ -5,11 +5,12 @@ import { requireAdmin, logActivity, getCostConfig } from './admin-helpers';
 import {
   computeDispatchProfit,
   prorateOrderSalesByValue,
+  capSalesToPoTotal,
   individualBagsFromUnits,
   BAG_EQUIVALENT,
 } from './profit-utils';
 import { orderApproveSchema, orderRejectSchema, orderTrackingUpdateSchema } from './schemas';
-import { applyBagReturnToLedger } from './ledger-actions';
+import { applyBagReturnToLedger, sumLedgerSalesForPoFamily } from './ledger-actions';
 import { applyRedeliveryToCustomerBalances } from './balance-actions';
 import { createRoleNotification } from './notification-actions';
 import { safeAction } from './action-result';
@@ -119,8 +120,11 @@ async function _approveOrder(
   const { error: orderError } = await supabase.from('orders').update(updates).eq('id', orderId);
   if (orderError) throw new Error(`Failed to update order: ${orderError.message}`);
 
-  // Create customer balance records for partial quantities
-  if (isPartial) {
+  // Create customer balance records for partial quantities.
+  // Redelivery orders are skipped: their remainder is already tracked by the
+  // ORIGINAL order's balance row. Minting a second row here would inflate the
+  // client's Remaining Balance with bags that were never a new purchase.
+  if (isPartial && order.order_type !== 'redelivery') {
     for (const ai of constrainedApprovedItems) {
       const original = order.items.find((i: { id: string }) => i.id === ai.itemId);
       if (original && ai.qty < original.requested_qty) {
@@ -379,7 +383,24 @@ async function _dispatchOrder(
     }
   }
 
-  const totalSales = prorateOrderSalesByValue(salesBasisTotal, salesBasisItems);
+  const proratedSales = prorateOrderSalesByValue(salesBasisTotal, salesBasisItems);
+
+  // ── PO revenue cap (client-feedback round 3) ────────────────────────────
+  // The proration above is this dispatch's SHARE of the PO, but a redelivery
+  // or replacement DR delivers bags the client already paid for. Summing
+  // every ledger row already booked against the PO family and clamping the
+  // share to what's left of salesBasisTotal means a second DR for the same
+  // PO recognizes ¥0 — the bag counts and delivery log still update, the
+  // sales/gross/net lines don't move. TOTAL PURCHASED stops inflating.
+  const poCapRoot =
+    order.order_type === 'redelivery' && order.linked_po_number ? order.linked_po_number : poNumber;
+  const alreadyRecorded = await sumLedgerSalesForPoFamily(supabase, poCapRoot);
+  const totalSales = capSalesToPoTotal({
+    poTotal: salesBasisTotal,
+    alreadyRecorded,
+    desired: proratedSales,
+  });
+
   const profitFields = computeDispatchProfit({
     totalBags,
     totalSales,
@@ -617,7 +638,19 @@ async function _updateTrackingStatus(
       .eq('id', orderId)
       .single();
     if (order?.shipment_id) {
-      const reason = trackingStatus === 'returned_waste' ? (wasteCategory ?? 'waste') : 'return';
+      // "Delivered (With Returns)" (bags_returned) is the warehouse telling us
+      // the client handed bags back damaged — those bags never re-enter good
+      // stock and nothing financial reverses, because the sale was already
+      // recognized when the bag left the warehouse. It therefore defaults to
+      // the non-restockable 'damage' bucket instead of the restockable
+      // 'return', but the admin can still pick 'waste'. returned_good keeps
+      // 'return' (restock + reverse); returned_waste keeps its own pick.
+      const reason =
+        trackingStatus === 'bags_returned'
+          ? (wasteCategory ?? 'damage')
+          : trackingStatus === 'returned_waste'
+            ? (wasteCategory ?? 'waste')
+            : 'return';
       const ledgerResult = await applyBagReturnToLedger(supabase, {
         shipmentId: order.shipment_id,
         poNumber: order.po_number,

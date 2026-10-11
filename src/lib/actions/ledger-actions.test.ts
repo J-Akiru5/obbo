@@ -107,7 +107,10 @@ describe('Ledger Server Actions — profit calculations', () => {
       expect(entry.landed_cost_per_bag).toBe(147.64);
     });
 
-    it('waste/damage return reverses full revenue with NO cost offset (cost already sunk)', async () => {
+    it('waste/damage return records ZERO money deltas (only bag counts move)', async () => {
+      // Client-feedback round 3, Issue 3: marking bags damaged must not claw
+      // revenue out of SALES, GROSS, or NET — the sale was already recognized
+      // when the bag left the warehouse. Only the bag counts and stock move.
       noopHandlers();
       const captured: Record<string, unknown>[] = [];
       server.use(
@@ -124,15 +127,18 @@ describe('Ledger Server Actions — profit calculations', () => {
         sb: 0,
         bags_returned: 5,
         bag_returned_type: 'JB',
-        return_reason: 'waste',
+        return_reason: 'damage',
       });
 
       const entry = captured[0];
-      expect(entry.total_sales).toBe(-1250);
-      // Unlike a restockable return, gross AND net take the FULL hit —
-      // the landed/local cost already spent on these bags isn't recovered.
-      expect(entry.gross_profit).toBe(-1250);
-      expect(entry.net_profit).toBe(-1250);
+      expect(entry.total_sales).toBe(0);
+      expect(entry.gross_profit).toBe(0);
+      expect(entry.net_profit).toBe(0);
+      // The per-bag rates survive so the row still reports what the bag
+      // originally sold and cost for.
+      expect(entry.selling_price_per_bag).toBe(250);
+      expect(entry.landed_cost_per_bag).toBe(147.64);
+      expect(entry.local_expenses_per_bag).toBe(20);
     });
   });
 

@@ -32,6 +32,19 @@ export function individualBagsFromUnits(bagType: 'JB' | 'SB', unitQty: number): 
   return unitQty * BAG_EQUIVALENT[bagType];
 }
 
+/**
+ * units → individual bags, rounded to the nearest whole bag.
+ *
+ * jb/sb columns on `delivery_receipts` and `shipment_ledger` can hold
+ * fractional units now (manual DRs are entered in whole bags: 7 JB bags = 0.28
+ * units). Anything that turns those units back into bags for DISPLAY or for a
+ * whole-bag aggregate must round, or `0.28 * 25` renders as
+ * `7.000000000000001` and a `z.number().int()` save-schema rejects it.
+ */
+export function wholeBagsFromUnits(bagType: 'JB' | 'SB', unitQty: number): number {
+  return Math.round(individualBagsFromUnits(bagType, unitQty));
+}
+
 export function unitsFromIndividualBags(bagType: 'JB' | 'SB', bags: number): number {
   return bags / BAG_EQUIVALENT[bagType];
 }
@@ -178,9 +191,16 @@ export function prorateOrderSalesByValue(
  * Restockable returns ('return'): the bag goes back to good stock, so the
  * full revenue, landed cost, and local expenses for that bag all reverse.
  *
- * Non-restockable returns ('waste'/'damage'): the bag is destroyed.
- * Revenue reverses in full but no cost is recovered — the amount the
- * client wasn't charged for drops straight through to profit as a loss.
+ * Non-restockable returns ('waste'/'damage'): the bag never comes back into
+ * sellable stock, so nothing financial reverses — the sale was already
+ * recognized when the bag left the warehouse and the client was charged for
+ * it. Marking bags damaged must not silently claw revenue out of SALES,
+ * GROSS, or NET. The returned-rate fields are still populated so the row
+ * can report what that bag originally sold and cost for, and the bag counts
+ * (bag_returned_type / bags_returned) still feed stock and waste reports.
+ *
+ * Client-feedback round 3, Issue 3: "the return should not affect sales,
+ * gross, and net … the return should only mark the bags as damaged."
  */
 export function computeReturnProfitDelta(params: {
   returnedBags: number;
@@ -195,27 +215,31 @@ export function computeReturnProfitDelta(params: {
     throw new Error('Returned bags must be a positive integer.');
   }
 
-  const quantity = new Decimal(returnedBags);
   const sellingPrice = money(sellingPricePerBag);
   const landed = money(landedCostPerBag);
   const local = money(localExpensesPerBag);
 
-  // Revenue always reverses in full (client isn't charged for returned bags)
+  if (!isRestockable) {
+    // Nothing is restocked and nothing is reversed — record zero deltas but
+    // keep the per-bag rates so the row is still informative.
+    return {
+      total_sales: 0,
+      gross_profit: 0,
+      net_profit: 0,
+      selling_price_per_bag: asNumber(sellingPrice),
+      landed_cost_per_bag: asNumber(landed),
+      local_expenses_per_bag: asNumber(local),
+    };
+  }
+
+  const quantity = new Decimal(returnedBags);
+
+  // Restockable: the client isn't charged for these bags and the bag itself
+  // (plus its handling cost) is recovered, so sales reverse in full and both
+  // cost lines reverse with it.
   const totalSalesDelta = quantity.mul(sellingPrice).neg();
-
-  // Gross reverses sales + landed cost (cost of the bag itself is recovered)
-  // Non-restockable destroys the bag → landed cost is NOT recovered
-  const grossProfitDelta = isRestockable
-    ? totalSalesDelta.plus(quantity.mul(landed))
-    : totalSalesDelta;
-
-  // Net = gross + local-expense reversal when restockable.
-  // Local expenses (handling, storage) also reverse for restockable because
-  // those costs are tied to a bag that's going back into inventory.
-  // For waste/damage, local stays sunk — only sales reverses on both lines.
-  const netProfitDelta = isRestockable
-    ? grossProfitDelta.plus(quantity.mul(local))
-    : totalSalesDelta;
+  const grossProfitDelta = totalSalesDelta.plus(quantity.mul(landed));
+  const netProfitDelta = grossProfitDelta.plus(quantity.mul(local));
 
   return {
     total_sales: asNumber(totalSalesDelta),
@@ -225,4 +249,31 @@ export function computeReturnProfitDelta(params: {
     landed_cost_per_bag: asNumber(landed),
     local_expenses_per_bag: asNumber(local),
   };
+}
+
+/**
+ * Cumulative revenue-recognition cap (client-feedback round 3, Issue 3).
+ *
+ * A purchase order's full selling value may be recognized AT MOST ONCE,
+ * across every dispatch that carries that PO number — original dispatch,
+ * partial dispatches, and any replacement/redelivery DR. Anything delivered
+ * past the PO total (redeliveries for bags that were already paid for) is
+ * recorded as ¥0 so TOTAL PURCHASED / SALES / GROSS / NET never inflate.
+ *
+ * @param poTotal        the PO's selling value (order.total_amount)
+ * @param alreadyRecorded sum of shipment_ledger.total_sales already booked
+ *                       against this PO number
+ * @param desired        the amount the caller would book without a cap
+ * @returns clamped amount, never negative
+ */
+export function capSalesToPoTotal(params: {
+  poTotal: Decimal.Value;
+  alreadyRecorded: Decimal.Value;
+  desired: Decimal.Value;
+}): number {
+  const remaining = money(params.poTotal).minus(money(params.alreadyRecorded));
+  if (remaining.lte(0)) return 0;
+  const desired = money(params.desired);
+  const capped = Decimal.min(desired, remaining);
+  return asNumber(capped.toDecimalPlaces(2, Decimal.ROUND_HALF_UP));
 }

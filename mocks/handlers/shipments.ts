@@ -41,9 +41,20 @@ export const shipmentLedgerHandlers = [
     const url = new URL(request.url);
     const shipmentId = url.searchParams.get('shipment_id')?.replace('eq.', '');
     const drNumber = url.searchParams.get('dr_number')?.replace('eq.', '');
+    const poNumber = url.searchParams.get('po_number')?.replace('eq.', '');
+    // PostgREST serializes .in('po_number', [...]) as po_number=in.(A,B).
+    // sumLedgerSalesForPoFamily relies on this filter to compute the PO
+    // revenue cap, so honor it rather than returning every row.
+    const poInParam = url.searchParams.get('po_number') ?? '';
     let result = [...mockShipmentLedger];
     if (shipmentId) result = result.filter((l) => l.shipment_id === shipmentId);
     if (drNumber) result = result.filter((l) => l.dr_number === drNumber);
+    if (poInParam.startsWith('in.(')) {
+      const wanted = poInParam.slice(4, -1).split(',');
+      result = result.filter((l) => wanted.includes(l.po_number));
+    } else if (poNumber) {
+      result = result.filter((l) => l.po_number === poNumber);
+    }
     return HttpResponse.json(result);
   }),
 

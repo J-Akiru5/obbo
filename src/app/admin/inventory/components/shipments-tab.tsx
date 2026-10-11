@@ -51,6 +51,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { LedgerEntryDialog } from './ledger-entry-dialog';
+import { wholeBagsFromUnits } from '@/lib/actions/profit-utils';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -70,14 +71,29 @@ function computeLedgerEntryDisplay(e: ShipmentLedgerEntry) {
   const rowNet = Number(e.net_profit) || 0;
   const serviceLabel =
     e.service_type === 'deliver' ? 'Delivery' : e.service_type === 'pickup' ? 'Pick-up' : '—';
-  const totalDeducted = e.jb + e.sb;
+  // Ledger jb/sb are JB/SB UNITS and can be fractional (manual DRs are
+  // entered in whole bags: 7 JB bags = 0.28 units). Every column and card
+  // below renders INDIVIDUAL BAGS, so convert + round here once.
+  const jbBags = wholeBagsFromUnits('JB', Number(e.jb) || 0);
+  const sbBags = wholeBagsFromUnits('SB', Number(e.sb) || 0);
+  const totalDeducted = jbBags + sbBags;
   const returnLabel =
     e.return_reason === 'waste' ? 'Waste' : e.return_reason === 'damage' ? 'Damage' : 'Return';
   const returnClass =
     e.return_reason === 'return' || !e.return_reason
       ? 'font-medium text-emerald-600'
       : 'font-medium text-red-500';
-  return { rowSales, rowGross, rowNet, serviceLabel, totalDeducted, returnLabel, returnClass };
+  return {
+    rowSales,
+    rowGross,
+    rowNet,
+    serviceLabel,
+    jbBags,
+    sbBags,
+    totalDeducted,
+    returnLabel,
+    returnClass,
+  };
 }
 
 export function ShipmentsTab({
@@ -722,9 +738,9 @@ export function ShipmentsTab({
                           <TableHead className="text-[10px]">Plate</TableHead>
                           <TableHead className="text-[10px]">Destination</TableHead>
                           <TableHead className="text-[10px]">Service</TableHead>
-                          <TableHead className="text-right text-[10px]">JB</TableHead>
-                          <TableHead className="text-right text-[10px]">SB</TableHead>
-                          <TableHead className="text-right text-[10px]">Total</TableHead>
+                          <TableHead className="text-right text-[10px]">JB bags</TableHead>
+                          <TableHead className="text-right text-[10px]">SB bags</TableHead>
+                          <TableHead className="text-right text-[10px]">Total bags</TableHead>
                           <TableHead className="text-[10px]">Payment</TableHead>
                           <TableHead className="text-[10px]">Check No.</TableHead>
                           <TableHead className="text-right text-[10px]">Amount</TableHead>
@@ -771,6 +787,8 @@ export function ShipmentsTab({
                               rowGross,
                               rowNet,
                               serviceLabel,
+                              jbBags,
+                              sbBags,
                               returnLabel,
                               returnClass,
                             } = computeLedgerEntryDisplay(e);
@@ -804,13 +822,13 @@ export function ShipmentsTab({
                                   {serviceLabel}
                                 </TableCell>
                                 <TableCell className="text-right text-[11px] font-medium text-red-500">
-                                  {e.jb > 0 ? `-${e.jb}` : '—'}
+                                  {jbBags > 0 ? `-${jbBags}` : '—'}
                                 </TableCell>
                                 <TableCell className="text-right text-[11px] font-medium text-red-500">
-                                  {e.sb > 0 ? `-${e.sb}` : '—'}
+                                  {sbBags > 0 ? `-${sbBags}` : '—'}
                                 </TableCell>
                                 <TableCell className="text-right text-[11px] font-bold">
-                                  {e.jb + e.sb > 0 ? e.jb + e.sb : '—'}
+                                  {jbBags + sbBags > 0 ? `${jbBags + sbBags} bags` : '—'}
                                 </TableCell>
                                 <TableCell className="text-[10px] uppercase">
                                   {e.payment_method || '—'}
@@ -881,6 +899,8 @@ export function ShipmentsTab({
                           rowGross,
                           rowNet,
                           serviceLabel,
+                          jbBags,
+                          sbBags,
                           totalDeducted,
                           returnLabel,
                           returnClass,
@@ -923,8 +943,8 @@ export function ShipmentsTab({
 
                             <div className="border-border/50 flex items-center justify-between border-y py-1.5 text-[11px]">
                               <span className="text-red-500">
-                                {e.jb > 0 && `-${e.jb} JB `}
-                                {e.sb > 0 && `-${e.sb} SB`}
+                                {jbBags > 0 && `-${jbBags} JB `}
+                                {sbBags > 0 && `-${sbBags} SB`}
                                 {totalDeducted === 0 && '—'}
                               </span>
                               <span className="font-bold">

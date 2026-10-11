@@ -49,8 +49,12 @@ async function _addLedgerEntry(
   let profitFields: Partial<DispatchProfitFields> = {};
   if (isDispatch && (jbOut > 0 || sbOut > 0)) {
     const costConfig = await getCostConfig();
+    // jb/sb are UNITS and can be fractional now (manual DRs are entered in
+    // bags, e.g. 7 JB bags = 0.28 units). Profit is priced per INDIVIDUAL
+    // BAG, so round the converted bag count — physical bags are whole.
+    const totalBags = Math.round(jbOut * BAG_EQUIVALENT.JB + sbOut * BAG_EQUIVALENT.SB);
     profitFields = computeDispatchProfit({
-      totalBags: jbOut * 25 + sbOut * 50,
+      totalBags,
       totalSales: entry.amount ?? 0,
       landedCostPerBag: costConfig.landed_cost_per_bag,
       localExpensesPerBag: costConfig.local_expenses_per_bag,
@@ -111,13 +115,16 @@ async function _addLedgerEntry(
     // that stock itself is bag-denominated.
     const jbReturnedBags = restockReturned && returnedType === 'JB' ? returned : 0;
     const sbReturnedBags = restockReturned && returnedType === 'SB' ? returned : 0;
+    // Round the unit→bag conversion: stock columns are whole bags and the
+    // unit side can now be fractional (0.28 * 25 must stay exactly 7, not
+    // 7.000000000000001 which Postgres would round away from 7 anyway).
     const newRemainingJb = Math.max(
       0,
-      (shipment.remaining_jb ?? 0) - jbOut * BAG_EQUIVALENT.JB + jbReturnedBags,
+      (shipment.remaining_jb ?? 0) - Math.round(jbOut * BAG_EQUIVALENT.JB) + jbReturnedBags,
     );
     const newRemainingSb = Math.max(
       0,
-      (shipment.remaining_sb ?? 0) - sbOut * BAG_EQUIVALENT.SB + sbReturnedBags,
+      (shipment.remaining_sb ?? 0) - Math.round(sbOut * BAG_EQUIVALENT.SB) + sbReturnedBags,
     );
     const { error: stockError } = await supabase
       .from('shipments')
@@ -179,6 +186,14 @@ async function _updateLedgerEntry(
   // row's own stored landed_cost_per_bag/local_expenses_per_bag (or, for a
   // return row, the original dispatch row's stored rates) — never live
   // cost config — so historical immutability holds even through an edit.
+  //
+  // Deliberately NOT re-applied here: the PO revenue cap (capSalesToPoTotal).
+  // The cap runs at the two DISPATCH write sites — dispatch_order_v2 in
+  // orders-actions.ts and _createDeliveryReceipt in
+  // delivery-receipt-actions.ts — which is where a second DR for the same PO
+  // used to inflate TOTAL PURCHASED. This edit path is a deliberate data
+  // correction, and capping it would make a historically wrong row
+  // impossible to fix upward without first editing the order too.
   const recomputeTrigger =
     updates.jb !== undefined ||
     updates.sb !== undefined ||
@@ -198,8 +213,6 @@ async function _updateLedgerEntry(
       .single();
 
     if (currentRow) {
-      const newJb = updates.jb ?? currentRow.jb ?? 0;
-      const newSb = updates.sb ?? currentRow.sb ?? 0;
       const newAmount = updates.amount ?? Number(currentRow.amount) ?? 0;
       const newBagsReturned = updates.bags_returned ?? currentRow.bags_returned ?? 0;
       const newReturnReason = updates.return_reason ?? currentRow.return_reason ?? 'return';
@@ -210,7 +223,10 @@ async function _updateLedgerEntry(
         // Still a dispatch row after the edit — reuse THIS row's own
         // historic rates, not a fresh getCostConfig() call.
         profitUpdates = computeDispatchProfit({
-          totalBags: newJb * 25 + newSb * 50,
+          totalBags: Math.round(
+            Number(updates.jb ?? currentRow.jb) * BAG_EQUIVALENT.JB +
+              Number(updates.sb ?? currentRow.sb) * BAG_EQUIVALENT.SB,
+          ),
           totalSales: newAmount,
           landedCostPerBag,
           localExpensesPerBag,
@@ -283,17 +299,19 @@ async function _updateLedgerEntry(
     const newSbReturnedBags =
       isRestockable && newReturned > 0 && newReturnedType === 'SB' ? newReturned : 0;
 
+    // Round each unit→bag term individually so the integer result is exact
+    // even when entry jb/sb are fractional (manual DRs entered in bags).
     const correctedJb =
       (shipment.remaining_jb ?? 0) +
-      oldEntry.jb * BAG_EQUIVALENT.JB -
+      Math.round(Number(oldEntry.jb) * BAG_EQUIVALENT.JB) -
       oldJbReturnedBags -
-      newJbOut * BAG_EQUIVALENT.JB +
+      Math.round(Number(newJbOut) * BAG_EQUIVALENT.JB) +
       newJbReturnedBags;
     const correctedSb =
       (shipment.remaining_sb ?? 0) +
-      oldEntry.sb * BAG_EQUIVALENT.SB -
+      Math.round(Number(oldEntry.sb) * BAG_EQUIVALENT.SB) -
       oldSbReturnedBags -
-      newSbOut * BAG_EQUIVALENT.SB +
+      Math.round(Number(newSbOut) * BAG_EQUIVALENT.SB) +
       newSbReturnedBags;
 
     const { error: stockError } = await supabase
@@ -391,3 +409,82 @@ async function _applyBagReturnToLedger(
 }
 
 export const applyBagReturnToLedger = safeAction(_applyBagReturnToLedger);
+
+// ─────────────────────────────────────────────────────────────────────────
+// PO revenue cap (client-feedback round 3, Issue 3)
+//
+// A purchase order's selling value may be recognized at most once, no matter
+// how many DRs deliver against it. Partial dispatches book their prorated
+// share; anything delivered past the PO total — replacements and
+// redeliveries for bags the client already paid for — books ¥0.
+//
+// The cap is keyed on a PO *family*: a redelivery order gets its own
+// `po_number` and points at the original through `linked_po_number`, so
+// summing only the original PO's ledger rows would miss every redelivery
+// dispatch that came after it.
+// ─────────────────────────────────────────────────────────────────────────
+
+/**
+ * Every `po_number` whose ledger revenue rolls up to `rootPoNumber`: the PO
+ * itself plus the distinct PO number of every redelivery order linked to it.
+ */
+async function collectPoFamilyNumbers(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  rootPoNumber: string,
+): Promise<string[]> {
+  const poNumbers = new Set<string>([rootPoNumber]);
+  const { data: linked } = await supabase
+    .from('orders')
+    .select('po_number')
+    .eq('linked_po_number', rootPoNumber);
+  // Array.isArray rather than `for (const row of linked ?? [])`: a driver
+  // that resolves to a single object instead of a row array must not throw
+  // here — an empty list just means "no redelivery orders yet".
+  if (Array.isArray(linked)) {
+    for (const row of linked) {
+      if (row?.po_number) poNumbers.add(row.po_number);
+    }
+  }
+  return [...poNumbers];
+}
+
+/**
+ * Sum of `shipment_ledger.total_sales` already booked against a PO family.
+ * Call this BEFORE writing a new dispatch row so the new row never counts
+ * against itself.
+ */
+export async function sumLedgerSalesForPoFamily(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  rootPoNumber: string | null | undefined,
+): Promise<number> {
+  if (!rootPoNumber) return 0;
+  const poNumbers = await collectPoFamilyNumbers(supabase, rootPoNumber);
+  const { data, error } = await supabase
+    .from('shipment_ledger')
+    .select('total_sales')
+    .in('po_number', poNumbers);
+  if (error || !Array.isArray(data)) return 0;
+  return data.reduce((sum, row) => sum + (Number(row.total_sales) || 0), 0);
+}
+
+/**
+ * The total selling value a PO family may recognize, or `null` when the PO
+ * cannot be resolved to an order.
+ *
+ * Returning `null` (rather than `0`) is deliberate: an unresolvable PO means
+ * "we don't know the cap", and callers must leave the amount alone in that
+ * case instead of silently zeroing a historically correct sale.
+ */
+export async function getPoSalesCap(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  rootPoNumber: string | null | undefined,
+): Promise<number | null> {
+  if (!rootPoNumber) return null;
+  const { data: order } = await supabase
+    .from('orders')
+    .select('total_amount')
+    .eq('po_number', rootPoNumber)
+    .maybeSingle();
+  if (!order) return null;
+  return Number(order.total_amount) || 0;
+}

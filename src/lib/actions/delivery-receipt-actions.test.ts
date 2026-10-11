@@ -37,7 +37,7 @@ describe('updateDeliveryReceipt — shipment stock correction in INDIVIDUAL BAGS
       id: '550e8400-e29b-41d4-a716-446655440001',
       shipment_id: '550e8400-e29b-41d4-a716-446655440002',
       dr_number: 'DR-BAG-1',
-      jb: 2, // 2 JB units = 50 bags originally deducted
+      jb: 2, // stored as 2 JB UNITS = 50 bags originally deducted
       sb: 0,
       client_name: 'ACME Construction',
       client_id: null,
@@ -64,14 +64,56 @@ describe('updateDeliveryReceipt — shipment stock correction in INDIVIDUAL BAGS
       http.post('*/rest/v1/activity_log', () => HttpResponse.json([])),
     );
 
-    const result = await updateDeliveryReceipt(oldDr.id, { jb: 4 });
+    // The edit form (and updateDeliveryReceipt) works in INDIVIDUAL BAGS:
+    // 100 bags = 4 JB units.
+    const result = await updateDeliveryReceipt(oldDr.id, { jb: 100 });
     expect(result.success).toBe(true);
 
-    // 200 bags + old 2×25 reversed − new 4×25 applied = 150.
-    // (Raw-unit math would incorrectly give 198.)
+    // 200 bags + old 2×25 reversed − new 100 bags applied = 150.
     expect(shipmentPatches).toHaveLength(1);
     expect(shipmentPatches[0].remaining_jb).toBe(150);
     expect(shipmentPatches[0].good_stock).toBe(150);
+  });
+
+  it('rounds a fractional unit back to the whole bag it came from', async () => {
+    const oldDr = {
+      id: '550e8400-e29b-41d4-a716-446655440011',
+      shipment_id: '550e8400-e29b-41d4-a716-446655440012',
+      dr_number: 'DR-FRAC-1',
+      // A manual DR for 7 JB bags stores 0.28 units.
+      jb: 7 / 25,
+      sb: 0,
+      client_name: 'ACME Construction',
+      client_id: null,
+      driver: 'Danny Driver',
+      plate_number: 'ABC1234',
+      received_date: '2026-08-01',
+    };
+    const ledgerRow = { id: 'ledger-frac-1', delivery_receipt_id: oldDr.id };
+    const shipmentPatches: Record<string, unknown>[] = [];
+
+    server.use(
+      http.get('*/rest/v1/delivery_receipts', () => HttpResponse.json(oldDr)),
+      http.patch('*/rest/v1/delivery_receipts', () => HttpResponse.json([])),
+      http.get('*/rest/v1/shipment_ledger', () => HttpResponse.json(ledgerRow)),
+      http.patch('*/rest/v1/shipment_ledger', () => HttpResponse.json([])),
+      http.get('*/rest/v1/shipments', () =>
+        HttpResponse.json({ remaining_jb: 100, remaining_sb: 0, good_stock: 100 }),
+      ),
+      http.patch('*/rest/v1/shipments', async ({ request }) => {
+        shipmentPatches.push((await request.json()) as Record<string, unknown>);
+        return HttpResponse.json([]);
+      }),
+      http.post('*/rest/v1/activity_log', () => HttpResponse.json([])),
+    );
+
+    // Bump the DR to 14 bags — 14 / 25 = 0.56 units stored.
+    const result = await updateDeliveryReceipt(oldDr.id, { jb: 14 });
+    expect(result.success).toBe(true);
+
+    // 100 + round(0.28×25)=7 reversed − round(0.56×25)=14 applied = 93.
+    expect(shipmentPatches).toHaveLength(1);
+    expect(shipmentPatches[0].remaining_jb).toBe(93);
   });
 });
 
@@ -148,7 +190,8 @@ describe('createDeliveryReceipt — manual DR fulfils an already-dispatched PO b
       shipment_id: shipmentId,
       dr_number: 'DR-MANUAL-BAL-1',
       client_id: clientId,
-      jb: 4, // 4 JB units = the 100-bag balance
+      // The manual DR form is filled in with INDIVIDUAL BAGS: 100 bags = 4 JB units.
+      jb: 100,
       sb: 0,
       po_number: poNumber,
     });
@@ -166,12 +209,77 @@ describe('createDeliveryReceipt — manual DR fulfils an already-dispatched PO b
       shipment_id: shipmentId,
       dr_number: 'DR-MANUAL-BAL-2',
       client_id: clientId,
-      jb: 4,
+      jb: 100,
       sb: 0,
       po_number: poNumber,
     });
 
     expect(result.success).toBe(true);
     expect(balancePatches).toHaveLength(0);
+  });
+
+  it('books ₱0 sales on a SECOND DR for the same PO (cumulative revenue cap)', async () => {
+    setup('dispatched');
+
+    const ledgerBodies: Record<string, unknown>[] = [];
+    server.use(
+      // The PO resolves to an order worth ₱10,000…
+      http.get('*/rest/v1/orders', () =>
+        HttpResponse.json({ id: originalOrderId, total_amount: 10000 }),
+      ),
+      // …and ₱10,000 is ALREADY recognized against this PO family, so there
+      // is no revenue headroom left for this DR.
+      http.get('*/rest/v1/shipment_ledger', () => HttpResponse.json([{ total_sales: 10000 }])),
+      http.post('*/rest/v1/shipment_ledger', async ({ request }) => {
+        const body = (await request.json()) as Record<string, unknown>;
+        ledgerBodies.push(body);
+        return HttpResponse.json({ id: 'ledger-cap-1', ...body });
+      }),
+    );
+
+    const result = await createDeliveryReceipt({
+      shipment_id: shipmentId,
+      dr_number: 'DR-MANUAL-CAP-1',
+      client_id: clientId,
+      jb: 100,
+      sb: 0,
+      po_number: poNumber,
+    });
+
+    expect(result.success).toBe(true);
+    expect(ledgerBodies).toHaveLength(1);
+    // The bag counts and delivery log still record; only the money line stops.
+    expect(ledgerBodies[0].jb).toBeCloseTo(4, 10);
+    expect(ledgerBodies[0].total_sales).toBe(0);
+  });
+
+  it('books the PO amount minus what is already recognized on a partial second DR', async () => {
+    setup('dispatched');
+
+    const ledgerBodies: Record<string, unknown>[] = [];
+    server.use(
+      http.get('*/rest/v1/orders', () =>
+        HttpResponse.json({ id: originalOrderId, total_amount: 10000 }),
+      ),
+      http.get('*/rest/v1/shipment_ledger', () => HttpResponse.json([{ total_sales: 8000 }])),
+      http.post('*/rest/v1/shipment_ledger', async ({ request }) => {
+        const body = (await request.json()) as Record<string, unknown>;
+        ledgerBodies.push(body);
+        return HttpResponse.json({ id: 'ledger-cap-2', ...body });
+      }),
+    );
+
+    const result = await createDeliveryReceipt({
+      shipment_id: shipmentId,
+      dr_number: 'DR-MANUAL-CAP-2',
+      client_id: clientId,
+      jb: 100,
+      sb: 0,
+      po_number: poNumber,
+    });
+
+    expect(result.success).toBe(true);
+    // ₱10,000 PO − ₱8,000 already recognized = ₱2,000 headroom left.
+    expect(ledgerBodies[0].total_sales).toBe(2000);
   });
 });

@@ -48,7 +48,7 @@ describe('LedgerClient - Balance Ledger Component', () => {
           totalDelivered: 0,
           remainingBalance: 0,
         }}
-        pendingRedeliveryPos={[]}
+        pendingRedeliveries={[]}
       />,
     );
 
@@ -64,7 +64,7 @@ describe('LedgerClient - Balance Ledger Component', () => {
           totalDelivered: 75,
           remainingBalance: 25,
         }}
-        pendingRedeliveryPos={[]}
+        pendingRedeliveries={[]}
       />,
     );
 
@@ -82,7 +82,7 @@ describe('LedgerClient - Balance Ledger Component', () => {
           totalDelivered: 10,
           remainingBalance: 0,
         }}
-        pendingRedeliveryPos={[]}
+        pendingRedeliveries={[]}
       />,
     );
 
@@ -128,7 +128,7 @@ describe('LedgerClient - Balance Ledger Component', () => {
           totalDelivered: 10,
           remainingBalance: 0,
         }}
-        pendingRedeliveryPos={[]}
+        pendingRedeliveries={[]}
       />,
     );
 
@@ -178,7 +178,7 @@ describe('LedgerClient - Balance Ledger Component', () => {
           totalDelivered: 15,
           remainingBalance: 5,
         }}
-        pendingRedeliveryPos={[]}
+        pendingRedeliveries={[]}
       />,
     );
 
@@ -224,12 +224,62 @@ describe('LedgerClient - Balance Ledger Component', () => {
           totalDelivered: 20,
           remainingBalance: 10,
         }}
-        pendingRedeliveryPos={['PO-2026-003']}
+        pendingRedeliveries={[{ po_number: 'PO-2026-003', bag_type: 'JB' }]}
       />,
     );
 
     // Renders once per layout (desktop table + mobile card) — see note above.
     expect(screen.getAllByText('Re-delivery Pending').length).toBeGreaterThan(0);
     expect(screen.queryByText('Request Balance Delivery')).not.toBeInTheDocument();
+  });
+
+  it('only spins the tapped bag type when both JB and SB of one PO have balances', () => {
+    const sharedOrder = {
+      po_number: 'PO-2026-004',
+      po_image_url: null,
+      created_at: new Date().toISOString(),
+    };
+    const makeBalance = (id: string, bagType: 'JB' | 'SB') => ({
+      id,
+      client_id: 'client-1',
+      order_id: 'order-1',
+      product_id: `prod-${bagType}`,
+      bag_type: bagType,
+      total_purchase: 30,
+      remaining_qty: 10,
+      status: 'pending' as const,
+      created_at: new Date().toISOString(),
+      product: {
+        id: `prod-${bagType}`,
+        name: 'Portland Cement',
+        description: 'Cement',
+        bag_type: bagType,
+        price_per_bag: 250,
+        price_port: null,
+        price_warehouse: null,
+        image_url: null,
+        is_active: true,
+        created_at: new Date().toISOString(),
+      },
+      order: sharedOrder,
+    });
+
+    render(
+      <LedgerClient
+        balances={[makeBalance('jb-balance', 'JB'), makeBalance('sb-balance', 'SB')]}
+        summary={{
+          totalPurchased: 60,
+          totalDelivered: 40,
+          remainingBalance: 20,
+        }}
+        // Only the JB redelivery is pending — the SB row shares the same PO.
+        pendingRedeliveries={[{ po_number: 'PO-2026-004', bag_type: 'JB' }]}
+      />,
+    );
+
+    // One spinner per layout (desktop table + mobile card).
+    expect(screen.getAllByText('Re-delivery Pending')).toHaveLength(2);
+    // The untouched SB row must keep its request button, in both layouts.
+    expect(screen.getAllByText('Request Balance Delivery')).toHaveLength(2);
   });
 });

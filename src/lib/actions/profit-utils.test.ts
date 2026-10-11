@@ -5,8 +5,10 @@ import {
   prorateOrderSales,
   prorateOrderSalesByValue,
   computeReturnProfitDelta,
+  capSalesToPoTotal,
   individualBagsFromUnits,
   unitsFromIndividualBags,
+  wholeBagsFromUnits,
   BAG_EQUIVALENT,
   type OrderItemPrice,
 } from './profit-utils';
@@ -290,7 +292,11 @@ describe('computeReturnProfitDelta', () => {
     expect(result.net_profit).toBeCloseTo(-411.8, 2); // -5 * (250 - 147.64 - 20)
   });
 
-  it('waste/damage return reverses sales only — cost is sunk on both lines', () => {
+  it('waste/damage return records ZERO money deltas — only the bag counts change', () => {
+    // Client-feedback round 3, Issue 3: marking bags damaged must not claw
+    // revenue out of SALES, GROSS, or NET. The sale was already recognized
+    // when the bag left the warehouse, so nothing financial reverses; only
+    // the bag counts (and therefore stock/waste reports) move.
     const result = computeReturnProfitDelta({
       returnedBags: 5,
       sellingPricePerBag: 250,
@@ -298,9 +304,14 @@ describe('computeReturnProfitDelta', () => {
       localExpensesPerBag: 20,
       isRestockable: false,
     });
-    expect(result.total_sales).toBe(-1250);
-    expect(result.gross_profit).toBe(-1250);
-    expect(result.net_profit).toBe(-1250);
+    expect(result.total_sales).toBe(0);
+    expect(result.gross_profit).toBe(0);
+    expect(result.net_profit).toBe(0);
+    // The per-bag rates survive so the row still reports what the bag
+    // originally sold and cost for.
+    expect(result.selling_price_per_bag).toBe(250);
+    expect(result.landed_cost_per_bag).toBe(147.64);
+    expect(result.local_expenses_per_bag).toBe(20);
   });
 
   it('throws on zero or negative returnedBags', () => {
@@ -313,5 +324,55 @@ describe('computeReturnProfitDelta', () => {
         isRestockable: true,
       }),
     ).toThrow();
+  });
+});
+
+describe('wholeBagsFromUnits (fractional-unit display/aggregate fix)', () => {
+  it('converts whole units exactly (no float drift)', () => {
+    expect(wholeBagsFromUnits('JB', 2)).toBe(50);
+    expect(wholeBagsFromUnits('SB', 1)).toBe(50);
+  });
+
+  it('rounds a fractional unit back to the whole bag it came from', () => {
+    // 7 JB bags = 0.28 units; 0.28 * 25 must render as 7, not 7.000000000000001.
+    expect(wholeBagsFromUnits('JB', 7 / 25)).toBe(7);
+    expect(wholeBagsFromUnits('SB', 14 / 50)).toBe(14);
+  });
+
+  it('rounds half-bag float error away rather than flooring it', () => {
+    expect(wholeBagsFromUnits('JB', 0.28)).toBe(7);
+    expect(wholeBagsFromUnits('JB', 0.3)).toBe(8); // 7.5 -> 8
+  });
+});
+
+describe('capSalesToPoTotal (client-feedback round 3 — second DR books no sales)', () => {
+  it('passes the desired amount through while PO value remains', () => {
+    expect(capSalesToPoTotal({ poTotal: 222000, alreadyRecorded: 0, desired: 185000 })).toBe(
+      185000,
+    );
+  });
+
+  it('clamps a partial second dispatch to what is left of the PO', () => {
+    // PO worth 222000, 185000 already recognized -> only 37000 of headroom.
+    expect(capSalesToPoTotal({ poTotal: 222000, alreadyRecorded: 185000, desired: 185000 })).toBe(
+      37000,
+    );
+  });
+
+  it('returns 0 once the PO value is fully recognized (redelivery/replacement DR)', () => {
+    expect(capSalesToPoTotal({ poTotal: 222000, alreadyRecorded: 222000, desired: 185000 })).toBe(
+      0,
+    );
+    expect(capSalesToPoTotal({ poTotal: 222000, alreadyRecorded: 250000, desired: 185000 })).toBe(
+      0,
+    );
+  });
+
+  it('never returns a negative amount', () => {
+    expect(capSalesToPoTotal({ poTotal: 1000, alreadyRecorded: 5000, desired: 1000 })).toBe(0);
+  });
+
+  it('caps at the PO total when the caller over-requests', () => {
+    expect(capSalesToPoTotal({ poTotal: 5000, alreadyRecorded: 0, desired: 99999 })).toBe(5000);
   });
 });

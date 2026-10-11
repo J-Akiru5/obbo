@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { createClient } from '@/lib/supabase/client';
-import { submitRedeliveryRequest } from '@/lib/actions/client-actions';
+import { submitRedeliveryRequest, PendingRedelivery } from '@/lib/actions/client-actions';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -66,15 +66,24 @@ function formatBalanceDate(b: CustomerBalance) {
 export default function LedgerClient({
   balances,
   summary,
-  pendingRedeliveryPos,
+  pendingRedeliveries,
 }: {
   balances: CustomerBalance[];
   summary: BalanceSummary;
-  pendingRedeliveryPos: string[];
+  pendingRedeliveries: PendingRedelivery[];
 }) {
   const router = useRouter();
   const [selectedBalance, setSelectedBalance] = useState<CustomerBalance | null>(null);
   const [isRedeliveryOpen, setIsRedeliveryOpen] = useState(false);
+
+  // Pending state is per (PO, bag type). JB and SB rows of the same order
+  // share a PO number, so matching on PO alone would spin BOTH rows when the
+  // client taps just one — the untouched bag type must keep its request button.
+  const hasPendingRedelivery = (b: CustomerBalance) =>
+    Boolean(b.order?.po_number) &&
+    pendingRedeliveries.some(
+      (r) => r.po_number === b.order?.po_number && r.bag_type === b.bag_type,
+    );
 
   // Real-time synchronization
   useEffect(() => {
@@ -375,7 +384,7 @@ export default function LedgerClient({
                           </TableCell>
                           <TableCell className="text-right">
                             {b.remaining_qty > 0 ? (
-                              pendingRedeliveryPos.includes(b.order?.po_number || '') ? (
+                              hasPendingRedelivery(b) ? (
                                 <Button
                                   size="sm"
                                   disabled
@@ -450,7 +459,7 @@ export default function LedgerClient({
 
                       <div className="flex justify-end">
                         {b.remaining_qty > 0 ? (
-                          pendingRedeliveryPos.includes(b.order?.po_number || '') ? (
+                          hasPendingRedelivery(b) ? (
                             <Button
                               size="sm"
                               disabled

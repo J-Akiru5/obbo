@@ -21,18 +21,26 @@ export const purchaseOrderUpdateSchema = z.object({
 });
 
 // ─── Delivery Receipt ───────────────────────────────────────────
+// `jb` / `sb` / `quantity` here are JB/SB UNITS, not bags. Manual DRs are
+// entered by the warehouse manager in whole INDIVIDUAL BAGS (client-feedback
+// round 3), so the stored unit equivalent can be fractional: 7 JB bags = 0.28
+// units. Bags themselves are still whole numbers — only the unit-side columns
+// drop the `.int()` guard. `delivery_receipts`/`shipment_ledger` jb/sb are
+// numeric(14,4) to match.
+const unitQuantity = z.number().min(0);
+
 export const deliveryReceiptCreateSchema = z
   .object({
     shipment_id: z.string().uuid(),
     dr_number: z.string().trim().min(1),
-    quantity: z.number().int().min(0).optional(),
+    quantity: unitQuantity.optional(),
     bag_type: z.enum(['JB', 'SB']).optional(),
     received_date: z.string().optional(),
     po_number: z.string().trim().optional(),
     client_name: z.string().trim().optional(),
     client_id: z.string().uuid().nullable().optional(),
-    jb: z.number().int().min(0).optional(),
-    sb: z.number().int().min(0).optional(),
+    jb: unitQuantity.optional(),
+    sb: unitQuantity.optional(),
     driver: z.string().trim().optional(),
     plate_number: z.string().trim().optional(),
     shipping_fee: z.number().min(0).optional(),
@@ -47,9 +55,9 @@ export const deliveryReceiptUpdateSchema = z.object({
   client_name: z.string().trim().optional(),
   client_id: z.string().uuid().nullable().optional(),
   po_number: z.string().trim().optional(),
-  jb: z.number().int().min(0).optional(),
-  sb: z.number().int().min(0).optional(),
-  quantity: z.number().int().min(0).optional(),
+  jb: unitQuantity.optional(),
+  sb: unitQuantity.optional(),
+  quantity: unitQuantity.optional(),
   bag_type: z.enum(['JB', 'SB']).optional(),
   received_date: z.string().optional(),
   driver: z.string().trim().nullable().optional(),
@@ -123,8 +131,8 @@ export const ledgerEntryCreateSchema = z.object({
   plate_number: z.string().trim().nullable().optional(),
   destination: z.string().trim().nullable().optional(),
   service_type: z.enum(['pickup', 'deliver']).optional(),
-  jb: z.number().int().min(0).optional(),
-  sb: z.number().int().min(0).optional(),
+  jb: unitQuantity.optional(),
+  sb: unitQuantity.optional(),
   payment_method: z.enum(['cash', 'check']).optional(),
   check_number: z.string().nullable().optional(),
   amount: z.number().min(0).nullable().optional(),
@@ -145,8 +153,8 @@ export const ledgerEntryUpdateSchema = z.object({
   plate_number: z.string().trim().nullable().optional(),
   destination: z.string().trim().nullable().optional(),
   service_type: z.enum(['pickup', 'deliver']).optional(),
-  jb: z.number().int().min(0).optional(),
-  sb: z.number().int().min(0).optional(),
+  jb: unitQuantity.optional(),
+  sb: unitQuantity.optional(),
   payment_method: z.enum(['cash', 'check']).optional(),
   check_number: z.string().nullable().optional(),
   amount: z.number().min(0).optional(),

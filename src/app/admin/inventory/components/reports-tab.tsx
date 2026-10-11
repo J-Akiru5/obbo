@@ -726,8 +726,8 @@ export function ReportsTab() {
                       <TableHead>Client</TableHead>
                       <TableHead>DR Number</TableHead>
                       <TableHead>Service</TableHead>
-                      <TableHead className="text-right">JB</TableHead>
-                      <TableHead className="text-right">SB</TableHead>
+                      <TableHead className="text-right">JB Bags</TableHead>
+                      <TableHead className="text-right">SB Bags</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -788,15 +788,15 @@ export function ReportsTab() {
                           </div>
                         </div>
                         <span className="shrink-0 text-sm font-semibold">
-                          {d.jb} JB · {d.sb} SB
+                          {d.jb} JB bags · {d.sb} SB bags
                         </span>
                       </div>
                     ))}
                     <div className="bg-muted/20 flex items-center justify-between px-4 py-3">
                       <span className="text-sm font-bold">Total Dispatched:</span>
                       <span className="text-sm font-bold text-blue-600">
-                        {todayDispatches.reduce((s, d) => s + d.jb, 0)} JB ·{' '}
-                        {todayDispatches.reduce((s, d) => s + d.sb, 0)} SB
+                        {todayDispatches.reduce((s, d) => s + d.jb, 0)} JB bags ·{' '}
+                        {todayDispatches.reduce((s, d) => s + d.sb, 0)} SB bags
                       </span>
                     </div>
                   </>
