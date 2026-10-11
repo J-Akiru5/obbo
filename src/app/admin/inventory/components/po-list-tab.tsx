@@ -66,7 +66,7 @@ import {
 } from '@/components/ui/command';
 import { cn } from '@/lib/utils';
 import { createClient } from '@/lib/supabase/client';
-import { formatBagBreakdown } from '@/lib/actions/profit-utils';
+import { formatBagBreakdown, wholeBagsFromUnits } from '@/lib/actions/profit-utils';
 
 export function PoListTab({
   purchaseOrders,
@@ -189,8 +189,11 @@ export function PoListTab({
     setPoNumber(po.po_number);
     setClientName(po.client_name || '');
     setClientId(po.client_id || null);
-    setJbQty(po.jb || 0);
-    setSbQty(po.sb || 0);
+    // The form is denominated in INDIVIDUAL BAGS; purchase_orders.jb/sb are
+    // JB/SB UNITS — convert back for display so editing doesn't silently
+    // multiply the quantity by 25/50 on every save.
+    setJbQty(wholeBagsFromUnits('JB', po.jb || 0));
+    setSbQty(wholeBagsFromUnits('SB', po.sb || 0));
     setSource(po.source || 'warehouse');
     setServiceType(po.service_type || 'pickup');
     setCheckNumber(po.check_number || '');
@@ -297,7 +300,9 @@ export function PoListTab({
 
   const poMetrics = filtered.reduce(
     (acc, po) => {
-      acc.totalBags += (po.jb || 0) + (po.sb || 0);
+      // purchase_orders.jb/sb are JB/SB UNITS; the metric is labeled in
+      // individual bags — convert, exactly like the DR List does.
+      acc.totalBags += wholeBagsFromUnits('JB', po.jb || 0) + wholeBagsFromUnits('SB', po.sb || 0);
       acc.totalValue += (Number(po.cash_amount) || 0) + (Number(po.check_amount) || 0);
       if (po.status === 'pending') acc.pendingCount += 1;
       return acc;
@@ -356,7 +361,7 @@ export function PoListTab({
                 <span className="text-muted-foreground text-sm font-medium">bags</span>
               </div>
               <span className="text-muted-foreground block text-[11px] font-medium">
-                Accumulated cement units inside current filter
+                Accumulated individual bags inside current filter
               </span>
             </div>
             <div className="bg-primary/10 flex h-12 w-12 items-center justify-center rounded-xl shadow-sm">
@@ -600,7 +605,10 @@ export function PoListTab({
                         </div>
                       </TableCell>
                       <TableCell className="text-right text-xs font-bold">
-                        {formatBagBreakdown(po.jb || 0, po.sb || 0)}
+                        {formatBagBreakdown(
+                          wholeBagsFromUnits('JB', po.jb || 0),
+                          wholeBagsFromUnits('SB', po.sb || 0),
+                        )}
                       </TableCell>
                       <TableCell className="text-xs">
                         <div className="flex items-center gap-1">
@@ -767,7 +775,10 @@ export function PoListTab({
                           Quantity
                         </p>
                         <p className="text-sm font-bold">
-                          {formatBagBreakdown(po.jb || 0, po.sb || 0)}
+                          {formatBagBreakdown(
+                            wholeBagsFromUnits('JB', po.jb || 0),
+                            wholeBagsFromUnits('SB', po.sb || 0),
+                          )}
                         </p>
                       </div>
                       <div className="bg-muted h-6 w-px"></div>
@@ -965,7 +976,7 @@ export function PoListTab({
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="po-jb-quantity">Quantity JB (Jumbo Bag)</Label>
+                <Label htmlFor="po-jb-quantity">JB Bags (individual bags)</Label>
                 <Input
                   id="po-jb-quantity"
                   type="number"
@@ -975,9 +986,12 @@ export function PoListTab({
                   onChange={(e) => setJbQty(parseInt(e.target.value) || 0)}
                   className="font-bold"
                 />
+                <p className="text-muted-foreground text-[10px]">
+                  Count of individual 40kg bags. 25 JB bags = 1 JB unit internally.
+                </p>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="po-sb-quantity">Quantity SB (Sling Bag)</Label>
+                <Label htmlFor="po-sb-quantity">SB Bags (individual bags)</Label>
                 <Input
                   id="po-sb-quantity"
                   type="number"
@@ -987,6 +1001,9 @@ export function PoListTab({
                   onChange={(e) => setSbQty(parseInt(e.target.value) || 0)}
                   className="font-bold"
                 />
+                <p className="text-muted-foreground text-[10px]">
+                  Count of individual 40kg bags. 50 SB bags = 1 SB unit internally.
+                </p>
               </div>
             </div>
 
@@ -1158,7 +1175,10 @@ export function PoListTab({
                     Quantity
                   </p>
                   <p className="text-sm font-bold">
-                    {formatBagBreakdown(viewingPo.jb || 0, viewingPo.sb || 0)}
+                    {formatBagBreakdown(
+                      wholeBagsFromUnits('JB', viewingPo.jb || 0),
+                      wholeBagsFromUnits('SB', viewingPo.sb || 0),
+                    )}
                   </p>
                 </div>
                 <div className="space-y-1">

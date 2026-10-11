@@ -347,8 +347,12 @@ create table if not exists public.purchase_orders (
   po_number    text not null unique,
   client_id    uuid references public.profiles(id) on delete set null,
   client_name  text,
-  jb           integer not null default 0,
-  sb           integer not null default 0,
+  -- JB/SB UNITS (1 JB unit = 25 individual bags, 1 SB unit = 50). Manual POs
+  -- are entered in whole bags, so the stored unit equivalent can be fractional
+  -- (7 JB bags = 0.28 units) — numeric, not integer. See migration
+  -- 20261012_purchase_orders_numeric_quantities.sql.
+  jb           numeric(14, 4) not null default 0,
+  sb           numeric(14, 4) not null default 0,
   status       text not null default 'pending',
   source       text check (source in ('port', 'warehouse')),
   service_type text check (service_type in ('pickup', 'deliver')),
@@ -366,6 +370,9 @@ alter table public.purchase_orders add column if not exists check_number text;
 alter table public.purchase_orders add column if not exists check_amount numeric(12, 2);
 alter table public.purchase_orders add column if not exists cash_amount  numeric(12, 2);
 alter table public.purchase_orders add column if not exists photo_url    text;
+-- jb/sb hold JB/SB UNITS, which manual-PO bag entry can make fractional
+alter table public.purchase_orders alter column jb type numeric(14, 4) using jb::numeric;
+alter table public.purchase_orders alter column sb type numeric(14, 4) using sb::numeric;
 
 -- ── WAREHOUSE REPORTS ────────────────────────────────────────
 create table if not exists public.warehouse_reports (

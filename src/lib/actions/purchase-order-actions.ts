@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { requireAdmin, logActivity, createOrderForClientPortal } from './admin-helpers';
 import { generateGlobalNextPoNumber } from './po-utils';
 import { createUserNotification } from './notification-actions';
+import { unitsFromIndividualBags } from './profit-utils';
 import { purchaseOrderUpdateSchema } from './schemas';
 import type { OrderSource, ServiceType } from '@/lib/types/database';
 import { safeAction } from './action-result';
@@ -47,8 +48,15 @@ async function _createPurchaseOrder(po: {
     finalPoNumber = await generateGlobalNextPoNumber();
   }
 
-  const jb = po.jb ?? (po.bag_type === 'JB' ? (po.quantity ?? 0) : 0);
-  const sb = po.sb ?? (po.bag_type === 'SB' ? (po.quantity ?? 0) : 0);
+  // The manual-PO form is filled in with INDIVIDUAL BAGS — the same
+  // convention as manual DRs (client-feedback round 3) and the dialog's
+  // auto-total, which prices at `bags × price_per_bag`. purchase_orders.jb/sb
+  // (and the order_items created below) are JB/SB UNITS, so convert once here
+  // at the boundary. 7 JB bags = 0.28 units; the columns are numeric(14,4).
+  const jbBags = po.jb ?? (po.bag_type === 'JB' ? (po.quantity ?? 0) : 0);
+  const sbBags = po.sb ?? (po.bag_type === 'SB' ? (po.quantity ?? 0) : 0);
+  const jb = unitsFromIndividualBags('JB', jbBags);
+  const sb = unitsFromIndividualBags('SB', sbBags);
 
   const { data, error } = await supabase
     .from('purchase_orders')
@@ -88,7 +96,7 @@ async function _createPurchaseOrder(po: {
       await createUserNotification({
         userId: data.client_id,
         title: 'Order Created',
-        message: `Order PO-${finalPoNumber} (${jb} JB / ${sb} SB) has been created for your account by the warehouse.`,
+        message: `Order PO-${finalPoNumber} (${jbBags} JB bags / ${sbBags} SB bags) has been created for your account by the warehouse.`,
         href: '/client/orders',
         severity: 'success',
       });
@@ -120,6 +128,12 @@ async function _updatePurchaseOrder(id: string, rawUpdates: Record<string, unkno
     updates.jb = updates.bag_type === 'JB' ? updates.quantity : 0;
     updates.sb = updates.bag_type === 'SB' ? updates.quantity : 0;
   }
+
+  // The edit form sends INDIVIDUAL BAGS; purchase_orders.jb/sb are JB/SB
+  // UNITS. Convert once, up front — same as createDeliveryReceipt/update-
+  // DeliveryReceipt — so every caller (this dialog included) stays in bags.
+  if (updates.jb !== undefined) updates.jb = unitsFromIndividualBags('JB', updates.jb);
+  if (updates.sb !== undefined) updates.sb = unitsFromIndividualBags('SB', updates.sb);
 
   const { error } = await supabase
     .from('purchase_orders')

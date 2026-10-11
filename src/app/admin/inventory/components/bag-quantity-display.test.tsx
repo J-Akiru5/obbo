@@ -20,8 +20,10 @@ const mixedPo = {
   service_type: 'pickup',
   // One order carrying BOTH bag types — the regression case. The old tables
   // summed these into a single number and stamped it with one type badge.
-  jb: 50,
-  sb: 100,
+  // purchase_orders.jb/sb are JB/SB UNITS, same as delivery_receipts:
+  // 2 JB units = 50 bags, 2 SB units = 100 bags.
+  jb: 2,
+  sb: 2,
   check_number: null,
   check_amount: null,
   cash_amount: 0,
@@ -34,7 +36,7 @@ const sbOnlyPo = {
   id: 'po-2',
   po_number: 'PO-2026-002',
   jb: 0,
-  sb: 100,
+  sb: 2, // 2 SB units = 100 bags
 } as unknown as PurchaseOrder;
 
 const mixedDr = {
@@ -67,8 +69,8 @@ describe('PoListTab per-bag-type quantity', () => {
     render(<PoListTab purchaseOrders={[mixedPo]} loading={false} onReload={vi.fn()} />);
 
     // Old behaviour summed the row to 150 and stamped a single "JB" badge.
-    // (The top summary card still totals 150 bags for the whole filter — that
-    // cross-PO aggregate is intentionally a plain sum.)
+    // (The top summary card also totals 150 bags here — 2 JB units + 2 SB
+    // units converted to individual bags — matching the per-row breakdown.)
     expect(screen.getAllByText('50 JB · 100 SB').length).toBeGreaterThan(0);
   });
 
