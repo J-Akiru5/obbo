@@ -34,6 +34,7 @@ function existingEntry(over: Partial<ShipmentLedgerEntry> = {}): ShipmentLedgerE
     selling_price_per_bag: 180,
     landed_cost_per_bag: 147.64,
     local_expenses_per_bag: 20,
+    profit_basis_price_per_bag: null,
     created_at: '2026-10-02T00:00:00Z',
     updated_at: '2026-10-02T00:00:00Z',
     ...over,

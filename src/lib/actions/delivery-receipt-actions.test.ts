@@ -27,6 +27,7 @@ vi.mock('@/lib/actions/admin-helpers', async (importOriginal) => {
     getCostConfig: async () => ({
       landed_cost_per_bag: 147.64,
       local_expenses_per_bag: 20,
+      reference_price_per_bag: 185,
     }),
   };
 });
@@ -251,6 +252,38 @@ describe('createDeliveryReceipt — manual DR fulfils an already-dispatched PO b
     // The bag counts and delivery log still record; only the money line stops.
     expect(ledgerBodies[0].jb).toBeCloseTo(4, 10);
     expect(ledgerBodies[0].total_sales).toBe(0);
+  });
+
+  it('a cap-zeroed SECOND DR books no margin either: basis 0, −landed per bag', async () => {
+    setup('dispatched');
+
+    const ledgerBodies: Record<string, unknown>[] = [];
+    server.use(
+      http.get('*/rest/v1/orders', () =>
+        HttpResponse.json({ id: originalOrderId, total_amount: 10000 }),
+      ),
+      http.get('*/rest/v1/shipment_ledger', () => HttpResponse.json([{ total_sales: 10000 }])),
+      http.post('*/rest/v1/shipment_ledger', async ({ request }) => {
+        const body = (await request.json()) as Record<string, unknown>;
+        ledgerBodies.push(body);
+        return HttpResponse.json({ id: 'ledger-cap-basis', ...body });
+      }),
+    );
+
+    const result = await createDeliveryReceipt({
+      shipment_id: shipmentId,
+      dr_number: 'DR-MANUAL-CAP-BASIS',
+      client_id: clientId,
+      jb: 100,
+      sb: 0,
+      po_number: poNumber,
+    });
+
+    expect(result.success).toBe(true);
+    expect(ledgerBodies[0].total_sales).toBe(0);
+    expect(ledgerBodies[0].profit_basis_price_per_bag).toBe(0);
+    expect(ledgerBodies[0].gross_profit).toBe(-14764); // 100 bags × −147.64
+    expect(ledgerBodies[0].net_profit).toBe(-16764);
   });
 
   it('books the PO amount minus what is already recognized on a partial second DR', async () => {

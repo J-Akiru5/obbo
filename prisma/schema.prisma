@@ -121,6 +121,7 @@ model ShipmentLedger {
   sellingPricePerBag  Decimal? @db.Decimal(10, 2) @map("selling_price_per_bag")
   landedCostPerBag    Decimal? @db.Decimal(10, 2) @map("landed_cost_per_bag")
   localExpensesPerBag Decimal? @db.Decimal(10, 2) @map("local_expenses_per_bag")
+  profitBasisPricePerBag Decimal? @db.Decimal(10, 2) @map("profit_basis_price_per_bag") // NULL = legacy row
   createdAt           DateTime @default(now()) @db.Timestamptz(6) @map("created_at")
   updatedAt           DateTime @default(now()) @db.Timestamptz(6) @map("updated_at")
 

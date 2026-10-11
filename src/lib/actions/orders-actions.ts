@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { requireAdmin, logActivity, getCostConfig } from './admin-helpers';
 import {
   computeDispatchProfit,
+  computeRecognizedFraction,
   prorateOrderSalesByValue,
   capSalesToPoTotal,
   individualBagsFromUnits,
@@ -401,11 +402,18 @@ async function _dispatchOrder(
     desired: proratedSales,
   });
 
+  // Gross/net are a fixed per-bag margin at the configured reference price,
+  // NOT derived from what this order sold for. The recognized fraction is how
+  // much of this dispatch's prorated share survived the PO cap above: 1 for a
+  // normal dispatch, 0 for a redelivery of bags already paid for — which is
+  // what stops that redelivery from booking the margin a second time.
   const profitFields = computeDispatchProfit({
     totalBags,
     totalSales,
     landedCostPerBag: costConfig.landed_cost_per_bag,
     localExpensesPerBag: costConfig.local_expenses_per_bag,
+    referencePricePerBag: costConfig.reference_price_per_bag,
+    recognizedFraction: computeRecognizedFraction(totalSales, proratedSales),
   });
 
   // ── ATOMIC CRITICAL WRITES VIA RPC ─────────────────────────
@@ -429,6 +437,7 @@ async function _dispatchOrder(
     p_selling_price_per_bag: profitFields.selling_price_per_bag,
     p_landed_cost_per_bag: profitFields.landed_cost_per_bag,
     p_local_expenses_per_bag: profitFields.local_expenses_per_bag,
+    p_profit_basis_price_per_bag: profitFields.profit_basis_price_per_bag,
   });
   if (rpcError) throw new Error(`Dispatch RPC failed: ${rpcError.message}`);
   const rpcData = rpcResult as { success?: boolean; error?: string } | null;

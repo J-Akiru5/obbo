@@ -25,6 +25,7 @@ vi.mock('@/lib/actions/admin-helpers', async (importOriginal) => {
     getCostConfig: async () => ({
       landed_cost_per_bag: 147.64,
       local_expenses_per_bag: 20,
+      reference_price_per_bag: 185,
     }),
   };
 });
@@ -63,12 +64,53 @@ describe('Ledger Server Actions — profit calculations', () => {
       const entry = captured[0];
       expect(entry.selling_price_per_bag).toBe(180);
       expect(entry.total_sales).toBe(18000);
-      // 18000 - 100*147.64 = 3236
-      expect(entry.gross_profit).toBe(3236);
-      // 18000 - 100*(147.64+20) = 1236
-      expect(entry.net_profit).toBe(1236);
+      // CHANGED (fixed-margin profit): this ₱180 sale used to report
+      // 18000 − 100×147.64 = 3,236 gross / 1,236 net. Gross/net no longer
+      // depend on the selling price: 100 × (185 − 147.64) = 3,736, and
+      // 3,736 − 100 × 20 = 1,736.
+      expect(entry.gross_profit).toBe(3736);
+      expect(entry.net_profit).toBe(1736);
+      expect(entry.profit_basis_price_per_bag).toBe(185);
       expect(entry.landed_cost_per_bag).toBe(147.64);
       expect(entry.local_expenses_per_bag).toBe(20);
+    });
+
+    it('a ₱185 sale of the same bags reports the SAME gross and net as the ₱180 one', async () => {
+      noopHandlers();
+      const captured: Record<string, unknown>[] = [];
+      server.use(
+        http.post('*/rest/v1/shipment_ledger', async ({ request }) => {
+          const body = (await request.json()) as Record<string, unknown>;
+          captured.push(body);
+          return HttpResponse.json({ id: 'ledger-new', ...body });
+        }),
+      );
+
+      await addLedgerEntry('ship-001', { dr_number: 'DR-185', jb: 4, sb: 0, amount: 18500 });
+
+      expect(captured[0].total_sales).toBe(18500);
+      expect(captured[0].gross_profit).toBe(3736);
+      expect(captured[0].net_profit).toBe(1736);
+      expect(captured[0].profit_basis_price_per_bag).toBe(185);
+    });
+
+    it('a ₱0 manual row recognizes no sale → basis 0, −landed per bag (no margin booked)', async () => {
+      noopHandlers();
+      const captured: Record<string, unknown>[] = [];
+      server.use(
+        http.post('*/rest/v1/shipment_ledger', async ({ request }) => {
+          const body = (await request.json()) as Record<string, unknown>;
+          captured.push(body);
+          return HttpResponse.json({ id: 'ledger-new', ...body });
+        }),
+      );
+
+      await addLedgerEntry('ship-001', { dr_number: 'DR-ZERO', jb: 4, sb: 0, amount: 0 });
+
+      expect(captured[0].total_sales).toBe(0);
+      expect(captured[0].profit_basis_price_per_bag).toBe(0);
+      expect(captured[0].gross_profit).toBe(-14764);
+      expect(captured[0].net_profit).toBe(-16764);
     });
   });
 
@@ -670,5 +712,190 @@ describe('Ledger Server Actions — source (Port/Warehouse) label', () => {
     } as never);
     expect(rejected.success).toBe(false);
     expect(patched).toHaveLength(1);
+  });
+});
+
+describe('Ledger Server Actions — fixed-margin returns and edits (profit basis)', () => {
+  // A new-style dispatch row: ₱180/bag sale of 100 bags, margin measured at the
+  // ₱185 reference (basis 185). A legacy row has profit_basis_price_per_bag NULL.
+  const basisRow = {
+    id: 'ledger-basis',
+    jb: 4,
+    sb: 0,
+    amount: 18000,
+    bags_returned: 0,
+    return_reason: 'return',
+    dr_number: 'DR-BASIS',
+    selling_price_per_bag: 180,
+    landed_cost_per_bag: 147.64,
+    local_expenses_per_bag: 20,
+    profit_basis_price_per_bag: 185,
+  };
+  const legacyRow = { ...basisRow, id: 'ledger-legacy', profit_basis_price_per_bag: null };
+  // A PO-capped ₱0 redelivery: sales 0, margin basis 0.
+  const redeliveryRow = {
+    ...basisRow,
+    id: 'ledger-redelivery',
+    amount: 0,
+    selling_price_per_bag: 0,
+    profit_basis_price_per_bag: 0,
+  };
+  const dispatchOldEntry = {
+    jb: 4,
+    sb: 0,
+    bags_returned: 0,
+    bag_returned_type: null,
+    return_reason: 'return',
+  };
+
+  /** Serves `row` for BOTH the by-id current-row read and the by-DR original lookup. */
+  function serveRow(row: Record<string, unknown>) {
+    const patched: Record<string, unknown>[] = [];
+    const posted: Record<string, unknown>[] = [];
+    noopHandlers();
+    server.use(
+      http.get('*/rest/v1/shipment_ledger', () => HttpResponse.json(row)),
+      http.patch('*/rest/v1/shipment_ledger', async ({ request }) => {
+        patched.push((await request.json()) as Record<string, unknown>);
+        return HttpResponse.json([]);
+      }),
+      http.post('*/rest/v1/shipment_ledger', async ({ request }) => {
+        const body = (await request.json()) as Record<string, unknown>;
+        posted.push(body);
+        return HttpResponse.json({ id: 'ledger-ret', ...body });
+      }),
+    );
+    return { patched, posted };
+  }
+
+  describe('returns', () => {
+    const fullReturn = {
+      dr_number: 'DR-BASIS',
+      jb: 0,
+      sb: 0,
+      bags_returned: 100,
+      bag_returned_type: 'JB' as const,
+      return_reason: 'return',
+    };
+
+    it('full restockable return of the @₱180 sale → −18,000 | −3,736 | −1,736 (cumulative 0/0/0)', async () => {
+      const { posted } = serveRow(basisRow);
+      await addLedgerEntry('ship-001', fullReturn);
+
+      expect(posted[0].total_sales).toBe(-18000);
+      expect(posted[0].gross_profit).toBe(-3736);
+      expect(posted[0].net_profit).toBe(-1736);
+      // Sale (18,000 / 3,736 / 1,736) + this return = exactly 0 / 0 / 0.
+      expect(18000 + (posted[0].total_sales as number)).toBe(0);
+      expect(3736 + (posted[0].gross_profit as number)).toBe(0);
+      expect(1736 + (posted[0].net_profit as number)).toBe(0);
+    });
+
+    it('return against a LEGACY row (NULL basis) → identical to the old behavior', async () => {
+      const { posted } = serveRow({ ...legacyRow, selling_price_per_bag: 250 });
+      await addLedgerEntry('ship-001', { ...fullReturn, bags_returned: 5 });
+
+      expect(posted[0].total_sales).toBe(-1250);
+      expect(posted[0].gross_profit).toBeCloseTo(-511.8, 2); // −5 × (250 − 147.64)
+      expect(posted[0].net_profit).toBeCloseTo(-411.8, 2);
+    });
+
+    it('waste/damage against a basis row reverses nothing', async () => {
+      const { posted } = serveRow(basisRow);
+      await addLedgerEntry('ship-001', { ...fullReturn, return_reason: 'damage' });
+
+      expect([posted[0].total_sales, posted[0].gross_profit, posted[0].net_profit]).toEqual([
+        0, 0, 0,
+      ]);
+    });
+
+    it('editing a return row reverses at the original row basis too', async () => {
+      const { patched } = serveRow({ ...basisRow, bags_returned: 50 });
+      await updateLedgerEntry(
+        'ledger-ret',
+        'ship-001',
+        { ...dispatchOldEntry, jb: 0, bags_returned: 50, bag_returned_type: 'JB' },
+        { bags_returned: 50 },
+      );
+
+      expect(patched[0].total_sales).toBe(-9000);
+      expect(patched[0].gross_profit).toBe(-1868); // −50 × (185 − 147.64)
+      expect(patched[0].net_profit).toBe(-868);
+    });
+  });
+
+  describe('edits', () => {
+    it('LEGACY row (NULL basis), amount edited to ₱18,000 → old formula 3,236 | 1,236', async () => {
+      const { patched } = serveRow(legacyRow);
+      await updateLedgerEntry('ledger-legacy', 'ship-001', dispatchOldEntry, { amount: 18000 });
+
+      expect(patched[0].gross_profit).toBe(3236);
+      expect(patched[0].net_profit).toBe(1236);
+      expect(patched[0].profit_basis_price_per_bag).toBeNull(); // stays legacy
+    });
+
+    it('new-style row keeps its stored basis when the amount is edited', async () => {
+      const { patched } = serveRow({ ...basisRow, amount: 18500, selling_price_per_bag: 185 });
+      await updateLedgerEntry('ledger-basis', 'ship-001', dispatchOldEntry, { amount: 18000 });
+
+      expect(patched[0].total_sales).toBe(18000);
+      expect(patched[0].selling_price_per_bag).toBe(180);
+      expect(patched[0].gross_profit).toBe(3736);
+      expect(patched[0].net_profit).toBe(1736);
+      expect(patched[0].profit_basis_price_per_bag).toBe(185);
+    });
+
+    it('a stored basis other than the current reference is reused, not replaced by live config', async () => {
+      const { patched } = serveRow({ ...basisRow, profit_basis_price_per_bag: 190 });
+      await updateLedgerEntry('ledger-basis', 'ship-001', dispatchOldEntry, { amount: 18000 });
+
+      expect(patched[0].profit_basis_price_per_bag).toBe(190);
+      expect(patched[0].gross_profit).toBe(4236); // 100 × (190 − 147.64)
+    });
+
+    it('a ₱0 redelivery row edited for any reason stays at basis 0 / −14,764 / −16,764', async () => {
+      // The ledger dialog resends `amount` on every save, so an unrelated edit
+      // (notes, client reason…) arrives with amount: 0 and must NOT flip a
+      // capped redelivery to a full margin it never earned.
+      const { patched } = serveRow(redeliveryRow);
+      await updateLedgerEntry('ledger-redelivery', 'ship-001', dispatchOldEntry, {
+        amount: 0,
+        notes: 'driver changed',
+      });
+
+      expect(patched[0].profit_basis_price_per_bag).toBe(0);
+      expect(patched[0].gross_profit).toBe(-14764);
+      expect(patched[0].net_profit).toBe(-16764);
+    });
+
+    it('a basis-0 row edited UP to a positive amount takes the live reference (deliberate correction)', async () => {
+      const { patched } = serveRow(redeliveryRow);
+      await updateLedgerEntry('ledger-redelivery', 'ship-001', dispatchOldEntry, {
+        amount: 18000,
+      });
+
+      expect(patched[0].profit_basis_price_per_bag).toBe(185); // from getCostConfig()
+      expect(patched[0].gross_profit).toBe(3736);
+      expect(patched[0].net_profit).toBe(1736);
+    });
+
+    it('a new-style row edited DOWN to ₱0 recognizes no margin (basis 0)', async () => {
+      const { patched } = serveRow(basisRow);
+      await updateLedgerEntry('ledger-basis', 'ship-001', dispatchOldEntry, { amount: 0 });
+
+      expect(patched[0].total_sales).toBe(0);
+      expect(patched[0].profit_basis_price_per_bag).toBe(0);
+      expect(patched[0].gross_profit).toBe(-14764);
+    });
+
+    it('identity: gross − net = qty × local expenses on every edited dispatch row', async () => {
+      for (const row of [basisRow, legacyRow, redeliveryRow]) {
+        const { patched } = serveRow(row);
+        await updateLedgerEntry(String(row.id), 'ship-001', dispatchOldEntry, { amount: 18000 });
+        const gross = patched[0].gross_profit as number;
+        const net = patched[0].net_profit as number;
+        expect(Math.round((gross - net) * 100) / 100).toBe(100 * 20);
+      }
+    });
   });
 });

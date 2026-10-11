@@ -254,10 +254,15 @@ export const manualClientCreateSchema = z.object({
 });
 
 // ─── Cost Config ────────────────────────────────────────────────
-export const costConfigSchema = z.object({
-  landed_cost_per_bag: z.number().min(0),
-  local_expenses_per_bag: z.number().min(0),
-});
+export const costConfigSchema = z
+  .object({
+    landed_cost_per_bag: z.number().min(0),
+    local_expenses_per_bag: z.number().min(0),
+    // Positive, not min(0): getCostConfig() treats a stored 0 as "unset" and
+    // falls back to the default, so a saved 0 would silently not take effect.
+    reference_price_per_bag: z.number().positive(),
+  })
+  .strict();
 
 // ─── Customer Balance ──────────────────────────────────────────
 export const customerBalanceUpdateSchema = z.object({

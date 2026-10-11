@@ -1,6 +1,6 @@
 'use server';
 
-import { requireAdmin, logActivity } from './admin-helpers';
+import { requireAdmin, logActivity, getCostConfig } from './admin-helpers';
 import type { CostConfig } from './admin-helpers';
 import { costConfigSchema } from './schemas';
 import { safeAction } from './action-result';
@@ -70,10 +70,19 @@ export const saveCostConfig = safeAction(_saveCostConfig);
 // Calls the internal _saveCostConfig (not the safeAction-wrapped export) so it still
 // throws exactly as before — safeAction() wraps THIS function's own export below,
 // rather than double-wrapping an already-ActionResult return value.
-async function _saveCostConfiguration(landedCost: number, localExpenses: number) {
+async function _saveCostConfiguration(
+  landedCost: number,
+  localExpenses: number,
+  referencePrice?: number,
+) {
+  // _saveCostConfig upserts the WHOLE cost_config JSON, so a caller that only
+  // knows landed/local would silently reset the reference price to its
+  // default. Carry the currently stored value over unless one is given.
+  const referencePricePerBag = referencePrice ?? (await getCostConfig()).reference_price_per_bag;
   return _saveCostConfig({
     landed_cost_per_bag: landedCost,
     local_expenses_per_bag: localExpenses,
+    reference_price_per_bag: referencePricePerBag,
   });
 }
 

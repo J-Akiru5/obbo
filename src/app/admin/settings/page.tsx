@@ -120,6 +120,7 @@ export default function AdminSettingsPage() {
   const [costConfig, setCostConfig] = useState({
     landed_cost_per_bag: 147.64,
     local_expenses_per_bag: 20.0,
+    reference_price_per_bag: 185,
   });
   const [isSavingCost, setIsSavingCost] = useState(false);
   const [showCostConfirm, setShowCostConfirm] = useState(false);
@@ -766,8 +767,9 @@ export default function AdminSettingsPage() {
                 <Database className="h-4 w-4" /> Cost Configuration
               </CardTitle>
               <CardDescription>
-                Set the landed cost and local expenses per 40kg bag. These values are used to
-                calculate gross and net profit on dispatch.
+                Set the landed cost, local expenses and reference price per 40kg bag. Gross and net
+                profit on dispatch are a fixed margin per bag at the reference price — they do not
+                change with the selling price.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-0">
@@ -817,6 +819,29 @@ export default function AdminSettingsPage() {
                 </div>
               </SettingRow>
 
+              <SettingRow
+                icon={<Package className="text-muted-foreground h-4 w-4" />}
+                title="Reference Price per Bag"
+                description="The price gross and net are measured at. Margin per bag = reference price − landed cost, whatever an order sold for (per 40kg bag)."
+              >
+                <div className="flex items-center gap-2">
+                  <span className="text-muted-foreground text-xs">₱</span>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    min={0}
+                    value={costConfig.reference_price_per_bag}
+                    onChange={(e) =>
+                      setCostConfig({
+                        ...costConfig,
+                        reference_price_per_bag: parseFloat(e.target.value) || 0,
+                      })
+                    }
+                    className="h-9 w-32 text-right"
+                  />
+                </div>
+              </SettingRow>
+
               <div className="border-border mt-2 space-y-3 border-t pt-4">
                 <div className="bg-muted/50 flex items-center justify-between rounded-lg p-3">
                   <span className="text-muted-foreground text-sm font-medium">
@@ -834,11 +859,17 @@ export default function AdminSettingsPage() {
                 </div>
                 <div className="flex items-center justify-between rounded-lg border border-emerald-200 bg-emerald-50 p-3">
                   <span className="text-sm font-medium text-emerald-700">
-                    Gross Profit per Bag (at ₱185)
+                    Gross Profit per Bag (at ₱
+                    {costConfig.reference_price_per_bag.toLocaleString(undefined, {
+                      maximumFractionDigits: 2,
+                    })}
+                    )
                   </span>
                   <span className="text-lg font-bold text-emerald-700">
                     ₱
-                    {(185 - costConfig.landed_cost_per_bag).toLocaleString(undefined, {
+                    {(
+                      costConfig.reference_price_per_bag - costConfig.landed_cost_per_bag
+                    ).toLocaleString(undefined, {
                       minimumFractionDigits: 2,
                       maximumFractionDigits: 2,
                     })}
@@ -846,12 +877,16 @@ export default function AdminSettingsPage() {
                 </div>
                 <div className="flex items-center justify-between rounded-lg border border-blue-200 bg-blue-50 p-3">
                   <span className="text-sm font-medium text-blue-700">
-                    Net Profit per Bag (at ₱185)
+                    Net Profit per Bag (at ₱
+                    {costConfig.reference_price_per_bag.toLocaleString(undefined, {
+                      maximumFractionDigits: 2,
+                    })}
+                    )
                   </span>
                   <span className="text-lg font-bold text-blue-700">
                     ₱
                     {(
-                      185 -
+                      costConfig.reference_price_per_bag -
                       costConfig.landed_cost_per_bag -
                       costConfig.local_expenses_per_bag
                     ).toLocaleString(undefined, {

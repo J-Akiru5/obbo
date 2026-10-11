@@ -13,11 +13,16 @@ import { getSourcePrice } from './profit-utils';
 export interface CostConfig {
   landed_cost_per_bag: number;
   local_expenses_per_bag: number;
+  // The per-bag price ledger gross/net are measured at. Margin per bag =
+  // reference_price_per_bag − landed_cost_per_bag, so it follows landed-cost
+  // changes automatically.
+  reference_price_per_bag: number;
 }
 
 const DEFAULT_COST_CONFIG: CostConfig = {
   landed_cost_per_bag: 147.64,
   local_expenses_per_bag: 20.0,
+  reference_price_per_bag: 185,
 };
 
 export async function requireAdmin() {
@@ -87,6 +92,9 @@ export async function getCostConfig(): Promise<CostConfig> {
     landed_cost_per_bag: Number(v.landed_cost_per_bag) || DEFAULT_COST_CONFIG.landed_cost_per_bag,
     local_expenses_per_bag:
       Number(v.local_expenses_per_bag) || DEFAULT_COST_CONFIG.local_expenses_per_bag,
+    // Rows saved before this key existed fall back to the default.
+    reference_price_per_bag:
+      Number(v.reference_price_per_bag) || DEFAULT_COST_CONFIG.reference_price_per_bag,
   };
 }
 

@@ -114,6 +114,10 @@ export interface ShipmentLedgerEntry {
   selling_price_per_bag: number | null;
   landed_cost_per_bag: number | null;
   local_expenses_per_bag: number | null;
+  // Per-bag price this row's gross/net margin was measured at (reference price
+  // × recognized fraction). NULL = legacy row whose gross/net derives from the
+  // actual selling price and is not restated.
+  profit_basis_price_per_bag: number | null;
   created_at: string;
   updated_at: string;
 }

@@ -2,6 +2,8 @@ import { describe, it, expect } from 'vitest';
 import {
   getSourcePrice,
   computeDispatchProfit,
+  computeLegacyDispatchProfit,
+  computeRecognizedFraction,
   prorateOrderSales,
   prorateOrderSalesByValue,
   computeReturnProfitDelta,
@@ -76,26 +78,35 @@ describe('getSourcePrice', () => {
   });
 });
 
+// Reference rates used across the fixed-margin cases: landed 147.64, local 20,
+// reference price 185 → 37.36 gross / 17.36 net per fully recognized bag.
+const RATES = { landedCostPerBag: 147.64, localExpensesPerBag: 20 };
+const FULL = { referencePricePerBag: 185, recognizedFraction: 1 };
+
 describe('computeDispatchProfit', () => {
   it('computes total_sales/gross_profit/net_profit/selling_price_per_bag correctly', () => {
     const result = computeDispatchProfit({
       totalBags: 100,
       totalSales: 18000,
-      landedCostPerBag: 147.64,
-      localExpensesPerBag: 20,
+      ...RATES,
+      ...FULL,
     });
     expect(result.selling_price_per_bag).toBe(180);
     expect(result.total_sales).toBe(18000);
-    expect(result.gross_profit).toBe(3236); // 18000 - 100*147.64
-    expect(result.net_profit).toBe(1236); // 18000 - 100*(147.64+20)
+    // CHANGED (fixed-margin profit): the ₱18,000 sale used to report 3,236 /
+    // 1,236 (sales − qty × cost). Gross/net no longer depend on the selling
+    // price: 100 × (185 − 147.64) = 3,736 and 3,736 − 100 × 20 = 1,736.
+    expect(result.gross_profit).toBe(3736);
+    expect(result.net_profit).toBe(1736);
+    expect(result.profit_basis_price_per_bag).toBe(185);
   });
 
   it('returns 0 selling_price_per_bag when totalBags is 0', () => {
     const result = computeDispatchProfit({
       totalBags: 0,
       totalSales: 0,
-      landedCostPerBag: 147.64,
-      localExpensesPerBag: 20,
+      ...RATES,
+      ...FULL,
     });
     expect(result.selling_price_per_bag).toBe(0);
   });
@@ -105,18 +116,146 @@ describe('computeDispatchProfit', () => {
       computeDispatchProfit({
         totalBags: -5,
         totalSales: 1000,
-        landedCostPerBag: 147.64,
-        localExpensesPerBag: 20,
+        ...RATES,
+        ...FULL,
       }),
     ).toThrow();
     expect(() =>
       computeDispatchProfit({
         totalBags: 10.5,
         totalSales: 1000,
-        landedCostPerBag: 147.64,
-        localExpensesPerBag: 20,
+        ...RATES,
+        ...FULL,
       }),
     ).toThrow();
+  });
+
+  it('rejects an out-of-range recognized fraction or a negative reference price', () => {
+    const base = { totalBags: 100, totalSales: 18000, ...RATES };
+    expect(() =>
+      computeDispatchProfit({ ...base, referencePricePerBag: 185, recognizedFraction: 1.01 }),
+    ).toThrow(/between 0 and 1/);
+    expect(() =>
+      computeDispatchProfit({ ...base, referencePricePerBag: 185, recognizedFraction: -0.1 }),
+    ).toThrow(/between 0 and 1/);
+    expect(() =>
+      computeDispatchProfit({ ...base, referencePricePerBag: -1, recognizedFraction: 1 }),
+    ).toThrow(/negative/);
+  });
+});
+
+describe('computeDispatchProfit — fixed per-bag margin (independent of selling price)', () => {
+  const qty100 = { totalBags: 100, ...RATES };
+
+  it('Warehouse @₱185 → sales 18,500 | gross 3,736 | net 1,736 | basis 185', () => {
+    const r = computeDispatchProfit({ ...qty100, totalSales: 18500, ...FULL });
+    expect([r.total_sales, r.gross_profit, r.net_profit, r.profit_basis_price_per_bag]).toEqual([
+      18500, 3736, 1736, 185,
+    ]);
+  });
+
+  it('Port @₱180 → sales 18,000 | the SAME gross 3,736 and net 1,736 | basis 185', () => {
+    const r = computeDispatchProfit({ ...qty100, totalSales: 18000, ...FULL });
+    expect([r.total_sales, r.gross_profit, r.net_profit, r.profit_basis_price_per_bag]).toEqual([
+      18000, 3736, 1736, 185,
+    ]);
+  });
+
+  it('gross and net do not move when only the selling price changes', () => {
+    const results = [150, 180, 185, 210, 250].map((price) =>
+      computeDispatchProfit({ ...qty100, totalSales: price * 100, ...FULL }),
+    );
+    for (const r of results) {
+      expect(r.gross_profit).toBe(3736);
+      expect(r.net_profit).toBe(1736);
+    }
+  });
+
+  it('PO-capped redelivery (sale zeroed, fraction 0) → 0 | −14,764 | −16,764 | basis 0', () => {
+    const r = computeDispatchProfit({
+      ...qty100,
+      totalSales: 0,
+      referencePricePerBag: 185,
+      recognizedFraction: 0,
+    });
+    expect([r.total_sales, r.gross_profit, r.net_profit, r.profit_basis_price_per_bag]).toEqual([
+      0, -14764, -16764, 0,
+    ]);
+  });
+
+  it('a partially recognized sale takes the same fraction of the reference price', () => {
+    const r = computeDispatchProfit({
+      ...qty100,
+      totalSales: 9000,
+      referencePricePerBag: 185,
+      recognizedFraction: 0.5,
+    });
+    expect(r.profit_basis_price_per_bag).toBe(92.5);
+    expect(r.gross_profit).toBe(-5514); // 100 × (92.50 − 147.64)
+    expect(r.net_profit).toBe(-7514);
+  });
+
+  it('follows landed-cost changes (margin = reference − landed), D3', () => {
+    const r = computeDispatchProfit({
+      totalBags: 100,
+      totalSales: 18000,
+      landedCostPerBag: 150,
+      localExpensesPerBag: 20,
+      ...FULL,
+    });
+    expect(r.gross_profit).toBe(3500); // 100 × (185 − 150)
+    expect(r.net_profit).toBe(1500);
+  });
+
+  it('follows a changed reference price', () => {
+    const r = computeDispatchProfit({
+      ...qty100,
+      totalSales: 18000,
+      referencePricePerBag: 190,
+      recognizedFraction: 1,
+    });
+    expect(r.profit_basis_price_per_bag).toBe(190);
+    expect(r.gross_profit).toBe(4236); // 100 × (190 − 147.64)
+  });
+
+  it('identity: gross − net = qty × local expenses, on every case', () => {
+    const cases = [
+      { totalSales: 18500, referencePricePerBag: 185, recognizedFraction: 1 },
+      { totalSales: 18000, referencePricePerBag: 185, recognizedFraction: 1 },
+      { totalSales: 0, referencePricePerBag: 185, recognizedFraction: 0 },
+      { totalSales: 9000, referencePricePerBag: 185, recognizedFraction: 0.5 },
+    ];
+    for (const c of cases) {
+      const r = computeDispatchProfit({ ...qty100, ...c });
+      expect(Math.round((r.gross_profit - r.net_profit) * 100) / 100).toBe(100 * 20);
+    }
+  });
+});
+
+describe('computeLegacyDispatchProfit (old price-derived formula, legacy-row edits only)', () => {
+  it('keeps gross = sales − qty × landed and a NULL basis', () => {
+    const r = computeLegacyDispatchProfit({ totalBags: 100, totalSales: 18000, ...RATES });
+    expect(r.gross_profit).toBe(3236);
+    expect(r.net_profit).toBe(1236);
+    expect(r.profit_basis_price_per_bag).toBeNull();
+  });
+});
+
+describe('computeRecognizedFraction', () => {
+  it('is 1 when the whole prorated share was recognized', () => {
+    expect(computeRecognizedFraction(18000, 18000).toNumber()).toBe(1);
+  });
+  it('is 0 when the PO cap zeroed the sale', () => {
+    expect(computeRecognizedFraction(0, 18000).toNumber()).toBe(0);
+  });
+  it('is the recognized share when the cap clamped it partially', () => {
+    expect(computeRecognizedFraction(9000, 18000).toNumber()).toBe(0.5);
+  });
+  it('is 0 when there was nothing to prorate (0 prorated sales)', () => {
+    expect(computeRecognizedFraction(0, 0).toNumber()).toBe(0);
+  });
+  it('never exceeds 1', () => {
+    expect(computeRecognizedFraction(20000, 18000).toNumber()).toBe(1);
   });
 });
 
@@ -255,7 +394,9 @@ describe('split-delivery revenue proration (reported client scenario: PO 1,200 b
   });
 
   it('re-dispatched balance yields POSITIVE margins and totals match the PO (₱44,832 gross / ₱20,832 net)', () => {
-    const rates = { landedCostPerBag: 147.64, localExpensesPerBag: 20 };
+    // Both slices sold at ₱185 and are fully recognized, so the fixed margin
+    // equals the old price-derived figures — these expectations are unchanged.
+    const rates = { ...RATES, ...FULL };
     const dr003 = computeDispatchProfit({ totalBags: 1100, totalSales: 203500, ...rates });
     const dr004 = computeDispatchProfit({ totalBags: 100, totalSales: 18500, ...rates });
     // The old behavior (sales 0 against 100 bags of cost) produced -14,764/-16,764.
@@ -267,7 +408,7 @@ describe('split-delivery revenue proration (reported client scenario: PO 1,200 b
   });
 
   it('three such POs total ₱666,000 sales / ₱134,496 gross / ₱62,496 net', () => {
-    const rates = { landedCostPerBag: 147.64, localExpensesPerBag: 20 };
+    const rates = { ...RATES, ...FULL };
     const dr003 = computeDispatchProfit({ totalBags: 1100, totalSales: 203500, ...rates });
     const dr004 = computeDispatchProfit({ totalBags: 100, totalSales: 18500, ...rates });
     const perPoGross = dr003.gross_profit + dr004.gross_profit;
@@ -325,6 +466,82 @@ describe('computeReturnProfitDelta', () => {
         isRestockable: true,
       }),
     ).toThrow();
+  });
+});
+
+describe('computeReturnProfitDelta — against a fixed-margin (basis) row', () => {
+  const returnArgs = { returnedBags: 100, ...RATES, isRestockable: true };
+
+  it('full restockable return of the @₱180 sale → −18,000 | −3,736 | −1,736, cumulative 0/0/0', () => {
+    const sale = computeDispatchProfit({ totalBags: 100, totalSales: 18000, ...RATES, ...FULL });
+    const ret = computeReturnProfitDelta({
+      ...returnArgs,
+      sellingPricePerBag: sale.selling_price_per_bag,
+      profitBasisPricePerBag: sale.profit_basis_price_per_bag,
+    });
+
+    expect([ret.total_sales, ret.gross_profit, ret.net_profit]).toEqual([-18000, -3736, -1736]);
+    // The sale and its full return cancel exactly — a reversal at the ₱180
+    // SELLING price would have left +500 gross / +500 net behind.
+    expect(sale.total_sales + ret.total_sales).toBe(0);
+    expect(sale.gross_profit + ret.gross_profit).toBe(0);
+    expect(sale.net_profit + ret.net_profit).toBe(0);
+  });
+
+  it('a partial return reverses its share of the margin at the stored basis', () => {
+    const ret = computeReturnProfitDelta({
+      ...returnArgs,
+      returnedBags: 10,
+      sellingPricePerBag: 180,
+      profitBasisPricePerBag: 185,
+    });
+    expect([ret.total_sales, ret.gross_profit, ret.net_profit]).toEqual([-1800, -373.6, -173.6]);
+    expect(ret.profit_basis_price_per_bag).toBe(185);
+  });
+
+  it('legacy row (NULL basis) → identical to the pre-fixed-margin behavior', () => {
+    for (const profitBasisPricePerBag of [null, undefined]) {
+      const ret = computeReturnProfitDelta({
+        returnedBags: 5,
+        sellingPricePerBag: 250,
+        ...RATES,
+        isRestockable: true,
+        profitBasisPricePerBag,
+      });
+      expect(ret.total_sales).toBe(-1250);
+      expect(ret.gross_profit).toBeCloseTo(-511.8, 2); // −5 × (250 − 147.64)
+      expect(ret.net_profit).toBeCloseTo(-411.8, 2);
+      expect(ret.profit_basis_price_per_bag).toBeNull();
+    }
+  });
+
+  it('a ₱0 redelivery row (basis 0) reverses the −landed it booked, with no sales to reverse', () => {
+    const redelivery = computeDispatchProfit({
+      totalBags: 100,
+      totalSales: 0,
+      ...RATES,
+      referencePricePerBag: 185,
+      recognizedFraction: 0,
+    });
+    const ret = computeReturnProfitDelta({
+      ...returnArgs,
+      sellingPricePerBag: redelivery.selling_price_per_bag,
+      profitBasisPricePerBag: redelivery.profit_basis_price_per_bag,
+    });
+    expect(ret.total_sales).toBe(0);
+    expect(redelivery.gross_profit + ret.gross_profit).toBe(0);
+    expect(redelivery.net_profit + ret.net_profit).toBe(0);
+  });
+
+  it('waste/damage against a basis row stays zero-delta (basis kept for the record)', () => {
+    const ret = computeReturnProfitDelta({
+      ...returnArgs,
+      isRestockable: false,
+      sellingPricePerBag: 180,
+      profitBasisPricePerBag: 185,
+    });
+    expect([ret.total_sales, ret.gross_profit, ret.net_profit]).toEqual([0, 0, 0]);
+    expect(ret.profit_basis_price_per_bag).toBe(185);
   });
 });
 

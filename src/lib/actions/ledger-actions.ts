@@ -3,6 +3,7 @@
 import { requireAdmin, logActivity, getCostConfig } from './admin-helpers';
 import {
   computeDispatchProfit,
+  computeLegacyDispatchProfit,
   computeReturnProfitDelta,
   BAG_EQUIVALENT,
   type DispatchProfitFields,
@@ -80,21 +81,29 @@ async function _addLedgerEntry(
     // bags, e.g. 7 JB bags = 0.28 units). Profit is priced per INDIVIDUAL
     // BAG, so round the converted bag count — physical bags are whole.
     const totalBags = Math.round(jbOut * BAG_EQUIVALENT.JB + sbOut * BAG_EQUIVALENT.SB);
+    const amount = fields.amount ?? 0;
     profitFields = computeDispatchProfit({
       totalBags,
-      totalSales: fields.amount ?? 0,
+      totalSales: amount,
       landedCostPerBag: costConfig.landed_cost_per_bag,
       localExpensesPerBag: costConfig.local_expenses_per_bag,
+      referencePricePerBag: costConfig.reference_price_per_bag,
+      // A manual row has no PO proration to compare against: a positive amount
+      // is a recognized sale (full margin), ₱0 recognizes none (so it books
+      // −landed per bag, not a margin it never earned).
+      recognizedFraction: amount > 0 ? 1 : 0,
     });
   } else if (!isDispatch && returned > 0) {
     // A return/waste/damage event reverses a slice of an ORIGINAL sale.
     // Look that original dispatch row up (same shipment + DR number, the
-    // earliest row with jb/sb > 0) and use ITS stored rates — never live
-    // cost config — so this reversal can't drift from what was actually
-    // charged, even if cost config has changed since.
+    // earliest row with jb/sb > 0) and use ITS stored rates and profit basis —
+    // never live cost config — so this reversal can't drift from what was
+    // actually charged, even if cost config has changed since.
     const { data: originalDispatch } = await supabase
       .from('shipment_ledger')
-      .select('selling_price_per_bag, landed_cost_per_bag, local_expenses_per_bag, source')
+      .select(
+        'selling_price_per_bag, landed_cost_per_bag, local_expenses_per_bag, profit_basis_price_per_bag, source',
+      )
       .eq('shipment_id', shipmentId)
       .eq('dr_number', fields.dr_number ?? '')
       .or('jb.gt.0,sb.gt.0')
@@ -116,6 +125,8 @@ async function _addLedgerEntry(
       landedCostPerBag: Number(originalDispatch.landed_cost_per_bag) || 0,
       localExpensesPerBag: Number(originalDispatch.local_expenses_per_bag) || 0,
       isRestockable: returnReason === 'return',
+      // NULL = a legacy original row, reversed at its selling price as before.
+      profitBasisPricePerBag: originalDispatch.profit_basis_price_per_bag,
     });
   }
 
@@ -253,7 +264,7 @@ async function _updateLedgerEntry(
     const { data: currentRow } = await supabase
       .from('shipment_ledger')
       .select(
-        'jb, sb, amount, bags_returned, return_reason, dr_number, landed_cost_per_bag, local_expenses_per_bag',
+        'jb, sb, amount, bags_returned, return_reason, dr_number, landed_cost_per_bag, local_expenses_per_bag, profit_basis_price_per_bag',
       )
       .eq('id', id)
       .single();
@@ -268,15 +279,50 @@ async function _updateLedgerEntry(
       if (!newBagsReturned || newBagsReturned === 0) {
         // Still a dispatch row after the edit — reuse THIS row's own
         // historic rates, not a fresh getCostConfig() call.
-        profitUpdates = computeDispatchProfit({
-          totalBags: Math.round(
-            Number(fields.jb ?? currentRow.jb) * BAG_EQUIVALENT.JB +
-              Number(fields.sb ?? currentRow.sb) * BAG_EQUIVALENT.SB,
-          ),
-          totalSales: newAmount,
-          landedCostPerBag,
-          localExpensesPerBag,
-        });
+        const totalBags = Math.round(
+          Number(fields.jb ?? currentRow.jb) * BAG_EQUIVALENT.JB +
+            Number(fields.sb ?? currentRow.sb) * BAG_EQUIVALENT.SB,
+        );
+
+        if (currentRow.profit_basis_price_per_bag == null) {
+          // LEGACY row (written before fixed-margin profit): keep the formula
+          // it was written with, so editing an old row never silently
+          // restates it onto the new basis. Forward-only.
+          profitUpdates = computeLegacyDispatchProfit({
+            totalBags,
+            totalSales: newAmount,
+            landedCostPerBag,
+            localExpensesPerBag,
+          });
+        } else {
+          // New-style row. Margin is measured at THIS row's stored basis price
+          // so the edit can't drift from what the dispatch booked.
+          //
+          // The dialog resends `amount` on every save, so the amount decides
+          // whether a sale is recognized (same rule as a manual add): ₱0
+          // recognizes none (basis 0 — a capped redelivery edited for a note
+          // stays at −landed per bag instead of booking margin it never
+          // earned), a positive amount recognizes it in full.
+          //
+          // LIVE-CONFIG FALLBACK (deliberate): a row whose stored basis is 0
+          // (a ₱0 redelivery) that is edited to a positive amount has no basis
+          // of its own to reuse, so it takes the CURRENT configured reference
+          // price. This edit path is a data-correction path, so correcting such
+          // a row at today's reference price is intended.
+          const storedBasis = Number(currentRow.profit_basis_price_per_bag) || 0;
+          const referencePricePerBag =
+            storedBasis > 0 || newAmount <= 0
+              ? storedBasis
+              : (await getCostConfig()).reference_price_per_bag;
+          profitUpdates = computeDispatchProfit({
+            totalBags,
+            totalSales: newAmount,
+            landedCostPerBag,
+            localExpensesPerBag,
+            referencePricePerBag,
+            recognizedFraction: newAmount > 0 ? 1 : 0,
+          });
+        }
       } else {
         // This row is (or is becoming) a return/waste/damage row — its
         // profit fields are a delta against the ORIGINAL dispatch row, so
@@ -285,7 +331,9 @@ async function _updateLedgerEntry(
         const drNumberForLookup = fields.dr_number ?? currentRow.dr_number ?? '';
         const { data: originalDispatch } = await supabase
           .from('shipment_ledger')
-          .select('selling_price_per_bag, landed_cost_per_bag, local_expenses_per_bag')
+          .select(
+            'selling_price_per_bag, landed_cost_per_bag, local_expenses_per_bag, profit_basis_price_per_bag',
+          )
           .eq('shipment_id', shipmentId)
           .eq('dr_number', drNumberForLookup)
           .or('jb.gt.0,sb.gt.0')
@@ -304,6 +352,8 @@ async function _updateLedgerEntry(
           landedCostPerBag: Number(originalDispatch.landed_cost_per_bag) || 0,
           localExpensesPerBag: Number(originalDispatch.local_expenses_per_bag) || 0,
           isRestockable: newReturnReason === 'return',
+          // NULL = a legacy original row, reversed at its selling price as before.
+          profitBasisPricePerBag: originalDispatch.profit_basis_price_per_bag,
         });
       }
     }

@@ -21,7 +21,12 @@
 -- Prerequisite: 20261011_dr_ledger_numeric_quantities.sql must already be
 -- applied (this function replaces that one in place).
 --
--- Run in: Supabase Dashboard -> SQL Editor. Safe to re-run.
+-- Apply order: 20261012 (this file), THEN 20261013_ledger_profit_basis.sql.
+--
+-- Run in: Supabase Dashboard -> SQL Editor. Safe to re-run on its own. If you
+-- ever re-run it AFTER 20261013 has been applied, it re-creates the older
+-- 17-argument dispatch_order_v2 next to the 18-argument one (two overloads);
+-- re-run 20261013 afterwards, which drops the 17-argument one again.
 
 -- 1. Column --------------------------------------------------------------
 alter table public.shipment_ledger

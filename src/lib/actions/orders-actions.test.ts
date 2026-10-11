@@ -97,6 +97,7 @@ vi.mock('@/lib/actions/admin-helpers', async (importOriginal) => {
     getCostConfig: async () => ({
       landed_cost_per_bag: 147.64,
       local_expenses_per_bag: 20,
+      reference_price_per_bag: 185,
     }),
     requireAdmin: async () => {
       if (bug3Mode.active) {
@@ -400,6 +401,126 @@ describe('Orders Server Actions', () => {
       expect(capturedLedgers[0].p_total_sales).toBe(capturedLedgers[1].p_total_sales);
       expect(capturedLedgers[0].p_gross_profit).toBe(capturedLedgers[1].p_gross_profit);
       expect(capturedLedgers[0].p_net_profit).toBe(capturedLedgers[1].p_net_profit);
+    });
+  });
+
+  describe('dispatchOrder — fixed per-bag margin (profit basis price)', () => {
+    // Landed 147.64, local 20, reference 185 (see the getCostConfig mock above):
+    // every fully recognized bag earns 37.36 gross / 17.36 net, whatever the
+    // order sold for. 4 JB units = 100 bags.
+    function setupDispatch(opts: { totalAmount: number; price: number; alreadyRecorded?: number }) {
+      server.use(http.post('*/rest/v1/activity_log', () => HttpResponse.json([])));
+      const order = {
+        id: 'order-basis-1',
+        client_id: 'client-001',
+        status: 'approved',
+        total_amount: opts.totalAmount,
+        payment_method: 'cash',
+        po_number: 'PO-BASIS-TEST',
+        po_image_url: null,
+        source: 'warehouse',
+        service_type: 'deliver',
+        shipping_fee: 0,
+        order_type: 'new',
+        linked_po_number: null,
+        client: { id: 'client-001', full_name: 'Juan Dela Cruz', company_name: 'ACME' },
+        items: [
+          {
+            id: 'item-basis-jb',
+            order_id: 'order-basis-1',
+            product_id: 'prod-jb-001',
+            bag_type: 'JB',
+            requested_qty: 4,
+            approved_qty: 4,
+            dispatched_qty: 0,
+            selling_price_per_bag: opts.price,
+          },
+        ],
+      };
+      const shipment = {
+        id: 'ship-basis-1',
+        batch_name: 'BATCH-BASIS',
+        remaining_jb: 500,
+        remaining_sb: 500,
+        good_stock: 1000,
+      };
+      const rpcBodies: Record<string, unknown>[] = [];
+      server.use(
+        http.get('*/rest/v1/orders', ({ request }) => {
+          const id = new URL(request.url).searchParams.get('id')?.replace('eq.', '');
+          return HttpResponse.json(id === order.id ? order : []);
+        }),
+        http.get('*/rest/v1/shipments', ({ request }) => {
+          const id = new URL(request.url).searchParams.get('id')?.replace('eq.', '');
+          return HttpResponse.json(id === shipment.id ? shipment : []);
+        }),
+        http.get('*/rest/v1/shipment_ledger', () =>
+          HttpResponse.json(opts.alreadyRecorded ? [{ total_sales: opts.alreadyRecorded }] : []),
+        ),
+        http.post('*/rest/v1/rpc/dispatch_order_v2', async ({ request }) => {
+          rpcBodies.push((await request.json()) as Record<string, unknown>);
+          return HttpResponse.json({ success: true, dr_id: 'dr-basis-1' });
+        }),
+      );
+      return { rpcBodies, order };
+    }
+
+    const dispatch = () =>
+      dispatchOrder('order-basis-1', 'ship-basis-1', 'DR-BASIS-1', null, 'Driver', 'PLATE');
+
+    it('Warehouse @₱185: sales 18,500 | gross 3,736 | net 1,736 | basis 185', async () => {
+      const { rpcBodies } = setupDispatch({ totalAmount: 18500, price: 185 });
+      expect((await dispatch()).success).toBe(true);
+
+      expect(rpcBodies[0].p_total_sales).toBe(18500);
+      expect(rpcBodies[0].p_gross_profit).toBe(3736);
+      expect(rpcBodies[0].p_net_profit).toBe(1736);
+      expect(rpcBodies[0].p_profit_basis_price_per_bag).toBe(185);
+    });
+
+    it('Port @₱180: sales 18,000 | gross and net IDENTICAL to the ₱185 sale | basis 185', async () => {
+      const { rpcBodies } = setupDispatch({ totalAmount: 18000, price: 180 });
+      expect((await dispatch()).success).toBe(true);
+
+      expect(rpcBodies[0].p_total_sales).toBe(18000);
+      expect(rpcBodies[0].p_selling_price_per_bag).toBe(180);
+      expect(rpcBodies[0].p_gross_profit).toBe(3736); // 100 × (185 − 147.64), NOT 18,000 − 14,764
+      expect(rpcBodies[0].p_net_profit).toBe(1736); // 3,736 − 100 × 20
+      expect(rpcBodies[0].p_profit_basis_price_per_bag).toBe(185);
+      // Identity on every row: gross − net = qty × local expenses.
+      expect((rpcBodies[0].p_gross_profit as number) - (rpcBodies[0].p_net_profit as number)).toBe(
+        100 * 20,
+      );
+    });
+
+    it('a PARTIALLY cap-clamped sale recognizes the same fraction of the margin', async () => {
+      // ₱18,000 PO with ₱9,000 already booked → this dispatch recognizes 9,000
+      // of its 18,000 share (fraction ½) → basis 92.50, not a full second margin.
+      const { rpcBodies } = setupDispatch({
+        totalAmount: 18000,
+        price: 180,
+        alreadyRecorded: 9000,
+      });
+      expect((await dispatch()).success).toBe(true);
+
+      expect(rpcBodies[0].p_total_sales).toBe(9000);
+      expect(rpcBodies[0].p_profit_basis_price_per_bag).toBe(92.5);
+      expect(rpcBodies[0].p_gross_profit).toBe(-5514); // 100 × (92.50 − 147.64)
+      expect(rpcBodies[0].p_net_profit).toBe(-7514); // −5,514 − 100 × 20
+    });
+
+    it('a fully cap-zeroed sale books −landed per bag with basis 0 (no margin booked twice)', async () => {
+      const { rpcBodies } = setupDispatch({
+        totalAmount: 18000,
+        price: 180,
+        alreadyRecorded: 18000,
+      });
+      expect((await dispatch()).success).toBe(true);
+
+      expect(rpcBodies[0].p_total_sales).toBe(0);
+      expect(rpcBodies[0].p_profit_basis_price_per_bag).toBe(0);
+      expect(rpcBodies[0].p_gross_profit).toBe(-14764);
+      expect(rpcBodies[0].p_net_profit).toBe(-16764);
     });
   });
 

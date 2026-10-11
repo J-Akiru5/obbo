@@ -22,6 +22,7 @@ import {
 export function CostConfigurationTab() {
   const [landedCost, setLandedCost] = useState<number>(147.64);
   const [localExpenses, setLocalExpenses] = useState<number>(20.0);
+  const [referencePrice, setReferencePrice] = useState<number>(185);
   const [isSaving, setIsSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [showConfirm, setShowConfirm] = useState(false);
@@ -32,6 +33,7 @@ export function CostConfigurationTab() {
         const config = await getCostConfig();
         setLandedCost(config.landed_cost_per_bag);
         setLocalExpenses(config.local_expenses_per_bag);
+        setReferencePrice(config.reference_price_per_bag);
       } catch {
         // Silently fall back to defaults
       } finally {
@@ -41,14 +43,15 @@ export function CostConfigurationTab() {
     loadConfig();
   }, []);
 
-  // Standard wholesale baseline parameter values for visual previews
-  const standardWarehousePrice = 185.0;
+  // Ledger gross/net are a FIXED per-bag margin at the configured reference
+  // price (independent of what an order actually sold for), so the previews
+  // below are exactly what each fully recognized bag will report.
   const totalCost = landedCost + localExpenses;
-  const grossProfitBag = standardWarehousePrice - landedCost;
-  const netProfitBag = standardWarehousePrice - totalCost;
+  const grossProfitBag = referencePrice - landedCost;
+  const netProfitBag = referencePrice - totalCost;
 
   const handleSaveConfig = () => {
-    if (landedCost <= 0 || localExpenses <= 0) {
+    if (landedCost <= 0 || localExpenses <= 0 || referencePrice <= 0) {
       toast.error('Please enter valid cost parameters greater than 0.');
       return;
     }
@@ -59,7 +62,7 @@ export function CostConfigurationTab() {
     setIsSubmitting(true);
     setShowConfirm(false);
     try {
-      const result = await saveCostConfiguration(landedCost, localExpenses);
+      const result = await saveCostConfiguration(landedCost, localExpenses, referencePrice);
       if (!result.success) {
         toast.error(result.error);
         return;
@@ -89,12 +92,13 @@ export function CostConfigurationTab() {
           </CardTitle>
           <CardDescription className="text-muted-foreground mt-1 text-xs">
             These configuration values drive Sales, Gross Profit, and Net Profit across the ledger,
-            dashboards, and reports. Changes only affect new dispatches/orders — past records keep
-            their snapshoted historic values.
+            dashboards, and reports. Gross and Net are a fixed margin per bag at the reference price
+            — they do not change with the selling price. Changes only affect new dispatches/orders —
+            past records keep their snapshoted historic values.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-          <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
             {/* Landed Cost Parameter Input */}
             <div className="space-y-2">
               <Label htmlFor="landed-cost" className="text-sm font-semibold">
@@ -133,6 +137,25 @@ export function CostConfigurationTab() {
                 Local delivery/fuel, warehouse rent, labor, forklift operators, local taxes, etc.
               </p>
             </div>
+
+            {/* Reference Price Parameter Input */}
+            <div className="space-y-2">
+              <Label htmlFor="reference-price" className="text-sm font-semibold">
+                Reference Price (₱/bag)
+              </Label>
+              <Input
+                id="reference-price"
+                type="number"
+                step="0.01"
+                min="0"
+                value={referencePrice}
+                onChange={(e) => setReferencePrice(parseFloat(e.target.value) || 0)}
+                className="h-11 font-mono font-bold"
+              />
+              <p className="text-muted-foreground text-[11px]">
+                Gross margin per bag = Reference Price − Landed Cost, whatever the order sold for.
+              </p>
+            </div>
           </div>
 
           {/* Live Computation Indicators Panel Breakdown */}
@@ -145,7 +168,7 @@ export function CostConfigurationTab() {
                 ₱{grossProfitBag.toFixed(2)}
               </div>
               <span className="text-muted-foreground block text-[10px]">
-                Based on ₱{standardWarehousePrice.toFixed(2)} selling price
+                Based on ₱{referencePrice.toFixed(2)} reference price
               </span>
             </div>
 
@@ -182,11 +205,11 @@ export function CostConfigurationTab() {
                 Formulas Sheet Summary:
               </span>
               <p>• **Total Sales** = quantity × selling_price_at_order</p>
-              <p>• **Gross Profit** = Total Sales − (quantity × landed_cost_at_dispatch)</p>
               <p>
-                • **Net Profit** = Total Sales − (quantity × (landed_cost +
-                local_expenses)_at_dispatch)
+                • **Gross Profit** = quantity × (reference_price − landed_cost_at_dispatch) — a
+                fixed margin, independent of the selling price
               </p>
+              <p>• **Net Profit** = Gross Profit − (quantity × local_expenses_at_dispatch)</p>
             </div>
           </div>
 

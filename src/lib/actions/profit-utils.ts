@@ -87,10 +87,93 @@ export interface DispatchProfitFields {
   selling_price_per_bag: number;
   landed_cost_per_bag: number;
   local_expenses_per_bag: number;
+  /**
+   * The per-bag price this row's gross/net margin is measured at (see
+   * computeDispatchProfit). `null` marks a LEGACY row, whose gross/net was
+   * derived from the actual selling price. Stored as
+   * `shipment_ledger.profit_basis_price_per_bag`.
+   */
+  profit_basis_price_per_bag: number | null;
 }
 
-/** Profit fields for a dispatch (a bag actually going out the door). */
+/**
+ * How much of a dispatch's prorated revenue was actually recognized:
+ * 1 normally, 0 when the PO revenue cap zeroed the sale (a redelivery of bags
+ * the client already paid for), a fraction when the cap clamped it partially.
+ * 0 when there was nothing to prorate.
+ */
+export function computeRecognizedFraction(
+  totalSales: Decimal.Value,
+  proratedSales: Decimal.Value,
+): Decimal {
+  const prorated = money(proratedSales);
+  if (!prorated.gt(0)) return new Decimal(0);
+  return Decimal.min(Decimal.max(money(totalSales).div(prorated), 0), 1);
+}
+
+/**
+ * Profit fields for a dispatch (a bag actually going out the door).
+ *
+ * Gross and net are a FIXED per-bag margin, independent of the selling price:
+ *
+ *   basisPrice = round2(referencePricePerBag × recognizedFraction)
+ *   gross      = bags × (basisPrice − landed)
+ *   net        = gross − bags × local
+ *
+ * so at the ₱185 reference, 147.64 landed and 20 local, every fully recognized
+ * bag is worth 37.36 gross / 17.36 net whether it sold at ₱185 or ₱180.
+ * `total_sales` stays the ACTUAL amount. The fraction is what keeps a ₱0
+ * redelivery (cap-zeroed sale, fraction 0) booking −landed per bag instead of
+ * booking the margin a second time.
+ */
 export function computeDispatchProfit(params: {
+  totalBags: number;
+  totalSales: Decimal.Value;
+  landedCostPerBag: Decimal.Value;
+  localExpensesPerBag: Decimal.Value;
+  referencePricePerBag: Decimal.Value;
+  recognizedFraction: Decimal.Value;
+}): DispatchProfitFields {
+  const { totalBags, totalSales, landedCostPerBag, localExpensesPerBag } = params;
+  if (!Number.isSafeInteger(totalBags) || totalBags < 0) {
+    throw new Error('Total bags must be a non-negative integer.');
+  }
+  const reference = money(params.referencePricePerBag);
+  const fraction = new Decimal(params.recognizedFraction);
+  if (reference.isNegative()) {
+    throw new Error('Reference price per bag must not be negative.');
+  }
+  if (!fraction.isFinite() || fraction.lt(0) || fraction.gt(1)) {
+    throw new Error('Recognized fraction must be between 0 and 1.');
+  }
+
+  const sales = money(totalSales);
+  const landed = money(landedCostPerBag);
+  const local = money(localExpensesPerBag);
+  const quantity = new Decimal(totalBags);
+  const basisPrice = money(reference.mul(fraction));
+  const gross = quantity.mul(basisPrice.minus(landed));
+  const net = gross.minus(quantity.mul(local));
+  const sellingPricePerBag = totalBags > 0 ? sales.div(quantity) : new Decimal(0);
+
+  return {
+    total_sales: asNumber(sales),
+    gross_profit: asNumber(gross),
+    net_profit: asNumber(net),
+    selling_price_per_bag: asNumber(sellingPricePerBag),
+    landed_cost_per_bag: asNumber(landed),
+    local_expenses_per_bag: asNumber(local),
+    profit_basis_price_per_bag: asNumber(basisPrice),
+  };
+}
+
+/**
+ * The PRE-fixed-margin formula: gross = sales − bags × landed. Used ONLY to
+ * re-compute an edited LEGACY ledger row (profit_basis_price_per_bag IS NULL),
+ * so editing an old row keeps behaving exactly as it did when it was written.
+ * Never use this for a new dispatch — see computeDispatchProfit.
+ */
+export function computeLegacyDispatchProfit(params: {
   totalBags: number;
   totalSales: Decimal.Value;
   landedCostPerBag: Decimal.Value;
@@ -116,6 +199,7 @@ export function computeDispatchProfit(params: {
     selling_price_per_bag: asNumber(sellingPricePerBag),
     landed_cost_per_bag: asNumber(landed),
     local_expenses_per_bag: asNumber(local),
+    profit_basis_price_per_bag: null,
   };
 }
 
@@ -220,6 +304,13 @@ export function prorateOrderSalesByValue(
  *
  * Client-feedback round 3, Issue 3: "the return should not affect sales,
  * gross, and net … the return should only mark the bags as damaged."
+ *
+ * Fixed-margin rows: the original dispatch booked its gross at its stored
+ * profit basis price, NOT at what the bag sold for, so the reversal must use
+ * that same basis — otherwise a full return of a ₱180 sale (basis ₱185) would
+ * leave +5/bag of margin behind. Sales still reverse at the ACTUAL selling
+ * price. `profitBasisPricePerBag` null/undefined = a legacy original row, which
+ * reverses at the selling price exactly as before.
  */
 export function computeReturnProfitDelta(params: {
   returnedBags: number;
@@ -227,6 +318,7 @@ export function computeReturnProfitDelta(params: {
   landedCostPerBag: Decimal.Value;
   localExpensesPerBag: Decimal.Value;
   isRestockable: boolean;
+  profitBasisPricePerBag?: Decimal.Value | null;
 }): DispatchProfitFields {
   const { returnedBags, sellingPricePerBag, landedCostPerBag, localExpensesPerBag, isRestockable } =
     params;
@@ -237,6 +329,8 @@ export function computeReturnProfitDelta(params: {
   const sellingPrice = money(sellingPricePerBag);
   const landed = money(landedCostPerBag);
   const local = money(localExpensesPerBag);
+  const hasBasis = params.profitBasisPricePerBag != null;
+  const basisPrice = hasBasis ? money(params.profitBasisPricePerBag as Decimal.Value) : null;
 
   if (!isRestockable) {
     // Nothing is restocked and nothing is reversed — record zero deltas but
@@ -248,6 +342,7 @@ export function computeReturnProfitDelta(params: {
       selling_price_per_bag: asNumber(sellingPrice),
       landed_cost_per_bag: asNumber(landed),
       local_expenses_per_bag: asNumber(local),
+      profit_basis_price_per_bag: basisPrice ? asNumber(basisPrice) : null,
     };
   }
 
@@ -255,9 +350,12 @@ export function computeReturnProfitDelta(params: {
 
   // Restockable: the client isn't charged for these bags and the bag itself
   // (plus its handling cost) is recovered, so sales reverse in full and both
-  // cost lines reverse with it.
+  // cost lines reverse with it. Margin reverses at the original row's basis.
   const totalSalesDelta = quantity.mul(sellingPrice).neg();
-  const grossProfitDelta = totalSalesDelta.plus(quantity.mul(landed));
+  const grossProfitDelta = quantity
+    .mul(basisPrice ?? sellingPrice)
+    .neg()
+    .plus(quantity.mul(landed));
   const netProfitDelta = grossProfitDelta.plus(quantity.mul(local));
 
   return {
@@ -267,6 +365,7 @@ export function computeReturnProfitDelta(params: {
     selling_price_per_bag: asNumber(sellingPrice),
     landed_cost_per_bag: asNumber(landed),
     local_expenses_per_bag: asNumber(local),
+    profit_basis_price_per_bag: basisPrice ? asNumber(basisPrice) : null,
   };
 }
 
