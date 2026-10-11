@@ -96,6 +96,8 @@ export interface ShipmentLedgerEntry {
   plate_number: string | null;
   destination: string | null;
   service_type: ServiceType | null;
+  // Where the order came from. Display label only; NULL = not resolved.
+  source: OrderSource | null;
   jb: number;
   sb: number;
   payment_method: PaymentMethod | null;

@@ -122,47 +122,63 @@ export const shipmentUpdateSchema = z.object({
 });
 
 // ─── Ledger Entry ───────────────────────────────────────────────
-export const ledgerEntryCreateSchema = z.object({
-  date: z.string().optional(),
-  po_number: z.string().trim().optional(),
-  dr_number: z.string().trim().optional(),
-  client_name: z.string().trim().optional(),
-  driver_name: z.string().trim().nullable().optional(),
-  plate_number: z.string().trim().nullable().optional(),
-  destination: z.string().trim().nullable().optional(),
-  service_type: z.enum(['pickup', 'deliver']).optional(),
-  jb: unitQuantity.optional(),
-  sb: unitQuantity.optional(),
-  payment_method: z.enum(['cash', 'check']).optional(),
-  check_number: z.string().nullable().optional(),
-  amount: z.number().min(0).nullable().optional(),
-  bags_returned: z.number().int().min(0).optional(),
-  bag_returned_type: z.enum(['JB', 'SB']).nullable().optional(),
-  return_reason: z.string().optional(),
-  client_reason: z.string().nullable().optional(),
-  notes: z.string().nullable().optional(),
-  delivery_receipt_id: z.string().uuid().nullable().optional(),
-});
+// Where the order came from. A LABEL ONLY — never an input to price/profit.
+// undefined = caller didn't say (the server may default it from the linked
+// PO); null = explicitly unknown.
+const ledgerSource = z.enum(['port', 'warehouse']).nullable().optional();
 
-export const ledgerEntryUpdateSchema = z.object({
-  date: z.string().optional(),
-  po_number: z.string().trim().optional(),
-  dr_number: z.string().trim().optional(),
-  client_name: z.string().trim().optional(),
-  driver_name: z.string().trim().nullable().optional(),
-  plate_number: z.string().trim().nullable().optional(),
-  destination: z.string().trim().nullable().optional(),
-  service_type: z.enum(['pickup', 'deliver']).optional(),
-  jb: unitQuantity.optional(),
-  sb: unitQuantity.optional(),
-  payment_method: z.enum(['cash', 'check']).optional(),
-  check_number: z.string().nullable().optional(),
-  amount: z.number().min(0).optional(),
-  bags_returned: z.number().int().min(0).optional(),
-  bag_returned_type: z.enum(['JB', 'SB']).nullable().optional(),
-  return_reason: z.string().optional(),
-  notes: z.string().nullable().optional(),
-});
+// Both ledger schemas are strict: the server action inserts/updates with the
+// PARSED data, so an unknown key must fail loudly instead of reaching the DB.
+export const ledgerEntryCreateSchema = z
+  .object({
+    date: z.string().optional(),
+    po_number: z.string().trim().optional(),
+    dr_number: z.string().trim().optional(),
+    client_name: z.string().trim().optional(),
+    driver_name: z.string().trim().nullable().optional(),
+    plate_number: z.string().trim().nullable().optional(),
+    destination: z.string().trim().nullable().optional(),
+    service_type: z.enum(['pickup', 'deliver']).optional(),
+    source: ledgerSource,
+    jb: unitQuantity.optional(),
+    sb: unitQuantity.optional(),
+    payment_method: z.enum(['cash', 'check']).optional(),
+    check_number: z.string().nullable().optional(),
+    amount: z.number().min(0).nullable().optional(),
+    bags_returned: z.number().int().min(0).optional(),
+    bag_returned_type: z.enum(['JB', 'SB']).nullable().optional(),
+    return_reason: z.string().optional(),
+    client_reason: z.string().nullable().optional(),
+    notes: z.string().nullable().optional(),
+    delivery_receipt_id: z.string().uuid().nullable().optional(),
+  })
+  .strict();
+
+export const ledgerEntryUpdateSchema = z
+  .object({
+    date: z.string().optional(),
+    po_number: z.string().trim().optional(),
+    dr_number: z.string().trim().optional(),
+    client_name: z.string().trim().optional(),
+    driver_name: z.string().trim().nullable().optional(),
+    plate_number: z.string().trim().nullable().optional(),
+    destination: z.string().trim().nullable().optional(),
+    service_type: z.enum(['pickup', 'deliver']).optional(),
+    source: ledgerSource,
+    jb: unitQuantity.optional(),
+    sb: unitQuantity.optional(),
+    payment_method: z.enum(['cash', 'check']).optional(),
+    check_number: z.string().nullable().optional(),
+    amount: z.number().min(0).optional(),
+    bags_returned: z.number().int().min(0).optional(),
+    bag_returned_type: z.enum(['JB', 'SB']).nullable().optional(),
+    return_reason: z.string().optional(),
+    // Sent by the ledger dialog on every edit (the row already stores it);
+    // without this key `.strict()` would reject every dialog save.
+    client_reason: z.string().nullable().optional(),
+    notes: z.string().nullable().optional(),
+  })
+  .strict();
 
 // ─── Warehouse Report ───────────────────────────────────────────
 export const dispatchReportDateSchema = z

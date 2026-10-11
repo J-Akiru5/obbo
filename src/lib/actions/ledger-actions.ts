@@ -10,6 +10,26 @@ import {
 import { ledgerEntryCreateSchema, ledgerEntryUpdateSchema } from './schemas';
 import { safeAction } from './action-result';
 import { createClient } from '@/lib/supabase/server';
+import type { OrderSource } from '@/lib/types/database';
+
+function asLedgerSource(value: unknown): OrderSource | null {
+  return value === 'port' || value === 'warehouse' ? value : null;
+}
+
+// Best-effort PO → source lookup. Source is a display label, so a missing PO
+// or a failed read must never block a financial ledger write — it just yields
+// null (the cell renders "—").
+async function lookupPoSource(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  poNumber: string,
+): Promise<OrderSource | null> {
+  const { data } = await supabase
+    .from('purchase_orders')
+    .select('source')
+    .eq('po_number', poNumber)
+    .maybeSingle();
+  return asLedgerSource(data?.source);
+}
 
 // Internal implementation unchanged — safeAction() wraps the export below.
 async function _addLedgerEntry(
@@ -23,6 +43,7 @@ async function _addLedgerEntry(
     plate_number?: string;
     destination?: string;
     service_type?: string;
+    source?: OrderSource | null;
     jb?: number;
     sb?: number;
     payment_method?: string;
@@ -38,15 +59,21 @@ async function _addLedgerEntry(
 ) {
   const parsed = ledgerEntryCreateSchema.safeParse(entry);
   if (!parsed.success) throw new Error(parsed.error.issues.map((i) => i.message).join('; '));
+  // Everything below reads the PARSED data (trimmed, and the strict schema has
+  // already rejected unknown keys) — never the raw caller object.
+  const fields = parsed.data;
   const { supabase, userId } = await requireAdmin();
-  const jbOut = entry.jb ?? 0;
-  const sbOut = entry.sb ?? 0;
-  const returned = entry.bags_returned ?? 0;
-  const returnedType = entry.bag_returned_type ?? null;
-  const returnReason = entry.return_reason ?? 'return';
+  const jbOut = fields.jb ?? 0;
+  const sbOut = fields.sb ?? 0;
+  const returned = fields.bags_returned ?? 0;
+  const returnedType = fields.bag_returned_type ?? null;
+  const returnReason = fields.return_reason ?? 'return';
 
-  const isDispatch = !entry.bags_returned || entry.bags_returned === 0;
+  const isDispatch = !fields.bags_returned || fields.bags_returned === 0;
   let profitFields: Partial<DispatchProfitFields> = {};
+  // Source is a LABEL ONLY: nothing below feeds it into price, sales, gross or
+  // net. `undefined` = the caller didn't say, so it is defaulted further down.
+  let inheritedSource: OrderSource | null | undefined;
   if (isDispatch && (jbOut > 0 || sbOut > 0)) {
     const costConfig = await getCostConfig();
     // jb/sb are UNITS and can be fractional now (manual DRs are entered in
@@ -55,7 +82,7 @@ async function _addLedgerEntry(
     const totalBags = Math.round(jbOut * BAG_EQUIVALENT.JB + sbOut * BAG_EQUIVALENT.SB);
     profitFields = computeDispatchProfit({
       totalBags,
-      totalSales: entry.amount ?? 0,
+      totalSales: fields.amount ?? 0,
       landedCostPerBag: costConfig.landed_cost_per_bag,
       localExpensesPerBag: costConfig.local_expenses_per_bag,
     });
@@ -67,9 +94,9 @@ async function _addLedgerEntry(
     // charged, even if cost config has changed since.
     const { data: originalDispatch } = await supabase
       .from('shipment_ledger')
-      .select('selling_price_per_bag, landed_cost_per_bag, local_expenses_per_bag')
+      .select('selling_price_per_bag, landed_cost_per_bag, local_expenses_per_bag, source')
       .eq('shipment_id', shipmentId)
-      .eq('dr_number', entry.dr_number ?? '')
+      .eq('dr_number', fields.dr_number ?? '')
       .or('jb.gt.0,sb.gt.0')
       .order('created_at', { ascending: true })
       .limit(1)
@@ -77,9 +104,12 @@ async function _addLedgerEntry(
 
     if (!originalDispatch) {
       throw new Error(
-        `Cannot calculate return profit: no original dispatch matches DR ${entry.dr_number ?? '(missing)'}.`,
+        `Cannot calculate return profit: no original dispatch matches DR ${fields.dr_number ?? '(missing)'}.`,
       );
     }
+    // A return row is the same order coming back, so it carries the original
+    // dispatch row's source.
+    inheritedSource = asLedgerSource(originalDispatch.source);
     profitFields = computeReturnProfitDelta({
       returnedBags: returned,
       sellingPricePerBag: Number(originalDispatch.selling_price_per_bag) || 0,
@@ -89,13 +119,22 @@ async function _addLedgerEntry(
     });
   }
 
+  // Explicit value (including null) wins. Otherwise: a return row inherits its
+  // original dispatch's source; any other row falls back to its PO's source.
+  const source =
+    fields.source !== undefined
+      ? fields.source
+      : (inheritedSource ??
+        (fields.po_number ? await lookupPoSource(supabase, fields.po_number) : null));
+
   const { data, error } = await supabase
     .from('shipment_ledger')
     .insert({
       shipment_id: shipmentId,
-      ...entry,
+      ...fields,
+      source,
       ...profitFields,
-      date: entry.date ?? new Date().toISOString().split('T')[0],
+      date: fields.date ?? new Date().toISOString().split('T')[0],
     })
     .select()
     .single();
@@ -139,7 +178,7 @@ async function _addLedgerEntry(
     }
   }
 
-  await logActivity(supabase, userId, 'ledger_entry_added', 'shipment_ledger', data.id, entry);
+  await logActivity(supabase, userId, 'ledger_entry_added', 'shipment_ledger', data.id, fields);
   return data;
 }
 
@@ -165,6 +204,7 @@ async function _updateLedgerEntry(
     plate_number: string;
     destination: string;
     service_type: string;
+    source: OrderSource | null;
     jb: number;
     sb: number;
     payment_method: string;
@@ -173,11 +213,15 @@ async function _updateLedgerEntry(
     bags_returned: number;
     bag_returned_type: string;
     return_reason: string;
+    client_reason: string | null;
     notes: string;
   }>,
 ) {
   const parsed = ledgerEntryUpdateSchema.safeParse(updates);
   if (!parsed.success) throw new Error(parsed.error.issues.map((i) => i.message).join('; '));
+  // Read and write the PARSED data only (the strict schema has already
+  // rejected unknown keys).
+  const fields = parsed.data;
   const { supabase, userId } = await requireAdmin();
 
   // T-1 fix: whenever jb/sb/amount/bags_returned/return_reason change, the
@@ -194,13 +238,15 @@ async function _updateLedgerEntry(
   // used to inflate TOTAL PURCHASED. This edit path is a deliberate data
   // correction, and capping it would make a historically wrong row
   // impossible to fix upward without first editing the order too.
+  // `source` is deliberately NOT a trigger: it is a display label and has no
+  // bearing on price, sales, gross or net.
   const recomputeTrigger =
-    updates.jb !== undefined ||
-    updates.sb !== undefined ||
-    updates.amount !== undefined ||
-    updates.bags_returned !== undefined ||
-    updates.return_reason !== undefined ||
-    updates.dr_number !== undefined;
+    fields.jb !== undefined ||
+    fields.sb !== undefined ||
+    fields.amount !== undefined ||
+    fields.bags_returned !== undefined ||
+    fields.return_reason !== undefined ||
+    fields.dr_number !== undefined;
 
   let profitUpdates: Partial<DispatchProfitFields> = {};
   if (recomputeTrigger) {
@@ -213,9 +259,9 @@ async function _updateLedgerEntry(
       .single();
 
     if (currentRow) {
-      const newAmount = updates.amount ?? Number(currentRow.amount) ?? 0;
-      const newBagsReturned = updates.bags_returned ?? currentRow.bags_returned ?? 0;
-      const newReturnReason = updates.return_reason ?? currentRow.return_reason ?? 'return';
+      const newAmount = fields.amount ?? Number(currentRow.amount) ?? 0;
+      const newBagsReturned = fields.bags_returned ?? currentRow.bags_returned ?? 0;
+      const newReturnReason = fields.return_reason ?? currentRow.return_reason ?? 'return';
       const landedCostPerBag = Number(currentRow.landed_cost_per_bag) || 0;
       const localExpensesPerBag = Number(currentRow.local_expenses_per_bag) || 0;
 
@@ -224,8 +270,8 @@ async function _updateLedgerEntry(
         // historic rates, not a fresh getCostConfig() call.
         profitUpdates = computeDispatchProfit({
           totalBags: Math.round(
-            Number(updates.jb ?? currentRow.jb) * BAG_EQUIVALENT.JB +
-              Number(updates.sb ?? currentRow.sb) * BAG_EQUIVALENT.SB,
+            Number(fields.jb ?? currentRow.jb) * BAG_EQUIVALENT.JB +
+              Number(fields.sb ?? currentRow.sb) * BAG_EQUIVALENT.SB,
           ),
           totalSales: newAmount,
           landedCostPerBag,
@@ -236,7 +282,7 @@ async function _updateLedgerEntry(
         // profit fields are a delta against the ORIGINAL dispatch row, so
         // look that up again rather than reusing this row's own rates
         // (which, for an existing return row, are already the original's).
-        const drNumberForLookup = updates.dr_number ?? currentRow.dr_number ?? '';
+        const drNumberForLookup = fields.dr_number ?? currentRow.dr_number ?? '';
         const { data: originalDispatch } = await supabase
           .from('shipment_ledger')
           .select('selling_price_per_bag, landed_cost_per_bag, local_expenses_per_bag')
@@ -265,12 +311,12 @@ async function _updateLedgerEntry(
 
   const { error } = await supabase
     .from('shipment_ledger')
-    .update({ ...updates, ...profitUpdates, updated_at: new Date().toISOString() })
+    .update({ ...fields, ...profitUpdates, updated_at: new Date().toISOString() })
     .eq('id', id);
   if (error) throw new Error(error.message);
 
   const wasRestockable = oldEntry.return_reason === 'return' || !oldEntry.return_reason;
-  const newReturnReason = updates.return_reason ?? oldEntry.return_reason ?? 'return';
+  const newReturnReason = fields.return_reason ?? oldEntry.return_reason ?? 'return';
   const isRestockable = newReturnReason === 'return';
 
   const { data: shipment } = await supabase
@@ -290,10 +336,10 @@ async function _updateLedgerEntry(
       wasRestockable && oldEntry.bags_returned > 0 && oldEntry.bag_returned_type === 'SB'
         ? oldEntry.bags_returned
         : 0;
-    const newJbOut = updates.jb ?? oldEntry.jb;
-    const newSbOut = updates.sb ?? oldEntry.sb;
-    const newReturned = updates.bags_returned ?? oldEntry.bags_returned;
-    const newReturnedType = updates.bag_returned_type ?? oldEntry.bag_returned_type;
+    const newJbOut = fields.jb ?? oldEntry.jb;
+    const newSbOut = fields.sb ?? oldEntry.sb;
+    const newReturned = fields.bags_returned ?? oldEntry.bags_returned;
+    const newReturnedType = fields.bag_returned_type ?? oldEntry.bag_returned_type;
     const newJbReturnedBags =
       isRestockable && newReturned > 0 && newReturnedType === 'JB' ? newReturned : 0;
     const newSbReturnedBags =
@@ -327,7 +373,7 @@ async function _updateLedgerEntry(
     }
   }
 
-  await logActivity(supabase, userId, 'ledger_entry_updated', 'shipment_ledger', id, updates);
+  await logActivity(supabase, userId, 'ledger_entry_updated', 'shipment_ledger', id, fields);
   return { success: true };
 }
 

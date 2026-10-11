@@ -37,6 +37,7 @@ const EMPTY = {
   plate_number: '',
   destination: '',
   service_type: 'pickup',
+  source: '',
   jb: 0,
   sb: 0,
   payment_method: 'cash',
@@ -64,6 +65,7 @@ export function LedgerEntryDialog({ open, onOpenChange, entry, onSubmit }: Ledge
         plate_number: entry.plate_number ?? '',
         destination: entry.destination ?? '',
         service_type: entry.service_type ?? 'pickup',
+        source: entry.source ?? '',
         jb: entry.jb ?? 0,
         sb: entry.sb ?? 0,
         payment_method: entry.payment_method ?? 'cash',
@@ -93,7 +95,13 @@ export function LedgerEntryDialog({ open, onOpenChange, entry, onSubmit }: Ledge
         bags_returned: Number(form.bags_returned) || 0,
         check_number: form.payment_method === 'check' ? form.check_number : null,
         bag_returned_type: Number(form.bags_returned) > 0 ? form.bag_returned_type || 'SB' : null,
-        return_reason: Number(form.bags_returned) > 0 ? form.return_reason || 'return' : null,
+        // Never null: the server schema (and the NOT NULL column on some
+        // deployments) reject it. 'return' is the column default, so a
+        // non-return row stores exactly what it always would have.
+        return_reason: Number(form.bags_returned) > 0 ? form.return_reason || 'return' : 'return',
+        // Blank on create = "not chosen": omit the key so the server defaults
+        // it from the linked PO. Blank on edit leaves the row's source unset.
+        source: form.source || (entry ? null : undefined),
       });
       onOpenChange(false);
     } catch {
@@ -193,8 +201,8 @@ export function LedgerEntryDialog({ open, onOpenChange, entry, onSubmit }: Ledge
             </div>
           </div>
 
-          {/* Row 3: Destination, Service */}
-          <div className="grid grid-cols-3 gap-3">
+          {/* Row 3: Destination, Service, Source */}
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             <div className="col-span-2 space-y-1.5">
               <Label className="text-xs" htmlFor="ledger-destination">
                 Destination
@@ -226,6 +234,34 @@ export function LedgerEntryDialog({ open, onOpenChange, entry, onSubmit }: Ledge
                     </SelectTrigger>
                     <SelectContent>
                       {serviceOptions.map((opt) => (
+                        <SelectItem key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                );
+              })()}
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Source</Label>
+              {(() => {
+                const sourceOptions = [
+                  { value: 'port', label: 'Port' },
+                  { value: 'warehouse', label: 'Warehouse' },
+                ];
+
+                return (
+                  <Select
+                    items={sourceOptions}
+                    value={form.source || ''}
+                    onValueChange={(v) => set('source', v)}
+                  >
+                    <SelectTrigger className="h-9">
+                      <SelectValue placeholder={entry ? '—' : 'From PO'} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {sourceOptions.map((opt) => (
                         <SelectItem key={opt.value} value={opt.value}>
                           {opt.label}
                         </SelectItem>

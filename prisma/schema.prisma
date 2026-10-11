@@ -104,6 +104,7 @@ model ShipmentLedger {
   plateNumber         String?  @map("plate_number")
   destination         String?
   serviceType         String?  @map("service_type")
+  source              String?  // 'port' | 'warehouse'; display label only, NULL = unresolved
   jb                  Decimal  @default(0) @db.Decimal(14, 4)
   sb                  Decimal  @default(0) @db.Decimal(14, 4)
   paymentMethod       String?  @map("payment_method")

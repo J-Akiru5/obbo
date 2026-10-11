@@ -459,3 +459,216 @@ describe('Ledger Server Actions — profit calculations', () => {
     });
   });
 });
+
+describe('Ledger Server Actions — source (Port/Warehouse) label', () => {
+  const PROFIT_KEYS = ['total_sales', 'gross_profit', 'net_profit', 'selling_price_per_bag'];
+
+  function captureLedgerPosts() {
+    const captured: Record<string, unknown>[] = [];
+    server.use(
+      http.post('*/rest/v1/shipment_ledger', async ({ request }) => {
+        const body = (await request.json()) as Record<string, unknown>;
+        captured.push(body);
+        return HttpResponse.json({ id: 'ledger-src', ...body });
+      }),
+    );
+    return captured;
+  }
+
+  function stubPoSource(source: unknown) {
+    const lookups = { count: 0 };
+    server.use(
+      http.get('*/rest/v1/purchase_orders', () => {
+        lookups.count += 1;
+        return HttpResponse.json({ po_number: 'PO-SRC', source });
+      }),
+    );
+    return lookups;
+  }
+
+  it('persists an explicit source, and the source never changes any profit field', async () => {
+    noopHandlers();
+    const captured = captureLedgerPosts();
+    const base = { jb: 4, sb: 0, amount: 18000 };
+
+    await addLedgerEntry('ship-001', { ...base, dr_number: 'DR-SRC-1', source: 'port' });
+    await addLedgerEntry('ship-001', { ...base, dr_number: 'DR-SRC-2', source: 'warehouse' });
+
+    expect(captured.map((c) => c.source)).toEqual(['port', 'warehouse']);
+    for (const key of PROFIT_KEYS) expect(captured[0][key]).toBe(captured[1][key]);
+  });
+
+  it('stores an explicit null as null and does not look the PO up', async () => {
+    noopHandlers();
+    const lookups = stubPoSource('port');
+    const captured = captureLedgerPosts();
+
+    await addLedgerEntry('ship-001', {
+      dr_number: 'DR-SRC-3',
+      po_number: 'PO-SRC',
+      jb: 4,
+      amount: 18000,
+      source: null,
+    });
+
+    expect(captured[0].source).toBeNull();
+    expect(lookups.count).toBe(0);
+  });
+
+  it('defaults an omitted source from the linked PO', async () => {
+    noopHandlers();
+    stubPoSource('warehouse');
+    const captured = captureLedgerPosts();
+
+    await addLedgerEntry('ship-001', {
+      dr_number: 'DR-SRC-4',
+      po_number: 'PO-SRC',
+      jb: 4,
+      amount: 18000,
+    });
+
+    expect(captured[0].source).toBe('warehouse');
+  });
+
+  it('leaves source null when there is no PO number, or the PO value is out of contract', async () => {
+    noopHandlers();
+    const lookups = stubPoSource('PORT'); // uppercase is not a valid ledger source
+    const captured = captureLedgerPosts();
+
+    await addLedgerEntry('ship-001', { dr_number: 'DR-SRC-5', jb: 4, amount: 18000 });
+    expect(captured[0].source).toBeNull();
+    expect(lookups.count).toBe(0); // no po_number -> nothing to look up
+
+    await addLedgerEntry('ship-001', {
+      dr_number: 'DR-SRC-6',
+      po_number: 'PO-SRC',
+      jb: 4,
+      amount: 18000,
+    });
+    expect(captured[1].source).toBeNull();
+    expect(lookups.count).toBe(1);
+  });
+
+  it('a return row inherits the original dispatch row source', async () => {
+    noopHandlers();
+    server.use(
+      http.get('*/rest/v1/shipment_ledger', () =>
+        HttpResponse.json({
+          id: 'ledger-orig',
+          selling_price_per_bag: 250,
+          landed_cost_per_bag: 147.64,
+          local_expenses_per_bag: 20,
+          source: 'port',
+        }),
+      ),
+    );
+    const captured = captureLedgerPosts();
+
+    await addLedgerEntry('ship-001', {
+      dr_number: 'DR-2026-001',
+      jb: 0,
+      sb: 0,
+      bags_returned: 5,
+      bag_returned_type: 'JB',
+      return_reason: 'return',
+    });
+
+    expect(captured[0].source).toBe('port');
+  });
+
+  it('rejects a source outside port/warehouse and writes nothing', async () => {
+    noopHandlers();
+    const captured = captureLedgerPosts();
+
+    const result = await addLedgerEntry('ship-001', {
+      dr_number: 'DR-SRC-7',
+      jb: 4,
+      source: 'airport' as never,
+    });
+
+    expect(result.success).toBe(false);
+    expect(captured).toHaveLength(0);
+  });
+
+  it('is strict: an unknown key fails the call instead of reaching the database', async () => {
+    noopHandlers();
+    const captured = captureLedgerPosts();
+
+    const result = await addLedgerEntry('ship-001', {
+      dr_number: 'DR-SRC-8',
+      jb: 4,
+      bogus_column: 1,
+    } as never);
+
+    expect(result.success).toBe(false);
+    expect(captured).toHaveLength(0);
+  });
+
+  it('inserts the PARSED data (trimmed strings), not the raw caller object', async () => {
+    noopHandlers();
+    stubPoSource('port');
+    const captured = captureLedgerPosts();
+
+    await addLedgerEntry('ship-001', {
+      dr_number: '  DR-SRC-9  ',
+      po_number: '  PO-SRC  ',
+      jb: 4,
+      amount: 18000,
+    });
+
+    expect(captured[0].dr_number).toBe('DR-SRC-9');
+    expect(captured[0].po_number).toBe('PO-SRC');
+  });
+
+  it('a source-only edit patches source and does NOT recompute any profit field', async () => {
+    noopHandlers();
+    const patched: Record<string, unknown>[] = [];
+    server.use(
+      http.patch('*/rest/v1/shipment_ledger', async ({ request }) => {
+        patched.push((await request.json()) as Record<string, unknown>);
+        return HttpResponse.json([]);
+      }),
+    );
+
+    const result = await updateLedgerEntry(
+      'ledger-001',
+      'ship-001',
+      { jb: 20, sb: 10, bags_returned: 0, bag_returned_type: null, return_reason: 'return' },
+      { source: 'port' },
+    );
+
+    expect(result.success).toBe(true);
+    expect(patched[0].source).toBe('port');
+    for (const key of PROFIT_KEYS) expect(patched[0][key]).toBeUndefined();
+  });
+
+  it('edit accepts client_reason (the ledger dialog always sends it) but rejects unknown keys', async () => {
+    noopHandlers();
+    const patched: Record<string, unknown>[] = [];
+    server.use(
+      http.patch('*/rest/v1/shipment_ledger', async ({ request }) => {
+        patched.push((await request.json()) as Record<string, unknown>);
+        return HttpResponse.json([]);
+      }),
+    );
+    const oldEntry = {
+      jb: 20,
+      sb: 10,
+      bags_returned: 0,
+      bag_returned_type: null,
+      return_reason: 'return',
+    };
+
+    const ok = await updateLedgerEntry('ledger-001', 'ship-001', oldEntry, {
+      client_reason: 'Wet bags',
+    });
+    expect(ok.success).toBe(true);
+    expect(patched[0].client_reason).toBe('Wet bags');
+
+    const rejected = await updateLedgerEntry('ledger-001', 'ship-001', oldEntry, {
+      bogus_column: 1,
+    } as never);
+    expect(rejected.success).toBe(false);
+    expect(patched).toHaveLength(1);
+  });
+});

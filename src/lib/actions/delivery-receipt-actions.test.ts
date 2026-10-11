@@ -282,4 +282,59 @@ describe('createDeliveryReceipt — manual DR fulfils an already-dispatched PO b
     // ₱10,000 PO − ₱8,000 already recognized = ₱2,000 headroom left.
     expect(ledgerBodies[0].total_sales).toBe(2000);
   });
+
+  describe('ledger source (Port/Warehouse) label', () => {
+    function captureLedgerWithPoSource(source: unknown) {
+      setup('dispatched');
+      const ledgerBodies: Record<string, unknown>[] = [];
+      server.use(
+        http.get('*/rest/v1/purchase_orders', () =>
+          HttpResponse.json({
+            id: 'po-row-1',
+            po_number: poNumber,
+            order_id: originalOrderId,
+            source,
+          }),
+        ),
+        http.post('*/rest/v1/shipment_ledger', async ({ request }) => {
+          const body = (await request.json()) as Record<string, unknown>;
+          ledgerBodies.push(body);
+          return HttpResponse.json({ id: 'ledger-src-1', ...body });
+        }),
+      );
+      return ledgerBodies;
+    }
+
+    it('writes the linked PO source onto the ledger row', async () => {
+      const ledgerBodies = captureLedgerWithPoSource('port');
+
+      const result = await createDeliveryReceipt({
+        shipment_id: shipmentId,
+        dr_number: 'DR-MANUAL-SRC-1',
+        client_id: clientId,
+        jb: 100,
+        sb: 0,
+        po_number: poNumber,
+      });
+
+      expect(result.success).toBe(true);
+      expect(ledgerBodies[0].source).toBe('port');
+    });
+
+    it('an out-of-contract PO source never fails the DR — the label just stays blank', async () => {
+      const ledgerBodies = captureLedgerWithPoSource('PORT');
+
+      const result = await createDeliveryReceipt({
+        shipment_id: shipmentId,
+        dr_number: 'DR-MANUAL-SRC-2',
+        client_id: clientId,
+        jb: 100,
+        sb: 0,
+        po_number: poNumber,
+      });
+
+      expect(result.success).toBe(true);
+      expect(ledgerBodies[0].source).toBeNull();
+    });
+  });
 });

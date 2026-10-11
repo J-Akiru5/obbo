@@ -93,6 +93,9 @@ async function _createDeliveryReceipt(rawDr: Record<string, unknown>) {
     client_name: clientName,
     destination: dr.destination ?? undefined,
     service_type: poData?.service_type || 'pickup',
+    // Display label from the linked PO. Guarded so an out-of-contract value
+    // can never fail the whole DR over a label (the ledger schema is strict).
+    source: poData?.source === 'port' || poData?.source === 'warehouse' ? poData.source : undefined,
     jb,
     sb,
     driver_name: dr.driver,

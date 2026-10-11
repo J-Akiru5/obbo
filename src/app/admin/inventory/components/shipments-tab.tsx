@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { Shipment, ShipmentLedgerEntry } from '@/lib/types/database';
 import { Card, CardContent } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -71,6 +72,8 @@ function computeLedgerEntryDisplay(e: ShipmentLedgerEntry) {
   const rowNet = Number(e.net_profit) || 0;
   const serviceLabel =
     e.service_type === 'deliver' ? 'Delivery' : e.service_type === 'pickup' ? 'Pick-up' : '—';
+  // Display label only — NULL (legacy / unresolved) renders as "—".
+  const sourceLabel = e.source === 'port' ? 'Port' : e.source === 'warehouse' ? 'Warehouse' : null;
   // Ledger jb/sb are JB/SB UNITS and can be fractional (manual DRs are
   // entered in whole bags: 7 JB bags = 0.28 units). Every column and card
   // below renders INDIVIDUAL BAGS, so convert + round here once.
@@ -88,12 +91,23 @@ function computeLedgerEntryDisplay(e: ShipmentLedgerEntry) {
     rowGross,
     rowNet,
     serviceLabel,
+    sourceLabel,
     jbBags,
     sbBags,
     totalDeducted,
     returnLabel,
     returnClass,
   };
+}
+
+// Port / Warehouse tag shared by the desktop table cell and the mobile card.
+function SourceBadge({ label }: { label: string | null }) {
+  if (!label) return <>—</>;
+  return (
+    <Badge variant="outline" className="h-4 px-1.5 text-[9px] font-semibold uppercase">
+      {label}
+    </Badge>
+  );
 }
 
 export function ShipmentsTab({
@@ -738,6 +752,7 @@ export function ShipmentsTab({
                           <TableHead className="text-[10px]">Plate</TableHead>
                           <TableHead className="text-[10px]">Destination</TableHead>
                           <TableHead className="text-[10px]">Service</TableHead>
+                          <TableHead className="text-[10px]">Source</TableHead>
                           <TableHead className="text-right text-[10px]">JB bags</TableHead>
                           <TableHead className="text-right text-[10px]">SB bags</TableHead>
                           <TableHead className="text-right text-[10px]">Total bags</TableHead>
@@ -765,7 +780,7 @@ export function ShipmentsTab({
                         {!ledgerData[shipment.id] ? (
                           <TableRow>
                             <TableCell
-                              colSpan={21}
+                              colSpan={22}
                               className="text-muted-foreground py-4 text-center text-xs"
                             >
                               Loading...
@@ -774,7 +789,7 @@ export function ShipmentsTab({
                         ) : ledgerData[shipment.id].length === 0 ? (
                           <TableRow>
                             <TableCell
-                              colSpan={21}
+                              colSpan={22}
                               className="text-muted-foreground py-4 text-center text-xs"
                             >
                               No ledger entries yet.
@@ -787,6 +802,7 @@ export function ShipmentsTab({
                               rowGross,
                               rowNet,
                               serviceLabel,
+                              sourceLabel,
                               jbBags,
                               sbBags,
                               returnLabel,
@@ -820,6 +836,9 @@ export function ShipmentsTab({
                                 </TableCell>
                                 <TableCell className="text-[10px] uppercase">
                                   {serviceLabel}
+                                </TableCell>
+                                <TableCell className="text-[10px]">
+                                  <SourceBadge label={sourceLabel} />
                                 </TableCell>
                                 <TableCell className="text-right text-[11px] font-medium text-red-500">
                                   {jbBags > 0 ? `-${jbBags}` : '—'}
@@ -899,6 +918,7 @@ export function ShipmentsTab({
                           rowGross,
                           rowNet,
                           serviceLabel,
+                          sourceLabel,
                           jbBags,
                           sbBags,
                           totalDeducted,
@@ -912,9 +932,11 @@ export function ShipmentsTab({
                                 <p className="text-[11px] font-semibold">
                                   {new Date(e.date).toLocaleDateString()}
                                 </p>
-                                <p className="text-muted-foreground text-[10px] uppercase">
-                                  {serviceLabel}
-                                </p>
+                                <div className="text-muted-foreground flex items-center gap-1.5 text-[10px] uppercase">
+                                  <span>{serviceLabel}</span>
+                                  <span aria-hidden="true">·</span>
+                                  <SourceBadge label={sourceLabel} />
+                                </div>
                               </div>
                               <Button
                                 variant="ghost"
